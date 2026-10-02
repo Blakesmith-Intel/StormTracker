@@ -114,3 +114,101 @@ code { color:#dce9ef; }
     font-size:11px;
   }
 }
+
+
+/* STORMTRACKER HARD CAMERA LOCK V3 */
+
+.map {
+  isolation: isolate;
+}
+
+.map-input-shield {
+  position: absolute;
+  z-index: 900;
+  inset: 0;
+  display: none;
+  background: transparent;
+  overscroll-behavior: none;
+  touch-action: none;
+  cursor: default;
+}
+
+.map-input-shield[data-active="true"] {
+  display: block;
+}
+
+.map-nav-controls {
+  position: absolute;
+  z-index: 1000;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 9px;
+  background: rgba(11,17,22,.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-lock-version {
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: rgba(255,255,255,.08);
+  color: #dce8ee;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+
+.map-nav-button {
+  padding: 7px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.map-nav-controls[data-locked="true"] .map-nav-lock {
+  border-color: #5d9775;
+  background: #183529;
+}
+
+.map-nav-controls[data-locked="false"] .map-nav-lock {
+  border-color: #a88445;
+  background: #44351c;
+}
+
+.map-nav-state {
+  padding: 0 5px;
+  font-size: 10px;
+  color: #b8c4cb;
+  white-space: nowrap;
+}
+
+@media (max-width:850px) {
+  .map-nav-controls {
+    top: 6px;
+    right: 6px;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .map-nav-state {
+    display: none;
+  }
+
+  .map-lock-version {
+    font-size: 8px;
+    padding: 4px;
+  }
+
+  .map-nav-button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}

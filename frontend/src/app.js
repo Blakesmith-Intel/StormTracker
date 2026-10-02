@@ -1,5 +1,5 @@
 import { RadarWorkerClient } from "./worker-client.js";
-import { createCesiumView } from "./cesium-view.js";
+import { createCesiumView } from "./cesium-view.js?v=camera-lock-v3";
 import { SOURCE_PALETTES } from "./palette.js";
 import { reflectivityFromFile, reflectivityFromUrl } from "./radar-source.js";
 import { putState, getState, clearAll } from "./storage.js";

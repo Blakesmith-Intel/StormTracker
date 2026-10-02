@@ -1,17 +1,29 @@
 import { RADARS } from "./config.js";
 import { directPoint } from "./geo.js";
 
+const MAP_LOCK_VERSION = "v3";
+
 function colourForTrack(trackId) {
   const number = Number(String(trackId).replace(/\D/g, "")) || 1;
   const hue = (number * 0.61803398875) % 1;
   return Cesium.Color.fromHsl(hue, 0.78, 0.58, 1);
 }
 
+function angleDifference(a, b) {
+  const twoPi = Math.PI * 2;
+  let d = Math.abs(a - b) % twoPi;
+  if (d > Math.PI) d = twoPi - d;
+  return d;
+}
+
 export function createCesiumView(containerId) {
   const container = document.getElementById(containerId);
+
   if (!container) {
     throw new Error(`Cesium container not found: ${containerId}`);
   }
+
+  const mapPanel = container.parentElement;
 
   const viewer = new Cesium.Viewer(containerId, {
     animation: false,
@@ -41,30 +53,76 @@ export function createCesiumView(containerId) {
   scene.globe.enableLighting = false;
   scene.globe.maximumScreenSpaceError = 4;
 
-  // Remove all momentum and ambiguous camera gestures.
   controller.inertiaSpin = 0;
   controller.inertiaTranslate = 0;
   controller.inertiaZoom = 0;
   controller.bounceAnimationTime = 0;
-  controller.enableTilt = false;
-  controller.enableLook = false;
   controller.minimumZoomDistance = 500;
   controller.maximumZoomDistance = 5_000_000;
-
-  // Only permit deliberate pan and zoom gestures when navigation is unlocked.
-  controller.rotateEventTypes = Cesium.CameraEventType.LEFT_DRAG;
-  controller.zoomEventTypes = [
-    Cesium.CameraEventType.WHEEL,
-    Cesium.CameraEventType.PINCH
-  ];
-  controller.tiltEventTypes = [];
-  controller.lookEventTypes = [];
 
   const HOME = Object.freeze({
     longitude: 152.95,
     latitude: -27.15,
     height: 650000
   });
+
+  let navigationLocked = true;
+  let lockedCamera = null;
+  let restoringCamera = false;
+  let blockedInputCount = 0;
+
+  function takeCameraSnapshot() {
+    lockedCamera = {
+      position: Cesium.Cartesian3.clone(camera.position),
+      heading: camera.heading,
+      pitch: camera.pitch,
+      roll: camera.roll
+    };
+  }
+
+  function cameraHasMovedFromLock() {
+    if (!lockedCamera) return false;
+
+    const positionDistance =
+      Cesium.Cartesian3.distance(camera.position, lockedCamera.position);
+
+    return (
+      positionDistance > 0.05 ||
+      angleDifference(camera.heading, lockedCamera.heading) > 1e-7 ||
+      angleDifference(camera.pitch, lockedCamera.pitch) > 1e-7 ||
+      angleDifference(camera.roll, lockedCamera.roll) > 1e-7
+    );
+  }
+
+  function restoreLockedCamera() {
+    if (
+      !navigationLocked ||
+      !lockedCamera ||
+      restoringCamera ||
+      !cameraHasMovedFromLock()
+    ) {
+      return;
+    }
+
+    restoringCamera = true;
+
+    try {
+      camera.cancelFlight();
+
+      camera.setView({
+        destination: Cesium.Cartesian3.clone(lockedCamera.position),
+        orientation: {
+          heading: lockedCamera.heading,
+          pitch: lockedCamera.pitch,
+          roll: lockedCamera.roll
+        }
+      });
+    } finally {
+      restoringCamera = false;
+    }
+
+    scene.requestRender();
+  }
 
   function resetCamera() {
     camera.cancelFlight();
@@ -82,6 +140,7 @@ export function createCesiumView(containerId) {
       }
     });
 
+    takeCameraSnapshot();
     scene.requestRender();
   }
 
@@ -108,23 +167,27 @@ export function createCesiumView(containerId) {
     radarSource.entities.add({
       id: `radar-${radar.id}`,
       name: `${radar.id} — ${radar.name}`,
+
       position: Cesium.Cartesian3.fromDegrees(
         radar.longitude,
         radar.latitude,
         0
       ),
+
       point: {
         pixelSize: 8,
         color: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.DEEPSKYBLUE,
         outlineWidth: 2
       },
+
       label: {
         text: radar.id,
         font: "12px sans-serif",
         pixelOffset: new Cesium.Cartesian2(0, -16),
         fillColor: Cesium.Color.WHITE
       },
+
       ellipse: {
         semiMajorAxis: radar.halfSpanKm * 1000,
         semiMinorAxis: radar.halfSpanKm * 1000,
@@ -136,21 +199,21 @@ export function createCesiumView(containerId) {
     });
   }
 
-  // ------------------------------------------------------------------
-  // EXPLICIT CAMERA LOCK
-  //
-  // Camera movement is disabled by default. This prevents trackpad,
-  // touchscreen, iOS/Safari and wheel events from moving the map unless
-  // the user deliberately unlocks it.
-  // ------------------------------------------------------------------
+  const inputShield = document.createElement("div");
+  inputShield.className = "map-input-shield";
+  inputShield.setAttribute("aria-hidden", "true");
+  mapPanel?.appendChild(inputShield);
 
   const controls = document.createElement("div");
   controls.className = "map-nav-controls";
 
+  const versionBadge = document.createElement("div");
+  versionBadge.className = "map-lock-version";
+  versionBadge.textContent = `MAP LOCK ${MAP_LOCK_VERSION}`;
+
   const lockButton = document.createElement("button");
   lockButton.type = "button";
   lockButton.className = "map-nav-button map-nav-lock";
-  lockButton.setAttribute("aria-pressed", "true");
 
   const resetButton = document.createElement("button");
   resetButton.type = "button";
@@ -160,13 +223,27 @@ export function createCesiumView(containerId) {
   const stateLabel = document.createElement("div");
   stateLabel.className = "map-nav-state";
 
-  controls.append(lockButton, resetButton, stateLabel);
-  container.parentElement?.appendChild(controls);
+  controls.append(
+    versionBadge,
+    lockButton,
+    resetButton,
+    stateLabel
+  );
 
-  let navigationLocked = true;
+  mapPanel?.appendChild(controls);
 
-  function applyNavigationLock() {
-    controller.enableInputs = !navigationLocked;
+  function setCesiumControllerEnabled(enabled) {
+    controller.enableInputs = enabled;
+    controller.enableRotate = enabled;
+    controller.enableTranslate = enabled;
+    controller.enableZoom = enabled;
+    controller.enableTilt = false;
+    controller.enableLook = false;
+  }
+
+  function updateLockUi() {
+    inputShield.dataset.active = navigationLocked ? "true" : "false";
+    controls.dataset.locked = navigationLocked ? "true" : "false";
 
     lockButton.textContent = navigationLocked
       ? "Unlock map"
@@ -178,20 +255,74 @@ export function createCesiumView(containerId) {
     );
 
     stateLabel.textContent = navigationLocked
-      ? "Navigation locked"
+      ? `Navigation locked · blocked ${blockedInputCount}`
       : "Navigation unlocked";
+  }
 
-    controls.dataset.locked = navigationLocked ? "true" : "false";
-
+  function lockNavigation() {
+    camera.cancelFlight();
+    takeCameraSnapshot();
+    navigationLocked = true;
+    setCesiumControllerEnabled(false);
+    updateLockUi();
     scene.requestRender();
+  }
+
+  function unlockNavigation() {
+    navigationLocked = false;
+    setCesiumControllerEnabled(true);
+    updateLockUi();
+    scene.requestRender();
+  }
+
+  function blockMapInput(event) {
+    if (!navigationLocked) return;
+
+    blockedInputCount += 1;
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    event.stopPropagation();
+    updateLockUi();
+  }
+
+  for (const eventName of [
+    "wheel",
+    "mousewheel",
+    "DOMMouseScroll",
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "mousedown",
+    "mousemove",
+    "mouseup",
+    "dblclick",
+    "contextmenu",
+    "touchstart",
+    "touchmove",
+    "touchend",
+    "gesturestart",
+    "gesturechange",
+    "gestureend"
+  ]) {
+    inputShield.addEventListener(
+      eventName,
+      blockMapInput,
+      { passive: false, capture: true }
+    );
   }
 
   lockButton.addEventListener("click", event => {
     event.preventDefault();
     event.stopPropagation();
 
-    navigationLocked = !navigationLocked;
-    applyNavigationLock();
+    if (navigationLocked) {
+      unlockNavigation();
+    } else {
+      lockNavigation();
+    }
   });
 
   resetButton.addEventListener("click", event => {
@@ -199,22 +330,19 @@ export function createCesiumView(containerId) {
     event.stopPropagation();
 
     resetCamera();
-
-    // Resetting the view also re-locks navigation so the map cannot
-    // immediately wander again from a stray touch/trackpad gesture.
     navigationLocked = true;
-    applyNavigationLock();
+    setCesiumControllerEnabled(false);
+    updateLockUi();
   });
 
-  // Prevent buttons from leaking pointer/wheel events into Cesium.
   for (const eventName of [
+    "wheel",
     "pointerdown",
     "pointermove",
     "pointerup",
     "touchstart",
     "touchmove",
-    "touchend",
-    "wheel"
+    "touchend"
   ]) {
     controls.addEventListener(
       eventName,
@@ -223,8 +351,18 @@ export function createCesiumView(containerId) {
     );
   }
 
+  camera.percentageChanged = 0.000001;
+
+  camera.changed.addEventListener(() => {
+    restoreLockedCamera();
+  });
+
+  scene.preRender.addEventListener(() => {
+    restoreLockedCamera();
+  });
+
   resetCamera();
-  applyNavigationLock();
+  lockNavigation();
 
   function render(result) {
     stormSource.entities.suspendEvents();
@@ -232,20 +370,26 @@ export function createCesiumView(containerId) {
     try {
       stormSource.entities.removeAll();
 
-      const active = new Set(result.active_track_ids ?? []);
+      const active = new Set(
+        result.active_track_ids ?? []
+      );
 
       for (const track of result.tracks ?? []) {
         if (!track.latest) continue;
 
-        const color = colourForTrack(track.track_id);
+        const color = colourForTrack(
+          track.track_id
+        );
+
         const history = track.history ?? [];
 
-        const positions = history.map(observation =>
-          Cesium.Cartesian3.fromDegrees(
-            observation.centroid_longitude,
-            observation.centroid_latitude,
-            0
-          )
+        const positions = history.map(
+          observation =>
+            Cesium.Cartesian3.fromDegrees(
+              observation.centroid_longitude,
+              observation.centroid_latitude,
+              0
+            )
         );
 
         if (positions.length >= 2) {
@@ -265,39 +409,57 @@ export function createCesiumView(containerId) {
         stormSource.entities.add({
           id: track.track_id,
           name: track.track_id,
+
           position: Cesium.Cartesian3.fromDegrees(
             observation.centroid_longitude,
             observation.centroid_latitude,
             0
           ),
+
           point: {
-            pixelSize: active.has(track.track_id) ? 13 : 8,
+            pixelSize:
+              active.has(track.track_id)
+                ? 13
+                : 8,
+
             color,
             outlineColor: Cesium.Color.WHITE,
             outlineWidth: 1
           },
+
           label: {
             text:
               `${track.track_id}  ≥` +
               `${Number(
                 observation.maximum_dbzh_lower_bound
               ).toFixed(0)} dBZ`,
+
             font: "12px sans-serif",
             pixelOffset: new Cesium.Cartesian2(0, -20),
             fillColor: Cesium.Color.WHITE,
             showBackground: true,
-            backgroundColor: Cesium.Color.BLACK.withAlpha(0.55)
+
+            backgroundColor:
+              Cesium.Color.BLACK.withAlpha(0.55)
           },
+
           rectangle: {
-            coordinates: Cesium.Rectangle.fromDegrees(
-              observation.min_longitude,
-              observation.min_latitude,
-              observation.max_longitude,
-              observation.max_latitude
-            ),
-            material: color.withAlpha(0.08),
+            coordinates:
+              Cesium.Rectangle.fromDegrees(
+                observation.min_longitude,
+                observation.min_latitude,
+                observation.max_longitude,
+                observation.max_latitude
+              ),
+
+            material:
+              color.withAlpha(0.08),
+
             outline: true,
-            outlineColor: color.withAlpha(0.7),
+
+            outlineColor:
+              color.withAlpha(0.7),
+
             height: 0
           }
         });
@@ -312,6 +474,7 @@ export function createCesiumView(containerId) {
 
           stormSource.entities.add({
             id: `${track.track_id}-projection`,
+
             polyline: {
               positions: [
                 Cesium.Cartesian3.fromDegrees(
@@ -319,17 +482,24 @@ export function createCesiumView(containerId) {
                   observation.centroid_latitude,
                   0
                 ),
+
                 Cesium.Cartesian3.fromDegrees(
                   projection.longitude,
                   projection.latitude,
                   0
                 )
               ],
+
               width: 2,
-              material: new Cesium.PolylineDashMaterialProperty({
-                color: color.withAlpha(0.75),
-                dashLength: 12
-              }),
+
+              material:
+                new Cesium.PolylineDashMaterialProperty({
+                  color:
+                    color.withAlpha(0.75),
+
+                  dashLength: 12
+                }),
+
               clampToGround: false
             }
           });
@@ -337,6 +507,10 @@ export function createCesiumView(containerId) {
       }
     } finally {
       stormSource.entities.resumeEvents();
+    }
+
+    if (navigationLocked) {
+      restoreLockedCamera();
     }
 
     scene.requestRender();

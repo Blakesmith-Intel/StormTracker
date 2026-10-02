@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StormTracker — Browser Reconstruction</title>
+  <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet" href="./app.css">
+  <script>window.CESIUM_BASE_URL="https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
+  <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <h1>StormTracker</h1>
+    <div class="subtitle">Browser-native reconstruction • 08 / 50 / 66</div>
+
+    <section class="card notice">
+      <strong>Scientific status:</strong> live/public tracks are 2-D radar-footprint-derived algorithmic identities. They are not measured volumetric storm objects. Lightning likelihood is inferred, not a direct strike feed.
+    </section>
+
+    <section class="card">
+      <h2>Reconstruction test</h2>
+      <div class="controls">
+        <button id="demoButton">Run synthetic regression</button>
+        <button id="resetButton">Reset</button>
+      </div>
+      <div id="status" style="margin-top:9px">Initialising…</div>
+    </section>
+
+    <section class="card">
+      <h2>Frame input</h2>
+      <label>Radar</label>
+      <select id="radarSelect">
+        <option value="66">66 — Mt Stapylton</option>
+        <option value="50">50 — Marburg</option>
+        <option value="08">08 — Mt Kanigan</option>
+      </select>
+      <label>Category JSON (works now)</label>
+      <input id="categoryFile" type="file" accept="application/json,.json">
+      <label>Raw radar image (after RGB palette calibration)</label>
+      <input id="imageFile" type="file" accept="image/png,image/gif,image/webp">
+      <label>HTTPS image URL (requires CORS + calibrated palette)</label>
+      <input id="imageUrl" type="url" placeholder="https://…">
+      <button id="loadUrlButton" style="margin-top:7px">Load URL</button>
+      <div class="small muted" style="margin-top:8px">The exact final RGB lookup table was one of the unrecoverable source-specific files. The decoder is present but deliberately refuses to guess until calibrated from a verified Bureau frame.</div>
+    </section>
+
+    <section class="card">
+      <h2>Segmentation</h2>
+      <div id="segmentationSummary" class="small muted">No frame processed.</div>
+    </section>
+
+    <section class="card">
+      <h2>Tracked storms</h2>
+      <div style="overflow:auto;max-height:310px">
+        <table>
+          <thead><tr><th>ID</th><th>Obs</th><th>Core</th><th>Motion</th><th>Track</th><th>Lightning</th></tr></thead>
+          <tbody id="trackRows"><tr><td colspan="6" class="muted">No tracks yet.</td></tr></tbody>
+        </table>
+      </div>
+      <div class="small muted" style="margin-top:7px">Dashed line = 10-minute straight-line extrapolation of observed centroid motion, not a forecast.</div>
+    </section>
+  </aside>
+  <main class="map"><div id="cesiumContainer"></div></main>
+</div>
+<script type="module" src="./src/app.js"></script>
+</body>
+</html>

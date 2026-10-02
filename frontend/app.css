@@ -1,0 +1,31 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#0b1116; color:#edf3f7; }
+* { box-sizing:border-box; }
+html, body, #app { height:100%; margin:0; }
+body { overflow:hidden; }
+#app { display:grid; grid-template-columns:minmax(330px,390px) 1fr; }
+.sidebar { overflow:auto; padding:14px; background:#101820; border-right:1px solid #2d3b45; }
+.map { position:relative; min-width:0; }
+#cesiumContainer { width:100%; height:100%; }
+h1 { font-size:21px; margin:0 0 4px; }
+.subtitle { color:#9fb0bb; font-size:12px; margin-bottom:12px; }
+.card { background:#17212a; border:1px solid #30414d; border-radius:10px; padding:12px; margin-bottom:10px; }
+.card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; margin:0 0 9px; color:#b9c8d1; }
+.notice { border-color:#6d5d30; background:#211f17; font-size:12px; line-height:1.45; }
+button, select, input { font:inherit; }
+button { border:1px solid #4f6877; background:#223541; color:#f4f8fa; padding:8px 10px; border-radius:7px; cursor:pointer; }
+button:hover { background:#2a4351; }
+.controls { display:flex; flex-wrap:wrap; gap:7px; }
+label { display:block; font-size:11px; color:#aebdc6; margin:8px 0 4px; }
+input[type="url"], select { width:100%; padding:7px; border-radius:6px; border:1px solid #40535e; background:#0e171d; color:#edf3f7; }
+input[type="file"] { width:100%; font-size:11px; }
+#status { font-size:12px; line-height:1.4; color:#d3dce2; }
+#status[data-kind="error"] { color:#ff9d91; }
+#status[data-kind="ok"] { color:#9de0b9; }
+.muted { color:#91a2ac; }
+table { width:100%; border-collapse:collapse; font-size:10.5px; }
+th,td { text-align:left; padding:5px 4px; border-bottom:1px solid #2b3a44; vertical-align:top; }
+th { color:#a8bac5; position:sticky; top:0; background:#17212a; }
+tr.active td:first-child { color:#72e0ae; }
+.small { font-size:11px; line-height:1.45; }
+code { color:#dce9ef; }
+@media (max-width:850px) { #app { grid-template-columns:1fr; grid-template-rows:46% 54%; } .sidebar { border-right:0; border-bottom:1px solid #2d3b45; } }

@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StormTracker Palette Calibrator</title>
+<style>body{font:14px system-ui;background:#101820;color:#eef;padding:18px}button,input{margin:6px 0}pre{white-space:pre-wrap;background:#182630;padding:12px;border-radius:8px;max-height:70vh;overflow:auto}.note{max-width:850px;color:#bdcbd3;line-height:1.5}</style></head><body>
+<h1>StormTracker source-image palette calibrator</h1>
+<p class="note">Load a verified Bureau radar image. This tool lists the most frequent opaque RGB colours. It does not assign meteorological values automatically: compare the colours with the product legend and enter only verified mappings into <code>src/palette.js</code>.</p>
+<input id="file" type="file" accept="image/*"><br><label>Show top colours <input id="limit" type="number" value="80" min="10" max="500"></label>
+<pre id="output">Choose an image.</pre>
+<script type="module">
+const file=document.getElementById('file'),out=document.getElementById('output'),limit=document.getElementById('limit');
+file.onchange=async()=>{const f=file.files?.[0];if(!f)return;const bmp=await createImageBitmap(f);const c=new OffscreenCanvas(bmp.width,bmp.height),ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0);const d=ctx.getImageData(0,0,bmp.width,bmp.height).data,m=new Map();for(let i=0;i<d.length;i+=4){if(d[i+3]===0)continue;const key=`${d[i]},${d[i+1]},${d[i+2]}`;m.set(key,(m.get(key)||0)+1)}const rows=[...m].sort((a,b)=>b[1]-a[1]).slice(0,Number(limit.value)||80).map(([rgb,count])=>({rgb:rgb.split(',').map(Number),count,hex:'#'+rgb.split(',').map(x=>Number(x).toString(16).padStart(2,'0')).join('')}));out.textContent=JSON.stringify({width:bmp.width,height:bmp.height,uniqueOpaqueColours:m.size,top:rows},null,2)};
+</script></body></html>

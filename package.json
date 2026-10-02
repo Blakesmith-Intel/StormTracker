@@ -1,0 +1,10 @@
+{
+  "name": "stormtracker-browser-reconstruction",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-native reconstruction of StormTracker",
+  "scripts": {
+    "test": "node frontend/tests/run-node-tests.mjs"
+  }
+}

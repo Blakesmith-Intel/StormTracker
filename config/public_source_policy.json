@@ -1,0 +1,45 @@
+{
+  "project": "StormTracker",
+  "runtime_architecture": "browser-native-static",
+  "policy": "public-first-no-paid-data",
+  "active_radars": ["08", "50", "66"],
+  "live_operational_sources": [
+    {
+      "name": "Bureau of Meteorology individual-radar reflectivity imagery",
+      "role": "primary near-real-time storm-footprint observation",
+      "nominal_cadence_minutes": 5,
+      "true_3d": false
+    },
+    {
+      "name": "Bureau of Meteorology Doppler radar imagery",
+      "role": "radial-velocity context",
+      "nominal_cadence_minutes": 5,
+      "true_3d": false
+    },
+    {
+      "name": "Bureau of Meteorology Himawari imagery",
+      "role": "optional cloud-top trend/context",
+      "true_3d": false,
+      "status": "adapter pending"
+    },
+    {
+      "name": "Bureau of Meteorology severe-thunderstorm warning geospatial feed",
+      "role": "official warning cross-check",
+      "true_3d": false,
+      "status": "adapter pending"
+    }
+  ],
+  "historical_3d_source": {
+    "name": "Australian Unified Radar Archive Level 1",
+    "role": "retrospective true-3D validation and calibration",
+    "near_real_time": false
+  },
+  "scientific_rules": [
+    "Never vertically extrude a 2-D radar image and describe it as a measured radar volume.",
+    "Live STxxxx identities are algorithmic tracks derived from public 2-D radar footprints unless a true volume source is explicitly present.",
+    "Doppler values are radial-velocity display classes, not horizontal storm motion.",
+    "Satellite observations may support cloud-top trend/context but are not radar echo-top measurements.",
+    "Official Bureau warnings are cross-check information and are not ground truth for every detected storm.",
+    "Inferred lightning likelihood is ordinal research/exercise guidance, not a detected strike and not a calibrated probability."
+  ]
+}

@@ -1,0 +1,28 @@
+STORMTRACKER RECONSTRUCTION — RESTORE STEPS
+===========================================
+
+1. Download/extract this package.
+
+2. Create a new EMPTY GitHub repository called StormTracker.
+   Do not initialise it with GitHub's README/license/gitignore because this package already contains the project files.
+
+3. In a terminal at the extracted StormTracker_reconstructed directory run:
+
+   ./scripts/bootstrap_git_repository.sh
+
+4. Add your repository remote and push (replace YOUR-USERNAME):
+
+   git remote add origin https://github.com/YOUR-USERNAME/StormTracker.git
+   git push -u origin main
+
+5. GitHub -> repository Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+   The included .github/workflows/pages.yml deploys frontend/ as a static site.
+
+6. Before live Bureau image decoding is enabled, recover/verify the RGB palettes:
+   open frontend/tools/palette-calibrator.html from the deployed site, load a verified source image, and map the source colours against the official product legend.
+
+7. Run the deterministic algorithm tests any time Node is available:
+
+   npm test
+
+No npm install is required. Node is used only for tests; the deployed runtime has no Node/Python/backend dependency.

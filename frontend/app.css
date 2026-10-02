@@ -28,4 +28,31 @@ th { color:#a8bac5; position:sticky; top:0; background:#17212a; }
 tr.active td:first-child { color:#72e0ae; }
 .small { font-size:11px; line-height:1.45; }
 code { color:#dce9ef; }
-@media (max-width:850px) { #app { grid-template-columns:1fr; grid-template-rows:46% 54%; } .sidebar { border-right:0; border-bottom:1px solid #2d3b45; } }
+
+/* Keep map/touch scrolling contained inside the correct panel. */
+.map,
+#cesiumContainer,
+#cesiumContainer canvas {
+  overscroll-behavior: none;
+}
+
+#cesiumContainer canvas {
+  touch-action: none;
+}
+
+.sidebar {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width:850px) {
+  #app {
+    grid-template-columns:1fr;
+    grid-template-rows:46% 54%;
+  }
+
+  .sidebar {
+    border-right:0;
+    border-bottom:1px solid #2d3b45;
+  }
+}

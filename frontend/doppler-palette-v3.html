@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StormTracker — Doppler Footer Palette V3</title>
+
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:Inter,system-ui,sans-serif;
+  }
+  main{
+    max-width:1500px;
+    margin:0 auto;
+    padding:18px;
+  }
+  h1{margin:0 0 5px}
+  .note{
+    color:#a9bbc4;
+    max-width:1100px;
+    line-height:1.45;
+  }
+  button{
+    padding:9px 12px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+    margin:10px 0;
+  }
+  .card{
+    margin-top:12px;
+    padding:12px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+  }
+  #status{
+    white-space:pre-wrap;
+    font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .meta{
+    display:grid;
+    grid-template-columns:170px 1fr;
+    gap:4px 8px;
+    font-size:12px;
+  }
+  .meta span:nth-child(odd){color:#9fb2bc}
+  .scroll{
+    width:100%;
+    overflow:auto;
+    padding:8px;
+    background:#020507;
+    border-radius:6px;
+    margin-top:7px;
+  }
+  .scroll canvas{
+    display:block;
+    max-width:none;
+    image-rendering:pixelated;
+  }
+  .runs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin-top:8px;
+  }
+  .run{
+    min-width:155px;
+    display:grid;
+    grid-template-columns:22px 1fr;
+    gap:6px;
+    align-items:center;
+    font-size:10px;
+    color:#b8c6ce;
+  }
+  .swatch{
+    width:22px;
+    height:14px;
+    border:1px solid rgba(255,255,255,.4);
+  }
+  .warning{
+    margin-top:10px;
+    padding:8px;
+    border-left:3px solid #d6aa3a;
+    background:#182129;
+    color:#d8e2e7;
+    font-size:11px;
+    line-height:1.45;
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>StormTracker Doppler footer-only palette V3</h1>
+
+  <p class="note">
+    This version does not search the radar map at all. For the 524×564 Bureau
+    Doppler GIF it treats rows 0–523 as the square radar panel and only rows
+    524–563 as the footer. The entire 40-pixel footer is enlarged 8×, then the
+    velocity-bar candidate is selected only from inside that footer.
+  </p>
+
+  <button id="loadAll">
+    Load footer-only diagnostics for 66 / 50 / 08
+  </button>
+
+  <section class="card">
+    <strong>Status</strong>
+    <div id="status">Ready.</div>
+  </section>
+
+  <div id="results"></div>
+</main>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js?v=footer-v3";
+
+import {
+  analyseFooterPalette
+} from "./src/doppler-footer-palette-v3.js?v=footer-v3";
+
+const status=document.getElementById("status");
+const results=document.getElementById("results");
+
+function rgbCss(rgb){
+  return `rgb(${rgb.join(",")})`;
+}
+
+async function inspect(radarId){
+  status.textContent=`Loading radar ${radarId}…`;
+
+  const source=await loadDopplerDiagnostic(radarId);
+  const analysis=analyseFooterPalette(source.canvas);
+
+  const card=document.createElement("section");
+  card.className="card";
+
+  const heading=document.createElement("h2");
+  heading.textContent=`${radarId} — ${source.product}`;
+  card.appendChild(heading);
+
+  const meta=document.createElement("div");
+  meta.className="meta";
+
+  meta.innerHTML=`
+    <span>Source image</span>
+    <strong>${source.width} × ${source.height}</strong>
+
+    <span>Footer rows</span>
+    <strong>${analysis.geometry.footerStart}…${source.height-1}</strong>
+
+    <span>Footer height</span>
+    <strong>${analysis.geometry.footerHeight}px</strong>
+
+    <span>Candidate bar row</span>
+    <strong>${analysis.bar ? `source y=${analysis.bar.y}, footer row ${analysis.bar.footerRow}` : "not found"}</strong>
+
+    <span>Candidate swatches</span>
+    <strong>${analysis.bar?.runs.length ?? 0}</strong>
+  `;
+
+  card.appendChild(meta);
+
+  const footerTitle=document.createElement("h3");
+  footerTitle.textContent="8× full footer — NO MAP PIXELS";
+  card.appendChild(footerTitle);
+
+  const footerScroll=document.createElement("div");
+  footerScroll.className="scroll";
+  footerScroll.appendChild(analysis.footer.canvas);
+  card.appendChild(footerScroll);
+
+  if(analysis.bar && analysis.barCanvas){
+    const barTitle=document.createElement("h3");
+    barTitle.textContent="12× detected velocity-bar row";
+    card.appendChild(barTitle);
+
+    const barScroll=document.createElement("div");
+    barScroll.className="scroll";
+    barScroll.appendChild(analysis.barCanvas);
+    card.appendChild(barScroll);
+
+    const runsTitle=document.createElement("h3");
+    runsTitle.textContent="Exact RGB runs from footer-only candidate";
+    card.appendChild(runsTitle);
+
+    const runs=document.createElement("div");
+    runs.className="runs";
+
+    for(const [index,run] of analysis.bar.runs.entries()){
+      const item=document.createElement("div");
+      item.className="run";
+
+      const swatch=document.createElement("span");
+      swatch.className="swatch";
+      swatch.style.background=rgbCss(run.rgb);
+
+      const label=document.createElement("span");
+      label.textContent=
+        `${String(index+1).padStart(2,"0")}: ` +
+        `${run.rgb.join(",")} (${run.width}px)`;
+
+      item.append(swatch,label);
+      runs.appendChild(item);
+    }
+
+    card.appendChild(runs);
+  }
+
+  const warning=document.createElement("div");
+  warning.className="warning";
+  warning.textContent=
+    "No numeric velocity mapping is being assumed. The full enlarged footer is " +
+    "the authoritative check. If the Bureau's printed scale is visible there, " +
+    "we will map those labels to the exact footer swatches only.";
+  card.appendChild(warning);
+
+  results.appendChild(card);
+
+  return analysis;
+}
+
+document.getElementById("loadAll").addEventListener("click",async()=>{
+  try{
+    results.innerHTML="";
+    const summary=[];
+
+    for(const radarId of ["66","50","08"]){
+      const analysis=await inspect(radarId);
+
+      summary.push(
+        `${radarId}:footer=${analysis.geometry.footerHeight}px,` +
+        `swatches=${analysis.bar?.runs.length ?? 0}`
+      );
+    }
+
+    status.textContent=
+      "DOPPLER FOOTER-ONLY V3: PASS — " +
+      summary.join(" | ") +
+      ". Map rows were excluded before palette analysis.";
+  }catch(error){
+    console.error(error);
+    status.textContent=`ERROR — ${error.message}`;
+  }
+});
+</script>
+</body>
+</html>

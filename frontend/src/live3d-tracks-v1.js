@@ -1,0 +1,1176 @@
+import {
+  loadLatestBomReflectivityMosaic,
+  loadRecentBomReflectivityMosaics
+} from "./bom-wmts-loop-v1.js?v=live3d-tracks-v1";
+
+import {
+  SOURCE_PALETTES
+} from "./palette.js?v=live3d-v1";
+
+import {
+  DEFAULT_OCCUPANCY_THRESHOLD,
+  inferColumn,
+  pixelCentreMercator,
+  representativeDbzForCategory,
+  webMercatorToDegrees
+} from "./inferred-volume-v1.js?v=live3d-v1";
+
+import {
+  buildInferredSparseVolume,
+  segmentInferredSparseVolume,
+  trackInferredSegments
+} from "./inferred-storm-tracking-v1.js?v=live3d-tracks-v1";
+
+const MODEL_URL =
+  "./3d-models/inferred_vertical_profile_model_v1.json";
+
+const VALIDATION_URL =
+  "./3d-models/inferred_volume_validation_v1.json";
+
+const $ = id =>
+  document.getElementById(id);
+
+const viewer = new Cesium.Viewer(
+  "cesiumContainer",
+  {
+    animation: false,
+    timeline: false,
+    geocoder: false,
+    homeButton: false,
+    sceneModePicker: false,
+    baseLayerPicker: false,
+    navigationHelpButton: false,
+    fullscreenButton: false,
+    infoBox: false,
+    selectionIndicator: false,
+    terrainProvider:
+      new Cesium.EllipsoidTerrainProvider(),
+    baseLayer: false,
+    requestRenderMode: true,
+    maximumRenderTimeChange: Infinity,
+    useBrowserRecommendedResolution: true
+  }
+);
+
+const scene = viewer.scene;
+const controller =
+  scene.screenSpaceCameraController;
+
+scene.fog.enabled = false;
+scene.globe.enableLighting = false;
+scene.globe.maximumScreenSpaceError = 4;
+
+controller.inertiaSpin = 0;
+controller.inertiaTranslate = 0;
+controller.inertiaZoom = 0;
+controller.bounceAnimationTime = 0;
+
+try {
+  viewer.imageryLayers.addImageryProvider(
+    new Cesium.OpenStreetMapImageryProvider({
+      url: "https://tile.openstreetmap.org/"
+    })
+  );
+} catch (error) {
+  console.warn("OSM imagery unavailable", error);
+}
+
+let model = null;
+let validation = null;
+let latestFrame = null;
+let inferredCollection = null;
+let surfaceLayer = null;
+let navigationLocked = true;
+let lockedCamera = null;
+let restoringCamera = false;
+
+let trackingFrames = [];
+let trackingResult = null;
+let trackingFrameIndex = 0;
+let trackingPlaying = false;
+
+const trackingSource =
+  new Cesium.CustomDataSource(
+    "live-inferred-3d-tracks"
+  );
+
+viewer.dataSources.add(
+  trackingSource
+);
+
+function setStatus(message, kind = "normal") {
+  $("status").textContent = message;
+
+  $("status").dataset.kind = kind;
+}
+
+function colourForDbzh(value) {
+  if (value >= 60) {
+    return Cesium.Color.fromCssColorString(
+      "#bd2fff"
+    );
+  }
+
+  if (value >= 55) {
+    return Cesium.Color.fromCssColorString(
+      "#ff5a22"
+    );
+  }
+
+  if (value >= 50) {
+    return Cesium.Color.fromCssColorString(
+      "#ffd21a"
+    );
+  }
+
+  if (value >= 40) {
+    return Cesium.Color.fromCssColorString(
+      "#00b96b"
+    );
+  }
+
+  if (value >= 30) {
+    return Cesium.Color.fromCssColorString(
+      "#1e78ff"
+    );
+  }
+
+  return Cesium.Color.fromCssColorString(
+    "#6ab6ff"
+  );
+}
+
+function displayAltitude(altitude) {
+  const exaggeration =
+    Number(
+      $("verticalScale").value
+    );
+
+  return altitude * exaggeration;
+}
+
+function takeCameraSnapshot() {
+  lockedCamera = {
+    position:
+      Cesium.Cartesian3.clone(
+        viewer.camera.position
+      ),
+
+    heading:
+      viewer.camera.heading,
+
+    pitch:
+      viewer.camera.pitch,
+
+    roll:
+      viewer.camera.roll
+  };
+}
+
+function restoreLockedCamera() {
+  if (
+    !navigationLocked
+    || !lockedCamera
+    || restoringCamera
+  ) {
+    return;
+  }
+
+  const positionDistance =
+    Cesium.Cartesian3.distance(
+      viewer.camera.position,
+      lockedCamera.position
+    );
+
+  const moved =
+    positionDistance > 0.05
+    || Math.abs(
+      viewer.camera.heading
+      - lockedCamera.heading
+    ) > 1e-7
+    || Math.abs(
+      viewer.camera.pitch
+      - lockedCamera.pitch
+    ) > 1e-7
+    || Math.abs(
+      viewer.camera.roll
+      - lockedCamera.roll
+    ) > 1e-7;
+
+  if (!moved) {
+    return;
+  }
+
+  restoringCamera = true;
+
+  try {
+    viewer.camera.cancelFlight();
+
+    viewer.camera.setView({
+      destination:
+        Cesium.Cartesian3.clone(
+          lockedCamera.position
+        ),
+
+      orientation: {
+        heading:
+          lockedCamera.heading,
+
+        pitch:
+          lockedCamera.pitch,
+
+        roll:
+          lockedCamera.roll
+      }
+    });
+  } finally {
+    restoringCamera = false;
+  }
+
+  scene.requestRender();
+}
+
+function resetView() {
+  viewer.camera.lookAt(
+    Cesium.Cartesian3.fromDegrees(
+      153.05,
+      -27.25,
+      5000
+    ),
+
+    new Cesium.HeadingPitchRange(
+      Cesium.Math.toRadians(345),
+      Cesium.Math.toRadians(-28),
+      175000
+    )
+  );
+
+  viewer.camera.lookAtTransform(
+    Cesium.Matrix4.IDENTITY
+  );
+
+  takeCameraSnapshot();
+  scene.requestRender();
+}
+
+function applyNavigationLock() {
+  controller.enableInputs =
+    !navigationLocked;
+
+  $("lockButton").textContent =
+    navigationLocked
+      ? "Unlock 3-D view"
+      : "Lock 3-D view";
+
+  $("inputShield").style.display =
+    navigationLocked
+      ? "block"
+      : "none";
+
+  if (navigationLocked) {
+    takeCameraSnapshot();
+  }
+}
+
+viewer.camera.percentageChanged =
+  0.000001;
+
+viewer.camera.changed.addEventListener(
+  restoreLockedCamera
+);
+
+scene.preRender.addEventListener(
+  restoreLockedCamera
+);
+
+function displayRgb(category) {
+  return (
+    SOURCE_PALETTES
+      .reflectivityRgb
+      .find(
+        item =>
+          item.value === category
+      )
+      ?.rgb
+    ?? null
+  );
+}
+
+async function renderSurface(frame) {
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+  canvas.width =
+    frame.width;
+
+  canvas.height =
+    frame.height;
+
+  const context =
+    canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error(
+      "Unable to create surface reflectivity canvas."
+    );
+  }
+
+  const image =
+    context.createImageData(
+      frame.width,
+      frame.height
+    );
+
+  for (
+    let p = 0, i = 0;
+    p < frame.categories.length;
+    p++, i += 4
+  ) {
+    const category =
+      frame.categories[p];
+
+    if (!category) {
+      image.data[i + 3] = 0;
+      continue;
+    }
+
+    const rgb =
+      displayRgb(category);
+
+    if (!rgb) {
+      image.data[i + 3] = 0;
+      continue;
+    }
+
+    image.data[i] =
+      rgb[0];
+
+    image.data[i + 1] =
+      rgb[1];
+
+    image.data[i + 2] =
+      rgb[2];
+
+    image.data[i + 3] =
+      175;
+  }
+
+  context.putImageData(
+    image,
+    0,
+    0
+  );
+
+  const southWest =
+    webMercatorToDegrees(
+      frame.georef.minX,
+      frame.georef.minY
+    );
+
+  const northEast =
+    webMercatorToDegrees(
+      frame.georef.maxX,
+      frame.georef.maxY
+    );
+
+  const rectangle =
+    Cesium.Rectangle.fromDegrees(
+      southWest.longitude,
+      southWest.latitude,
+      northEast.longitude,
+      northEast.latitude
+    );
+
+  const provider =
+    await Cesium
+      .SingleTileImageryProvider
+      .fromUrl(
+        canvas.toDataURL(
+          "image/png"
+        ),
+        { rectangle }
+      );
+
+  if (surfaceLayer) {
+    viewer.imageryLayers.remove(
+      surfaceLayer,
+      true
+    );
+  }
+
+  surfaceLayer =
+    new Cesium.ImageryLayer(
+      provider
+    );
+
+  surfaceLayer.alpha =
+    0.65;
+
+  viewer.imageryLayers.add(
+    surfaceLayer
+  );
+}
+
+function estimateCandidateColumns(frame) {
+  let count = 0;
+
+  for (
+    let i = 0;
+    i < frame.categories.length;
+    i++
+  ) {
+    if (
+      representativeDbzForCategory(
+        frame.categories[i]
+      ) != null
+    ) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+function renderInferredVolume(frame) {
+  if (!model) {
+    throw new Error(
+      "Inferred vertical-profile model is not loaded."
+    );
+  }
+
+  if (inferredCollection) {
+    scene.primitives.remove(
+      inferredCollection
+    );
+  }
+
+  inferredCollection =
+    scene.primitives.add(
+      new Cesium.PointPrimitiveCollection()
+    );
+
+  const occupancyThreshold =
+    Number(
+      $("occupancyThreshold").value
+    );
+
+  const minimumDbzh =
+    Number(
+      $("minimumDbzh").value
+    );
+
+  const pointSize =
+    Number(
+      $("pointSize").value
+    );
+
+  const candidateColumns =
+    estimateCandidateColumns(
+      frame
+    );
+
+  // Display decimation only. The vertical-profile inference remains
+  // unchanged. This prevents a large active-weather frame from trying
+  // to create millions of Cesium point primitives.
+  const horizontalStride =
+    candidateColumns > 40000
+      ? 4
+      : candidateColumns > 15000
+        ? 3
+        : candidateColumns > 6000
+          ? 2
+          : 1;
+
+  let renderedPoints = 0;
+  let renderedColumns = 0;
+
+  let top40 = null;
+  let top50 = null;
+
+  let maxDbzh = null;
+  let confidenceSum = 0;
+
+  for (
+    let row = 0;
+    row < frame.height;
+    row += horizontalStride
+  ) {
+    for (
+      let column = 0;
+      column < frame.width;
+      column += horizontalStride
+    ) {
+      const pixelIndex =
+        row * frame.width
+        + column;
+
+      const category =
+        frame.categories[
+          pixelIndex
+        ];
+
+      const inputDbzh =
+        representativeDbzForCategory(
+          category
+        );
+
+      if (inputDbzh == null) {
+        continue;
+      }
+
+      const inferred =
+        inferColumn(
+          model,
+          inputDbzh,
+          {
+            occupancyThreshold,
+            minimumOutputDbz:
+              minimumDbzh
+          }
+        );
+
+      if (!inferred.length) {
+        continue;
+      }
+
+      const mercator =
+        pixelCentreMercator(
+          frame,
+          column,
+          row
+        );
+
+      const geographic =
+        webMercatorToDegrees(
+          mercator.x,
+          mercator.y
+        );
+
+      renderedColumns++;
+
+      for (const point of inferred) {
+        const colour =
+          colourForDbzh(
+            point.dbzh
+          ).withAlpha(
+            Math.min(
+              0.95,
+              0.30
+              + 0.70
+              * point.confidence
+            )
+          );
+
+        inferredCollection.add({
+          position:
+            Cesium.Cartesian3
+              .fromDegrees(
+                geographic.longitude,
+                geographic.latitude,
+                displayAltitude(
+                  point.altitude_m_amsl
+                )
+              ),
+
+          color:
+            colour,
+
+          pixelSize:
+            pointSize,
+
+          disableDepthTestDistance:
+            0
+        });
+
+        renderedPoints++;
+        confidenceSum +=
+          point.confidence;
+
+        maxDbzh =
+          maxDbzh == null
+            ? point.dbzh
+            : Math.max(
+                maxDbzh,
+                point.dbzh
+              );
+
+        if (
+          point.dbzh >= 40
+          && (
+            top40 == null
+            || point.altitude_m_amsl
+              > top40
+          )
+        ) {
+          top40 =
+            point.altitude_m_amsl;
+        }
+
+        if (
+          point.dbzh >= 50
+          && (
+            top50 == null
+            || point.altitude_m_amsl
+              > top50
+          )
+        ) {
+          top50 =
+            point.altitude_m_amsl;
+        }
+      }
+    }
+  }
+
+  $("renderedColumns").textContent =
+    renderedColumns.toLocaleString();
+
+  $("renderedPoints").textContent =
+    renderedPoints.toLocaleString();
+
+  $("adaptiveStride").textContent =
+    `${horizontalStride} px`;
+
+  $("maxInferredDbzh").textContent =
+    maxDbzh == null
+      ? "none"
+      : `${maxDbzh.toFixed(1)} dBZ`;
+
+  $("inferredTop40").textContent =
+    top40 == null
+      ? "none"
+      : `${(top40 / 1000).toFixed(1)} km`;
+
+  $("inferredTop50").textContent =
+    top50 == null
+      ? "none"
+      : `${(top50 / 1000).toFixed(1)} km`;
+
+  $("meanConfidence").textContent =
+    renderedPoints
+      ? (
+          confidenceSum
+          / renderedPoints
+        ).toFixed(2)
+      : "—";
+
+  scene.requestRender();
+}
+
+
+function trackColour(trackId) {
+  const n=Number(String(trackId).replace(/\D/g,""))||1;
+  return Cesium.Color.fromHsl((n*0.61803398875)%1,0.78,0.58,1);
+}
+
+function clearTrackingOverlay() {
+  trackingSource.entities.removeAll();
+  $("trackingCurrentObjects").textContent="0";
+  $("trackingActiveIds").textContent="—";
+  scene.requestRender();
+}
+
+function renderTrackingObjects(frameIndex) {
+  trackingSource.entities.suspendEvents();
+
+  try {
+    trackingSource.entities.removeAll();
+
+    if (!trackingResult) return;
+
+    const frame=trackingResult.frames[frameIndex];
+    if (!frame) return;
+
+    const activeIds=new Set(frame.cells.map(cell=>cell.track_id));
+
+    for (const cell of frame.cells) {
+      const colour=trackColour(cell.track_id);
+      const centre=cell.centroid;
+      const position=Cesium.Cartesian3.fromDegrees(
+        centre.longitude,
+        centre.latitude,
+        displayAltitude(centre.altitude_m_amsl)
+      );
+
+      trackingSource.entities.add({
+        id:`live-cell-${frameIndex}-${cell.track_id}`,
+        position,
+        point:{
+          pixelSize:11,
+          color:colour,
+          outlineColor:Cesium.Color.WHITE,
+          outlineWidth:1
+        },
+        label:{
+          text:`${cell.track_id}  ${cell.maximum_dbzh.toFixed(0)} dBZ`,
+          font:"12px sans-serif",
+          pixelOffset:new Cesium.Cartesian2(0,-18),
+          fillColor:Cesium.Color.WHITE,
+          showBackground:true,
+          backgroundColor:Cesium.Color.BLACK.withAlpha(0.62)
+        }
+      });
+
+      if ($("showTrackingEnvelopes")?.checked) {
+        const envelope=cell.display_envelope;
+        const boxPosition=Cesium.Cartesian3.fromDegrees(
+          envelope.longitude,
+          envelope.latitude,
+          displayAltitude(envelope.altitude_m_amsl)
+        );
+
+        trackingSource.entities.add({
+          id:`live-box-${frameIndex}-${cell.track_id}`,
+          position:boxPosition,
+          orientation:Cesium.Transforms.headingPitchRollQuaternion(
+            boxPosition,
+            new Cesium.HeadingPitchRoll(0,0,0)
+          ),
+          box:{
+            dimensions:new Cesium.Cartesian3(
+              envelope.east_west_m,
+              envelope.north_south_m,
+              envelope.vertical_m*Number($("verticalScale").value)
+            ),
+            material:colour.withAlpha(0.055),
+            outline:true,
+            outlineColor:colour.withAlpha(0.72)
+          }
+        });
+      }
+    }
+
+    for (const track of trackingResult.tracks) {
+      const observations=track.observations.filter(o=>o.frame_index<=frameIndex);
+      if (observations.length<2) continue;
+
+      const colour=trackColour(track.track_id);
+      const positions=observations.map(o=>Cesium.Cartesian3.fromDegrees(
+        o.longitude,
+        o.latitude,
+        displayAltitude(o.altitude_m_amsl)
+      ));
+
+      trackingSource.entities.add({
+        id:`live-trail-${track.track_id}`,
+        polyline:{
+          positions,
+          width:activeIds.has(track.track_id)?3:1.5,
+          material:colour.withAlpha(activeIds.has(track.track_id)?0.88:0.30),
+          clampToGround:false
+        }
+      });
+    }
+
+    $("trackingCurrentObjects").textContent=String(frame.cells.length);
+    $("trackingActiveIds").textContent=
+      frame.cells.length
+        ? frame.cells.map(cell=>cell.track_id).join(", ")
+        : "none";
+  } finally {
+    trackingSource.entities.resumeEvents();
+  }
+
+  scene.requestRender();
+}
+
+function updateSourceMetrics(frame) {
+  $("sourceTime").textContent=
+    frame.observedUtc.replace("T"," ").replace("Z"," UTC");
+
+  $("decodedPixels").textContent=
+    (frame.sourceMetadata?.colouredPixelCount??0).toLocaleString();
+
+  const maximumCategory=frame.sourceMetadata?.maxCategory??0;
+  const maxLower=frame.sourceMetadata?.maxDbzLowerBound;
+
+  $("sourceMaximum").textContent=
+    maximumCategory
+      ? (maxLower==null
+          ? `category ${maximumCategory}`
+          : `category ${maximumCategory} (>=${maxLower} dBZ)`)
+      : "none";
+}
+
+async function showTrackingFrame(index) {
+  if (!trackingResult || !trackingFrames.length) return;
+
+  trackingFrameIndex=Math.max(
+    0,
+    Math.min(trackingFrames.length-1,Number(index))
+  );
+
+  const frame=trackingFrames[trackingFrameIndex];
+  latestFrame=frame;
+
+  $("trackingFrameSlider").value=String(trackingFrameIndex);
+  $("trackingFrameLabel").textContent=
+    `${trackingFrameIndex+1}/${trackingFrames.length}`;
+
+  await renderSurface(frame);
+  renderInferredVolume(frame);
+  renderTrackingObjects(trackingFrameIndex);
+  updateSourceMetrics(frame);
+
+  setStatus(
+    `INFERRED LIVE 3-D tracking frame ${trackingFrameIndex+1}/${trackingFrames.length}: ` +
+    `${frame.observedUtc}; ${trackingResult.frames[trackingFrameIndex].cells.length} inferred 3-D storm objects.`,
+    "ok"
+  );
+}
+
+function trackingDelay(ms) {
+  return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+async function playTrackingOnce() {
+  if (trackingPlaying || !trackingResult) return;
+
+  trackingPlaying=true;
+  $("playTrackingButton").disabled=true;
+
+  try {
+    for (let index=0;index<trackingFrames.length;index++) {
+      await showTrackingFrame(index);
+      await trackingDelay(650);
+    }
+  } finally {
+    trackingPlaying=false;
+    $("playTrackingButton").disabled=false;
+  }
+}
+
+async function loadTrackingSequence() {
+  setStatus("Loading latest 6 BOM frames and building inferred 3-D storm tracks…");
+  clearTrackingOverlay();
+
+  const frames=await loadRecentBomReflectivityMosaics(
+    Date.now(),
+    6,
+    progress=>{
+      if (progress.stage==="loading") {
+        setStatus(
+          `Loading BOM frame ${progress.index+1}/${progress.total}: ${progress.observedUtc}`
+        );
+      }
+    }
+  );
+
+  const segments=[];
+
+  for (let index=0;index<frames.length;index++) {
+    setStatus(
+      `Inferring and segmenting 3-D frame ${index+1}/${frames.length}: ${frames[index].observedUtc}`
+    );
+
+    const sparse=buildInferredSparseVolume(frames[index],model);
+    segments.push(segmentInferredSparseVolume(sparse));
+  }
+
+  trackingFrames=frames;
+  trackingResult=trackInferredSegments(segments);
+  trackingFrameIndex=0;
+
+  $("trackingFrameSlider").max=String(frames.length-1);
+  $("trackingFrameSlider").disabled=false;
+  $("playTrackingButton").disabled=false;
+  $("trackingTotalTracks").textContent=
+    String(trackingResult.summary.total_tracks);
+  $("trackingPersistentTracks").textContent=
+    String(trackingResult.summary.persistent_tracks_3plus);
+  $("trackingTotalCells").textContent=
+    String(trackingResult.summary.total_detected_cells);
+
+  await playTrackingOnce();
+
+  setStatus(
+    `INFERRED LIVE 3-D TRACKING COMPLETE: ${frames.length} frames; ` +
+    `${trackingResult.summary.total_detected_cells} inferred 3-D objects; ` +
+    `${trackingResult.summary.total_tracks} track identities; ` +
+    `${trackingResult.summary.persistent_tracks_3plus} persistent tracks observed in >=3 scans. ` +
+    `Vertical structure remains inferred, not measured.`,
+    "ok"
+  );
+}
+
+async function loadLatest() {
+  clearTrackingOverlay();
+  trackingResult = null;
+  trackingFrames = [];
+
+  setStatus(
+    "Loading latest BOM reflectivity and building inferred vertical volume…"
+  );
+
+  const frame =
+    await loadLatestBomReflectivityMosaic();
+
+  latestFrame = frame;
+
+  await renderSurface(
+    frame
+  );
+
+  renderInferredVolume(
+    frame
+  );
+
+  $("sourceTime").textContent =
+    frame.observedUtc
+      .replace("T", " ")
+      .replace("Z", " UTC");
+
+  $("decodedPixels").textContent =
+    (
+      frame.sourceMetadata
+        ?.colouredPixelCount
+      ?? 0
+    ).toLocaleString();
+
+  const maximumCategory =
+    frame.sourceMetadata
+      ?.maxCategory
+    ?? 0;
+
+  const maxLower =
+    frame.sourceMetadata
+      ?.maxDbzLowerBound;
+
+  $("sourceMaximum").textContent =
+    maximumCategory
+      ? (
+          maxLower == null
+            ? `category ${maximumCategory}`
+            : `category ${maximumCategory} (>=${maxLower} dBZ)`
+        )
+      : "none";
+
+  setStatus(
+    `INFERRED LIVE 3-D built from public BOM 2-D reflectivity at ${frame.observedUtc}. ` +
+    `Vertical structure is empirical and uncertainty-qualified; it is not measured volumetric radar.`,
+    "ok"
+  );
+}
+
+async function initialise() {
+  const [
+    modelResponse,
+    validationResponse
+  ] = await Promise.all([
+    fetch(
+      MODEL_URL,
+      { cache: "no-store" }
+    ),
+    fetch(
+      VALIDATION_URL,
+      { cache: "no-store" }
+    )
+  ]);
+
+  if (!modelResponse.ok) {
+    throw new Error(
+      `Inferred model request failed: ${modelResponse.status}`
+    );
+  }
+
+  if (!validationResponse.ok) {
+    throw new Error(
+      `Validation report request failed: ${validationResponse.status}`
+    );
+  }
+
+  model =
+    await modelResponse.json();
+
+  validation =
+    await validationResponse.json();
+
+  if (
+    model.format
+    !== "StormTrackerEmpiricalVerticalReflectivityModelV1"
+  ) {
+    throw new Error(
+      "Unexpected inferred vertical model format."
+    );
+  }
+
+  const aggregate =
+    validation.aggregate;
+
+  $("validationMae").textContent =
+    `${aggregate.mean_intensity_mae_dbz.toFixed(2)} dBZ`;
+
+  $("validationIou40").textContent =
+    aggregate.thresholds["40"]
+      .mean_iou
+      .toFixed(3);
+
+  $("validationTop40").textContent =
+    `${(
+      aggregate.thresholds["40"]
+        .median_echo_top_absolute_error_m
+      / 1000
+    ).toFixed(2)} km`;
+
+  $("occupancyThreshold").value =
+    String(
+      DEFAULT_OCCUPANCY_THRESHOLD
+    );
+
+  $("occupancyValue").textContent =
+    DEFAULT_OCCUPANCY_THRESHOLD
+      .toFixed(2);
+
+  resetView();
+
+  navigationLocked = true;
+  applyNavigationLock();
+
+  setStatus(
+    "Prototype model loaded. Press “Load latest inferred 3-D”."
+  );
+}
+
+
+$("loadTrackingButton").addEventListener(
+  "click",
+  () => loadTrackingSequence().catch(error=>{
+    console.error(error);
+    setStatus(error.message,"error");
+  })
+);
+
+$("trackingFrameSlider").addEventListener(
+  "input",
+  event => showTrackingFrame(Number(event.target.value))
+    .catch(error=>setStatus(error.message,"error"))
+);
+
+$("playTrackingButton").addEventListener(
+  "click",
+  () => playTrackingOnce()
+    .catch(error=>setStatus(error.message,"error"))
+);
+
+$("showTrackingEnvelopes").addEventListener(
+  "change",
+  () => renderTrackingObjects(trackingFrameIndex)
+);
+
+$("loadButton").addEventListener(
+  "click",
+  () =>
+    loadLatest().catch(
+      error => {
+        console.error(error);
+
+        setStatus(
+          error.message,
+          "error"
+        );
+      }
+    )
+);
+
+$("minimumDbzh").addEventListener(
+  "input",
+  event => {
+    $("minimumDbzhValue")
+      .textContent =
+        event.target.value;
+
+    if (latestFrame) {
+      renderInferredVolume(
+        latestFrame
+      );
+    }
+  }
+);
+
+$("occupancyThreshold").addEventListener(
+  "input",
+  event => {
+    $("occupancyValue")
+      .textContent =
+        Number(
+          event.target.value
+        ).toFixed(2);
+
+    if (latestFrame) {
+      renderInferredVolume(
+        latestFrame
+      );
+    }
+  }
+);
+
+$("verticalScale").addEventListener(
+  "input",
+  event => {
+    $("verticalScaleValue")
+      .textContent =
+        Number(
+          event.target.value
+        ).toFixed(1);
+
+    if (latestFrame) {
+      renderInferredVolume(
+        latestFrame
+      );
+    }
+
+    if (trackingResult) {
+      renderTrackingObjects(
+        trackingFrameIndex
+      );
+    }
+  }
+);
+
+$("pointSize").addEventListener(
+  "input",
+  event => {
+    $("pointSizeValue")
+      .textContent =
+        event.target.value;
+
+    if (latestFrame) {
+      renderInferredVolume(
+        latestFrame
+      );
+    }
+  }
+);
+
+$("lockButton").addEventListener(
+  "click",
+  () => {
+    navigationLocked =
+      !navigationLocked;
+
+    applyNavigationLock();
+  }
+);
+
+$("resetButton").addEventListener(
+  "click",
+  () => {
+    resetView();
+
+    navigationLocked = true;
+
+    applyNavigationLock();
+  }
+);
+
+initialise().catch(
+  error => {
+    console.error(error);
+
+    setStatus(
+      error.message,
+      "error"
+    );
+  }
+);

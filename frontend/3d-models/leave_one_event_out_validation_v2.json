@@ -1,0 +1,2996 @@
+{
+  "format": "StormTrackerLeaveOneEventOutValidationV1",
+  "method": "leave-one-event-out",
+  "event_count": 5,
+  "frames_per_event": 13,
+  "events": [
+    {
+      "event_id": "2013-11-10",
+      "label": "severe-hail-logan",
+      "mean_intensity_mae_dbz": 2.9551810011299695,
+      "mean_intensity_rmse_dbz": 4.294514231032219,
+      "mean_intensity_bias_dbz": 0.4649259257049577,
+      "thresholds": {
+        "30": {
+          "mean_iou": 0.4751415771058278,
+          "mean_pod": 0.6940332664427451,
+          "mean_far": 0.40191709720213287,
+          "median_echo_top_absolute_error_m": 500.0,
+          "mean_echo_top_bias_m": 612.4325775121114
+        },
+        "40": {
+          "mean_iou": 0.22141027835428584,
+          "mean_pod": 0.2735283344460998,
+          "mean_far": 0.4684607148132789,
+          "median_echo_top_absolute_error_m": 1500.0,
+          "mean_echo_top_bias_m": -455.8499173011148
+        },
+        "50": {
+          "mean_iou": 0.10536729921011702,
+          "mean_pod": 0.1240275177802115,
+          "mean_far": 0.5753315140041101,
+          "median_echo_top_absolute_error_m": 1000.0,
+          "mean_echo_top_bias_m": -177.81593707710206
+        }
+      },
+      "frames": [
+        {
+          "frame_index": 0,
+          "intensity": {
+            "mae_dbz": 3.024675882816417,
+            "rmse_dbz": 4.352408363554616,
+            "bias_dbz": -0.2653105078432777
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5087972310354774,
+                "pod": 0.6957893698846268,
+                "far": 0.3456366502828526
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 127.76164625678575
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.20780450842962683,
+                "pod": 0.2585434833843978,
+                "far": 0.4857008907641819
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -439.0026714158504
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.12353923205342238,
+                "pod": 0.15578947368421053,
+                "far": 0.6262626262626263
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 350.74626865671644
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 1,
+          "intensity": {
+            "mae_dbz": 2.933951604491882,
+            "rmse_dbz": 4.203451699318795,
+            "bias_dbz": -0.18121371206063344
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5154376370731152,
+                "pod": 0.7103909868885923,
+                "far": 0.3474388330959378
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 204.05772076961026
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.2106059173834956,
+                "pod": 0.25700772868843,
+                "far": 0.46157564040599325
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -584.0480274442539
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.10207939508506617,
+                "pod": 0.11320754716981132,
+                "far": 0.49056603773584906
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": -222.22222222222223
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 2,
+          "intensity": {
+            "mae_dbz": 3.0015094470565784,
+            "rmse_dbz": 4.314228387614079,
+            "bias_dbz": -0.05196314867186009
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5139367097649832,
+                "pod": 0.7139624888359631,
+                "far": 0.3528057139772952
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 284.5266162054846
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.21882882882882884,
+                "pod": 0.2657840026261079,
+                "far": 0.44669703872437355
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -636.4399664147775
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.09562398703403566,
+                "pod": 0.10825688073394496,
+                "far": 0.549618320610687
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -297.8723404255319
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 3,
+          "intensity": {
+            "mae_dbz": 3.0212358956276444,
+            "rmse_dbz": 4.337700154513385,
+            "bias_dbz": 0.03158497884344147
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5114139296529233,
+                "pod": 0.7193348896260802,
+                "far": 0.3610999963624459
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 370.7972491085074
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.23692045937898767,
+                "pod": 0.2875283914928763,
+                "far": 0.4262463947259992
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -655.5469356089992
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.1506849315068493,
+                "pod": 0.1783783783783784,
+                "far": 0.5074626865671642
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": -322.7848101265823
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 4,
+          "intensity": {
+            "mae_dbz": 2.9941520467836256,
+            "rmse_dbz": 4.318829495695212,
+            "bias_dbz": 0.1526190603930826
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5151370608314576,
+                "pod": 0.7250393370397566,
+                "far": 0.35979326059168965
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 415.7494758909853
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.24636114114613658,
+                "pod": 0.29937335759045886,
+                "far": 0.4181889609114123
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -637.7627627627628
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.12166488794023479,
+                "pod": 0.14960629921259844,
+                "far": 0.6055363321799307
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 11.11111111111111
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 5,
+          "intensity": {
+            "mae_dbz": 2.957750168400569,
+            "rmse_dbz": 4.295466547049586,
+            "bias_dbz": 0.18254621660055384
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5170877836854405,
+                "pod": 0.7281139575971731,
+                "far": 0.35917819934691336
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 479.12360479537
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.23661051043500125,
+                "pod": 0.28683194472668155,
+                "far": 0.42528501628664495
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -802.1148036253776
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.10618556701030928,
+                "pod": 0.12515188335358446,
+                "far": 0.588
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -250.0
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 6,
+          "intensity": {
+            "mae_dbz": 3.0076203024522625,
+            "rmse_dbz": 4.371946494088769,
+            "bias_dbz": 0.26322982832196024
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.5061419025157232,
+                "pod": 0.7250310865025925,
+                "far": 0.37362169612453383
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 587.2774641771603
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.26419283222327944,
+                "pod": 0.32349514563106796,
+                "far": 0.40963855421686746
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -773.9043824701196
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.11530815109343936,
+                "pod": 0.1345707656612529,
+                "far": 0.5538461538461539
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -316.45569620253167
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 7,
+          "intensity": {
+            "mae_dbz": 2.996526757607555,
+            "rmse_dbz": 4.33320896046662,
+            "bias_dbz": 0.4312591815320042
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4941128918880922,
+                "pod": 0.717911400485127,
+                "far": 0.3868414166085136
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 695.0253485424588
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.28880597014925374,
+                "pod": 0.35164058556284705,
+                "far": 0.3822277403334516
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -770.0849118223383
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.08612975391498881,
+                "pod": 0.0958904109589041,
+                "far": 0.5416666666666666
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -574.074074074074
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 8,
+          "intensity": {
+            "mae_dbz": 3.030975481089016,
+            "rmse_dbz": 4.407346477739057,
+            "bias_dbz": 0.7409458932544324
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4796618311076953,
+                "pod": 0.7132571428571428,
+                "far": 0.4057463876788307
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 826.8122270742358
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.2664750768011099,
+                "pod": 0.3358311477457225,
+                "far": 0.4366226691808087
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -677.5389177168273
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.08787128712871287,
+                "pod": 0.1001410437235543,
+                "far": 0.5823529411764706
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -353.44827586206895
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 9,
+          "intensity": {
+            "mae_dbz": 2.953871627040592,
+            "rmse_dbz": 4.322051401963769,
+            "bias_dbz": 0.8433498046723411
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.46104341856873177,
+                "pod": 0.6961197123793483,
+                "far": 0.42278562604071546
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 894.0800928612884
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.2177508269018743,
+                "pod": 0.27241379310344827,
+                "far": 0.4795783926218709
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -653.9301310043668
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.07454545454545454,
+                "pod": 0.08686440677966102,
+                "far": 0.6554621848739496
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -137.5
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 10,
+          "intensity": {
+            "mae_dbz": 2.8781788117231155,
+            "rmse_dbz": 4.223069607743703,
+            "bias_dbz": 1.0122020754932148
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4411041920167967,
+                "pod": 0.6789071680376029,
+                "far": 0.44261207754228343
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 926.027397260274
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.17270553614125436,
+                "pod": 0.2156142365097589,
+                "far": 0.5353785254824345
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -223.062381852552
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.08647450110864745,
+                "pod": 0.0967741935483871,
+                "far": 0.5517241379310345
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": -156.25
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 11,
+          "intensity": {
+            "mae_dbz": 2.87406287203578,
+            "rmse_dbz": 4.2406475303377595,
+            "bias_dbz": 1.321213681263876
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3943197736698986,
+                "pod": 0.6392946205913786,
+                "far": 0.4928462924364998
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 1009.3469288662296
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.14482081492390772,
+                "pod": 0.18541797611565053,
+                "far": 0.601889338731444
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 419.35483870967744
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.10482180293501048,
+                "pod": 0.12285012285012285,
+                "far": 0.5833333333333334
+              },
+              "echo_top": {
+                "median_absolute_error_m": 500.0,
+                "mean_bias_m": 28.571428571428573
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 12,
+          "intensity": {
+            "mae_dbz": 2.742842117564567,
+            "rmse_dbz": 4.108329883333493,
+            "bias_dbz": 1.563573682365315
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.31864614056542695,
+                "pod": 0.5592803030303031,
+                "far": 0.5745161135392152
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 1141.0377358490566
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.16645119586296056,
+                "pod": 0.21638655462184875,
+                "far": 0.580960130187144
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 508.03212851405624
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.11484593837535013,
+                "pod": 0.14487632508833923,
+                "far": 0.6434782608695652
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -71.42857142857143
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event_id": "2013-11-16",
+      "label": "severe-hail-sunshine-coast",
+      "mean_intensity_mae_dbz": 4.906158249921614,
+      "mean_intensity_rmse_dbz": 7.2360209100307475,
+      "mean_intensity_bias_dbz": 0.8940950679772288,
+      "thresholds": {
+        "30": {
+          "mean_iou": 0.34207737780197967,
+          "mean_pod": 0.5549999355740771,
+          "mean_far": 0.5274814086492513,
+          "median_echo_top_absolute_error_m": 2000.0,
+          "mean_echo_top_bias_m": 385.22931615778697
+        },
+        "40": {
+          "mean_iou": 0.34855308938191454,
+          "mean_pod": 0.5570108973423619,
+          "mean_far": 0.5144604205204184,
+          "median_echo_top_absolute_error_m": 2000.0,
+          "mean_echo_top_bias_m": 683.5822341294784
+        },
+        "50": {
+          "mean_iou": 0.36870871356834856,
+          "mean_pod": 0.5462855256685498,
+          "mean_far": 0.4645927656868901,
+          "median_echo_top_absolute_error_m": 1500.0,
+          "mean_echo_top_bias_m": 270.6327837027192
+        }
+      },
+      "frames": [
+        {
+          "frame_index": 0,
+          "intensity": {
+            "mae_dbz": 5.253032120485139,
+            "rmse_dbz": 7.702793873218039,
+            "bias_dbz": -0.03565240570438491
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3534679923923249,
+                "pod": 0.5183955935315303,
+                "far": 0.47370685019894615
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -534.0840840840841
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.2993431855500821,
+                "pod": 0.42447997516299285,
+                "far": 0.49617687701520036
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -9.336099585062241
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3157562361856647,
+                "pod": 0.42653017701002344,
+                "far": 0.4513031550068587
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -87.41258741258741
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 1,
+          "intensity": {
+            "mae_dbz": 5.460538016896399,
+            "rmse_dbz": 7.997059958870601,
+            "bias_dbz": 0.10918185860382393
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3651614211139831,
+                "pod": 0.5354886659234486,
+                "far": 0.4655440991024405
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -349.5435945860875
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3294382269036647,
+                "pod": 0.472871879675565,
+                "far": 0.4793653546037801
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 85.61197916666667
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3390097760958688,
+                "pod": 0.4488517745302714,
+                "far": 0.41923284710967046
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -22.45250431778929
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 2,
+          "intensity": {
+            "mae_dbz": 5.391414025592808,
+            "rmse_dbz": 7.711089409166764,
+            "bias_dbz": 0.7989726184470027
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3671436477191873,
+                "pod": 0.5578378378378378,
+                "far": 0.48215878679750224
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -140.86736308958533
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3561303014522942,
+                "pod": 0.538825177273921,
+                "far": 0.4877236787349147
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 191.28658951667802
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.38478605388272585,
+                "pod": 0.5561154374713697,
+                "far": 0.444647758462946
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -174.45255474452554
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 3,
+          "intensity": {
+            "mae_dbz": 5.003028378840424,
+            "rmse_dbz": 7.216955916021091,
+            "bias_dbz": 1.026278513163679
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.36290275250895004,
+                "pod": 0.557674963924964,
+                "far": 0.49041987720960895
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 74.55058160028199
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.36155606407322655,
+                "pod": 0.5469911414316261,
+                "far": 0.4839081564031127
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 224.24242424242425
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3913558318531676,
+                "pod": 0.5455295735900962,
+                "far": 0.4193265007320644
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -176.52329749103941
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 4,
+          "intensity": {
+            "mae_dbz": 4.70570170670725,
+            "rmse_dbz": 6.855750730448997,
+            "bias_dbz": 1.0043754755951735
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.36197010694498133,
+                "pod": 0.5668381759483454,
+                "far": 0.4996214988644966
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 285.01506024096386
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37201760481816076,
+                "pod": 0.5707854519606682,
+                "far": 0.4834905660377358
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 521.4698596201487
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4088050314465409,
+                "pod": 0.5863681924490478,
+                "far": 0.425531914893617
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 18.367346938775512
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 5,
+          "intensity": {
+            "mae_dbz": 4.537957655866183,
+            "rmse_dbz": 6.756979556129779,
+            "bias_dbz": 1.2760556790267867
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.36014448696398554,
+                "pod": 0.5758234217749314,
+                "far": 0.5098086939590128
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 577.8985507246376
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3846747897717522,
+                "pod": 0.6016642061468259,
+                "far": 0.48388210914114665
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 835.8676207513416
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3923018098394086,
+                "pod": 0.5853936858120958,
+                "far": 0.4567596187786798
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 264.40329218106996
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 6,
+          "intensity": {
+            "mae_dbz": 4.323137378182961,
+            "rmse_dbz": 6.4497976690518755,
+            "bias_dbz": 1.3909776799748508
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3710945456026722,
+                "pod": 0.5843864263262557,
+                "far": 0.4958494742667405
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 610.7728337236534
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3854710775778681,
+                "pod": 0.601963746223565,
+                "far": 0.4826690899649487
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 877.7445109780439
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4404343660172469,
+                "pod": 0.6572926596758818,
+                "far": 0.42827529021558874
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 712.9629629629629
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 7,
+          "intensity": {
+            "mae_dbz": 4.697663735398346,
+            "rmse_dbz": 6.9126750814521785,
+            "bias_dbz": 1.2905893161832263
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3671423373893358,
+                "pod": 0.5742286292362165,
+                "far": 0.49552852302394046
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 615.5085135757018
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37232497337077564,
+                "pod": 0.5976993626612778,
+                "far": 0.5031657836929836
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1231.8992654774397
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.41153731787094855,
+                "pod": 0.6650648726573762,
+                "far": 0.4808702175543886
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 849.3303571428571
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 8,
+          "intensity": {
+            "mae_dbz": 5.046572152592288,
+            "rmse_dbz": 7.435380134740889,
+            "bias_dbz": 1.8576124922950483
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3528864436263603,
+                "pod": 0.58188246281102,
+                "far": 0.527234296244106
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 825.33150434385
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.34395750332005315,
+                "pod": 0.6062531349272697,
+                "far": 0.5571027238304629
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1262.6728110599079
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.321978021978022,
+                "pod": 0.5556257901390644,
+                "far": 0.5663542180562408
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 812.6550868486353
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 9,
+          "intensity": {
+            "mae_dbz": 5.0502313778175845,
+            "rmse_dbz": 7.426147809882525,
+            "bias_dbz": 1.7351097178683386
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.32408363448631905,
+                "pod": 0.5714610832954028,
+                "far": 0.5718670076726343
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": 1001.4044943820224
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.317691281678186,
+                "pod": 0.5662416252431381,
+                "far": 0.5801282051282052
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1235.357917570499
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3516429622363904,
+                "pod": 0.5627943485086342,
+                "far": 0.5161943319838057
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 530.035335689046
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 10,
+          "intensity": {
+            "mae_dbz": 4.812822246640183,
+            "rmse_dbz": 7.149612554690698,
+            "bias_dbz": 0.9698672977770264
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.2846630518977537,
+                "pod": 0.5240641711229946,
+                "far": 0.6160877513711152
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": 786.9153967419863
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3279761904761905,
+                "pod": 0.5473056866153464,
+                "far": 0.549928527670002
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 813.4328358208955
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.34822389666307857,
+                "pod": 0.5167731629392971,
+                "far": 0.4836392657621708
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 252.03252032520325
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 11,
+          "intensity": {
+            "mae_dbz": 4.70689153823786,
+            "rmse_dbz": 7.181747242656233,
+            "bias_dbz": 0.22574391780556363
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.28784624704003525,
+                "pod": 0.5300679444275428,
+                "far": 0.6135304990757856
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 531.0716550412175
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3397172822617419,
+                "pod": 0.5799169693824597,
+                "far": 0.5493951612903226
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 887.0014771048744
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3482561166059344,
+                "pod": 0.500748502994012,
+                "far": 0.4665071770334928
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 344.39834024896265
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 12,
+          "intensity": {
+            "mae_dbz": 4.791066915723547,
+            "rmse_dbz": 7.272281894070047,
+            "bias_dbz": -0.0258762773321613
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.28849924373984653,
+                "pod": 0.5368497863025122,
+                "far": 0.6159009546539379
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 724.007561436673
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3408916807108932,
+                "pod": 0.5861433087460485,
+                "far": 0.5510492332526231
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 729.3178519593614
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.33912585571353343,
+                "pod": 0.4946236559139785,
+                "far": 0.48106365834004833
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 194.88188976377953
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event_id": "2014-11-27",
+      "label": "validated-reference-event",
+      "mean_intensity_mae_dbz": 4.087893656234248,
+      "mean_intensity_rmse_dbz": 5.987655640586557,
+      "mean_intensity_bias_dbz": 1.4093431134938856,
+      "thresholds": {
+        "30": {
+          "mean_iou": 0.42985766642382117,
+          "mean_pod": 0.6626268485515886,
+          "mean_far": 0.4504820949708663,
+          "median_echo_top_absolute_error_m": 1500.0,
+          "mean_echo_top_bias_m": 42.17484477032403
+        },
+        "40": {
+          "mean_iou": 0.41377176382149805,
+          "mean_pod": 0.6097874728807195,
+          "mean_far": 0.4389744879002419,
+          "median_echo_top_absolute_error_m": 1500.0,
+          "mean_echo_top_bias_m": 319.7206407720078
+        },
+        "50": {
+          "mean_iou": 0.42212951732848414,
+          "mean_pod": 0.5476168859456884,
+          "mean_far": 0.35061096336981384,
+          "median_echo_top_absolute_error_m": 1000.0,
+          "mean_echo_top_bias_m": -483.80427961214605
+        }
+      },
+      "frames": [
+        {
+          "frame_index": 0,
+          "intensity": {
+            "mae_dbz": 4.009965695427504,
+            "rmse_dbz": 5.832684012338514,
+            "bias_dbz": 0.8684484780059925
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4625007684268765,
+                "pod": 0.7048435450627694,
+                "far": 0.4264094842374109
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -475.9832366215345
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.47774418114056677,
+                "pod": 0.6756165473349244,
+                "far": 0.3800529245369103
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -245.07227332457293
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4270221418888387,
+                "pod": 0.5573577115895016,
+                "far": 0.35384615384615387
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -646.0869565217391
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 1,
+          "intensity": {
+            "mae_dbz": 3.9477125593439792,
+            "rmse_dbz": 5.735145756593654,
+            "bias_dbz": 1.1272550712127751
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4630333229523513,
+                "pod": 0.6938585028934104,
+                "far": 0.4180821917808219
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -440.28581150051036
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.4889112903225806,
+                "pod": 0.6909488080539462,
+                "far": 0.37424737656975743
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 71.83908045977012
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4383068783068783,
+                "pod": 0.5722575297043382,
+                "far": 0.34812716399118665
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -538.7045813586097
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 2,
+          "intensity": {
+            "mae_dbz": 4.110957064251982,
+            "rmse_dbz": 5.977154563289655,
+            "bias_dbz": 1.2992071400719207
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.474541564792176,
+                "pod": 0.6966529073941135,
+                "far": 0.4018644786008706
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -206.56885628542847
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.4595808383233533,
+                "pod": 0.6681491294473884,
+                "far": 0.4044868010457957
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 263.49693251533745
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4402430790006752,
+                "pod": 0.5923682616596002,
+                "far": 0.3684210526315789
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -219.12013536379018
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 3,
+          "intensity": {
+            "mae_dbz": 4.16235016186893,
+            "rmse_dbz": 6.063200694344552,
+            "bias_dbz": 1.3054510455857906
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.461756205119037,
+                "pod": 0.6857686520931056,
+                "far": 0.41432350718065003
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -2.44299674267101
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.4392668129598554,
+                "pod": 0.6317059587896788,
+                "far": 0.40950893631789
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 349.66727162734423
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3863797588082289,
+                "pod": 0.4822904368358914,
+                "far": 0.3397979797979798
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -603.8135593220339
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 4,
+          "intensity": {
+            "mae_dbz": 4.411225730699878,
+            "rmse_dbz": 6.463990237519652,
+            "bias_dbz": 1.6536461609426762
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.44655684735885526,
+                "pod": 0.6641637346606024,
+                "far": 0.42320017886421224
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 120.08942829766848
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.4069317958461639,
+                "pod": 0.6014331364384623,
+                "far": 0.4428097245895757
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 421.39334155363747
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.41128657686948444,
+                "pod": 0.5313531353135313,
+                "far": 0.35459183673469385
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -594.0695296523518
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 5,
+          "intensity": {
+            "mae_dbz": 4.465178854067743,
+            "rmse_dbz": 6.398487772433351,
+            "bias_dbz": 1.9783159227603673
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.42304346606055504,
+                "pod": 0.6535460378012832,
+                "far": 0.4546572617109785
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 272.9483282674772
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3874711598965252,
+                "pod": 0.5769911504424778,
+                "far": 0.4587890625
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 422.7916385704653
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4147257700976709,
+                "pod": 0.5282296650717704,
+                "far": 0.3412887828162291
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -634.1719077568134
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 6,
+          "intensity": {
+            "mae_dbz": 4.525965354798027,
+            "rmse_dbz": 6.5522358456446135,
+            "bias_dbz": 2.0042100968136802
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.40368681007260265,
+                "pod": 0.6406390542682143,
+                "far": 0.4781410278776037
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 339.0739695087521
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37173645765531205,
+                "pod": 0.551324680896707,
+                "far": 0.4670261302364164
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 291.78370786516854
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.3906457613606165,
+                "pod": 0.4846686449060336,
+                "far": 0.33181818181818185
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -705.2505966587112
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 7,
+          "intensity": {
+            "mae_dbz": 4.33594537304097,
+            "rmse_dbz": 6.366664052837375,
+            "bias_dbz": 1.7400875699343226
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3864858012170385,
+                "pod": 0.620264496439471,
+                "far": 0.49372259864487844
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 181.46973301612476
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.4077922077922078,
+                "pod": 0.5972735918841805,
+                "far": 0.43755597571897703
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 122.53521126760563
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4405577877570314,
+                "pod": 0.5580838323353293,
+                "far": 0.3234119782214156
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -667.0061099796334
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 8,
+          "intensity": {
+            "mae_dbz": 3.951247091213005,
+            "rmse_dbz": 5.796910155374198,
+            "bias_dbz": 1.2813575431811477
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.38656942880916256,
+                "pod": 0.6081700227158973,
+                "far": 0.4852207919178752
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 100.45604256397263
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.41882302343918,
+                "pod": 0.6044274335367746,
+                "far": 0.4230275501135578
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 213.3977900552486
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4656160458452722,
+                "pod": 0.5841821449970042,
+                "far": 0.30357142857142855
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -536.5853658536586
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 9,
+          "intensity": {
+            "mae_dbz": 3.8330797416470004,
+            "rmse_dbz": 5.6986550427043445,
+            "bias_dbz": 1.2371599801266924
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.40862967575296344,
+                "pod": 0.6406233052532629,
+                "far": 0.469840225001496
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 97.6878612716763
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.39136947218259627,
+                "pod": 0.5873474630700064,
+                "far": 0.4602065912444663
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 549.9325236167341
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4220873786407767,
+                "pod": 0.5522388059701493,
+                "far": 0.35830258302583023
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -412.6984126984127
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 10,
+          "intensity": {
+            "mae_dbz": 3.856338639652677,
+            "rmse_dbz": 5.760181321514921,
+            "bias_dbz": 1.3055137481910275
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4072255349000351,
+                "pod": 0.6395593045274574,
+                "far": 0.47147693971035937
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 134.31372549019608
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37087238644556597,
+                "pod": 0.5749413211132223,
+                "far": 0.4890235422668124
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 671.161825726141
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4190257587350166,
+                "pod": 0.5594143684031324,
+                "far": 0.374571754853445
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -274.48979591836735
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 11,
+          "intensity": {
+            "mae_dbz": 3.834233291090418,
+            "rmse_dbz": 5.7030175397196805,
+            "bias_dbz": 1.2492974819549287
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.42327160754207616,
+                "pod": 0.6716757588942066,
+                "far": 0.46630677587490693
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 145.20803146346512
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.379400260756193,
+                "pod": 0.581870695401022,
+                "far": 0.4783907588129855
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 539.9597044996642
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.41414141414141414,
+                "pod": 0.5598739495798319,
+                "far": 0.3859447004608295
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -143.60587002096437
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 12,
+          "intensity": {
+            "mae_dbz": 3.6984179739431005,
+            "rmse_dbz": 5.491196333310727,
+            "bias_dbz": 1.2715102366391917
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4408486305059462,
+                "pod": 0.694383709166857,
+                "far": 0.45302177321919745
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 282.30676328502415
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37913304291937444,
+                "pod": 0.5852072310405644,
+                "far": 0.48154296875
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 483.4815756035578
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.4176453738183901,
+                "pod": 0.5567010309278351,
+                "far": 0.3742489270386266
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -313.8528138528139
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event_id": "2015-05-02",
+      "label": "east-coast-low-heavy-rain",
+      "mean_intensity_mae_dbz": 2.6971606158115935,
+      "mean_intensity_rmse_dbz": 4.886288970038825,
+      "mean_intensity_bias_dbz": 0.5232855448268354,
+      "thresholds": {
+        "30": {
+          "mean_iou": 0.1406286895733763,
+          "mean_pod": 0.5510516600499324,
+          "mean_far": 0.8405413195107556,
+          "median_echo_top_absolute_error_m": 3000.0,
+          "mean_echo_top_bias_m": 2782.96927392554
+        },
+        "40": {
+          "mean_iou": 0.15698522544091364,
+          "mean_pod": 0.4140837818388581,
+          "mean_far": 0.797513930265261,
+          "median_echo_top_absolute_error_m": 2000.0,
+          "mean_echo_top_bias_m": 1712.7982306999256
+        },
+        "50": {
+          "mean_iou": 0.1358062337825129,
+          "mean_pod": 0.627586359090884,
+          "mean_far": 0.8514577541380081,
+          "median_echo_top_absolute_error_m": 2000.0,
+          "mean_echo_top_bias_m": 2100.667966761084
+        }
+      },
+      "frames": [
+        {
+          "frame_index": 0,
+          "intensity": {
+            "mae_dbz": 2.4102728047740833,
+            "rmse_dbz": 4.612048696607685,
+            "bias_dbz": 0.7099317988064792
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.12868676882517713,
+                "pod": 0.6130298273155416,
+                "far": 0.8599354375896701
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2939.655172413793
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.15465268676277852,
+                "pod": 0.49372384937238495,
+                "far": 0.8161993769470405
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1780.3030303030303
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.11940298507462686,
+                "pod": 0.6153846153846154,
+                "far": 0.8709677419354839
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1958.3333333333333
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 1,
+          "intensity": {
+            "mae_dbz": 2.487484089944845,
+            "rmse_dbz": 4.7509907860676766,
+            "bias_dbz": 0.477725922783199
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.12004121586810922,
+                "pod": 0.5632554391619662,
+                "far": 0.8676387047907593
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2990.312965722802
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.17065868263473055,
+                "pod": 0.4634146341463415,
+                "far": 0.7873134328358209
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1552.4193548387098
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.11764705882352941,
+                "pod": 0.6,
+                "far": 0.8723404255319149
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 2055.5555555555557
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 2,
+          "intensity": {
+            "mae_dbz": 2.5569565217391306,
+            "rmse_dbz": 4.927032796106907,
+            "bias_dbz": 0.5447826086956522
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.13366162504396764,
+                "pod": 0.6133979015334947,
+                "far": 0.8540426349145381
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2903.4003091190107
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.1673254281949934,
+                "pod": 0.522633744855967,
+                "far": 0.80248833592535
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1815.3846153846155
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.14705882352941177,
+                "pod": 0.625,
+                "far": 0.8387096774193549
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1807.6923076923076
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 3,
+          "intensity": {
+            "mae_dbz": 2.734974958263773,
+            "rmse_dbz": 5.085024167557227,
+            "bias_dbz": 0.5417362270450752
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.1400329489291598,
+                "pod": 0.5845942228335625,
+                "far": 0.8444932308818148
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2791.9655667144907
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.18072289156626506,
+                "pod": 0.5,
+                "far": 0.7794117647058824
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1597.345132743363
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.15584415584415584,
+                "pod": 0.7058823529411765,
+                "far": 0.8333333333333334
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1250.0,
+                "mean_bias_m": 1857.142857142857
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 4,
+          "intensity": {
+            "mae_dbz": 2.8766704849179074,
+            "rmse_dbz": 5.230246570720231,
+            "bias_dbz": 0.5231004200076365
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.1521637971149372,
+                "pod": 0.5959902794653706,
+                "far": 0.8303355240401246
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2709.7855227882037
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.19562243502051985,
+                "pod": 0.446875,
+                "far": 0.7418772563176895
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 1392.2413793103449
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.14035087719298245,
+                "pod": 0.5333333333333333,
+                "far": 0.84
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1250.0,
+                "mean_bias_m": 1666.6666666666667
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 5,
+          "intensity": {
+            "mae_dbz": 2.6880056278578968,
+            "rmse_dbz": 4.758796952460991,
+            "bias_dbz": 0.34681674287724235
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.15461238631442184,
+                "pod": 0.5923672566371682,
+                "far": 0.8269789983844911
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2717.964824120603
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.19440914866581957,
+                "pod": 0.44476744186046513,
+                "far": 0.7432885906040269
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": 1238.28125
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.14563106796116504,
+                "pod": 0.7142857142857143,
+                "far": 0.845360824742268
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": 2466.6666666666665
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 6,
+          "intensity": {
+            "mae_dbz": 2.8598780074551,
+            "rmse_dbz": 5.0894656021251565,
+            "bias_dbz": 0.6047102677058624
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.1525688333806415,
+                "pod": 0.6015668718522663,
+                "far": 0.8302810230502052
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2753.494282083863
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.18743228602383533,
+                "pod": 0.47527472527472525,
+                "far": 0.7636612021857924
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 1441.5584415584415
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.1346153846153846,
+                "pod": 0.6363636363636364,
+                "far": 0.8541666666666666
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 1868.421052631579
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 7,
+          "intensity": {
+            "mae_dbz": 2.643871191135734,
+            "rmse_dbz": 4.705939033643089,
+            "bias_dbz": 0.44130886426592797
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.15629812134277796,
+                "pod": 0.5711873944850873,
+                "far": 0.822923935799023
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2730.281690140845
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.15337423312883436,
+                "pod": 0.35919540229885055,
+                "far": 0.7888513513513513
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1721.311475409836
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.16,
+                "pod": 0.5714285714285714,
+                "far": 0.8181818181818182
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1750.0,
+                "mean_bias_m": 2041.6666666666667
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 8,
+          "intensity": {
+            "mae_dbz": 2.7107661154235574,
+            "rmse_dbz": 4.980403718046868,
+            "bias_dbz": 0.5325683428957138
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.14748147027681138,
+                "pod": 0.5386740331491713,
+                "far": 0.8311980609418282
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2759.6685082872928
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.12579281183932348,
+                "pod": 0.3324022346368715,
+                "far": 0.8316831683168316
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": 2030.0751879699249
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.12698412698412698,
+                "pod": 0.6666666666666666,
+                "far": 0.864406779661017
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": 2225.0
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 9,
+          "intensity": {
+            "mae_dbz": 2.683690840994212,
+            "rmse_dbz": 4.7496931069434805,
+            "bias_dbz": 0.6036772216547498
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.13576941250590643,
+                "pod": 0.5088547815820543,
+                "far": 0.8437556643103136
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2791.6073968705546
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.13263979193758127,
+                "pod": 0.34812286689419797,
+                "far": 0.8235294117647058
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1845.8333333333333
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.13043478260869565,
+                "pod": 0.5625,
+                "far": 0.8548387096774194
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1846.1538461538462
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 10,
+          "intensity": {
+            "mae_dbz": 2.6580412708811005,
+            "rmse_dbz": 4.8101697867129625,
+            "bias_dbz": 0.5686210284965607
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.1368596544407396,
+                "pod": 0.5022246941045606,
+                "far": 0.8416622830089426
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2795.048143053645
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.12362637362637363,
+                "pod": 0.371900826446281,
+                "far": 0.84375
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2250.0,
+                "mean_bias_m": 2039.4736842105262
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.14912280701754385,
+                "pod": 0.85,
+                "far": 0.8468468468468469
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 2150.0
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 11,
+          "intensity": {
+            "mae_dbz": 2.903698224852071,
+            "rmse_dbz": 4.994086740022034,
+            "bias_dbz": 0.38772189349112424
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.1335995085995086,
+                "pod": 0.43456543456543456,
+                "far": 0.8382899628252788
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2696.078431372549
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.134180790960452,
+                "pod": 0.3442028985507246,
+                "far": 0.8197343453510436
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": 1839.622641509434
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.10377358490566038,
+                "pod": 0.6111111111111112,
+                "far": 0.8888888888888888
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 3115.3846153846152
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 12,
+          "intensity": {
+            "mae_dbz": 2.848777867311308,
+            "rmse_dbz": 4.827858653490406,
+            "bias_dbz": 0.5200107440236369
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.13639722181173342,
+                "pod": 0.44396344396344395,
+                "far": 0.8355016931028337
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": 2599.337748344371
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.12037037037037036,
+                "pod": 0.2805755395683453,
+                "far": 0.8258928571428571
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": 1972.5274725274726
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.1346153846153846,
+                "pod": 0.4666666666666667,
+                "far": 0.8409090909090909
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2250.0,
+                "mean_bias_m": 2250.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event_id": "2015-11-29",
+      "label": "severe-hail-brisbane",
+      "mean_intensity_mae_dbz": 4.37898188885244,
+      "mean_intensity_rmse_dbz": 6.419550402755176,
+      "mean_intensity_bias_dbz": -0.7446478026120222,
+      "thresholds": {
+        "30": {
+          "mean_iou": 0.38037711218438347,
+          "mean_pod": 0.5474970924955409,
+          "mean_far": 0.4438773052053711,
+          "median_echo_top_absolute_error_m": 2000.0,
+          "mean_echo_top_bias_m": -1580.6179570529662
+        },
+        "40": {
+          "mean_iou": 0.35168928961868634,
+          "mean_pod": 0.47530769713473686,
+          "mean_far": 0.4216550311504506,
+          "median_echo_top_absolute_error_m": 2000.0,
+          "mean_echo_top_bias_m": -1607.9340610972495
+        },
+        "50": {
+          "mean_iou": 0.23597962701802414,
+          "mean_pod": 0.2846839295431423,
+          "mean_far": 0.41758837754166833,
+          "median_echo_top_absolute_error_m": 1500.0,
+          "mean_echo_top_bias_m": -2051.9302188062948
+        }
+      },
+      "frames": [
+        {
+          "frame_index": 0,
+          "intensity": {
+            "mae_dbz": 4.495730450511084,
+            "rmse_dbz": 6.646757418119376,
+            "bias_dbz": -2.09094350734026
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.310065034352001,
+                "pod": 0.42580771599753625,
+                "far": 0.4671361502347418
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3500.0,
+                "mean_bias_m": -2775.5790090882438
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.32320993127909553,
+                "pod": 0.4057664477346098,
+                "far": 0.3863119791228218
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -2908.6618545252636
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.19822485207100593,
+                "pod": 0.22697874961502926,
+                "far": 0.38990066225165565
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -3116.279069767442
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 1,
+          "intensity": {
+            "mae_dbz": 4.518409653465347,
+            "rmse_dbz": 6.684789980186956,
+            "bias_dbz": -1.867032797029703
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.32667290683680683,
+                "pod": 0.45246725757375317,
+                "far": 0.4597693887221608
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": -2558.6188436830835
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.331774734141598,
+                "pod": 0.42769509788232785,
+                "far": 0.4033338294389046
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -2537.018509254627
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.2058274187523347,
+                "pod": 0.23914930555555555,
+                "far": 0.4036796536796537
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": -3176.3456090651557
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 2,
+          "intensity": {
+            "mae_dbz": 4.389824218091029,
+            "rmse_dbz": 6.499477668232286,
+            "bias_dbz": -1.4997806943554102
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3350651186626376,
+                "pod": 0.4700297471492315,
+                "far": 0.4614882135756887
+              },
+              "echo_top": {
+                "median_absolute_error_m": 3000.0,
+                "mean_bias_m": -2100.9345794392525
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3239606346655955,
+                "pod": 0.42534676441115976,
+                "far": 0.42388742053003786
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -2335.172744721689
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.2162556190013364,
+                "pod": 0.25744865490309515,
+                "far": 0.4252502421698418
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -3217.4202127659573
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 3,
+          "intensity": {
+            "mae_dbz": 4.364971050454922,
+            "rmse_dbz": 6.534244770480233,
+            "bias_dbz": -1.4647288195675292
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3586784414227649,
+                "pod": 0.5023548239597623,
+                "far": 0.44363700815313717
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -1878.659793814433
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.31588962892483347,
+                "pod": 0.41072842438638163,
+                "far": 0.4222871859121598
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2500.0,
+                "mean_bias_m": -2214.3177737881506
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.21510560146923782,
+                "pod": 0.25791357005229837,
+                "far": 0.4355421686746988
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -2567.584480600751
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 4,
+          "intensity": {
+            "mae_dbz": 4.2538996138996135,
+            "rmse_dbz": 6.342913231516593,
+            "bias_dbz": -1.0363963963963965
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.36824303919792234,
+                "pod": 0.5178469051916339,
+                "far": 0.4396268468095862
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1727.7218493661446
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3402022045917293,
+                "pod": 0.44749722940524567,
+                "far": 0.41341323164457355
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1880.9034907597536
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.2565183623654721,
+                "pod": 0.31012743125419184,
+                "far": 0.40258397932816536
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -2000.5500550055006
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 5,
+          "intensity": {
+            "mae_dbz": 4.34020842379505,
+            "rmse_dbz": 6.444160252668131,
+            "bias_dbz": -0.7555476837991636
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3882850835875877,
+                "pod": 0.5510085995331112,
+                "far": 0.43200329082682026
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1521.394349909136
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.34641621022211766,
+                "pod": 0.46003837743763665,
+                "far": 0.4162183589104706
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1584.319526627219
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.23361250697934116,
+                "pod": 0.2835456763350501,
+                "far": 0.42981738893431454
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -1401.656314699793
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 6,
+          "intensity": {
+            "mae_dbz": 4.287069884867347,
+            "rmse_dbz": 6.281350301670209,
+            "bias_dbz": -0.5441704572659803
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4029337986694296,
+                "pod": 0.5745499786166945,
+                "far": 0.42571794971437454
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1413.5950215414073
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3684986243940783,
+                "pod": 0.49561693317475003,
+                "far": 0.4103867519127974
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1389.1891891891892
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.23381173013899875,
+                "pod": 0.27812878075010083,
+                "far": 0.4052888761138258
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -1630.2521008403362
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 7,
+          "intensity": {
+            "mae_dbz": 4.303440702781844,
+            "rmse_dbz": 6.315901376464548,
+            "bias_dbz": -0.26632073034191717
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.39376871430267374,
+                "pod": 0.5681117497050203,
+                "far": 0.4379953687143476
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1299.4652406417113
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.36989212687167927,
+                "pod": 0.5061467283542631,
+                "far": 0.4212223509850355
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -1162.1182586094867
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.22831735766254763,
+                "pod": 0.27939513849632563,
+                "far": 0.4446629213483146
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -1502.5303643724696
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 8,
+          "intensity": {
+            "mae_dbz": 4.376877965890959,
+            "rmse_dbz": 6.3610965508810615,
+            "bias_dbz": -0.1314006258159438
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.3951379089159718,
+                "pod": 0.5717865894408555,
+                "far": 0.43878796713007673
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1206.4419475655432
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.35887790883009246,
+                "pod": 0.5023201856148491,
+                "far": 0.4431143648595172
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -990.4610492845787
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.2307428179008813,
+                "pod": 0.2843441466854725,
+                "far": 0.44963144963144963
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -1498.4833164812942
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 9,
+          "intensity": {
+            "mae_dbz": 4.4882583737606065,
+            "rmse_dbz": 6.470143231452675,
+            "bias_dbz": -0.20709716074914475
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.40722640893200596,
+                "pod": 0.5943154735634213,
+                "far": 0.4359932315837089
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1180.1216477743988
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.3609754608716884,
+                "pod": 0.4993034153755224,
+                "far": 0.43422311519326445
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1102.7561414020372
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.25002764569280106,
+                "pod": 0.30525178884838666,
+                "far": 0.4198101103412882
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -1742.2630560928433
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 10,
+          "intensity": {
+            "mae_dbz": 4.276490302338848,
+            "rmse_dbz": 6.150760177071377,
+            "bias_dbz": -0.07264332572732458
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.418917069610437,
+                "pod": 0.6161975374911933,
+                "far": 0.43318726083199605
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1111.1885453623922
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37820588933744953,
+                "pod": 0.5236529530228926,
+                "far": 0.42343198479500405
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -1124.1736131072148
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.26755260243632334,
+                "pod": 0.3250369971747612,
+                "far": 0.3979566409170197
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -1570.7456978967496
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 11,
+          "intensity": {
+            "mae_dbz": 4.354427346330943,
+            "rmse_dbz": 6.287153821774326,
+            "bias_dbz": 0.04084147823556598
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4240715493264983,
+                "pod": 0.6369548835228204,
+                "far": 0.4407542719061044
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -943.6847786973732
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37923539901917075,
+                "pod": 0.5373499684144031,
+                "far": 0.4369052544476624
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -840.5475880052152
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.27115013921610626,
+                "pod": 0.33219627394384676,
+                "far": 0.403954802259887
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1000.0,
+                "mean_bias_m": -1570.6851691240242
+              }
+            }
+          }
+        },
+        {
+          "frame_index": 12,
+          "intensity": {
+            "mae_dbz": 4.477156568894125,
+            "rmse_dbz": 6.435406455299517,
+            "bias_dbz": 0.21479928619691957
+          },
+          "thresholds": {
+            "30": {
+              "contingency": {
+                "iou": 0.4158373845802473,
+                "pod": 0.6360309406969974,
+                "far": 0.4543080194670815
+              },
+              "echo_top": {
+                "median_absolute_error_m": 2000.0,
+                "mean_bias_m": -830.6278348054428
+              }
+            },
+            "40": {
+              "contingency": {
+                "iou": 0.37482201189379344,
+                "pod": 0.5375375375375375,
+                "far": 0.44677957720360983
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -833.5030549898167
+              }
+            },
+            "50": {
+              "contingency": {
+                "iou": 0.2605884975479269,
+                "pod": 0.3213745704467354,
+                "far": 0.4205700123915737
+              },
+              "echo_top": {
+                "median_absolute_error_m": 1500.0,
+                "mean_bias_m": -1680.2973977695167
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "overall": {
+    "mean_event_intensity_mae_dbz": 3.8050750823899735,
+    "mean_event_intensity_rmse_dbz": 5.764806030888705,
+    "mean_event_intensity_bias_dbz": 0.509400369878177,
+    "thresholds": {
+      "30": {
+        "mean_iou": 0.3536164846178777,
+        "mean_pod": 0.6020417606227768,
+        "mean_far": 0.5328598451076755,
+        "median_event_echo_top_absolute_error_m": 2000.0
+      },
+      "40": {
+        "mean_iou": 0.2984819293234596,
+        "mean_pod": 0.46594363672855527,
+        "mean_far": 0.5282129169299301,
+        "median_event_echo_top_absolute_error_m": 2000.0
+      },
+      "50": {
+        "mean_iou": 0.2535982781814973,
+        "mean_pod": 0.4260400436056952,
+        "mean_far": 0.5319162749480981,
+        "median_event_echo_top_absolute_error_m": 1500.0
+      }
+    }
+  },
+  "limitations": [
+    "All events use Mt Stapylton radar 66.",
+    "The historical low-level proxy is not identical to the live public BOM mosaic.",
+    "Only five event sequences are represented.",
+    "The model is reflectivity-only at this stage.",
+    "Any live output remains inferred volumetric intensity, not measured volumetric radar."
+  ],
+  "candidate_model_path": "data/aura/cross_event_v1/candidate_vertical_profile_model_v2.json"
+}

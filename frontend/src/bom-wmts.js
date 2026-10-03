@@ -85,7 +85,9 @@ export async function findLatestBomReflectivityTime(now = Date.now()) {
 
   if (lastError) {
     throw new Error(
-      `Unable to read BOM reflectivity WMTS from this browser. ${lastError.message}`
+      `Unable to read BOM reflectivity through StormTracker relay ` +
+      `(relay-v2: stormtracker-bom-relay.stormtracker-bom-relay.workers.dev). ` +
+      `${lastError.message}`
     );
   }
 

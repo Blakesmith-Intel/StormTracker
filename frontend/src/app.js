@@ -2,7 +2,7 @@ import { RadarWorkerClient } from "./worker-client.js?v=live-bom-v1";
 import { createCesiumView } from "./cesium-view.js?v=camera-lock-v3";
 import { SOURCE_PALETTES } from "./palette.js?v=live-bom-v1";
 import { reflectivityFromFile, reflectivityFromUrl } from "./radar-source.js?v=live-bom-v1";
-import { loadLatestBomReflectivityMosaic } from "./bom-wmts.js?v=live-bom-v1";
+import { loadLatestBomReflectivityMosaic } from "./bom-wmts.js?v=relay-v2";
 import { putState, getState, clearAll } from "./storage.js";
 
 const worker = new RadarWorkerClient();

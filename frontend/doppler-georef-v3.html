@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+<title>
+  StormTracker — Doppler Geolocation V3
+</title>
+
+<link
+  href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css"
+  rel="stylesheet"
+>
+
+<script
+  src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"
+></script>
+
+<style>
+  * {
+    box-sizing:border-box;
+  }
+
+  html,
+  body,
+  #app {
+    width:100%;
+    height:100%;
+    margin:0;
+  }
+
+  body {
+    overflow:hidden;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:
+      Inter,
+      system-ui,
+      sans-serif;
+  }
+
+  #app {
+    display:grid;
+    grid-template-columns:
+      330px 1fr;
+  }
+
+  aside {
+    overflow:auto;
+    padding:12px;
+    background:#0d1920;
+    border-right:
+      1px solid #30424d;
+  }
+
+  #cesiumContainer {
+    width:100%;
+    height:100%;
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+
+  #cesiumContainer canvas {
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+
+  aside {
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  h1 {
+    margin:0 0 4px;
+    font-size:20px;
+  }
+
+  .note {
+    color:#a9bbc4;
+    font-size:11px;
+    line-height:1.45;
+  }
+
+  button {
+    width:100%;
+    margin-top:8px;
+    padding:9px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+  }
+
+  .card {
+    margin-top:10px;
+    padding:10px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+  }
+
+  .metric {
+    display:grid;
+    grid-template-columns:
+      155px 1fr;
+    gap:4px 7px;
+    font-size:11px;
+  }
+
+  .metric span:nth-child(odd) {
+    color:#9fb2bc;
+  }
+
+  #status {
+    white-space:pre-wrap;
+    font:
+      10px/1.4
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+  }
+
+  .legend {
+    display:grid;
+    grid-template-columns:
+      repeat(
+        2,
+        1fr
+      );
+    gap:4px;
+    font-size:10px;
+    margin-top:7px;
+  }
+
+  .towards {
+    color:#70c8ff;
+  }
+
+  .away {
+    color:#ffd12a;
+  }
+
+  @media (
+    max-width:800px
+  ) {
+    #app {
+      grid-template-columns:
+        1fr;
+      grid-template-rows:
+        44% 56%;
+    }
+  }
+</style>
+</head>
+
+<body>
+<div id="app">
+  <aside>
+    <h1>
+      StormTracker Doppler geolocation V1
+    </h1>
+
+    <div class="note">
+      Uses the recovered Bureau 128-km Gnomonic map metadata for IDR083,
+      IDR503 and IDR663. The public 524×564 GIF contains a native 512×512
+      radar map at x/y 6…517. Zero-velocity white pixels are omitted from
+      this diagnostic so map/annotation ambiguity cannot dominate the view.
+    </div>
+
+    <div class="card">
+      <button data-radar="66">
+        Load Mt Stapylton 66
+      </button>
+
+      <button data-radar="50">
+        Load Marburg 50
+      </button>
+
+      <button data-radar="08">
+        Load Gympie 08
+      </button>
+
+      <button id="resetViewButton">
+        Reset SEQ view
+      </button>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:5px;
+          margin-top:8px
+        "
+      >
+        <button id="rotateLeftButton">
+          Rotate ↺
+        </button>
+
+        <button id="tiltUpButton">
+          Tilt ↑
+        </button>
+
+        <button id="zoomInButton">
+          Zoom +
+        </button>
+
+        <button id="rotateRightButton">
+          Rotate ↻
+        </button>
+
+        <button id="tiltDownButton">
+          Tilt ↓
+        </button>
+
+        <button id="zoomOutButton">
+          Zoom −
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="metric">
+        <span>Radar</span>
+        <strong id="radar">—</strong>
+
+        <span>Native panel</span>
+        <strong>512 × 512</strong>
+
+        <span>Decoded Doppler pixels</span>
+        <strong id="valid">—</strong>
+
+        <span>Non-zero Doppler pixels</span>
+        <strong id="nonzero">—</strong>
+
+        <span>Rendered samples</span>
+        <strong id="samples">—</strong>
+
+        <span>Recovered centre residual</span>
+        <strong id="residual">—</strong>
+      </div>
+
+      <div class="legend">
+        <strong class="towards">
+          Blue/cyan = toward radar
+        </strong>
+
+        <strong class="away">
+          Yellow/red = away radar
+        </strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Status</strong>
+      <div id="status">
+        Ready. V3 camera candidate: left-drag moves the map. Browser
+        wheel/pinch camera input is disabled; use the explicit Zoom,
+        Rotate and Tilt buttons while drift is being validated.
+      </div>
+    </div>
+  </aside>
+
+  <div id="cesiumContainer"></div>
+</div>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js?v=georef-v1";
+
+import {
+  BOM_DOPPLER_MAPS,
+  centrePixelResidual
+} from "./src/bom-doppler-georef-v1.js?v=georef-v1";
+
+import {
+  decodeGeoreferencedDoppler,
+  geolocatedDopplerSamples
+} from "./src/bom-doppler-spatial-v1.js?v=georef-v1";
+
+const $ =
+  id =>
+    document.getElementById(
+      id
+    );
+
+const viewer =
+  new Cesium.Viewer(
+    "cesiumContainer",
+    {
+      animation:false,
+      timeline:false,
+      geocoder:false,
+      homeButton:false,
+      sceneModePicker:false,
+      baseLayerPicker:false,
+      navigationHelpButton:false,
+      fullscreenButton:false,
+      infoBox:false,
+      selectionIndicator:false,
+      terrainProvider:
+        new Cesium.EllipsoidTerrainProvider(),
+      baseLayer:false,
+      requestRenderMode:true,
+      maximumRenderTimeChange:
+        Infinity,
+      useBrowserRecommendedResolution:
+        true
+    }
+  );
+
+viewer.imageryLayers.addImageryProvider(
+  new Cesium.OpenStreetMapImageryProvider({
+    url:
+      "https://tile.openstreetmap.org/"
+  })
+);
+
+const scene =
+  viewer.scene;
+
+const controller =
+  scene.screenSpaceCameraController;
+
+scene.fog.enabled =
+  false;
+
+scene.globe.enableLighting =
+  false;
+
+scene.globe.maximumScreenSpaceError =
+  4;
+
+controller.inertiaSpin =
+  0;
+
+controller.inertiaTranslate =
+  0;
+
+controller.inertiaZoom =
+  0;
+
+controller.bounceAnimationTime =
+  0;
+
+controller.minimumZoomDistance =
+  500;
+
+controller.maximumZoomDistance =
+  5000000;
+
+controller.enableRotate =
+  true;
+
+controller.enableTilt =
+  true;
+
+controller.enableTranslate =
+  true;
+
+controller.enableZoom =
+  true;
+
+controller.enableLook =
+  false;
+
+controller.rotateEventTypes =
+  Cesium.CameraEventType.LEFT_DRAG;
+
+controller.zoomEventTypes =
+  [];
+
+controller.tiltEventTypes =
+  [];
+
+controller.lookEventTypes =
+  [];
+
+function stopCameraMotion() {
+  viewer.camera.cancelFlight();
+
+  controller.inertiaSpin =
+    0;
+
+  controller.inertiaTranslate =
+    0;
+
+  controller.inertiaZoom =
+    0;
+
+  scene.requestRender();
+}
+
+function zoomByFactor(
+  factor
+) {
+  stopCameraMotion();
+
+  const height =
+    viewer.camera
+      .positionCartographic
+      .height;
+
+  const amount =
+    Math.max(
+      500,
+      height
+      * Math.abs(
+          factor
+        )
+    );
+
+  if (
+    factor < 0
+  ) {
+    viewer.camera.zoomIn(
+      amount
+    );
+  } else {
+    viewer.camera.zoomOut(
+      amount
+    );
+  }
+
+  stopCameraMotion();
+}
+
+function rotateHeading(
+  degrees
+) {
+  stopCameraMotion();
+
+  viewer.camera.setView({
+    destination:
+      Cesium.Cartesian3.clone(
+        viewer.camera.positionWC
+      ),
+
+    orientation: {
+      heading:
+        viewer.camera.heading
+        + Cesium.Math.toRadians(
+            degrees
+          ),
+
+      pitch:
+        viewer.camera.pitch,
+
+      roll:
+        0
+    }
+  });
+
+  stopCameraMotion();
+}
+
+function tiltPitch(
+  degrees
+) {
+  stopCameraMotion();
+
+  const nextPitch =
+    Cesium.Math.clamp(
+      viewer.camera.pitch
+      + Cesium.Math.toRadians(
+          degrees
+        ),
+
+      Cesium.Math.toRadians(
+        -89.5
+      ),
+
+      Cesium.Math.toRadians(
+        -10
+      )
+    );
+
+  viewer.camera.setView({
+    destination:
+      Cesium.Cartesian3.clone(
+        viewer.camera.positionWC
+      ),
+
+    orientation: {
+      heading:
+        viewer.camera.heading,
+
+      pitch:
+        nextPitch,
+
+      roll:
+        0
+    }
+  });
+
+  stopCameraMotion();
+}
+
+function setInitialSeqView() {
+  viewer.camera.cancelFlight();
+
+  viewer.camera.setView({
+    destination:
+      Cesium.Cartesian3.fromDegrees(
+        153.05,
+        -27.35,
+        420000
+      ),
+
+    orientation: {
+      heading:
+        0,
+
+      pitch:
+        -Cesium.Math.PI_OVER_TWO,
+
+      roll:
+        0
+    }
+  });
+
+  scene.requestRender();
+}
+
+setInitialSeqView();
+
+const cesiumContainer =
+  document.getElementById(
+    "cesiumContainer"
+  );
+
+for (
+  const eventName
+  of [
+    "wheel",
+    "mousewheel",
+    "DOMMouseScroll",
+    "gesturestart",
+    "gesturechange",
+    "gestureend"
+  ]
+) {
+  cesiumContainer.addEventListener(
+    eventName,
+    event => {
+      if (
+        event.cancelable
+      ) {
+        event.preventDefault();
+      }
+
+      event.stopPropagation();
+    },
+    {
+      passive:false,
+      capture:true
+    }
+  );
+}
+
+const points =
+  scene.primitives.add(
+    new Cesium.PointPrimitiveCollection()
+  );
+
+const radarSource =
+  new Cesium.CustomDataSource(
+    "doppler-radar"
+  );
+
+viewer.dataSources.add(
+  radarSource
+);
+
+function velocityColour(
+  velocity
+) {
+  if (
+    velocity < 0
+  ) {
+    const strength =
+      Math.min(
+        1,
+        Math.abs(
+          velocity
+        ) / 70
+      );
+
+    return Cesium.Color.fromHsl(
+      0.56,
+      0.95,
+      0.72
+        - strength * 0.32,
+      0.82
+    );
+  }
+
+  const strength =
+    Math.min(
+      1,
+      velocity / 70
+    );
+
+  return Cesium.Color.fromHsl(
+    0.13
+      - strength * 0.12,
+    0.95,
+    0.62
+      - strength * 0.18,
+    0.82
+  );
+}
+
+function sourceImageData(
+  canvas
+) {
+  return canvas
+    .getContext(
+      "2d",
+      {
+        willReadFrequently:true
+      }
+    )
+    .getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+}
+
+async function loadRadar(
+  radarId
+) {
+  $("status").textContent =
+    `Loading radar ${radarId}…`;
+
+  const source =
+    await loadDopplerDiagnostic(
+      radarId
+    );
+
+  const decoded =
+    decodeGeoreferencedDoppler(
+      radarId,
+      sourceImageData(
+        source.canvas
+      )
+    );
+
+  const samples =
+    geolocatedDopplerSamples(
+      decoded,
+      {
+        stride:1,
+        includeZero:false
+      }
+    );
+
+  points.removeAll();
+  radarSource.entities.removeAll();
+
+  const radar =
+    BOM_DOPPLER_MAPS[
+      radarId
+    ];
+
+  radarSource.entities.add({
+    position:
+      Cesium.Cartesian3.fromDegrees(
+        radar.longitude,
+        radar.latitude,
+        0
+      ),
+
+    point: {
+      pixelSize:10,
+      color:
+        Cesium.Color.WHITE,
+      outlineColor:
+        Cesium.Color.BLACK,
+      outlineWidth:2
+    },
+
+    label: {
+      text:
+        `${radarId} radar`,
+      font:
+        "12px sans-serif",
+      pixelOffset:
+        new Cesium.Cartesian2(
+          0,
+          -16
+        ),
+      fillColor:
+        Cesium.Color.WHITE,
+      showBackground:true,
+      backgroundColor:
+        Cesium.Color.BLACK
+          .withAlpha(
+            0.65
+          )
+    },
+
+    ellipse: {
+      semiMajorAxis:
+        128000,
+      semiMinorAxis:
+        128000,
+      material:
+        Cesium.Color.WHITE
+          .withAlpha(
+            0.015
+          ),
+      outline:true,
+      outlineColor:
+        Cesium.Color.WHITE
+          .withAlpha(
+            0.35
+          ),
+      height:0
+    }
+  });
+
+  for (
+    const sample
+    of samples
+  ) {
+    points.add({
+      position:
+        Cesium.Cartesian3.fromDegrees(
+          sample.longitude,
+          sample.latitude,
+          120
+        ),
+
+      color:
+        velocityColour(
+          sample.velocity_kmh
+        ),
+
+      pixelSize:
+        2.5,
+
+      disableDepthTestDistance:
+        Number.POSITIVE_INFINITY
+    });
+  }
+
+  const residual =
+    centrePixelResidual(
+      radarId
+    );
+
+  $("radar").textContent =
+    `${radarId} — ${radar.product}`;
+
+  $("valid").textContent =
+    decoded.validPixelCount
+      .toLocaleString();
+
+  $("nonzero").textContent =
+    decoded.nonZeroPixelCount
+      .toLocaleString();
+
+  $("samples").textContent =
+    samples.length
+      .toLocaleString();
+
+  $("residual").textContent =
+    `${residual.magnitude_px.toFixed(3)} px`;
+
+  viewer.camera.cancelFlight();
+
+  viewer.camera.setView({
+    destination:
+      Cesium.Cartesian3.fromDegrees(
+        radar.longitude,
+        radar.latitude,
+        420000
+      ),
+
+    orientation: {
+      heading:
+        0,
+
+      pitch:
+        -Cesium.Math.PI_OVER_TWO,
+
+      roll:
+        0
+    }
+  });
+
+  stopCameraMotion();
+
+  $("status").textContent =
+    `DOPPLER GEOLOCATION PASS CANDIDATE — ${radar.product}; ` +
+    `${samples.length} non-zero radial-velocity pixels positioned using ` +
+    `${radar.map}. Compare the plotted velocity field with the underlying ` +
+    `Brisbane/SEQ geography before storm-object integration.`;
+}
+
+document
+  .getElementById(
+    "resetViewButton"
+  )
+  .addEventListener(
+    "click",
+    () => {
+      stopCameraMotion();
+      setInitialSeqView();
+      stopCameraMotion();
+    }
+  );
+
+document
+  .getElementById(
+    "rotateLeftButton"
+  )
+  .addEventListener(
+    "click",
+    () =>
+      rotateHeading(
+        -10
+      )
+  );
+
+document
+  .getElementById(
+    "rotateRightButton"
+  )
+  .addEventListener(
+    "click",
+    () =>
+      rotateHeading(
+        10
+      )
+  );
+
+document
+  .getElementById(
+    "tiltUpButton"
+  )
+  .addEventListener(
+    "click",
+    () =>
+      tiltPitch(
+        7.5
+      )
+  );
+
+document
+  .getElementById(
+    "tiltDownButton"
+  )
+  .addEventListener(
+    "click",
+    () =>
+      tiltPitch(
+        -7.5
+      )
+  );
+
+document
+  .getElementById(
+    "zoomInButton"
+  )
+  .addEventListener(
+    "click",
+    () =>
+      zoomByFactor(
+        -0.18
+      )
+  );
+
+document
+  .getElementById(
+    "zoomOutButton"
+  )
+  .addEventListener(
+    "click",
+    () =>
+      zoomByFactor(
+        0.18
+      )
+  );
+
+for (
+  const button
+  of document.querySelectorAll(
+    "[data-radar]"
+  )
+) {
+  button.addEventListener(
+    "click",
+    () =>
+      loadRadar(
+        button.dataset.radar
+      ).catch(
+        error => {
+          console.error(
+            error
+          );
+
+          $("status").textContent =
+            `ERROR — ${error.message}`;
+        }
+      )
+  );
+}
+</script>
+</body>
+</html>

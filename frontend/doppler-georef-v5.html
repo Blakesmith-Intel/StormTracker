@@ -211,9 +211,10 @@ window.CESIUM_BASE_URL =
     </div>
 
     <div class="mode">
-      Camera mode: SHARED CUSTOM MOUSE V1. Left-drag pans; right-drag
-      rotates/tilts; Shift+left-drag or middle-drag tilts; wheel zooms one
-      deterministic step per gesture. Native Cesium camera input remains
+      Camera mode: SHARED CUSTOM MOUSE V1.1. Left-drag pans;
+      right-drag rotates/tilts; Shift+left-drag or middle-drag tilts.
+      Each discrete mouse-wheel notch produces one zoom step; smooth trackpad
+      input remains momentum-suppressed. Native Cesium camera input stays
       disabled. There is no map-lock toggle.
     </div>
 
@@ -347,7 +348,7 @@ import {
 
 import {
   createStormTrackerCameraController
-} from "./src/stormtracker-camera-v1.js?v=camera-v1";
+} from "./src/stormtracker-camera-v1.js?v=camera-v1.1-wheel";
 
 const $ =
   id =>

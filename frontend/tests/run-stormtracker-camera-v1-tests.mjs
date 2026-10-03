@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
 import {
+  classifyWheelDelta,
   orbitStateByPixels,
   panTargetByScreenPixels,
   zoomStateByDirection
@@ -91,6 +92,52 @@ assert.equal(
   800
 );
 
+
+
+assert.deepEqual(
+  classifyWheelDelta(
+    -100,
+    0
+  ),
+  {
+    mode:"discrete",
+    steps:-1
+  }
+);
+
+assert.deepEqual(
+  classifyWheelDelta(
+    100,
+    0
+  ),
+  {
+    mode:"discrete",
+    steps:1
+  }
+);
+
+assert.deepEqual(
+  classifyWheelDelta(
+    200,
+    0
+  ),
+  {
+    mode:"discrete",
+    steps:2
+  }
+);
+
+assert.deepEqual(
+  classifyWheelDelta(
+    15,
+    0
+  ),
+  {
+    mode:"smooth",
+    steps:1
+  }
+);
+
 console.log(
-  "7 shared camera controller tests passed."
+  "11 shared camera controller tests passed."
 );

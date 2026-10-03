@@ -90,6 +90,92 @@ export function orbitStateByPixels(
   };
 }
 
+export function classifyWheelDelta(
+  deltaY,
+  deltaMode = 0
+) {
+  const value =
+    Number(
+      deltaY
+    );
+
+  if (
+    !Number.isFinite(
+      value
+    )
+    || value === 0
+  ) {
+    return {
+      mode:"none",
+      steps:0
+    };
+  }
+
+  const direction =
+    value < 0
+      ? -1
+      : 1;
+
+  const magnitude =
+    Math.abs(
+      value
+    );
+
+  if (
+    deltaMode === 1
+  ) {
+    return {
+      mode:"discrete",
+      steps:
+        direction
+        * Math.max(
+            1,
+            Math.min(
+              6,
+              Math.round(
+                magnitude / 3
+              )
+            )
+          )
+    };
+  }
+
+  if (
+    deltaMode === 2
+  ) {
+    return {
+      mode:"discrete",
+      steps:
+        direction
+    };
+  }
+
+  if (
+    magnitude >= 80
+  ) {
+    return {
+      mode:"discrete",
+      steps:
+        direction
+        * Math.max(
+            1,
+            Math.min(
+              6,
+              Math.round(
+                magnitude / 100
+              )
+            )
+          )
+    };
+  }
+
+  return {
+    mode:"smooth",
+    steps:
+      direction
+  };
+}
+
 export function zoomStateByDirection(
   state,
   direction,
@@ -529,15 +615,65 @@ export function createStormTrackerCameraController({
     event.preventDefault();
     event.stopPropagation();
 
-    // One zoom step per wheel/trackpad gesture.
-    // Momentum events extend the quiet period but do not keep zooming.
-    if (!wheelGestureOpen) {
-      wheelGestureOpen = true;
+    const wheel =
+      classifyWheelDelta(
+        event.deltaY,
+        event.deltaMode
+      );
+
+    if (
+      wheel.mode
+      === "none"
+    ) {
+      return;
+    }
+
+    if (
+      wheel.mode
+      === "discrete"
+    ) {
+      const direction =
+        wheel.steps < 0
+          ? -1
+          : 1;
+
+      for (
+        let index = 0;
+        index < Math.abs(
+          wheel.steps
+        );
+        index++
+      ) {
+        zoomDirection(
+          direction
+        );
+      }
+
+      wheelGestureOpen =
+        false;
+
+      if (
+        wheelQuietTimer
+      ) {
+        clearTimeout(
+          wheelQuietTimer
+        );
+
+        wheelQuietTimer =
+          null;
+      }
+
+      return;
+    }
+
+    if (
+      !wheelGestureOpen
+    ) {
+      wheelGestureOpen =
+        true;
 
       zoomDirection(
-        event.deltaY < 0
-          ? -1
-          : 1
+        wheel.steps
       );
     }
 

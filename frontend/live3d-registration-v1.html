@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>
+    StormTracker — 2-D / 3-D Registration Diagnostic
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css"
+  >
+
+  <script>
+    window.CESIUM_BASE_URL =
+      "https://unpkg.com/cesium@1.145.0/Build/Cesium/";
+  </script>
+
+  <script
+    src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"
+  ></script>
+
+  <style>
+    * {
+      box-sizing:
+        border-box;
+    }
+
+    html,
+    body,
+    #app {
+      width:
+        100%;
+
+      height:
+        100%;
+
+      margin:
+        0;
+    }
+
+    body {
+      overflow:
+        hidden;
+
+      background:
+        #081116;
+
+      color:
+        #edf5f8;
+
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    #app {
+      display:
+        grid;
+
+      grid-template-columns:
+        minmax(
+          320px,
+          380px
+        )
+        1fr;
+    }
+
+    aside {
+      overflow:
+        auto;
+
+      padding:
+        14px;
+
+      background:
+        #0e1820;
+
+      border-right:
+        1px solid #31424d;
+    }
+
+    #mapPanel {
+      position:
+        relative;
+
+      min-width:
+        0;
+
+      overflow:
+        hidden;
+    }
+
+    #cesiumContainer {
+      width:
+        100%;
+
+      height:
+        100%;
+    }
+
+    #inputShield {
+      position:
+        absolute;
+
+      inset:
+        0;
+
+      z-index:
+        700;
+
+      display:
+        block;
+
+      background:
+        transparent;
+
+      touch-action:
+        none;
+
+      overscroll-behavior:
+        none;
+    }
+
+    #nav {
+      position:
+        absolute;
+
+      z-index:
+        800;
+
+      top:
+        10px;
+
+      right:
+        10px;
+
+      display:
+        flex;
+
+      gap:
+        5px;
+
+      padding:
+        5px;
+
+      border:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.18
+        );
+
+      border-radius:
+        8px;
+
+      background:
+        rgba(
+          8,
+          17,
+          22,
+          0.92
+        );
+    }
+
+    h1 {
+      margin:
+        0 0 5px;
+
+      font-size:
+        20px;
+    }
+
+    .sub {
+      margin-bottom:
+        12px;
+
+      color:
+        #a9bac4;
+
+      font-size:
+        11px;
+    }
+
+    .card {
+      margin-bottom:
+        10px;
+
+      padding:
+        11px;
+
+      border:
+        1px solid #31424d;
+
+      border-radius:
+        9px;
+
+      background:
+        #16222b;
+    }
+
+    .card h2 {
+      margin:
+        0 0 8px;
+
+      font-size:
+        12px;
+
+      letter-spacing:
+        0.07em;
+
+      text-transform:
+        uppercase;
+    }
+
+    .warning {
+      border-color:
+        #8a6c36;
+
+      background:
+        #282115;
+
+      font-size:
+        11px;
+
+      line-height:
+        1.45;
+    }
+
+    .metric {
+      display:
+        grid;
+
+      grid-template-columns:
+        1fr auto;
+
+      gap:
+        4px 10px;
+
+      font-size:
+        11px;
+
+      line-height:
+        1.4;
+    }
+
+    .metric span:nth-child(odd) {
+      color:
+        #9fb1bb;
+    }
+
+    label {
+      display:
+        block;
+
+      margin:
+        8px 0 4px;
+
+      color:
+        #b6c5cd;
+
+      font-size:
+        11px;
+    }
+
+    input[type="range"] {
+      width:
+        100%;
+    }
+
+    button {
+      padding:
+        8px 10px;
+
+      border:
+        1px solid #4a6575;
+
+      border-radius:
+        6px;
+
+      background:
+        #203440;
+
+      color:
+        #f2f7f9;
+
+      cursor:
+        pointer;
+    }
+
+    #loadButton {
+      width:
+        100%;
+
+      padding:
+        10px;
+    }
+
+    #status {
+      font-size:
+        11px;
+
+      line-height:
+        1.45;
+    }
+
+    #status[data-kind="error"] {
+      color:
+        #ff9d91;
+    }
+
+    #status[data-kind="ok"] {
+      color:
+        #99e2b7;
+    }
+
+    .hybrid-row {
+      display:grid;
+      grid-template-columns:60px 50px 70px 1fr;
+      gap:5px;
+      padding:4px 0;
+      border-top:1px solid #2a3942;
+      align-items:center;
+    }
+
+    .hybrid-row:first-child {
+      border-top:0;
+    }
+
+    .hybrid-row span {
+      color:#b8c6ce;
+    }
+
+    .hybrid-muted {
+      color:#91a3ad;
+    }
+
+    .track-volume-row {
+      padding:6px 0;
+      border-top:1px solid #2a3942;
+      font-size:10px;
+      line-height:1.35;
+    }
+
+    .track-volume-row:first-child {
+      border-top:0;
+    }
+
+    .track-volume-row > div {
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px 10px;
+    }
+
+    .track-volume-row > div + div {
+      margin-top:2px;
+      color:#aebdc6;
+    }
+
+    .support-legend-row {
+      display:grid;
+      grid-template-columns:14px 84px 1fr;
+      gap:6px;
+      align-items:start;
+      padding:4px 0;
+      font-size:10px;
+      line-height:1.35;
+    }
+
+    .support-legend-row span:last-child {
+      color:#aebdc6;
+    }
+
+    .support-dot {
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-top:2px;
+      background:#d7e4ea;
+    }
+
+    .support-high {
+      opacity:0.95;
+    }
+
+    .support-medium {
+      opacity:0.58;
+    }
+
+    .support-low {
+      opacity:0.22;
+    }
+
+    .uncertainty-note {
+      margin-top:7px;
+      color:#91a3ad;
+      font-size:10px;
+      line-height:1.4;
+    }
+
+    #legend {
+      position:
+        absolute;
+
+      z-index:
+        650;
+
+      left:
+        10px;
+
+      bottom:
+        25px;
+
+      padding:
+        8px;
+
+      border:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.18
+        );
+
+      border-radius:
+        8px;
+
+      background:
+        rgba(
+          8,
+          17,
+          22,
+          0.90
+        );
+
+      font-size:
+        10px;
+
+      pointer-events:
+        none;
+    }
+
+    .legend-row {
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      gap:
+        5px;
+
+      margin:
+        2px 0;
+    }
+
+    .swatch {
+      width:
+        12px;
+
+      height:
+        9px;
+
+      border:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.35
+        );
+    }
+
+    @media (
+      max-width:
+        850px
+    ) {
+      #app {
+        grid-template-columns:
+          1fr;
+
+        grid-template-rows:
+          48% 52%;
+      }
+
+      aside {
+        border-right:
+          0;
+
+        border-bottom:
+          1px solid #31424d;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <aside>
+    <h1>
+      StormTracker Live 3-D
+    </h1>
+
+    <div class="sub">
+      measured 2-D storm masks • persistent ST identities • track-specific inferred vertical volumes • same-frame rendering • core V4
+    </div>
+
+    <section class="card warning">
+      <strong>
+        HYBRID PRODUCT — TRACK IDENTITY FROM MEASURED 2-D RADAR; VERTICAL INTENSITY INFERRED.
+      </strong>
+
+      STxxxx identities and horizontal motion come from the public measured
+      2-D reflectivity segmentation/tracking engine. Vertical intensity is
+      reconstructed using a five-event AURA-calibrated model. Inferred 3-D
+      geometry does not create or preserve storm-track identity.
+    </section>
+
+    <section class="card">
+      <h2>
+        Live source
+      </h2>
+
+      <button id="loadButton">
+        Load latest inferred 3-D
+      </button>
+
+      <div
+        class="metric"
+        style="margin-top:9px"
+      >
+        <span>Source time</span>
+        <strong id="sourceTime">—</strong>
+
+        <span>Decoded 2-D pixels</span>
+        <strong id="decodedPixels">—</strong>
+
+        <span>Observed 2-D maximum</span>
+        <strong id="sourceMaximum">—</strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Inference controls
+      </h2>
+
+      <label>
+        Minimum displayed intensity:
+        <strong>
+          <span id="minimumDbzhValue">30</span> dBZ
+        </strong>
+      </label>
+
+      <input
+        id="minimumDbzh"
+        type="range"
+        min="20"
+        max="60"
+        value="30"
+        step="5"
+      >
+
+      <label>
+        Minimum profile occupancy:
+        <strong>
+          <span id="occupancyValue">0.35</span>
+        </strong>
+      </label>
+
+      <input
+        id="occupancyThreshold"
+        type="range"
+        min="0.35"
+        max="0.85"
+        value="0.35"
+        step="0.05"
+      >
+
+      <label>
+        Vertical scale:
+        <strong>
+          <span id="verticalScaleValue">1.0</span>×
+        </strong>
+      </label>
+
+      <input
+        id="verticalScale"
+        type="range"
+        min="1"
+        max="4"
+        value="1"
+        step="0.5"
+      >
+
+      <label>
+        Point size:
+        <strong>
+          <span id="pointSizeValue">3</span> px
+        </strong>
+      </label>
+
+      <input
+        id="pointSize"
+        type="range"
+        min="2"
+        max="7"
+        value="3"
+        step="1"
+      >
+    </section>
+
+    <section class="card">
+      <h2>
+        Current inferred volume
+      </h2>
+
+      <div class="metric">
+        <span>Rendered columns</span>
+        <strong id="renderedColumns">—</strong>
+
+        <span>Rendered 3-D points</span>
+        <strong id="renderedPoints">—</strong>
+
+        <span>Display sampling</span>
+        <strong id="adaptiveStride">—</strong>
+
+        <span>Maximum inferred DBZH</span>
+        <strong id="maxInferredDbzh">—</strong>
+
+        <span>Inferred 40 dBZ top</span>
+        <strong id="inferredTop40">—</strong>
+
+        <span>Inferred 50 dBZ top</span>
+        <strong id="inferredTop50">—</strong>
+
+        <span>Mean profile occupancy</span>
+        <strong id="meanConfidence">—</strong>
+
+        <span>High-support points</span>
+        <strong id="highSupportPoints">—</strong>
+
+        <span>Medium-support points</span>
+        <strong id="mediumSupportPoints">—</strong>
+
+        <span>Low-support points</span>
+        <strong id="lowSupportPoints">—</strong>
+
+        <span>High-support 40 dBZ top</span>
+        <strong id="highSupportTop40">—</strong>
+
+        <span>High-support 50 dBZ top</span>
+        <strong id="highSupportTop50">—</strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Vertical uncertainty display
+      </h2>
+
+      <div class="support-legend-row">
+        <span class="support-dot support-high"></span>
+        <strong>High support</strong>
+        <span>solid — occupancy ≥0.70, IQR ≤10 dBZ, lower quartile still above display threshold</span>
+      </div>
+
+      <div class="support-legend-row">
+        <span class="support-dot support-medium"></span>
+        <strong>Medium support</strong>
+        <span>partly transparent — occupancy ≥0.50 with moderate empirical spread</span>
+      </div>
+
+      <div class="support-legend-row">
+        <span class="support-dot support-low"></span>
+        <strong>Low support</strong>
+        <span>faded — weak historical occupancy and/or broad P25–P75 spread</span>
+      </div>
+
+      <div class="uncertainty-note">
+        These bands are display support classes derived from historical
+        occupancy and P25–P75 reflectivity spread. They are not calibrated
+        probabilities or formal confidence intervals.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Hybrid storm sequence
+      </h2>
+
+      <button
+        id="loadHybridButton"
+        style="width:100%"
+      >
+        Load 30-min hybrid storm sequence
+      </button>
+
+      <label>
+        Sequence frame:
+        <strong>
+          <span id="hybridFrameLabel">—</span>
+        </strong>
+      </label>
+
+      <input
+        id="hybridFrameSlider"
+        type="range"
+        min="0"
+        max="5"
+        value="0"
+        step="1"
+        disabled
+      >
+
+      <button
+        id="hybridPlayButton"
+        disabled
+        style="width:100%;margin-top:7px"
+      >
+        Play once
+      </button>
+
+      <label
+        style="
+          display:flex;
+          gap:7px;
+          align-items:center
+        "
+      >
+        <input
+          id="showTrackVolumes"
+          type="checkbox"
+          checked
+        >
+        Prefer track-specific inferred 3-D volumes when a measured track exists
+      </label>
+
+      <div
+        class="metric"
+        style="margin-top:8px"
+      >
+        <span>Current measured-2D tracks</span>
+        <strong id="hybridTrackCount">0</strong>
+
+        <span>Persistent tracks ≥3 scans</span>
+        <strong id="hybridPersistentCount">0</strong>
+
+        <span>3-D display mode</span>
+        <strong id="hybridVolumeMode">—</strong>
+
+        <span>Scene frame</span>
+        <strong id="hybridSceneFrame">—</strong>
+      </div>
+
+      <div
+        id="hybridRows"
+        style="margin-top:8px;font-size:10px"
+      >
+        <div class="hybrid-muted">
+          Load the sequence to build measured-2D ST identities and constrain
+          each inferred 3-D storm volume to that measured component mask.
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        2-D / 3-D registration check
+      </h2>
+
+      <div class="metric">
+        <span>Registration anchors</span>
+        <strong id="registrationAnchorCount">—</strong>
+
+        <span>Coordinate round-trip residual</span>
+        <strong id="registrationResidual">—</strong>
+      </div>
+
+      <div
+        style="
+          display:flex;
+          gap:6px;
+          margin-top:8px
+        "
+      >
+        <button
+          id="registrationTopDownButton"
+          style="flex:1"
+        >
+          Top-down registration
+        </button>
+
+        <button
+          id="registrationObliqueButton"
+          style="flex:1"
+        >
+          Oblique view
+        </button>
+      </div>
+
+      <div
+        style="
+          margin-top:8px;
+          color:#aebdc6;
+          font-size:10px;
+          line-height:1.45
+        "
+      >
+        Magenta crosshairs are drawn at exact source radar pixels using a
+        transparent overlay with the same frame georeference. Yellow dots are
+        independently calculated Cesium ground coordinates from those pixels.
+        In top-down view they must coincide. Magenta lines then show the true
+        vertical above each source pixel.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Five-event cross-validation
+      </h2>
+
+      <div class="metric">
+        <span>Intensity MAE</span>
+        <strong id="validationMae">—</strong>
+
+        <span>40 dBZ volume IoU</span>
+        <strong id="validationIou40">—</strong>
+
+        <span>40 dBZ echo-top median error</span>
+        <strong id="validationTop40">—</strong>
+      </div>
+
+      <div
+        style="
+          margin-top:8px;
+          color:#9fb1bb;
+          font-size:10px;
+          line-height:1.4
+        "
+      >
+        Validation is leave-one-entire-event-out across five historical
+        Mt Stapylton event sequences. The inferred geometry remains
+        uncertainty-qualified and is not used to establish ST identity.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Status
+      </h2>
+
+      <div id="status">
+        Loading inferred-volume model…
+      </div>
+    </section>
+  </aside>
+
+  <main id="mapPanel">
+    <div id="cesiumContainer"></div>
+
+    <div id="inputShield"></div>
+
+    <div id="nav">
+      <button id="lockButton">
+        Unlock 3-D view
+      </button>
+
+      <button id="resetButton">
+        Reset view
+      </button>
+    </div>
+
+    <div id="legend">
+      <strong>
+        Inferred intensity
+      </strong>
+
+      <div class="legend-row">
+        <span
+          class="swatch"
+          style="background:#6ab6ff"
+        ></span>
+        20–29 dBZ
+      </div>
+
+      <div class="legend-row">
+        <span
+          class="swatch"
+          style="background:#1e78ff"
+        ></span>
+        30–39 dBZ
+      </div>
+
+      <div class="legend-row">
+        <span
+          class="swatch"
+          style="background:#00b96b"
+        ></span>
+        40–49 dBZ
+      </div>
+
+      <div class="legend-row">
+        <span
+          class="swatch"
+          style="background:#ffd21a"
+        ></span>
+        50–54 dBZ
+      </div>
+
+      <div class="legend-row">
+        <span
+          class="swatch"
+          style="background:#ff5a22"
+        ></span>
+        55–59 dBZ
+      </div>
+
+      <div class="legend-row">
+        <span
+          class="swatch"
+          style="background:#bd2fff"
+        ></span>
+        60+ dBZ
+      </div>
+    </div>
+  </main>
+</div>
+
+<script
+  type="module"
+  src="./src/live3d-registration-v1.js"
+></script>
+</body>
+</html>

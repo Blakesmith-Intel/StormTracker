@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+<title>
+  StormTracker — Doppler Geolocation V5
+</title>
+
+<link
+  href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css"
+  rel="stylesheet"
+>
+
+<script>
+window.CESIUM_BASE_URL =
+  "https://unpkg.com/cesium@1.145.0/Build/Cesium/";
+</script>
+
+<script
+  src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"
+></script>
+
+<style>
+  * {
+    box-sizing:border-box;
+  }
+
+  html,
+  body,
+  #app {
+    width:100%;
+    height:100%;
+    margin:0;
+  }
+
+  body {
+    overflow:hidden;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:
+      Inter,
+      system-ui,
+      sans-serif;
+  }
+
+  #app {
+    display:grid;
+    grid-template-columns:
+      340px 1fr;
+  }
+
+  aside {
+    overflow:auto;
+    padding:12px;
+    background:#0d1920;
+    border-right:
+      1px solid #30424d;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  #cesiumContainer {
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+
+  #cesiumContainer canvas {
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+
+  h1 {
+    margin:0 0 4px;
+    font-size:20px;
+  }
+
+  .note {
+    color:#a9bbc4;
+    font-size:11px;
+    line-height:1.45;
+  }
+
+  button {
+    width:100%;
+    margin-top:6px;
+    padding:8px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+  }
+
+  .card {
+    margin-top:10px;
+    padding:10px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+  }
+
+  .metric {
+    display:grid;
+    grid-template-columns:
+      165px 1fr;
+    gap:4px 7px;
+    font-size:11px;
+  }
+
+  .metric span:nth-child(odd) {
+    color:#9fb2bc;
+  }
+
+  .camera-grid {
+    display:grid;
+    grid-template-columns:
+      repeat(3,1fr);
+    gap:5px;
+    margin-top:8px;
+  }
+
+  .camera-grid button {
+    margin:0;
+  }
+
+  .pan-grid {
+    display:grid;
+    grid-template-columns:
+      repeat(3,1fr);
+    gap:5px;
+    margin-top:5px;
+  }
+
+  .pan-grid button {
+    margin:0;
+  }
+
+  .blank {
+    visibility:hidden;
+  }
+
+  #status {
+    white-space:pre-wrap;
+    font:
+      10px/1.4
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+  }
+
+  .legend {
+    display:grid;
+    grid-template-columns:
+      repeat(2,1fr);
+    gap:4px;
+    font-size:10px;
+    margin-top:7px;
+  }
+
+  .towards {
+    color:#70c8ff;
+  }
+
+  .away {
+    color:#ffd12a;
+  }
+
+  .mode {
+    margin-top:7px;
+    padding:7px;
+    border-left:
+      3px solid #72e0ae;
+    background:#10231d;
+    color:#c9f5df;
+    font-size:10px;
+    line-height:1.4;
+  }
+
+  @media (
+    max-width:800px
+  ) {
+    #app {
+      grid-template-columns:1fr;
+      grid-template-rows:
+        46% 54%;
+    }
+  }
+</style>
+</head>
+
+<body>
+<div id="app">
+  <aside>
+    <h1>
+      StormTracker Doppler geolocation V5
+    </h1>
+
+    <div class="note">
+      Doppler geometry and science are unchanged. V4 replaces Cesium's
+      gesture camera with a deterministic camera controller because the
+      browser/trackpad input path continued to move the map without a
+      deliberate user action.
+    </div>
+
+    <div class="mode">
+      Camera mode: SHARED CUSTOM MOUSE V1. Left-drag pans; right-drag
+      rotates/tilts; Shift+left-drag or middle-drag tilts; wheel zooms one
+      deterministic step per gesture. Native Cesium camera input remains
+      disabled. There is no map-lock toggle.
+    </div>
+
+    <div class="card">
+      <button data-radar="66">
+        Load Mt Stapylton 66
+      </button>
+
+      <button data-radar="50">
+        Load Marburg 50
+      </button>
+
+      <button data-radar="08">
+        Load Gympie 08
+      </button>
+
+      <button id="resetViewButton">
+        Reset SEQ view
+      </button>
+
+      <div class="pan-grid">
+        <span class="blank"></span>
+
+        <button id="panNorthButton">
+          Pan ↑
+        </button>
+
+        <span class="blank"></span>
+
+        <button id="panWestButton">
+          Pan ←
+        </button>
+
+        <button id="panSouthButton">
+          Pan ↓
+        </button>
+
+        <button id="panEastButton">
+          Pan →
+        </button>
+      </div>
+
+      <div class="camera-grid">
+        <button id="rotateLeftButton">
+          Rotate ↺
+        </button>
+
+        <button id="tiltUpButton">
+          Tilt ↑
+        </button>
+
+        <button id="zoomInButton">
+          Zoom +
+        </button>
+
+        <button id="rotateRightButton">
+          Rotate ↻
+        </button>
+
+        <button id="tiltDownButton">
+          Tilt ↓
+        </button>
+
+        <button id="zoomOutButton">
+          Zoom −
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="metric">
+        <span>Radar</span>
+        <strong id="radar">—</strong>
+
+        <span>Native panel</span>
+        <strong>512 × 512</strong>
+
+        <span>Decoded Doppler pixels</span>
+        <strong id="valid">—</strong>
+
+        <span>Non-zero Doppler pixels</span>
+        <strong id="nonzero">—</strong>
+
+        <span>Rendered samples</span>
+        <strong id="samples">—</strong>
+
+        <span>Recovered centre residual</span>
+        <strong id="residual">—</strong>
+
+        <span>Unexpected camera corrections</span>
+        <strong id="cameraCorrections">0</strong>
+      </div>
+
+      <div class="legend">
+        <strong class="towards">
+          Blue/cyan = toward radar
+        </strong>
+
+        <strong class="away">
+          Yellow/red = away radar
+        </strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Status</strong>
+      <div id="status">
+        Ready. Do not touch anything for 20 seconds first. This page must
+        remain stationary before Doppler development continues.
+      </div>
+    </div>
+  </aside>
+
+  <div id="cesiumContainer"></div>
+</div>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js?v=georef-v4";
+
+import {
+  BOM_DOPPLER_MAPS,
+  centrePixelResidual
+} from "./src/bom-doppler-georef-v1.js?v=georef-v4";
+
+import {
+  decodeGeoreferencedDoppler,
+  geolocatedDopplerSamples
+} from "./src/bom-doppler-spatial-v1.js?v=georef-v4";
+
+import {
+  createStormTrackerCameraController
+} from "./src/stormtracker-camera-v1.js?v=camera-v1";
+
+const $ =
+  id =>
+    document.getElementById(
+      id
+    );
+
+const viewer =
+  new Cesium.Viewer(
+    "cesiumContainer",
+    {
+      animation:false,
+      timeline:false,
+      geocoder:false,
+      homeButton:false,
+      sceneModePicker:false,
+      baseLayerPicker:false,
+      navigationHelpButton:false,
+      fullscreenButton:false,
+      infoBox:false,
+      selectionIndicator:false,
+      terrainProvider:
+        new Cesium.EllipsoidTerrainProvider(),
+      baseLayer:false,
+      requestRenderMode:true,
+      maximumRenderTimeChange:
+        Infinity,
+      useBrowserRecommendedResolution:
+        true
+    }
+  );
+
+viewer.imageryLayers.addImageryProvider(
+  new Cesium.OpenStreetMapImageryProvider({
+    url:
+      "https://tile.openstreetmap.org/"
+  })
+);
+
+const scene =
+  viewer.scene;
+
+scene.requestRenderMode =
+  true;
+
+scene.maximumRenderTimeChange =
+  Infinity;
+
+scene.fog.enabled =
+  false;
+
+scene.globe.enableLighting =
+  false;
+
+scene.globe.maximumScreenSpaceError =
+  4;
+
+const HOME =
+  Object.freeze({
+    longitude:153.05,
+    latitude:-27.35,
+    targetHeight:0,
+    range:420000,
+    heading:0,
+    pitch:
+      -Cesium.Math.PI_OVER_TWO
+      + 0.01
+  });
+
+const mapCamera =
+  createStormTrackerCameraController({
+    viewer,
+    container:
+      $("cesiumContainer"),
+    home:
+      HOME,
+    onUnexpectedCorrection:
+      count => {
+        $("cameraCorrections")
+          .textContent =
+            String(count);
+      }
+  });
+
+function setInitialSeqView() {
+  mapCamera.reset();
+}
+
+function setCameraView({
+  longitude,
+  latitude,
+  height,
+  heading = 0,
+  pitch =
+    -Cesium.Math.PI_OVER_TWO
+    + 0.01
+}) {
+  mapCamera.setView({
+    longitude,
+    latitude,
+    targetHeight:0,
+    range:height,
+    heading,
+    pitch
+  });
+}
+
+function panCamera(
+  horizontal,
+  vertical
+) {
+  mapCamera.panByFraction(
+    horizontal * 0.08,
+    -vertical * 0.08
+  );
+}
+
+function zoomByFactor(
+  factor
+) {
+  mapCamera.zoomDirection(
+    factor < 0
+      ? -1
+      : 1
+  );
+}
+
+function rotateHeading(
+  degrees
+) {
+  mapCamera.rotateDegrees(
+    degrees
+  );
+}
+
+function tiltPitch(
+  degrees
+) {
+  mapCamera.tiltDegrees(
+    degrees
+  );
+}
+
+const points =
+  scene.primitives.add(
+    new Cesium.PointPrimitiveCollection()
+  );
+
+const radarSource =
+  new Cesium.CustomDataSource(
+    "doppler-radar"
+  );
+
+viewer.dataSources.add(
+  radarSource
+);
+
+function velocityColour(
+  velocity
+) {
+  if (
+    velocity < 0
+  ) {
+    const strength =
+      Math.min(
+        1,
+        Math.abs(
+          velocity
+        ) / 70
+      );
+
+    return Cesium.Color.fromHsl(
+      0.56,
+      0.95,
+      0.72
+        - strength * 0.32,
+      0.82
+    );
+  }
+
+  const strength =
+    Math.min(
+      1,
+      velocity / 70
+    );
+
+  return Cesium.Color.fromHsl(
+    0.13
+      - strength * 0.12,
+    0.95,
+    0.62
+      - strength * 0.18,
+    0.82
+  );
+}
+
+function sourceImageData(
+  canvas
+) {
+  return canvas
+    .getContext(
+      "2d",
+      {
+        willReadFrequently:true
+      }
+    )
+    .getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+}
+
+async function loadRadar(
+  radarId
+) {
+  $("status").textContent =
+    `Loading radar ${radarId}…`;
+
+  const source =
+    await loadDopplerDiagnostic(
+      radarId
+    );
+
+  const decoded =
+    decodeGeoreferencedDoppler(
+      radarId,
+      sourceImageData(
+        source.canvas
+      )
+    );
+
+  const samples =
+    geolocatedDopplerSamples(
+      decoded,
+      {
+        stride:1,
+        includeZero:false
+      }
+    );
+
+  points.removeAll();
+  radarSource.entities.removeAll();
+
+  const radar =
+    BOM_DOPPLER_MAPS[
+      radarId
+    ];
+
+  radarSource.entities.add({
+    position:
+      Cesium.Cartesian3.fromDegrees(
+        radar.longitude,
+        radar.latitude,
+        0
+      ),
+
+    point: {
+      pixelSize:
+        10,
+
+      color:
+        Cesium.Color.WHITE,
+
+      outlineColor:
+        Cesium.Color.BLACK,
+
+      outlineWidth:
+        2
+    },
+
+    label: {
+      text:
+        `${radarId} radar`,
+
+      font:
+        "12px sans-serif",
+
+      pixelOffset:
+        new Cesium.Cartesian2(
+          0,
+          -16
+        ),
+
+      fillColor:
+        Cesium.Color.WHITE,
+
+      showBackground:
+        true,
+
+      backgroundColor:
+        Cesium.Color.BLACK
+          .withAlpha(
+            0.65
+          )
+    },
+
+    ellipse: {
+      semiMajorAxis:
+        128000,
+
+      semiMinorAxis:
+        128000,
+
+      material:
+        Cesium.Color.WHITE
+          .withAlpha(
+            0.015
+          ),
+
+      outline:
+        true,
+
+      outlineColor:
+        Cesium.Color.WHITE
+          .withAlpha(
+            0.35
+          ),
+
+      height:
+        0
+    }
+  });
+
+  for (
+    const sample
+    of samples
+  ) {
+    points.add({
+      position:
+        Cesium.Cartesian3.fromDegrees(
+          sample.longitude,
+          sample.latitude,
+          120
+        ),
+
+      color:
+        velocityColour(
+          sample.velocity_kmh
+        ),
+
+      pixelSize:
+        2.5,
+
+      disableDepthTestDistance:
+        Number.POSITIVE_INFINITY
+    });
+  }
+
+  const residual =
+    centrePixelResidual(
+      radarId
+    );
+
+  $("radar").textContent =
+    `${radarId} — ${radar.product}`;
+
+  $("valid").textContent =
+    decoded.validPixelCount
+      .toLocaleString();
+
+  $("nonzero").textContent =
+    decoded.nonZeroPixelCount
+      .toLocaleString();
+
+  $("samples").textContent =
+    samples.length
+      .toLocaleString();
+
+  $("residual").textContent =
+    `${residual.magnitude_px.toFixed(3)} px`;
+
+  setCameraView({
+    longitude:
+      radar.longitude,
+
+    latitude:
+      radar.latitude,
+
+    height:
+      420000
+  });
+
+  $("status").textContent =
+    `DOPPLER GEOLOCATION V5 — ${radar.product}; ` +
+    `${samples.length} non-zero radial-velocity pixels rendered. ` +
+    `Shared custom mouse camera active; native Cesium input remains disabled.`;
+}
+
+$("resetViewButton")
+  .addEventListener(
+    "click",
+    () =>
+      setInitialSeqView()
+  );
+
+$("panNorthButton")
+  .addEventListener(
+    "click",
+    () =>
+      panCamera(
+        0,
+        1
+      )
+  );
+
+$("panSouthButton")
+  .addEventListener(
+    "click",
+    () =>
+      panCamera(
+        0,
+        -1
+      )
+  );
+
+$("panWestButton")
+  .addEventListener(
+    "click",
+    () =>
+      panCamera(
+        -1,
+        0
+      )
+  );
+
+$("panEastButton")
+  .addEventListener(
+    "click",
+    () =>
+      panCamera(
+        1,
+        0
+      )
+  );
+
+$("rotateLeftButton")
+  .addEventListener(
+    "click",
+    () =>
+      rotateHeading(
+        -10
+      )
+  );
+
+$("rotateRightButton")
+  .addEventListener(
+    "click",
+    () =>
+      rotateHeading(
+        10
+      )
+  );
+
+$("tiltUpButton")
+  .addEventListener(
+    "click",
+    () =>
+      tiltPitch(
+        7.5
+      )
+  );
+
+$("tiltDownButton")
+  .addEventListener(
+    "click",
+    () =>
+      tiltPitch(
+        -7.5
+      )
+  );
+
+$("zoomInButton")
+  .addEventListener(
+    "click",
+    () =>
+      zoomByFactor(
+        -0.18
+      )
+  );
+
+$("zoomOutButton")
+  .addEventListener(
+    "click",
+    () =>
+      zoomByFactor(
+        0.18
+      )
+  );
+
+for (
+  const button
+  of document.querySelectorAll(
+    "[data-radar]"
+  )
+) {
+  button.addEventListener(
+    "click",
+    () =>
+      loadRadar(
+        button.dataset.radar
+      ).catch(
+        error => {
+          console.error(
+            error
+          );
+
+          $("status").textContent =
+            `ERROR — ${error.message}`;
+        }
+      )
+  );
+}
+</script>
+</body>
+</html>

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { connectedComponents, segmentCategoryFrame } from "../src/segmentation.js";
+import { connectedComponents, segmentCategoryFrame, segmentWebMercatorCategoryFrame } from "../src/segmentation.js";
 import { RADARS } from "../src/config.js";
 import { deduplicateRadarCells, updateTracks } from "../src/tracking.js";
 import { category, dopplerComponent, freshness, growthComponents, reflectivityComponent } from "../src/lightning.js";
+import { SOURCE_PALETTES, classifyRgb } from "../src/palette.js";
 
 let passed = 0;
 function test(name, fn) {
@@ -81,6 +82,28 @@ test("stale data is not operationally live",()=>{
 
 test("lightning likelihood categories match recovered thresholds",()=>{
   assert.equal(category(10),"LOW");assert.equal(category(30),"MODERATE");assert.equal(category(50),"HIGH");assert.equal(category(70),"VERY HIGH");
+});
+
+
+test("current BOM reflectivity palette has all 15 recovered classes",()=>{
+  assert.equal(SOURCE_PALETTES.reflectivityRgb.length,15);
+  assert.equal(classifyRgb([0,102,102],SOURCE_PALETTES.reflectivityRgb,0),7);
+  assert.equal(classifyRgb([40,0,0],SOURCE_PALETTES.reflectivityRgb,0),15);
+});
+
+test("Web Mercator segmentation georeferences a strong cell",()=>{
+  const width=12,height=12,c=new Uint8Array(width*height);
+  for(let r=4;r<7;r++) for(let col=4;col<7;col++) c[r*width+col]=12;
+  const result=segmentWebMercatorCategoryFrame({
+    categories:c,width,height,sourceId:"BOM-MOSAIC",
+    georef:{projection:"EPSG:3857",minX:16900000,maxX:17100000,minY:-3300000,maxY:-3100000},
+    thresholdCategory:7,minPixels:8,connectivity:8
+  });
+  assert.equal(result.retained_cell_count,1);
+  assert.equal(result.cells[0].maximum_category,12);
+  assert.ok(Number.isFinite(result.cells[0].centroid_longitude));
+  assert.ok(Number.isFinite(result.cells[0].centroid_latitude));
+  assert.ok(result.cells[0].sampled_area_km2>0);
 });
 
 console.log(`\n${passed} tests passed.`);

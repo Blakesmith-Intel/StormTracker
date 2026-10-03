@@ -4,11 +4,29 @@ export const REFLECTIVITY_CLASSES = Object.freeze({
   11: [52, 55], 12: [55, 58], 13: [58, 61], 14: [61, 64], 15: [64, null]
 });
 
-// The exact final source-image RGB tables from the lost repository were not fully recoverable.
-// Keep them explicit. Populate these arrays from verified Bureau source frames rather than guessing.
+// Current BOM public reflectivity colour table. The 15 RGB bands align exactly
+// with StormTracker's recovered dBZ category boundaries.
+export const BOM_REFLECTIVITY_RGB = Object.freeze([
+  { rgb:[245,245,255], value:1 },
+  { rgb:[180,180,255], value:2 },
+  { rgb:[120,120,255], value:3 },
+  { rgb:[20,20,255], value:4 },
+  { rgb:[0,216,195], value:5 },
+  { rgb:[0,150,144], value:6 },
+  { rgb:[0,102,102], value:7 },
+  { rgb:[255,255,0], value:8 },
+  { rgb:[255,200,0], value:9 },
+  { rgb:[255,150,0], value:10 },
+  { rgb:[255,100,0], value:11 },
+  { rgb:[255,0,0], value:12 },
+  { rgb:[200,0,0], value:13 },
+  { rgb:[120,0,0], value:14 },
+  { rgb:[40,0,0], value:15 }
+]);
+
 export const SOURCE_PALETTES = {
-  reflectivityRgb: [], // entries: { rgb:[r,g,b], value: category 1..15 }
-  dopplerRgb: []       // entries: { rgb:[r,g,b], value: signed categorical km/h }
+  reflectivityRgb: BOM_REFLECTIVITY_RGB,
+  dopplerRgb: [] // Restore only from a verified public Doppler source.
 };
 
 function distanceSq(a, b) {

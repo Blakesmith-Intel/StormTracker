@@ -1,6 +1,6 @@
 export class RadarWorkerClient {
   constructor() {
-    this.worker = new Worker(new URL("./workers/radar-worker.js", import.meta.url), { type: "module" });
+    this.worker = new Worker(new URL("./workers/radar-worker.js?v=live-bom-v1", import.meta.url), { type: "module" });
     this.nextId = 1;
     this.pending = new Map();
     this.worker.onmessage = event => {

@@ -1,13 +1,15 @@
-import { RadarWorkerClient } from "./worker-client.js";
+import { RadarWorkerClient } from "./worker-client.js?v=live-bom-v1";
 import { createCesiumView } from "./cesium-view.js?v=camera-lock-v3";
-import { SOURCE_PALETTES } from "./palette.js";
-import { reflectivityFromFile, reflectivityFromUrl } from "./radar-source.js";
+import { SOURCE_PALETTES } from "./palette.js?v=live-bom-v1";
+import { reflectivityFromFile, reflectivityFromUrl } from "./radar-source.js?v=live-bom-v1";
+import { loadLatestBomReflectivityMosaic } from "./bom-wmts.js?v=live-bom-v1";
 import { putState, getState, clearAll } from "./storage.js";
 
 const worker = new RadarWorkerClient();
 const view = createCesiumView("cesiumContainer");
 const $ = id => document.getElementById(id);
 let latestResult = null;
+let sourceMode = "none";
 
 function setStatus(text, kind="") {
   const el = $("status");
@@ -68,6 +70,7 @@ function syntheticFrame(step, observedUtc) {
 }
 
 async function runSyntheticDemo() {
+  sourceMode = "synthetic";
   setStatus("Running reconstructed browser regression demo…");
   await worker.reset();
   const end = Date.now();
@@ -80,6 +83,7 @@ async function runSyntheticDemo() {
 }
 
 async function loadCategoryJson(file) {
+  sourceMode = "manual";
   const data = JSON.parse(await file.text());
   if (!data.radarId || !data.observedUtc || !data.width || !data.height || !data.categories) {
     throw new Error("Category JSON requires radarId, observedUtc, width, height and categories.");
@@ -95,6 +99,7 @@ async function loadCategoryJson(file) {
 }
 
 async function loadImageFile(file) {
+  sourceMode = "manual";
   if (!SOURCE_PALETTES.reflectivityRgb.length) throw new Error("The exact Bureau reflectivity RGB table still needs calibration from a verified source frame. Use category JSON or the synthetic demo until that table is restored.");
   const decoded = await reflectivityFromFile(file,SOURCE_PALETTES.reflectivityRgb,0);
   const frame = {
@@ -106,6 +111,7 @@ async function loadImageFile(file) {
 }
 
 async function loadImageUrl() {
+  sourceMode = "manual";
   const url = $("imageUrl").value.trim();
   if (!url) throw new Error("Enter an HTTPS image URL.");
   if (!SOURCE_PALETTES.reflectivityRgb.length) throw new Error("Palette calibration is required before decoding live image pixels.");
@@ -114,9 +120,37 @@ async function loadImageUrl() {
   renderPanels(await worker.processFrameBucket({frames:[frame],referenceTime:frame.observedUtc}));
 }
 
+async function loadLiveBomReflectivity() {
+  setStatus("Loading latest public BOM reflectivity mosaic…");
+
+  if (sourceMode !== "bom-live") {
+    await worker.reset();
+    sourceMode = "bom-live";
+  }
+
+  const frame = await loadLatestBomReflectivityMosaic();
+
+  const result = await worker.processFrameBucket({
+    frames: [frame],
+    referenceTime: frame.observedUtc
+  });
+
+  renderPanels(result);
+
+  const meta = frame.sourceMetadata ?? {};
+  setStatus(
+    `Live BOM reflectivity ${frame.observedUtc}; ` +
+    `${meta.strongPixelCount ?? 0} pixels at ≥40 dBZ; ` +
+    `${result.active_track_ids?.length ?? 0} active storm tracks. ` +
+    `Source is the public 2-D BOM mosaic; true volumetric mode remains separate.`,
+    "ok"
+  );
+}
+
 $("demoButton").addEventListener("click", () => runSyntheticDemo().catch(e => setStatus(e.message,"error")));
+$("liveBomButton").addEventListener("click", () => loadLiveBomReflectivity().catch(e => setStatus(e.message,"error")));
 $("resetButton").addEventListener("click", async () => {
-  await worker.reset(); await clearAll().catch(()=>{}); latestResult=null;
+  await worker.reset(); await clearAll().catch(()=>{}); latestResult=null; sourceMode="none";
   view.render({tracks:[],active_track_ids:[]});
   $("trackRows").innerHTML=`<tr><td colspan="6" class="muted">No tracks yet.</td></tr>`;
   $("segmentationSummary").textContent="No frame processed.";

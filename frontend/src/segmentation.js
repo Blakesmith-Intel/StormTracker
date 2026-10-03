@@ -1,5 +1,7 @@
 import { gnomonicPixelToLonLat, pixelAreaM2 } from "./geo.js";
-import { REFLECTIVITY_CLASSES } from "./palette.js";
+import { REFLECTIVITY_CLASSES } from "./palette.js?v=live-bom-v1";
+
+const EARTH_RADIUS_M = 6378137;
 
 function neighbourOffsets(connectivity) {
   if (connectivity === 4) return [[-1,0],[1,0],[0,-1],[0,1]];
@@ -36,14 +38,17 @@ export function connectedComponents(mask, width, height, connectivity = 8) {
         queue[tail++] = ni;
       }
     }
+
     components.push(pixels);
     nextLabel++;
   }
+
   return { labels, components };
 }
 
 function thresholdCounts(values) {
   let d50 = 0, p50 = 0, d55 = 0, p55 = 0, d60 = 0, p60 = 0;
+
   for (const c of values) {
     if (c >= 11) d50++;
     if (c >= 10) p50++;
@@ -52,6 +57,7 @@ function thresholdCounts(values) {
     if (c >= 14) d60++;
     if (c >= 13) p60++;
   }
+
   return {
     definite_ge_50_pixel_count: d50,
     possible_ge_50_pixel_count: p50,
@@ -59,6 +65,124 @@ function thresholdCounts(values) {
     possible_ge_55_pixel_count: p55,
     definite_ge_60_pixel_count: d60,
     possible_ge_60_pixel_count: p60
+  };
+}
+
+function buildSegmentation({
+  categories,
+  width,
+  height,
+  sourceId,
+  thresholdCategory,
+  minPixels,
+  connectivity,
+  pixelPosition,
+  rowAreaM2,
+  limitations
+}) {
+  if (!(categories instanceof Uint8Array)) categories = Uint8Array.from(categories);
+  if (categories.length !== width * height) {
+    throw new Error("categories size does not match width*height");
+  }
+
+  const mask = new Uint8Array(categories.length);
+
+  for (let i = 0; i < categories.length; i++) {
+    mask[i] = categories[i] >= thresholdCategory ? 1 : 0;
+  }
+
+  const raw = connectedComponents(mask, width, height, connectivity);
+  const labels = new Uint16Array(categories.length);
+  const cells = [];
+  let nextCellId = 1;
+
+  for (const pixels of raw.components) {
+    if (pixels.length < minPixels) continue;
+
+    let totalArea = 0;
+    let lonWeighted = 0;
+    let latWeighted = 0;
+    let maxCategory = 0;
+    let sumCategory = 0;
+    let minLon = Infinity;
+    let maxLon = -Infinity;
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+
+    const cellCategories = new Uint8Array(pixels.length);
+
+    for (let k = 0; k < pixels.length; k++) {
+      const index = pixels[k];
+      const row = Math.floor(index / width);
+      const col = index - row * width;
+      const category = categories[index];
+      const pos = pixelPosition(row, col);
+      const area = rowAreaM2(row);
+
+      totalArea += area;
+      lonWeighted += pos.longitude * area;
+      latWeighted += pos.latitude * area;
+
+      maxCategory = Math.max(maxCategory, category);
+      sumCategory += category;
+
+      minLon = Math.min(minLon, pos.longitude);
+      maxLon = Math.max(maxLon, pos.longitude);
+      minLat = Math.min(minLat, pos.latitude);
+      maxLat = Math.max(maxLat, pos.latitude);
+
+      cellCategories[k] = category;
+      labels[index] = nextCellId;
+    }
+
+    const [dbzLower, dbzUpper] =
+      REFLECTIVITY_CLASSES[maxCategory] ?? [null, null];
+
+    cells.push({
+      local_cell_id: nextCellId,
+      pixel_count: pixels.length,
+      sampled_area_km2: totalArea / 1_000_000,
+      centroid_longitude:
+        totalArea > 0 ? lonWeighted / totalArea : (minLon + maxLon) / 2,
+      centroid_latitude:
+        totalArea > 0 ? latWeighted / totalArea : (minLat + maxLat) / 2,
+      maximum_category: maxCategory,
+      maximum_dbzh_lower_bound: dbzLower,
+      maximum_dbzh_upper_bound: dbzUpper,
+      mean_category: sumCategory / pixels.length,
+      min_longitude: minLon,
+      max_longitude: maxLon,
+      min_latitude: minLat,
+      max_latitude: maxLat,
+      ...thresholdCounts(cellCategories)
+    });
+
+    nextCellId++;
+  }
+
+  cells.sort(
+    (a, b) =>
+      b.maximum_category - a.maximum_category ||
+      b.sampled_area_km2 - a.sampled_area_km2 ||
+      a.local_cell_id - b.local_cell_id
+  );
+
+  return {
+    format: "StormTrackerBrowserSegmentationV1",
+    width,
+    height,
+    radar_id: sourceId,
+    configuration: {
+      threshold_category: thresholdCategory,
+      threshold_interpretation: "Category 7 and above: definite >=40 dBZ.",
+      min_pixels: minPixels,
+      connectivity
+    },
+    raw_component_count: raw.components.length,
+    retained_cell_count: cells.length,
+    cells,
+    labels,
+    limitations
   };
 }
 
@@ -71,96 +195,120 @@ export function segmentCategoryFrame({
   minPixels = 8,
   connectivity = 8
 }) {
-  if (!(categories instanceof Uint8Array)) categories = Uint8Array.from(categories);
-  if (categories.length !== width * height) throw new Error("categories size does not match width*height");
-
-  const mask = new Uint8Array(categories.length);
-  for (let i = 0; i < categories.length; i++) mask[i] = categories[i] >= thresholdCategory ? 1 : 0;
-  const raw = connectedComponents(mask, width, height, connectivity);
-  const labels = new Uint16Array(categories.length);
   const rowAreas = new Float64Array(height);
-  for (let row = 0; row < height; row++) rowAreas[row] = pixelAreaM2({ row, width, height, radar });
 
-  const cells = [];
-  let nextCellId = 1;
-
-  for (const pixels of raw.components) {
-    if (pixels.length < minPixels) continue;
-    let totalArea = 0, lonWeighted = 0, latWeighted = 0;
-    let maxCategory = 0, sumCategory = 0;
-    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    const cellCategories = new Uint8Array(pixels.length);
-
-    for (let k = 0; k < pixels.length; k++) {
-      const index = pixels[k];
-      const row = Math.floor(index / width);
-      const col = index - row * width;
-      const category = categories[index];
-      const pos = gnomonicPixelToLonLat({ row, col, width, height, radar });
-      const area = rowAreas[row];
-      totalArea += area;
-      lonWeighted += pos.longitude * area;
-      latWeighted += pos.latitude * area;
-      maxCategory = Math.max(maxCategory, category);
-      sumCategory += category;
-      minLon = Math.min(minLon, pos.longitude); maxLon = Math.max(maxLon, pos.longitude);
-      minLat = Math.min(minLat, pos.latitude); maxLat = Math.max(maxLat, pos.latitude);
-      cellCategories[k] = category;
-      labels[index] = nextCellId;
-    }
-
-    const [dbzLower, dbzUpper] = REFLECTIVITY_CLASSES[maxCategory] ?? [null, null];
-    cells.push({
-      local_cell_id: nextCellId,
-      pixel_count: pixels.length,
-      sampled_area_km2: totalArea / 1_000_000,
-      centroid_longitude: totalArea > 0 ? lonWeighted / totalArea : (minLon + maxLon) / 2,
-      centroid_latitude: totalArea > 0 ? latWeighted / totalArea : (minLat + maxLat) / 2,
-      maximum_category: maxCategory,
-      maximum_dbzh_lower_bound: dbzLower,
-      maximum_dbzh_upper_bound: dbzUpper,
-      mean_category: sumCategory / pixels.length,
-      min_longitude: minLon,
-      max_longitude: maxLon,
-      min_latitude: minLat,
-      max_latitude: maxLat,
-      ...thresholdCounts(cellCategories)
+  for (let row = 0; row < height; row++) {
+    rowAreas[row] = pixelAreaM2({
+      row,
+      width,
+      height,
+      radar
     });
-    nextCellId++;
   }
 
-  cells.sort((a, b) => b.maximum_category - a.maximum_category || b.sampled_area_km2 - a.sampled_area_km2 || a.local_cell_id - b.local_cell_id);
-
-  return {
-    format: "StormTrackerBrowserSegmentationV1",
+  return buildSegmentation({
+    categories,
     width,
     height,
-    radar_id: radar.id,
-    configuration: {
-      threshold_category: thresholdCategory,
-      threshold_interpretation: "Category 7 and above: definite >=40 dBZ.",
-      min_pixels: minPixels,
-      connectivity
-    },
-    raw_component_count: raw.components.length,
-    retained_cell_count: cells.length,
-    cells,
-    labels,
+    sourceId: radar.id,
+    thresholdCategory,
+    minPixels,
+    connectivity,
+    pixelPosition: (row, col) =>
+      gnomonicPixelToLonLat({
+        row,
+        col,
+        width,
+        height,
+        radar
+      }),
+    rowAreaM2: row => rowAreas[row],
     limitations: [
       "This is live 2-D segmentation of a radar image, not a volumetric radar object.",
       "Reflectivity is categorical; strongest dBZ is an interval bound, not a continuous measurement.",
       "Sampled area is derived from the radar projection and is an observed raster footprint, not physical cloud area."
     ]
+  });
+}
+
+function inverseWebMercator(x, y) {
+  return {
+    longitude: x / EARTH_RADIUS_M * 180 / Math.PI,
+    latitude:
+      (2 * Math.atan(Math.exp(y / EARTH_RADIUS_M)) - Math.PI / 2) *
+      180 / Math.PI
   };
+}
+
+export function segmentWebMercatorCategoryFrame({
+  categories,
+  width,
+  height,
+  georef,
+  sourceId = "BOM-MOSAIC",
+  thresholdCategory = 7,
+  minPixels = 8,
+  connectivity = 8
+}) {
+  if (georef?.projection !== "EPSG:3857") {
+    throw new Error("Web Mercator segmentation requires EPSG:3857 georef.");
+  }
+
+  const { minX, maxX, minY, maxY } = georef;
+
+  if (![minX, maxX, minY, maxY].every(Number.isFinite)) {
+    throw new Error("Invalid EPSG:3857 georeference.");
+  }
+
+  const dx = (maxX - minX) / width;
+  const dy = (maxY - minY) / height;
+  const rowAreas = new Float64Array(height);
+  const dLonRad = dx / EARTH_RADIUS_M;
+
+  for (let row = 0; row < height; row++) {
+    const yNorth = maxY - row * dy;
+    const ySouth = maxY - (row + 1) * dy;
+    const latNorth = inverseWebMercator(0, yNorth).latitude * Math.PI / 180;
+    const latSouth = inverseWebMercator(0, ySouth).latitude * Math.PI / 180;
+
+    rowAreas[row] =
+      EARTH_RADIUS_M * EARTH_RADIUS_M *
+      Math.abs(dLonRad) *
+      Math.abs(Math.sin(latNorth) - Math.sin(latSouth));
+  }
+
+  return buildSegmentation({
+    categories,
+    width,
+    height,
+    sourceId,
+    thresholdCategory,
+    minPixels,
+    connectivity,
+    pixelPosition: (row, col) => {
+      const x = minX + (col + 0.5) * dx;
+      const y = maxY - (row + 0.5) * dy;
+      return inverseWebMercator(x, y);
+    },
+    rowAreaM2: row => rowAreas[row],
+    limitations: [
+      "This is live 2-D segmentation of the Bureau public reflectivity mosaic, not a measured volumetric storm object.",
+      "The Bureau mosaic may combine observations from multiple radars; BOM-MOSAIC is therefore a source label, not an individual radar identity.",
+      "Reflectivity is categorical; strongest dBZ is an interval bound, not a continuous measurement.",
+      "True measured 3-D mode requires volumetric radar sweeps; StormTracker keeps that separate from live 2-D processing."
+    ]
+  });
 }
 
 export function valuesForLabel(values, labels, wantedLabel, nodata = null) {
   const out = [];
+
   for (let i = 0; i < labels.length; i++) {
     if (labels[i] !== wantedLabel) continue;
     const value = values[i];
     if (nodata !== null && value === nodata) continue;
     out.push(value);
   }
+
   return out;
 }

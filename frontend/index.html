@@ -29,6 +29,15 @@
     </section>
 
     <section class="card">
+      <h2>Live public BOM reflectivity</h2>
+      <button id="liveBomButton">Load latest SEQ reflectivity</button>
+      <div class="small muted" style="margin-top:8px">
+        Uses the Bureau public observed reflectivity mosaic around Gympie, Marburg and Mt Stapylton.
+        This is live 2-D dBZ data. It is not a measured volumetric radar scan.
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Frame input</h2>
       <label>Radar</label>
       <select id="radarSelect">
@@ -38,12 +47,12 @@
       </select>
       <label>Category JSON (works now)</label>
       <input id="categoryFile" type="file" accept="application/json,.json">
-      <label>Raw radar image (after RGB palette calibration)</label>
+      <label>Raw reflectivity image</label>
       <input id="imageFile" type="file" accept="image/png,image/gif,image/webp">
-      <label>HTTPS image URL (requires CORS + calibrated palette)</label>
+      <label>HTTPS reflectivity image URL (requires CORS)</label>
       <input id="imageUrl" type="url" placeholder="https://…">
       <button id="loadUrlButton" style="margin-top:7px">Load URL</button>
-      <div class="small muted" style="margin-top:8px">The exact final RGB lookup table was one of the unrecoverable source-specific files. The decoder is present but deliberately refuses to guess until calibrated from a verified Bureau frame.</div>
+      <div class="small muted" style="margin-top:8px">The current BOM reflectivity colour table is restored. Doppler colours remain deliberately unset until verified from a current public source.</div>
     </section>
 
     <section class="card">
@@ -64,6 +73,6 @@
   </aside>
   <main class="map"><div id="cesiumContainer"></div></main>
 </div>
-<script type="module" src="./src/app.js?v=camera-lock-v3"></script>
+<script type="module" src="./src/app.js?v=live-bom-v1"></script>
 </body>
 </html>

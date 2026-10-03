@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+<title>
+  StormTracker — Doppler Intake Diagnostic
+</title>
+
+<style>
+  * {
+    box-sizing:border-box;
+  }
+
+  body {
+    margin:0;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:
+      Inter,
+      system-ui,
+      sans-serif;
+  }
+
+  main {
+    max-width:1100px;
+    margin:0 auto;
+    padding:18px;
+  }
+
+  h1 {
+    margin:0 0 4px;
+  }
+
+  .note {
+    color:#a9bbc4;
+    line-height:1.45;
+    margin-bottom:14px;
+  }
+
+  .controls {
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+
+  button {
+    padding:9px 12px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+  }
+
+  .card {
+    margin-bottom:12px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+    padding:12px;
+  }
+
+  #images {
+    display:grid;
+    grid-template-columns:
+      repeat(
+        auto-fit,
+        minmax(290px,1fr)
+      );
+    gap:12px;
+  }
+
+  .image-card canvas {
+    width:100%;
+    height:auto;
+    image-rendering:pixelated;
+    background:#000;
+  }
+
+  .metrics {
+    display:grid;
+    grid-template-columns:
+      150px 1fr;
+    gap:3px 8px;
+    font-size:12px;
+    margin-top:8px;
+  }
+
+  .metrics span:nth-child(odd) {
+    color:#9fb2bc;
+  }
+
+  .palette {
+    display:grid;
+    grid-template-columns:
+      repeat(
+        auto-fill,
+        minmax(150px,1fr)
+      );
+    gap:5px;
+    margin-top:8px;
+  }
+
+  .swatch {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:10px;
+  }
+
+  .colour {
+    width:18px;
+    height:12px;
+    border:1px solid rgba(255,255,255,.35);
+  }
+
+  #status {
+    white-space:pre-wrap;
+    font-family:
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+    font-size:11px;
+    line-height:1.45;
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>
+    StormTracker Doppler intake diagnostic
+  </h1>
+
+  <div class="note">
+    Raw public Bureau Doppler imagery only. This page does not yet assign
+    velocity values to colours and does not feed Doppler into storm identity,
+    motion or the inferred 3-D model.
+  </div>
+
+  <div class="controls">
+    <button data-radar="08">
+      Load Gympie 08
+    </button>
+
+    <button data-radar="50">
+      Load Marburg 50
+    </button>
+
+    <button data-radar="66">
+      Load Mt Stapylton 66
+    </button>
+
+    <button id="loadAll">
+      Load all three
+    </button>
+  </div>
+
+  <div class="card">
+    <strong>Status</strong>
+    <div id="status">
+      Ready.
+    </div>
+  </div>
+
+  <div id="images"></div>
+</main>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js";
+
+const images =
+  document.getElementById(
+    "images"
+  );
+
+const status =
+  document.getElementById(
+    "status"
+  );
+
+function colourCss(rgb) {
+  return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+}
+
+async function loadOne(
+  radarId
+) {
+  status.textContent =
+    `Loading radar ${radarId}…`;
+
+  const result =
+    await loadDopplerDiagnostic(
+      radarId
+    );
+
+  const existing =
+    document.getElementById(
+      `radar-${radarId}`
+    );
+
+  if (existing) {
+    existing.remove();
+  }
+
+  const card =
+    document.createElement(
+      "section"
+    );
+
+  card.className =
+    "card image-card";
+
+  card.id =
+    `radar-${radarId}`;
+
+  const heading =
+    document.createElement(
+      "h2"
+    );
+
+  heading.textContent =
+    `${radarId} — ${result.product}`;
+
+  card.appendChild(
+    heading
+  );
+
+  card.appendChild(
+    result.canvas
+  );
+
+  const metrics =
+    document.createElement(
+      "div"
+    );
+
+  metrics.className =
+    "metrics";
+
+  metrics.innerHTML = `
+    <span>Image size</span>
+    <strong>${result.width} × ${result.height}</strong>
+
+    <span>Content type</span>
+    <strong>${result.contentType ?? "—"}</strong>
+
+    <span>Last-Modified</span>
+    <strong>${result.lastModified ?? "not supplied"}</strong>
+
+    <span>Opaque pixels</span>
+    <strong>${result.audit.opaque.toLocaleString()}</strong>
+
+    <span>Transparent pixels</span>
+    <strong>${result.audit.transparent.toLocaleString()}</strong>
+
+    <span>Unique opaque RGBs</span>
+    <strong>${result.audit.uniqueOpaqueColours.toLocaleString()}</strong>
+  `;
+
+  card.appendChild(
+    metrics
+  );
+
+  const paletteTitle =
+    document.createElement(
+      "h3"
+    );
+
+  paletteTitle.textContent =
+    "Most common raw RGB values";
+
+  card.appendChild(
+    paletteTitle
+  );
+
+  const palette =
+    document.createElement(
+      "div"
+    );
+
+  palette.className =
+    "palette";
+
+  for (
+    const item
+    of result.audit.colours.slice(
+      0,
+      40
+    )
+  ) {
+    const swatch =
+      document.createElement(
+        "div"
+      );
+
+    swatch.className =
+      "swatch";
+
+    const colour =
+      document.createElement(
+        "span"
+      );
+
+    colour.className =
+      "colour";
+
+    colour.style.background =
+      colourCss(
+        item.rgb
+      );
+
+    const label =
+      document.createElement(
+        "span"
+      );
+
+    label.textContent =
+      `${item.rgb.join(",")} — ${item.count}`;
+
+    swatch.append(
+      colour,
+      label
+    );
+
+    palette.appendChild(
+      swatch
+    );
+  }
+
+  card.appendChild(
+    palette
+  );
+
+  images.prepend(
+    card
+  );
+
+  status.textContent =
+    `DOPPLER RAW INTAKE PASS — radar ${radarId}; ` +
+    `${result.width}x${result.height}; ` +
+    `${result.audit.uniqueOpaqueColours} opaque RGB values.`;
+
+  return result;
+}
+
+for (
+  const button
+  of document.querySelectorAll(
+    "[data-radar]"
+  )
+) {
+  button.addEventListener(
+    "click",
+    () =>
+      loadOne(
+        button.dataset.radar
+      ).catch(
+        error => {
+          console.error(
+            error
+          );
+
+          status.textContent =
+            `ERROR — ${error.message}`;
+        }
+      )
+  );
+}
+
+document
+  .getElementById(
+    "loadAll"
+  )
+  .addEventListener(
+    "click",
+    async () => {
+      try {
+        for (
+          const radarId
+          of ["08","50","66"]
+        ) {
+          await loadOne(
+            radarId
+          );
+        }
+
+        status.textContent =
+          "DOPPLER RAW INTAKE PASS — all three active StormTracker radars loaded.";
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        status.textContent =
+          `ERROR — ${error.message}`;
+      }
+    }
+  );
+</script>
+</body>
+</html>

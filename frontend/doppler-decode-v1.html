@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+<title>
+  StormTracker — Doppler Decoder V1
+</title>
+
+<style>
+  * {
+    box-sizing:border-box;
+  }
+
+  body {
+    margin:0;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:
+      Inter,
+      system-ui,
+      sans-serif;
+  }
+
+  main {
+    max-width:1400px;
+    margin:0 auto;
+    padding:18px;
+  }
+
+  h1 {
+    margin:0 0 4px;
+  }
+
+  .note {
+    max-width:1100px;
+    color:#a9bbc4;
+    line-height:1.45;
+  }
+
+  button {
+    padding:9px 12px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+    margin:10px 0;
+  }
+
+  .card {
+    margin-top:12px;
+    padding:12px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+  }
+
+  #status {
+    white-space:pre-wrap;
+    font:
+      11px/1.45
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+  }
+
+  .images {
+    display:grid;
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+    gap:12px;
+  }
+
+  @media (
+    max-width:900px
+  ) {
+    .images {
+      grid-template-columns:
+        1fr;
+    }
+  }
+
+  .images canvas {
+    width:100%;
+    height:auto;
+    background:#000;
+    image-rendering:pixelated;
+  }
+
+  .meta {
+    display:grid;
+    grid-template-columns:190px 1fr;
+    gap:4px 8px;
+    font-size:12px;
+    margin-bottom:8px;
+  }
+
+  .meta span:nth-child(odd) {
+    color:#9fb2bc;
+  }
+
+  .mapping {
+    display:grid;
+    grid-template-columns:
+      repeat(
+        auto-fill,
+        minmax(
+          135px,
+          1fr
+        )
+      );
+    gap:5px;
+    margin-top:8px;
+  }
+
+  .mapitem {
+    display:grid;
+    grid-template-columns:24px 1fr;
+    gap:6px;
+    align-items:center;
+    font-size:10px;
+  }
+
+  .swatch {
+    width:24px;
+    height:14px;
+    border:
+      1px solid
+      rgba(
+        255,
+        255,
+        255,
+        .4
+      );
+  }
+
+  .warning {
+    margin-top:9px;
+    padding:8px;
+    border-left:3px solid #d6aa3a;
+    background:#182129;
+    color:#d8e2e7;
+    font-size:11px;
+    line-height:1.45;
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>
+    StormTracker exact Doppler decoder V1
+  </h1>
+
+  <p class="note">
+    The live Bureau footer visibly defines a 19-step scale from −70 to
+    +70 km/h. This diagnostic extracts all 19 exact RGB swatches from the
+    same GIF, maps them to that printed scale, and then redraws only pixels
+    that exactly match a Doppler velocity colour. Reflectivity tracking and
+    the 3-D model are untouched.
+  </p>
+
+  <button id="loadAll">
+    Decode 66 / 50 / 08
+  </button>
+
+  <section class="card">
+    <strong>Status</strong>
+    <div id="status">
+      Ready.
+    </div>
+  </section>
+
+  <div id="results"></div>
+</main>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js?v=decoder-v1";
+
+import {
+  decodeBureauDopplerPanel,
+  locateExactBureauVelocityPalette
+} from "./src/bom-doppler-decoder-v1.js?v=decoder-v1";
+
+const status =
+  document.getElementById(
+    "status"
+  );
+
+const results =
+  document.getElementById(
+    "results"
+  );
+
+function sourceImageData(
+  canvas
+) {
+  return canvas
+    .getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    )
+    .getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+}
+
+function rgbCss(
+  rgb
+) {
+  return `rgb(${rgb.join(",")})`;
+}
+
+function decodedCanvas(
+  sourceImageData,
+  palette,
+  decoded
+) {
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+  canvas.width =
+    decoded.panelSize;
+
+  canvas.height =
+    decoded.panelSize;
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+  const output =
+    context.createImageData(
+      decoded.panelSize,
+      decoded.panelSize
+    );
+
+  const velocityToRgb =
+    new Map(
+      palette.swatches.map(
+        swatch => [
+          swatch.velocity_kmh,
+          swatch.rgb
+        ]
+      )
+    );
+
+  for (
+    let index = 0;
+    index < decoded.velocities.length;
+    index++
+  ) {
+    const velocity =
+      decoded.velocities[
+        index
+      ];
+
+    if (
+      Number.isNaN(
+        velocity
+      )
+    ) {
+      output.data[
+        index * 4 + 3
+      ] =
+        255;
+
+      continue;
+    }
+
+    const rgb =
+      velocityToRgb.get(
+        velocity
+      );
+
+    output.data[
+      index * 4
+    ] =
+      rgb[0];
+
+    output.data[
+      index * 4 + 1
+    ] =
+      rgb[1];
+
+    output.data[
+      index * 4 + 2
+    ] =
+      rgb[2];
+
+    output.data[
+      index * 4 + 3
+    ] =
+      255;
+  }
+
+  context.putImageData(
+    output,
+    0,
+    0
+  );
+
+  return canvas;
+}
+
+async function inspect(
+  radarId
+) {
+  status.textContent =
+    `Decoding radar ${radarId}…`;
+
+  const source =
+    await loadDopplerDiagnostic(
+      radarId
+    );
+
+  const imageData =
+    sourceImageData(
+      source.canvas
+    );
+
+  const palette =
+    locateExactBureauVelocityPalette(
+      imageData
+    );
+
+  const decoded =
+    decodeBureauDopplerPanel(
+      imageData,
+      palette
+    );
+
+  const card =
+    document.createElement(
+      "section"
+    );
+
+  card.className =
+    "card";
+
+  const title =
+    document.createElement(
+      "h2"
+    );
+
+  title.textContent =
+    `${radarId} — ${source.product}`;
+
+  card.appendChild(
+    title
+  );
+
+  const meta =
+    document.createElement(
+      "div"
+    );
+
+  meta.className =
+    "meta";
+
+  meta.innerHTML = `
+    <span>Palette swatches</span>
+    <strong>${palette.swatches.length}</strong>
+
+    <span>Palette row</span>
+    <strong>y=${palette.y}</strong>
+
+    <span>Decoded velocity pixels</span>
+    <strong>${decoded.validPixelCount.toLocaleString()}</strong>
+
+    <span>Strongest toward radar</span>
+    <strong>${
+      decoded.minimumVelocityKmh == null
+        ? "none"
+        : `${decoded.minimumVelocityKmh} km/h`
+    }</strong>
+
+    <span>Strongest away from radar</span>
+    <strong>${
+      decoded.maximumVelocityKmh == null
+        ? "none"
+        : `${decoded.maximumVelocityKmh} km/h`
+    }</strong>
+
+    <span>Observed radial span</span>
+    <strong>${
+      decoded.radialVelocitySpanKmh == null
+        ? "none"
+        : `${decoded.radialVelocitySpanKmh} km/h`
+    }</strong>
+  `;
+
+  card.appendChild(
+    meta
+  );
+
+  const images =
+    document.createElement(
+      "div"
+    );
+
+  images.className =
+    "images";
+
+  const originalPanel =
+    document.createElement(
+      "div"
+    );
+
+  const originalTitle =
+    document.createElement(
+      "h3"
+    );
+
+  originalTitle.textContent =
+    "Original public Bureau Doppler";
+
+  originalPanel.appendChild(
+    originalTitle
+  );
+
+  const originalCanvas =
+    document.createElement(
+      "canvas"
+    );
+
+  originalCanvas.width =
+    decoded.panelSize;
+
+  originalCanvas.height =
+    decoded.panelSize;
+
+  originalCanvas
+    .getContext(
+      "2d"
+    )
+    .drawImage(
+      source.canvas,
+      0,
+      0,
+      decoded.panelSize,
+      decoded.panelSize,
+      0,
+      0,
+      decoded.panelSize,
+      decoded.panelSize
+    );
+
+  originalPanel.appendChild(
+    originalCanvas
+  );
+
+  const decodedPanel =
+    document.createElement(
+      "div"
+    );
+
+  const decodedTitle =
+    document.createElement(
+      "h3"
+    );
+
+  decodedTitle.textContent =
+    "Exact palette matches only";
+
+  decodedPanel.appendChild(
+    decodedTitle
+  );
+
+  decodedPanel.appendChild(
+    decodedCanvas(
+      imageData,
+      palette,
+      decoded
+    )
+  );
+
+  images.append(
+    originalPanel,
+    decodedPanel
+  );
+
+  card.appendChild(
+    images
+  );
+
+  const mappingTitle =
+    document.createElement(
+      "h3"
+    );
+
+  mappingTitle.textContent =
+    "Recovered 19-step RGB → radial velocity mapping";
+
+  card.appendChild(
+    mappingTitle
+  );
+
+  const mapping =
+    document.createElement(
+      "div"
+    );
+
+  mapping.className =
+    "mapping";
+
+  for (
+    const swatch
+    of palette.swatches
+  ) {
+    const item =
+      document.createElement(
+        "div"
+      );
+
+    item.className =
+      "mapitem";
+
+    const colour =
+      document.createElement(
+        "span"
+      );
+
+    colour.className =
+      "swatch";
+
+    colour.style.background =
+      rgbCss(
+        swatch.rgb
+      );
+
+    const label =
+      document.createElement(
+        "span"
+      );
+
+    label.textContent =
+      `${swatch.velocity_kmh > 0 ? "+" : ""}` +
+      `${swatch.velocity_kmh} km/h — ` +
+      `${swatch.rgb.join(",")}`;
+
+    item.append(
+      colour,
+      label
+    );
+
+    mapping.appendChild(
+      item
+    );
+  }
+
+  card.appendChild(
+    mapping
+  );
+
+  const warning =
+    document.createElement(
+      "div"
+    );
+
+  warning.className =
+    "warning";
+
+  warning.textContent =
+    "These are radial velocities toward/away from the radar. They are not " +
+    "storm-motion vectors or total wind speed. This page is still a decoder " +
+    "validation step and does not yet alter STxxxx identities.";
+
+  card.appendChild(
+    warning
+  );
+
+  results.appendChild(
+    card
+  );
+
+  return {
+    palette,
+    decoded
+  };
+}
+
+document
+  .getElementById(
+    "loadAll"
+  )
+  .addEventListener(
+    "click",
+    async () => {
+      try {
+        results.innerHTML =
+          "";
+
+        const summary = [];
+
+        for (
+          const radarId
+          of ["66","50","08"]
+        ) {
+          const {
+            palette,
+            decoded
+          } =
+            await inspect(
+              radarId
+            );
+
+          summary.push(
+            `${radarId}:19 swatches,` +
+            `${decoded.validPixelCount} decoded`
+          );
+        }
+
+        status.textContent =
+          "DOPPLER DECODER V1: PASS — " +
+          summary.join(" | ") +
+          ". Decoder validated visually before storm-object integration.";
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        status.textContent =
+          `ERROR — ${error.message}`;
+      }
+    }
+  );
+</script>
+</body>
+</html>

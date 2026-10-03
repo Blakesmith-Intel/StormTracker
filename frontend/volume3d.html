@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Measured AURA 3-D Volume</title>
+  <title>StormTracker — Measured AURA 3-D Storm Tracking</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
   <script>
     window.CESIUM_BASE_URL =
@@ -72,6 +72,17 @@
       line-height:1.4;
     }
     .metric span:nth-child(odd) { color:#9fb1bb; }
+    .storm-row {
+      display:grid;
+      grid-template-columns:58px 65px 1fr 60px;
+      gap:4px;
+      padding:4px 0;
+      border-top:1px solid #2a3942;
+      align-items:center;
+    }
+    .storm-row:first-child { border-top:0; }
+    .storm-row span { color:#b8c6ce; }
+    .muted { color:#91a3ad; }
     #status { font-size:11px; line-height:1.45; }
     #legend {
       position:absolute;
@@ -109,7 +120,7 @@
 <div id="app">
   <aside>
     <h1>StormTracker 3-D</h1>
-    <div class="sub">Mt Stapylton • historical measured AURA volume</div>
+    <div class="sub">Mt Stapylton • measured AURA 3-D storm objects + tracking • V2</div>
 
     <section class="card measured">
       <strong>Measured volumetric radar.</strong>
@@ -149,6 +160,27 @@
     </section>
 
     <section class="card">
+      <h2>Measured 3-D storm objects</h2>
+
+      <label style="display:flex;align-items:center;gap:7px">
+        <input id="showStormObjects" type="checkbox" checked>
+        Show segmented storm objects and track trails
+      </label>
+
+      <label style="display:flex;align-items:center;gap:7px">
+        <input id="showEnvelopes" type="checkbox" checked>
+        Show sampled 3-D object envelopes
+      </label>
+
+      <div class="metric" style="margin-top:8px">
+        <span>Current objects</span><strong id="stormObjectCount">0</strong>
+        <span>Persistent tracks ≥3 scans</span><strong id="persistentTrackCount">—</strong>
+      </div>
+
+      <div id="activeStormObjects" style="margin-top:8px;font-size:10px"></div>
+    </section>
+
+    <section class="card">
       <h2>Current measured volume</h2>
       <div class="metric">
         <span>Scan</span><strong id="scanTime">—</strong>
@@ -185,6 +217,6 @@
   </main>
 </div>
 
-<script type="module" src="./src/volume3d-v1.js"></script>
+<script type="module" src="./src/volume3d-v2.js"></script>
 </body>
 </html>

@@ -1,0 +1,3226 @@
+{
+  "format": "StormTrackerEmpiricalVerticalReflectivityModelV1",
+  "scientific_status": "prototype-historical-single-event-calibration",
+  "interpretation": "Empirical vertical reflectivity profiles conditioned only on a low-level 2-D reflectivity proxy. This model is for validation and development, not yet a general operational storm-volume model.",
+  "low_level_proxy": {
+    "definition": "maximum measured DBZH at voxel altitudes <=1500 m AMSL",
+    "note": "This is a historical pseudo-live proxy and is not claimed to reproduce the Bureau operational mosaic algorithm."
+  },
+  "validation_radius_m": 120000.0,
+  "occupancy_threshold": 0.35,
+  "profiles": [
+    {
+      "low_level_dbz_min": 20.0,
+      "low_level_dbz_max": 25.0,
+      "training_columns": 14767,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.1570393443107605,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.47491025924682617,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.6936412453651428,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": 0.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.4878445267677307,
+          "median_delta_dbz": 1.5,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 4.0
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.44105100631713867,
+          "median_delta_dbz": 2.5,
+          "p25_delta_dbz": 0.0,
+          "p75_delta_dbz": 6.0
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.3800365626811981,
+          "median_delta_dbz": 3.5,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 8.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.3471253514289856,
+          "median_delta_dbz": 5.5,
+          "p25_delta_dbz": 1.5,
+          "p75_delta_dbz": 10.0
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.2740570306777954,
+          "median_delta_dbz": 4.0,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 8.0
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.2672174572944641,
+          "median_delta_dbz": 3.5,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 7.0
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.24805308878421783,
+          "median_delta_dbz": 3.0,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 6.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.23694725334644318,
+          "median_delta_dbz": 3.0,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 5.5
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.22022075951099396,
+          "median_delta_dbz": 3.0,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 6.0
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.18182434141635895,
+          "median_delta_dbz": 2.5,
+          "p25_delta_dbz": 0.0,
+          "p75_delta_dbz": 5.0
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.1516895741224289,
+          "median_delta_dbz": 1.5,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 4.0
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.113157719373703,
+          "median_delta_dbz": 1.0,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 4.0
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.0837678611278534,
+          "median_delta_dbz": 1.0,
+          "p25_delta_dbz": -1.0,
+          "p75_delta_dbz": 3.5
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.06114986166357994,
+          "median_delta_dbz": 0.5,
+          "p25_delta_dbz": -1.0,
+          "p75_delta_dbz": 3.5
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.04191778972744942,
+          "median_delta_dbz": 1.0,
+          "p25_delta_dbz": -1.0,
+          "p75_delta_dbz": 3.0
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.03135369345545769,
+          "median_delta_dbz": 0.5,
+          "p25_delta_dbz": -1.0,
+          "p75_delta_dbz": 3.5
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.02241484448313713,
+          "median_delta_dbz": 0.5,
+          "p25_delta_dbz": -1.5,
+          "p75_delta_dbz": 4.75
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.016117017716169357,
+          "median_delta_dbz": 2.5,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 10.5
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.009683754295110703,
+          "median_delta_dbz": 4.0,
+          "p25_delta_dbz": 0.0,
+          "p75_delta_dbz": 11.25
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.005620640702545643,
+          "median_delta_dbz": 8.0,
+          "p25_delta_dbz": -0.25,
+          "p75_delta_dbz": 16.5
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.0033859279938042164,
+          "median_delta_dbz": 13.25,
+          "p25_delta_dbz": 1.625,
+          "p75_delta_dbz": 19.375
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.0027764609549194574,
+          "median_delta_dbz": 12.5,
+          "p25_delta_dbz": 1.5,
+          "p75_delta_dbz": 20.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.0023701495956629515,
+          "median_delta_dbz": 11.5,
+          "p25_delta_dbz": -0.25,
+          "p75_delta_dbz": 15.25
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.0014898083172738552,
+          "median_delta_dbz": 11.0,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 15.75
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.0011512155178934336,
+          "median_delta_dbz": 6.0,
+          "p25_delta_dbz": 2.0,
+          "p75_delta_dbz": 14.5
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.000609467038884759,
+          "median_delta_dbz": 1.5,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 11.0
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.00013543711975216866,
+          "median_delta_dbz": 15.25,
+          "p25_delta_dbz": 14.375,
+          "p75_delta_dbz": 16.125
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 25.0,
+      "low_level_dbz_max": 30.0,
+      "training_columns": 14173,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.2820150852203369,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.7332956790924072,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.8326395153999329,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -2.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.7126225829124451,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 2.0
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.6460170745849609,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 3.5
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.5305157899856567,
+          "median_delta_dbz": 0.5,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 5.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.46066462993621826,
+          "median_delta_dbz": 2.5,
+          "p25_delta_dbz": -2.0,
+          "p75_delta_dbz": 7.5
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.3687998354434967,
+          "median_delta_dbz": 0.5,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 4.75
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.332180917263031,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -3.5,
+          "p75_delta_dbz": 3.0
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.29753756523132324,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -4.0,
+          "p75_delta_dbz": 2.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.2815917730331421,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 1.0
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.24574895203113556,
+          "median_delta_dbz": -2.0,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 1.0
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.21371622383594513,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.17434558272361755,
+          "median_delta_dbz": -3.0,
+          "p25_delta_dbz": -5.0,
+          "p75_delta_dbz": -1.0
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.133987158536911,
+          "median_delta_dbz": -3.5,
+          "p25_delta_dbz": -5.5,
+          "p75_delta_dbz": -1.0
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.09207648038864136,
+          "median_delta_dbz": -4.0,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": -1.5
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.06759331375360489,
+          "median_delta_dbz": -4.0,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": -1.5
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.049954138696193695,
+          "median_delta_dbz": -4.5,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": -2.0
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.03471389412879944,
+          "median_delta_dbz": -4.5,
+          "p25_delta_dbz": -6.5,
+          "p75_delta_dbz": -2.0
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.02314259484410286,
+          "median_delta_dbz": -4.5,
+          "p25_delta_dbz": -6.5,
+          "p75_delta_dbz": -1.5
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.015169688500463963,
+          "median_delta_dbz": -4.0,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": 2.5
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.01008960697799921,
+          "median_delta_dbz": -2.0,
+          "p25_delta_dbz": -5.75,
+          "p75_delta_dbz": 8.5
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.005926762241870165,
+          "median_delta_dbz": 0.75,
+          "p25_delta_dbz": -5.5,
+          "p75_delta_dbz": 10.0
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.0035278345458209515,
+          "median_delta_dbz": 7.75,
+          "p25_delta_dbz": 0.5,
+          "p75_delta_dbz": 15.375
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.0032456079497933388,
+          "median_delta_dbz": 6.75,
+          "p25_delta_dbz": -1.125,
+          "p75_delta_dbz": 14.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.0021872573997825384,
+          "median_delta_dbz": 3.0,
+          "p25_delta_dbz": -4.0,
+          "p75_delta_dbz": 9.5
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.0012700204970315099,
+          "median_delta_dbz": 4.75,
+          "p25_delta_dbz": -0.75,
+          "p75_delta_dbz": 12.375
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.0011994637316092849,
+          "median_delta_dbz": 3.5,
+          "p25_delta_dbz": -2.0,
+          "p75_delta_dbz": 9.0
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.0006350102485157549,
+          "median_delta_dbz": 3.0,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 9.0
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 7.055669266264886e-05,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": 0.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 30.0,
+      "low_level_dbz_max": 35.0,
+      "training_columns": 14191,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.36600661277770996,
+          "median_delta_dbz": -1.0,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.8431400060653687,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -3.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9060672521591187,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.8229159116744995,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 1.0
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.7738707661628723,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -5.0,
+          "p75_delta_dbz": 1.5
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.6567542552947998,
+          "median_delta_dbz": -1.0,
+          "p25_delta_dbz": -5.0,
+          "p75_delta_dbz": 2.5
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.5366781949996948,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 5.0
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.4563455581665039,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -6.5,
+          "p75_delta_dbz": 1.5
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.3948276937007904,
+          "median_delta_dbz": -4.5,
+          "p25_delta_dbz": -7.5,
+          "p75_delta_dbz": -1.0
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.3514903783798218,
+          "median_delta_dbz": -5.0,
+          "p25_delta_dbz": -8.0,
+          "p75_delta_dbz": -2.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.32421958446502686,
+          "median_delta_dbz": -6.0,
+          "p25_delta_dbz": -9.0,
+          "p75_delta_dbz": -3.0
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.2827143967151642,
+          "median_delta_dbz": -6.5,
+          "p25_delta_dbz": -9.0,
+          "p75_delta_dbz": -3.5
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.24423930048942566,
+          "median_delta_dbz": -7.0,
+          "p25_delta_dbz": -9.5,
+          "p75_delta_dbz": -4.0
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.20188851654529572,
+          "median_delta_dbz": -8.0,
+          "p25_delta_dbz": -10.0,
+          "p75_delta_dbz": -5.0
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.14734691381454468,
+          "median_delta_dbz": -8.5,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -6.0
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.09689239412546158,
+          "median_delta_dbz": -8.5,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -5.5
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.07110140472650528,
+          "median_delta_dbz": -8.5,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -5.5
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.048904236406087875,
+          "median_delta_dbz": -8.5,
+          "p25_delta_dbz": -11.0,
+          "p75_delta_dbz": -5.5
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.030794166028499603,
+          "median_delta_dbz": -9.5,
+          "p25_delta_dbz": -11.0,
+          "p75_delta_dbz": -6.0
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.020858289673924446,
+          "median_delta_dbz": -8.5,
+          "p25_delta_dbz": -11.0,
+          "p75_delta_dbz": -4.0
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.01613698899745941,
+          "median_delta_dbz": -8.0,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -3.5
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.00972447358071804,
+          "median_delta_dbz": -8.0,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -3.0
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.007117187138646841,
+          "median_delta_dbz": -8.0,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": 1.5
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.005355507135391235,
+          "median_delta_dbz": -7.0,
+          "p25_delta_dbz": -11.5,
+          "p75_delta_dbz": 4.125
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.0023958845995366573,
+          "median_delta_dbz": -1.25,
+          "p25_delta_dbz": -9.25,
+          "p75_delta_dbz": 6.375
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.002325417473912239,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -9.0,
+          "p75_delta_dbz": 7.0
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.001832147128880024,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -6.375,
+          "p75_delta_dbz": 4.875
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.000916073564440012,
+          "median_delta_dbz": 2.5,
+          "p25_delta_dbz": -0.5,
+          "p75_delta_dbz": 7.0
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.0003523359773680568,
+          "median_delta_dbz": 3.5,
+          "p25_delta_dbz": 3.0,
+          "p75_delta_dbz": 9.0
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.0001409343967679888,
+          "median_delta_dbz": -7.0,
+          "p25_delta_dbz": -8.25,
+          "p75_delta_dbz": -5.75
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 35.0,
+      "low_level_dbz_max": 40.0,
+      "training_columns": 10899,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.3764565587043762,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -5.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.8563171029090881,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -3.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9379759430885315,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -4.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.8454903960227966,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": 0.5
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.819341242313385,
+          "median_delta_dbz": -3.0,
+          "p25_delta_dbz": -7.0,
+          "p75_delta_dbz": 0.5
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.6880447864532471,
+          "median_delta_dbz": -3.0,
+          "p25_delta_dbz": -7.5,
+          "p75_delta_dbz": 1.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.579410970211029,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -7.5,
+          "p75_delta_dbz": 2.5
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.46518027782440186,
+          "median_delta_dbz": -6.0,
+          "p25_delta_dbz": -10.0,
+          "p75_delta_dbz": -1.5
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.4368290603160858,
+          "median_delta_dbz": -8.0,
+          "p25_delta_dbz": -11.5,
+          "p75_delta_dbz": -4.0
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.3533351719379425,
+          "median_delta_dbz": -9.0,
+          "p25_delta_dbz": -12.5,
+          "p75_delta_dbz": -5.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.3383796811103821,
+          "median_delta_dbz": -10.0,
+          "p25_delta_dbz": -13.0,
+          "p75_delta_dbz": -6.5
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.30131205916404724,
+          "median_delta_dbz": -10.0,
+          "p25_delta_dbz": -13.0,
+          "p75_delta_dbz": -6.5
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.23616845905780792,
+          "median_delta_dbz": -11.0,
+          "p25_delta_dbz": -14.0,
+          "p75_delta_dbz": -8.0
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.19065968692302704,
+          "median_delta_dbz": -12.5,
+          "p25_delta_dbz": -14.5,
+          "p75_delta_dbz": -9.0
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.15588586032390594,
+          "median_delta_dbz": -12.5,
+          "p25_delta_dbz": -15.0,
+          "p75_delta_dbz": -9.5
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.11019359529018402,
+          "median_delta_dbz": -12.5,
+          "p25_delta_dbz": -15.0,
+          "p75_delta_dbz": -9.5
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.08055785298347473,
+          "median_delta_dbz": -13.0,
+          "p25_delta_dbz": -15.5,
+          "p75_delta_dbz": -9.0
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.055326174944639206,
+          "median_delta_dbz": -13.0,
+          "p25_delta_dbz": -15.5,
+          "p75_delta_dbz": -9.5
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.04486650228500366,
+          "median_delta_dbz": -13.5,
+          "p25_delta_dbz": -15.5,
+          "p75_delta_dbz": -9.5
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.030553262680768967,
+          "median_delta_dbz": -13.5,
+          "p25_delta_dbz": -16.0,
+          "p75_delta_dbz": -10.5
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.020827598869800568,
+          "median_delta_dbz": -12.5,
+          "p25_delta_dbz": -15.5,
+          "p75_delta_dbz": -8.5
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.016882283613085747,
+          "median_delta_dbz": -13.0,
+          "p25_delta_dbz": -15.125,
+          "p75_delta_dbz": -8.5
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.008074135519564152,
+          "median_delta_dbz": -11.0,
+          "p25_delta_dbz": -15.0,
+          "p75_delta_dbz": -5.0
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.007156619802117348,
+          "median_delta_dbz": -12.5,
+          "p25_delta_dbz": -15.875,
+          "p75_delta_dbz": -9.0
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.005321589298546314,
+          "median_delta_dbz": -13.25,
+          "p25_delta_dbz": -16.0,
+          "p75_delta_dbz": -7.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.002018533879891038,
+          "median_delta_dbz": -7.25,
+          "p25_delta_dbz": -12.5,
+          "p75_delta_dbz": -2.0
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.0004587576841004193,
+          "median_delta_dbz": -15.0,
+          "p25_delta_dbz": -16.0,
+          "p75_delta_dbz": -3.5
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.00018350307072978467,
+          "median_delta_dbz": -12.75,
+          "p25_delta_dbz": -13.625,
+          "p75_delta_dbz": -11.875
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.00018350307072978467,
+          "median_delta_dbz": 0.25,
+          "p25_delta_dbz": -1.875,
+          "p75_delta_dbz": 2.375
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.00018350307072978467,
+          "median_delta_dbz": -14.25,
+          "p25_delta_dbz": -14.625,
+          "p75_delta_dbz": -13.875
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 40.0,
+      "low_level_dbz_max": 45.0,
+      "training_columns": 7350,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.33782312273979187,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -5.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.8666666746139526,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9693877696990967,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.8942857384681702,
+          "median_delta_dbz": -3.0,
+          "p25_delta_dbz": -7.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.8636734485626221,
+          "median_delta_dbz": -4.0,
+          "p25_delta_dbz": -8.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.7315646409988403,
+          "median_delta_dbz": -5.0,
+          "p25_delta_dbz": -9.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.6103401184082031,
+          "median_delta_dbz": -5.5,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -0.5
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.4859863817691803,
+          "median_delta_dbz": -8.75,
+          "p25_delta_dbz": -13.5,
+          "p75_delta_dbz": -3.5
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.46244898438453674,
+          "median_delta_dbz": -10.5,
+          "p25_delta_dbz": -15.0,
+          "p75_delta_dbz": -5.5
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.3814966082572937,
+          "median_delta_dbz": -12.0,
+          "p25_delta_dbz": -16.0,
+          "p75_delta_dbz": -7.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.34503400325775146,
+          "median_delta_dbz": -13.0,
+          "p25_delta_dbz": -16.5,
+          "p75_delta_dbz": -8.5
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.3240816295146942,
+          "median_delta_dbz": -13.5,
+          "p25_delta_dbz": -17.0,
+          "p75_delta_dbz": -9.0
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.25687074661254883,
+          "median_delta_dbz": -15.0,
+          "p25_delta_dbz": -18.5,
+          "p75_delta_dbz": -10.5
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.21782313287258148,
+          "median_delta_dbz": -16.0,
+          "p25_delta_dbz": -19.0,
+          "p75_delta_dbz": -11.5
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.19687074422836304,
+          "median_delta_dbz": -16.0,
+          "p25_delta_dbz": -19.0,
+          "p75_delta_dbz": -12.0
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.1537414938211441,
+          "median_delta_dbz": -16.75,
+          "p25_delta_dbz": -19.5,
+          "p75_delta_dbz": -12.5
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.11455782502889633,
+          "median_delta_dbz": -17.5,
+          "p25_delta_dbz": -19.5,
+          "p75_delta_dbz": -13.0
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.0848979577422142,
+          "median_delta_dbz": -17.5,
+          "p25_delta_dbz": -20.5,
+          "p75_delta_dbz": -12.5
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.06462585180997849,
+          "median_delta_dbz": -17.0,
+          "p25_delta_dbz": -20.5,
+          "p75_delta_dbz": -12.5
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.05047618970274925,
+          "median_delta_dbz": -16.0,
+          "p25_delta_dbz": -19.5,
+          "p75_delta_dbz": -12.5
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.033877551555633545,
+          "median_delta_dbz": -16.5,
+          "p25_delta_dbz": -19.5,
+          "p75_delta_dbz": -11.5
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.022857142612338066,
+          "median_delta_dbz": -17.0,
+          "p25_delta_dbz": -20.0,
+          "p75_delta_dbz": -12.875
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.013605441898107529,
+          "median_delta_dbz": -17.75,
+          "p25_delta_dbz": -20.5,
+          "p75_delta_dbz": -12.875
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.010068027302622795,
+          "median_delta_dbz": -17.5,
+          "p25_delta_dbz": -20.0,
+          "p75_delta_dbz": -13.0
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.006530612241476774,
+          "median_delta_dbz": -18.0,
+          "p25_delta_dbz": -21.0,
+          "p75_delta_dbz": -15.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.003401360474526882,
+          "median_delta_dbz": -17.0,
+          "p25_delta_dbz": -19.5,
+          "p75_delta_dbz": -11.5
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.0014965985901653767,
+          "median_delta_dbz": -17.0,
+          "p25_delta_dbz": -20.25,
+          "p75_delta_dbz": -12.5
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.0008163265301845968,
+          "median_delta_dbz": -17.25,
+          "p25_delta_dbz": -18.875,
+          "p75_delta_dbz": -11.875
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.0001360544265480712,
+          "median_delta_dbz": -16.0,
+          "p25_delta_dbz": -16.0,
+          "p75_delta_dbz": -16.0
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 45.0,
+      "low_level_dbz_max": 50.0,
+      "training_columns": 5193,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.3304448425769806,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.9027537107467651,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9853649139404297,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -4.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.9378008842468262,
+          "median_delta_dbz": -3.0,
+          "p25_delta_dbz": -7.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.9235509634017944,
+          "median_delta_dbz": -4.0,
+          "p25_delta_dbz": -9.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.7694973945617676,
+          "median_delta_dbz": -5.5,
+          "p25_delta_dbz": -10.5,
+          "p75_delta_dbz": -0.5
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.6196803450584412,
+          "median_delta_dbz": -6.5,
+          "p25_delta_dbz": -12.0,
+          "p75_delta_dbz": -2.0
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.5418832898139954,
+          "median_delta_dbz": -9.5,
+          "p25_delta_dbz": -14.5,
+          "p75_delta_dbz": -3.5
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.47236666083335876,
+          "median_delta_dbz": -12.0,
+          "p25_delta_dbz": -17.0,
+          "p75_delta_dbz": -6.5
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.4353938102722168,
+          "median_delta_dbz": -13.0,
+          "p25_delta_dbz": -18.5,
+          "p75_delta_dbz": -7.5
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.3427691161632538,
+          "median_delta_dbz": -15.0,
+          "p25_delta_dbz": -20.0,
+          "p75_delta_dbz": -10.0
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.34719815850257874,
+          "median_delta_dbz": -16.0,
+          "p25_delta_dbz": -20.5,
+          "p75_delta_dbz": -10.0
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.3002118170261383,
+          "median_delta_dbz": -17.0,
+          "p25_delta_dbz": -21.5,
+          "p75_delta_dbz": -12.0
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.2279992252588272,
+          "median_delta_dbz": -19.0,
+          "p25_delta_dbz": -23.0,
+          "p75_delta_dbz": -14.0
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.21509724855422974,
+          "median_delta_dbz": -20.0,
+          "p25_delta_dbz": -23.5,
+          "p75_delta_dbz": -14.5
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.18216830492019653,
+          "median_delta_dbz": -20.0,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -15.125
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.16040824353694916,
+          "median_delta_dbz": -20.5,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -14.5
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.09974966198205948,
+          "median_delta_dbz": -21.0,
+          "p25_delta_dbz": -24.5,
+          "p75_delta_dbz": -14.5
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.07702676951885223,
+          "median_delta_dbz": -22.5,
+          "p25_delta_dbz": -25.5,
+          "p75_delta_dbz": -16.5
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.05257076770067215,
+          "median_delta_dbz": -20.5,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -15.5
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.042172156274318695,
+          "median_delta_dbz": -19.5,
+          "p25_delta_dbz": -24.75,
+          "p75_delta_dbz": -15.25
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.035047177225351334,
+          "median_delta_dbz": -20.0,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -15.0
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.02734450250864029,
+          "median_delta_dbz": -20.75,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -16.0
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.016945889219641685,
+          "median_delta_dbz": -20.0,
+          "p25_delta_dbz": -23.625,
+          "p75_delta_dbz": -14.5
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.012709416449069977,
+          "median_delta_dbz": -22.0,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -19.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.006932409014552832,
+          "median_delta_dbz": -18.0,
+          "p25_delta_dbz": -23.0,
+          "p75_delta_dbz": -12.75
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.0032736374996602535,
+          "median_delta_dbz": -14.5,
+          "p25_delta_dbz": -22.5,
+          "p75_delta_dbz": -9.0
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.0015405353624373674,
+          "median_delta_dbz": -20.0,
+          "p25_delta_dbz": -22.0,
+          "p75_delta_dbz": -16.0
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.0005777007318101823,
+          "median_delta_dbz": -21.0,
+          "p25_delta_dbz": -23.75,
+          "p75_delta_dbz": -14.25
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.00019256692030467093,
+          "median_delta_dbz": -18.5,
+          "p25_delta_dbz": -18.5,
+          "p75_delta_dbz": -18.5
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 50.0,
+      "low_level_dbz_max": 55.0,
+      "training_columns": 3581,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.3940240144729614,
+          "median_delta_dbz": -2.0,
+          "p25_delta_dbz": -6.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.9388439059257507,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -3.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9938564896583557,
+          "median_delta_dbz": -0.5,
+          "p25_delta_dbz": -3.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.9759843349456787,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -6.0,
+          "p75_delta_dbz": 0.5
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.9419156908988953,
+          "median_delta_dbz": -3.5,
+          "p25_delta_dbz": -8.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.780787467956543,
+          "median_delta_dbz": -5.0,
+          "p25_delta_dbz": -10.0,
+          "p75_delta_dbz": -1.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.6621055603027344,
+          "median_delta_dbz": -7.0,
+          "p25_delta_dbz": -12.0,
+          "p75_delta_dbz": -2.5
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.5738620758056641,
+          "median_delta_dbz": -10.0,
+          "p25_delta_dbz": -15.5,
+          "p75_delta_dbz": -4.0
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.5076794028282166,
+          "median_delta_dbz": -12.5,
+          "p25_delta_dbz": -17.5,
+          "p75_delta_dbz": -6.5
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.4414967894554138,
+          "median_delta_dbz": -14.0,
+          "p25_delta_dbz": -19.5,
+          "p75_delta_dbz": -8.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.39625802636146545,
+          "median_delta_dbz": -15.5,
+          "p25_delta_dbz": -20.5,
+          "p75_delta_dbz": -10.0
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.3744764029979706,
+          "median_delta_dbz": -16.5,
+          "p25_delta_dbz": -22.0,
+          "p75_delta_dbz": -10.5
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.31611281633377075,
+          "median_delta_dbz": -18.5,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -13.0
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.2817648649215698,
+          "median_delta_dbz": -20.0,
+          "p25_delta_dbz": -26.0,
+          "p75_delta_dbz": -13.5
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.24322815239429474,
+          "median_delta_dbz": -20.5,
+          "p25_delta_dbz": -26.5,
+          "p75_delta_dbz": -14.0
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.22340127825737,
+          "median_delta_dbz": -21.5,
+          "p25_delta_dbz": -27.0,
+          "p75_delta_dbz": -16.0
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.1764870136976242,
+          "median_delta_dbz": -21.75,
+          "p25_delta_dbz": -27.0,
+          "p75_delta_dbz": -15.0
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.14130131900310516,
+          "median_delta_dbz": -21.5,
+          "p25_delta_dbz": -27.5,
+          "p75_delta_dbz": -15.0
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.10304383933544159,
+          "median_delta_dbz": -21.5,
+          "p25_delta_dbz": -27.0,
+          "p75_delta_dbz": -17.0
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.07595643401145935,
+          "median_delta_dbz": -22.0,
+          "p25_delta_dbz": -27.5,
+          "p75_delta_dbz": -16.0
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.06311086565256119,
+          "median_delta_dbz": -24.5,
+          "p25_delta_dbz": -28.5,
+          "p75_delta_dbz": -16.5
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.04300474748015404,
+          "median_delta_dbz": -22.0,
+          "p25_delta_dbz": -28.0,
+          "p75_delta_dbz": -17.5
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.03769896551966667,
+          "median_delta_dbz": -24.0,
+          "p25_delta_dbz": -28.75,
+          "p75_delta_dbz": -19.75
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.03741971403360367,
+          "median_delta_dbz": -25.25,
+          "p25_delta_dbz": -28.5,
+          "p75_delta_dbz": -20.5
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.029879922047257423,
+          "median_delta_dbz": -25.5,
+          "p25_delta_dbz": -29.0,
+          "p75_delta_dbz": -19.75
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.014241832308471203,
+          "median_delta_dbz": -25.5,
+          "p25_delta_dbz": -29.25,
+          "p75_delta_dbz": -19.25
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.0036302709486335516,
+          "median_delta_dbz": -27.5,
+          "p25_delta_dbz": -31.0,
+          "p75_delta_dbz": -22.5
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.0019547613337635994,
+          "median_delta_dbz": -24.5,
+          "p25_delta_dbz": -26.0,
+          "p75_delta_dbz": -14.5
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.0008377548074349761,
+          "median_delta_dbz": -19.0,
+          "p25_delta_dbz": -19.75,
+          "p75_delta_dbz": -14.75
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.00027925160247832537,
+          "median_delta_dbz": -23.0,
+          "p25_delta_dbz": -23.0,
+          "p75_delta_dbz": -23.0
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 55.0,
+      "low_level_dbz_max": 60.0,
+      "training_columns": 1797,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.5570394992828369,
+          "median_delta_dbz": -2.5,
+          "p25_delta_dbz": -5.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.9666110277175903,
+          "median_delta_dbz": -1.0,
+          "p25_delta_dbz": -3.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9955481290817261,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -2.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.989983320236206,
+          "median_delta_dbz": -2.0,
+          "p25_delta_dbz": -5.0,
+          "p75_delta_dbz": 0.5
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.9677239656448364,
+          "median_delta_dbz": -3.5,
+          "p25_delta_dbz": -7.0,
+          "p75_delta_dbz": -0.5
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.7957707047462463,
+          "median_delta_dbz": -5.0,
+          "p25_delta_dbz": -9.5,
+          "p75_delta_dbz": -1.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.6805787682533264,
+          "median_delta_dbz": -7.5,
+          "p25_delta_dbz": -12.5,
+          "p75_delta_dbz": -2.5
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.6577629446983337,
+          "median_delta_dbz": -10.5,
+          "p25_delta_dbz": -17.0,
+          "p75_delta_dbz": -3.625
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.4947134256362915,
+          "median_delta_dbz": -13.0,
+          "p25_delta_dbz": -18.0,
+          "p75_delta_dbz": -5.5
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.4746800363063812,
+          "median_delta_dbz": -14.5,
+          "p25_delta_dbz": -20.0,
+          "p75_delta_dbz": -6.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.4780189096927643,
+          "median_delta_dbz": -15.5,
+          "p25_delta_dbz": -21.0,
+          "p75_delta_dbz": -8.5
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.3511407971382141,
+          "median_delta_dbz": -16.5,
+          "p25_delta_dbz": -21.5,
+          "p75_delta_dbz": -9.5
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.3539232015609741,
+          "median_delta_dbz": -18.0,
+          "p25_delta_dbz": -24.5,
+          "p75_delta_dbz": -10.5
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.363383412361145,
+          "median_delta_dbz": -18.5,
+          "p25_delta_dbz": -24.5,
+          "p75_delta_dbz": -11.5
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.28269338607788086,
+          "median_delta_dbz": -19.25,
+          "p25_delta_dbz": -27.0,
+          "p75_delta_dbz": -11.5
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.21591541171073914,
+          "median_delta_dbz": -19.75,
+          "p25_delta_dbz": -27.5,
+          "p75_delta_dbz": -11.875
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.2153589278459549,
+          "median_delta_dbz": -21.0,
+          "p25_delta_dbz": -28.5,
+          "p75_delta_dbz": -14.0
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.21869783103466034,
+          "median_delta_dbz": -22.0,
+          "p25_delta_dbz": -28.5,
+          "p75_delta_dbz": -15.0
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.18753477931022644,
+          "median_delta_dbz": -21.5,
+          "p25_delta_dbz": -28.5,
+          "p75_delta_dbz": -14.5
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.11908736824989319,
+          "median_delta_dbz": -20.5,
+          "p25_delta_dbz": -27.0,
+          "p75_delta_dbz": -12.0
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.09682804346084595,
+          "median_delta_dbz": -21.5,
+          "p25_delta_dbz": -28.5,
+          "p75_delta_dbz": -15.0
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.08792431652545929,
+          "median_delta_dbz": -24.0,
+          "p25_delta_dbz": -29.0,
+          "p75_delta_dbz": -18.125
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.07679465413093567,
+          "median_delta_dbz": -25.25,
+          "p25_delta_dbz": -32.375,
+          "p75_delta_dbz": -20.0
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.08291596919298172,
+          "median_delta_dbz": -26.5,
+          "p25_delta_dbz": -31.5,
+          "p75_delta_dbz": -20.5
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.07122983038425446,
+          "median_delta_dbz": -26.5,
+          "p25_delta_dbz": -31.0,
+          "p75_delta_dbz": -20.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.049526989459991455,
+          "median_delta_dbz": -27.0,
+          "p25_delta_dbz": -33.0,
+          "p75_delta_dbz": -22.5
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.02114635519683361,
+          "median_delta_dbz": -27.75,
+          "p25_delta_dbz": -32.0,
+          "p75_delta_dbz": -23.0
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.011686143465340137,
+          "median_delta_dbz": -33.5,
+          "p25_delta_dbz": -36.0,
+          "p75_delta_dbz": -21.5
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.0038953812327235937,
+          "median_delta_dbz": -22.0,
+          "p25_delta_dbz": -30.25,
+          "p75_delta_dbz": -21.75
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.0011129660997539759,
+          "median_delta_dbz": -30.75,
+          "p25_delta_dbz": -31.375,
+          "p75_delta_dbz": -30.125
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    },
+    {
+      "low_level_dbz_min": 60.0,
+      "low_level_dbz_max": 90.0,
+      "training_columns": 1194,
+      "levels": [
+        {
+          "altitude_m_amsl": 250.0,
+          "occupancy_probability": 0.6666666865348816,
+          "median_delta_dbz": -5.0,
+          "p25_delta_dbz": -10.0,
+          "p75_delta_dbz": -1.5
+        },
+        {
+          "altitude_m_amsl": 750.0,
+          "occupancy_probability": 0.9899497628211975,
+          "median_delta_dbz": -2.0,
+          "p25_delta_dbz": -4.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1250.0,
+          "occupancy_probability": 0.9966499209403992,
+          "median_delta_dbz": 0.0,
+          "p25_delta_dbz": -2.0,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 1750.0,
+          "occupancy_probability": 0.9949748516082764,
+          "median_delta_dbz": -1.5,
+          "p25_delta_dbz": -4.0,
+          "p75_delta_dbz": 0.5
+        },
+        {
+          "altitude_m_amsl": 2250.0,
+          "occupancy_probability": 0.9740368723869324,
+          "median_delta_dbz": -3.0,
+          "p25_delta_dbz": -6.5,
+          "p75_delta_dbz": 0.0
+        },
+        {
+          "altitude_m_amsl": 2750.0,
+          "occupancy_probability": 0.8350083827972412,
+          "median_delta_dbz": -5.0,
+          "p25_delta_dbz": -10.0,
+          "p75_delta_dbz": -1.0
+        },
+        {
+          "altitude_m_amsl": 3250.0,
+          "occupancy_probability": 0.7051926255226135,
+          "median_delta_dbz": -7.5,
+          "p25_delta_dbz": -13.5,
+          "p75_delta_dbz": -2.5
+        },
+        {
+          "altitude_m_amsl": 3750.0,
+          "occupancy_probability": 0.6474036574363708,
+          "median_delta_dbz": -11.0,
+          "p25_delta_dbz": -17.5,
+          "p75_delta_dbz": -4.5
+        },
+        {
+          "altitude_m_amsl": 4250.0,
+          "occupancy_probability": 0.5343383550643921,
+          "median_delta_dbz": -12.0,
+          "p25_delta_dbz": -19.0,
+          "p75_delta_dbz": -4.5
+        },
+        {
+          "altitude_m_amsl": 4750.0,
+          "occupancy_probability": 0.46901172399520874,
+          "median_delta_dbz": -14.75,
+          "p25_delta_dbz": -21.0,
+          "p75_delta_dbz": -7.0
+        },
+        {
+          "altitude_m_amsl": 5250.0,
+          "occupancy_probability": 0.5058626532554626,
+          "median_delta_dbz": -16.5,
+          "p25_delta_dbz": -24.0,
+          "p75_delta_dbz": -8.5
+        },
+        {
+          "altitude_m_amsl": 5750.0,
+          "occupancy_probability": 0.38693466782569885,
+          "median_delta_dbz": -15.25,
+          "p25_delta_dbz": -23.0,
+          "p75_delta_dbz": -7.125
+        },
+        {
+          "altitude_m_amsl": 6250.0,
+          "occupancy_probability": 0.357621431350708,
+          "median_delta_dbz": -20.5,
+          "p25_delta_dbz": -26.0,
+          "p75_delta_dbz": -12.5
+        },
+        {
+          "altitude_m_amsl": 6750.0,
+          "occupancy_probability": 0.3793969750404358,
+          "median_delta_dbz": -20.5,
+          "p25_delta_dbz": -27.5,
+          "p75_delta_dbz": -12.0
+        },
+        {
+          "altitude_m_amsl": 7250.0,
+          "occupancy_probability": 0.3216080367565155,
+          "median_delta_dbz": -19.5,
+          "p25_delta_dbz": -26.5,
+          "p75_delta_dbz": -11.0
+        },
+        {
+          "altitude_m_amsl": 7750.0,
+          "occupancy_probability": 0.2512562870979309,
+          "median_delta_dbz": -19.0,
+          "p25_delta_dbz": -26.625,
+          "p75_delta_dbz": -12.375
+        },
+        {
+          "altitude_m_amsl": 8250.0,
+          "occupancy_probability": 0.2504187524318695,
+          "median_delta_dbz": -24.0,
+          "p25_delta_dbz": -30.5,
+          "p75_delta_dbz": -16.5
+        },
+        {
+          "altitude_m_amsl": 8750.0,
+          "occupancy_probability": 0.21691791713237762,
+          "median_delta_dbz": -24.5,
+          "p25_delta_dbz": -31.0,
+          "p75_delta_dbz": -19.25
+        },
+        {
+          "altitude_m_amsl": 9250.0,
+          "occupancy_probability": 0.21943049132823944,
+          "median_delta_dbz": -27.0,
+          "p25_delta_dbz": -33.0,
+          "p75_delta_dbz": -19.0
+        },
+        {
+          "altitude_m_amsl": 9750.0,
+          "occupancy_probability": 0.18257956206798553,
+          "median_delta_dbz": -24.5,
+          "p25_delta_dbz": -31.0,
+          "p75_delta_dbz": -18.0
+        },
+        {
+          "altitude_m_amsl": 10250.0,
+          "occupancy_probability": 0.1557788997888565,
+          "median_delta_dbz": -26.5,
+          "p25_delta_dbz": -32.5,
+          "p75_delta_dbz": -21.0
+        },
+        {
+          "altitude_m_amsl": 10750.0,
+          "occupancy_probability": 0.12897822260856628,
+          "median_delta_dbz": -27.5,
+          "p25_delta_dbz": -33.5,
+          "p75_delta_dbz": -23.0
+        },
+        {
+          "altitude_m_amsl": 11250.0,
+          "occupancy_probability": 0.10552763938903809,
+          "median_delta_dbz": -33.0,
+          "p25_delta_dbz": -40.875,
+          "p75_delta_dbz": -24.0
+        },
+        {
+          "altitude_m_amsl": 11750.0,
+          "occupancy_probability": 0.10217755287885666,
+          "median_delta_dbz": -33.25,
+          "p25_delta_dbz": -39.0,
+          "p75_delta_dbz": -23.5
+        },
+        {
+          "altitude_m_amsl": 12250.0,
+          "occupancy_probability": 0.07621440291404724,
+          "median_delta_dbz": -32.0,
+          "p25_delta_dbz": -38.5,
+          "p75_delta_dbz": -25.5
+        },
+        {
+          "altitude_m_amsl": 12750.0,
+          "occupancy_probability": 0.06783919781446457,
+          "median_delta_dbz": -32.5,
+          "p25_delta_dbz": -36.5,
+          "p75_delta_dbz": -24.5
+        },
+        {
+          "altitude_m_amsl": 13250.0,
+          "occupancy_probability": 0.05108877643942833,
+          "median_delta_dbz": -36.0,
+          "p25_delta_dbz": -40.0,
+          "p75_delta_dbz": -25.5
+        },
+        {
+          "altitude_m_amsl": 13750.0,
+          "occupancy_probability": 0.027638191357254982,
+          "median_delta_dbz": -34.0,
+          "p25_delta_dbz": -39.5,
+          "p75_delta_dbz": -25.0
+        },
+        {
+          "altitude_m_amsl": 14250.0,
+          "occupancy_probability": 0.010887771844863892,
+          "median_delta_dbz": -37.0,
+          "p25_delta_dbz": -39.5,
+          "p75_delta_dbz": -30.5
+        },
+        {
+          "altitude_m_amsl": 14750.0,
+          "occupancy_probability": 0.005862646736204624,
+          "median_delta_dbz": -40.5,
+          "p25_delta_dbz": -41.25,
+          "p75_delta_dbz": -39.0
+        },
+        {
+          "altitude_m_amsl": 15250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 15750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 16750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 17750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 18750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 19750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 20750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 21750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 22750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 23750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24250.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        },
+        {
+          "altitude_m_amsl": 24750.0,
+          "occupancy_probability": 0.0,
+          "median_delta_dbz": null,
+          "p25_delta_dbz": null,
+          "p75_delta_dbz": null
+        }
+      ]
+    }
+  ]
+}

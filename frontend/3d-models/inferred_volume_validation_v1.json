@@ -1,0 +1,1121 @@
+{
+  "format": "StormTrackerInferredVolumeValidationV1",
+  "scientific_status": "prototype-historical-single-event-cross-validation",
+  "purpose": "Determine whether a live 2-D reflectivity field can support a defensible empirical 3-D intensity reconstruction before the method is added to the browser application.",
+  "important_limitations": [
+    "All 13 validation frames come from one historical Mt Stapylton event, so temporal dependence can make skill appear better than true out-of-event skill.",
+    "The low-level historical proxy is not identical to the Bureau public operational reflectivity mosaic.",
+    "This prototype uses reflectivity only. It does not yet condition on Doppler, satellite cloud-top context, environmental observations or storm lifecycle.",
+    "Any eventual live product based on this method must be labelled inferred volumetric intensity, not measured volumetric radar."
+  ],
+  "configuration": {
+    "frame_count": 13,
+    "validation_method": "leave-one-frame-out",
+    "low_level_max_altitude_m": 1500.0,
+    "validation_radius_m": 120000.0,
+    "bin_edges_dbz": [
+      20.0,
+      25.0,
+      30.0,
+      35.0,
+      40.0,
+      45.0,
+      50.0,
+      55.0,
+      60.0,
+      90.0
+    ],
+    "occupancy_threshold": 0.35
+  },
+  "folds": [
+    {
+      "validation_frame": 0,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 24480,
+            "misses": 16974,
+            "false_alarms": 16853,
+            "iou": 0.4198466736412438,
+            "probability_of_detection": 0.5905340859748155,
+            "false_alarm_ratio": 0.40773715917063846
+          },
+          "echo_top": {
+            "paired_columns": 4668,
+            "median_absolute_error_m": 3000.0,
+            "mean_bias_m": -1699.764353041988,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15100,
+            "misses": 6248,
+            "false_alarms": 11151,
+            "iou": 0.46462968091325885,
+            "probability_of_detection": 0.7073262132284055,
+            "false_alarm_ratio": 0.42478381775932345
+          },
+          "echo_top": {
+            "paired_columns": 3095,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": -447.0113085621971,
+            "domain_max_measured_m": 12250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 6116,
+            "misses": 3940,
+            "false_alarms": 2845,
+            "iou": 0.47407177738159834,
+            "probability_of_detection": 0.6081941129673827,
+            "false_alarm_ratio": 0.3174868876241491
+          },
+          "echo_top": {
+            "paired_columns": 1476,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": -1119.579945799458,
+            "domain_max_measured_m": 12250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1750,
+            "misses": 1641,
+            "false_alarms": 971,
+            "iou": 0.40119211370930763,
+            "probability_of_detection": 0.5160719551754644,
+            "false_alarm_ratio": 0.3568540977581771
+          },
+          "echo_top": {
+            "paired_columns": 532,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -905.0751879699249,
+            "domain_max_measured_m": 10250.0,
+            "domain_max_inferred_m": 5750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 24480,
+        "mae_dbz": 4.109671160130719,
+        "rmse_dbz": 5.9882994148202,
+        "bias_dbz": -0.17872753267973857
+      },
+      "inferred_voxels_20plus": 41333,
+      "mean_inference_confidence": 0.6245664954185486
+    },
+    {
+      "validation_frame": 1,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 24577,
+            "misses": 18495,
+            "false_alarms": 16310,
+            "iou": 0.413879626822943,
+            "probability_of_detection": 0.5706027117384844,
+            "false_alarm_ratio": 0.398904297209382
+          },
+          "echo_top": {
+            "paired_columns": 4695,
+            "median_absolute_error_m": 3000.0,
+            "mean_bias_m": -1847.7103301384452,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 14971,
+            "misses": 6457,
+            "false_alarms": 10315,
+            "iou": 0.4716315408121476,
+            "probability_of_detection": 0.6986652977412731,
+            "false_alarm_ratio": 0.40793324369216166
+          },
+          "echo_top": {
+            "paired_columns": 2935,
+            "median_absolute_error_m": 2000.0,
+            "mean_bias_m": -475.12776831345826,
+            "domain_max_measured_m": 12750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 6777,
+            "misses": 3752,
+            "false_alarms": 3024,
+            "iou": 0.5000368922009887,
+            "probability_of_detection": 0.6436508690283977,
+            "false_alarm_ratio": 0.3085399449035813
+          },
+          "echo_top": {
+            "paired_columns": 1518,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -720.6851119894599,
+            "domain_max_measured_m": 12750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1961,
+            "misses": 1658,
+            "false_alarms": 1050,
+            "iou": 0.42000428357249947,
+            "probability_of_detection": 0.5418623929262227,
+            "false_alarm_ratio": 0.348721355031551
+          },
+          "echo_top": {
+            "paired_columns": 585,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -772.6495726495726,
+            "domain_max_measured_m": 9750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 24577,
+        "mae_dbz": 3.979055621109167,
+        "rmse_dbz": 5.823959005223801,
+        "bias_dbz": 0.1333869064572568
+      },
+      "inferred_voxels_20plus": 40887,
+      "mean_inference_confidence": 0.6266986727714539
+    },
+    {
+      "validation_frame": 2,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 24225,
+            "misses": 20191,
+            "false_alarms": 16306,
+            "iou": 0.3989493099700273,
+            "probability_of_detection": 0.5454115634005764,
+            "false_alarm_ratio": 0.4023093434654956
+          },
+          "echo_top": {
+            "paired_columns": 4642,
+            "median_absolute_error_m": 3000.0,
+            "mean_bias_m": -1869.2373976734166,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15517,
+            "misses": 6771,
+            "false_alarms": 10312,
+            "iou": 0.47598159509202453,
+            "probability_of_detection": 0.6962042354630295,
+            "false_alarm_ratio": 0.3992411630337992
+          },
+          "echo_top": {
+            "paired_columns": 3000,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": -254.5,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 6564,
+            "misses": 4004,
+            "false_alarms": 3432,
+            "iou": 0.46885714285714286,
+            "probability_of_detection": 0.6211203633610901,
+            "false_alarm_ratio": 0.3433373349339736
+          },
+          "echo_top": {
+            "paired_columns": 1586,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": -476.67087011349304,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1935,
+            "misses": 1367,
+            "false_alarms": 1030,
+            "iou": 0.4466759002770083,
+            "probability_of_detection": 0.5860084797092671,
+            "false_alarm_ratio": 0.3473861720067454
+          },
+          "echo_top": {
+            "paired_columns": 542,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -438.1918819188192,
+            "domain_max_measured_m": 10250.0,
+            "domain_max_inferred_m": 5750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 24225,
+        "mae_dbz": 4.055954592363261,
+        "rmse_dbz": 5.911353229779451,
+        "bias_dbz": 0.27787409700722393
+      },
+      "inferred_voxels_20plus": 40531,
+      "mean_inference_confidence": 0.628555178642273
+    },
+    {
+      "validation_frame": 3,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 23970,
+            "misses": 22285,
+            "false_alarms": 15287,
+            "iou": 0.38949010431900166,
+            "probability_of_detection": 0.5182142471084207,
+            "false_alarm_ratio": 0.38940825839977583
+          },
+          "echo_top": {
+            "paired_columns": 4463,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1925.498543580551,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15491,
+            "misses": 7107,
+            "false_alarms": 10533,
+            "iou": 0.46756813860130997,
+            "probability_of_detection": 0.6855031418709621,
+            "false_alarm_ratio": 0.4047417768213956
+          },
+          "echo_top": {
+            "paired_columns": 3063,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": -64.47926869082599,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 6352,
+            "misses": 4422,
+            "false_alarms": 3121,
+            "iou": 0.45714285714285713,
+            "probability_of_detection": 0.5895674772600705,
+            "false_alarm_ratio": 0.32946268341602447
+          },
+          "echo_top": {
+            "paired_columns": 1607,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -436.21655258245175,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1614,
+            "misses": 1774,
+            "false_alarms": 792,
+            "iou": 0.3861244019138756,
+            "probability_of_detection": 0.47638724911452185,
+            "false_alarm_ratio": 0.32917705735660846
+          },
+          "echo_top": {
+            "paired_columns": 426,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -779.3427230046948,
+            "domain_max_measured_m": 12750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 23970,
+        "mae_dbz": 4.055527743012099,
+        "rmse_dbz": 6.014187179851727,
+        "bias_dbz": 0.25961618690029203
+      },
+      "inferred_voxels_20plus": 39257,
+      "mean_inference_confidence": 0.6324464678764343
+    },
+    {
+      "validation_frame": 4,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 24958,
+            "misses": 25425,
+            "false_alarms": 14681,
+            "iou": 0.38359154063691137,
+            "probability_of_detection": 0.4953655002679475,
+            "false_alarm_ratio": 0.3703675672948359
+          },
+          "echo_top": {
+            "paired_columns": 4655,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -2022.5563909774437,
+            "domain_max_measured_m": 14750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15508,
+            "misses": 7798,
+            "false_alarms": 10958,
+            "iou": 0.4526033154331076,
+            "probability_of_detection": 0.6654080494293315,
+            "false_alarm_ratio": 0.41404065593591777
+          },
+          "echo_top": {
+            "paired_columns": 3095,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 77.7059773828756,
+            "domain_max_measured_m": 14750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 5918,
+            "misses": 4409,
+            "false_alarms": 3451,
+            "iou": 0.4295253302366091,
+            "probability_of_detection": 0.5730609082986347,
+            "false_alarm_ratio": 0.3683424058063828
+          },
+          "echo_top": {
+            "paired_columns": 1580,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -307.27848101265823,
+            "domain_max_measured_m": 14250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1768,
+            "misses": 1565,
+            "false_alarms": 913,
+            "iou": 0.41639189825718326,
+            "probability_of_detection": 0.5304530453045304,
+            "false_alarm_ratio": 0.340544572920552
+          },
+          "echo_top": {
+            "paired_columns": 460,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -795.6521739130435,
+            "domain_max_measured_m": 11750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 24958,
+        "mae_dbz": 4.216513743088388,
+        "rmse_dbz": 6.271465861919055,
+        "bias_dbz": 0.679271175574966
+      },
+      "inferred_voxels_20plus": 39639,
+      "mean_inference_confidence": 0.6350053548812866
+    },
+    {
+      "validation_frame": 5,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 26414,
+            "misses": 28087,
+            "false_alarms": 15033,
+            "iou": 0.37987171743319814,
+            "probability_of_detection": 0.4846516577677474,
+            "false_alarm_ratio": 0.3627041764180761
+          },
+          "echo_top": {
+            "paired_columns": 4857,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1981.2641548280833,
+            "domain_max_measured_m": 14750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15255,
+            "misses": 7813,
+            "false_alarms": 12412,
+            "iou": 0.42996054114994364,
+            "probability_of_detection": 0.6613057048725507,
+            "false_alarm_ratio": 0.44862110095059093
+          },
+          "echo_top": {
+            "paired_columns": 3262,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 277.1305947271612,
+            "domain_max_measured_m": 14750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 5383,
+            "misses": 4222,
+            "false_alarms": 3270,
+            "iou": 0.41809708737864076,
+            "probability_of_detection": 0.5604372722540344,
+            "false_alarm_ratio": 0.3779036172425748
+          },
+          "echo_top": {
+            "paired_columns": 1433,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -304.25680390788557,
+            "domain_max_measured_m": 14750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1643,
+            "misses": 1492,
+            "false_alarms": 773,
+            "iou": 0.4204196519959058,
+            "probability_of_detection": 0.5240829346092504,
+            "false_alarm_ratio": 0.3199503311258278
+          },
+          "echo_top": {
+            "paired_columns": 446,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -871.0762331838565,
+            "domain_max_measured_m": 11750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 26414,
+        "mae_dbz": 4.192397970773075,
+        "rmse_dbz": 6.070964514061266,
+        "bias_dbz": 0.9580146891799803
+      },
+      "inferred_voxels_20plus": 41447,
+      "mean_inference_confidence": 0.6341825723648071
+    },
+    {
+      "validation_frame": 6,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 28229,
+            "misses": 30457,
+            "false_alarms": 16181,
+            "iou": 0.37705531141891624,
+            "probability_of_detection": 0.4810176191936748,
+            "false_alarm_ratio": 0.36435487502814684
+          },
+          "echo_top": {
+            "paired_columns": 5217,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1958.5968947671076,
+            "domain_max_measured_m": 14250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 14802,
+            "misses": 8545,
+            "false_alarms": 13276,
+            "iou": 0.4041722414875898,
+            "probability_of_detection": 0.634000085664111,
+            "false_alarm_ratio": 0.4728256998361707
+          },
+          "echo_top": {
+            "paired_columns": 3504,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 272.26027397260276,
+            "domain_max_measured_m": 14250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 4865,
+            "misses": 4458,
+            "false_alarms": 3005,
+            "iou": 0.39463011031797535,
+            "probability_of_detection": 0.5218277378526226,
+            "false_alarm_ratio": 0.3818297331639136
+          },
+          "echo_top": {
+            "paired_columns": 1386,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -514.7907647907648,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1437,
+            "misses": 1596,
+            "false_alarms": 670,
+            "iou": 0.3880637321091007,
+            "probability_of_detection": 0.47378832838773494,
+            "false_alarm_ratio": 0.3179876601803512
+          },
+          "echo_top": {
+            "paired_columns": 391,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -955.2429667519182,
+            "domain_max_measured_m": 11250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 28229,
+        "mae_dbz": 4.267924829076482,
+        "rmse_dbz": 6.273913301525531,
+        "bias_dbz": 1.0304208438131
+      },
+      "inferred_voxels_20plus": 44410,
+      "mean_inference_confidence": 0.6285880208015442
+    },
+    {
+      "validation_frame": 7,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 30393,
+            "misses": 32664,
+            "false_alarms": 17851,
+            "iou": 0.3756488851535077,
+            "probability_of_detection": 0.48199248299157904,
+            "false_alarm_ratio": 0.3700149241356438
+          },
+          "echo_top": {
+            "paired_columns": 5710,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1981.8739054290718,
+            "domain_max_measured_m": 14250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15236,
+            "misses": 9339,
+            "false_alarms": 14108,
+            "iou": 0.3938681074373756,
+            "probability_of_detection": 0.6199796541200407,
+            "false_alarm_ratio": 0.4807797164667394
+          },
+          "echo_top": {
+            "paired_columns": 3730,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 107.50670241286863,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 5291,
+            "misses": 4172,
+            "false_alarms": 3147,
+            "iou": 0.4195876288659794,
+            "probability_of_detection": 0.5591250132093416,
+            "false_alarm_ratio": 0.37295567670063995
+          },
+          "echo_top": {
+            "paired_columns": 1380,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": -620.2898550724638,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1809,
+            "misses": 1531,
+            "false_alarms": 863,
+            "iou": 0.430406852248394,
+            "probability_of_detection": 0.5416167664670659,
+            "false_alarm_ratio": 0.32297904191616766
+          },
+          "echo_top": {
+            "paired_columns": 468,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -856.8376068376068,
+            "domain_max_measured_m": 12250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 30393,
+        "mae_dbz": 4.125390714967263,
+        "rmse_dbz": 6.089821375909531,
+        "bias_dbz": 0.7806731813246471
+      },
+      "inferred_voxels_20plus": 48244,
+      "mean_inference_confidence": 0.6265526413917542
+    },
+    {
+      "validation_frame": 8,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 32528,
+            "misses": 33967,
+            "false_alarms": 18770,
+            "iou": 0.3814929924353486,
+            "probability_of_detection": 0.4891796375667343,
+            "false_alarm_ratio": 0.36590120472533044
+          },
+          "echo_top": {
+            "paired_columns": 6131,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1906.2143206654705,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 15517,
+            "misses": 10456,
+            "false_alarms": 13895,
+            "iou": 0.3892093909902679,
+            "probability_of_detection": 0.5974280984098872,
+            "false_alarm_ratio": 0.47242622059023526
+          },
+          "echo_top": {
+            "paired_columns": 3786,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 25.092445853143158,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 5581,
+            "misses": 4086,
+            "false_alarms": 3189,
+            "iou": 0.43411636589919106,
+            "probability_of_detection": 0.5773249198303507,
+            "false_alarm_ratio": 0.3636259977194983
+          },
+          "echo_top": {
+            "paired_columns": 1405,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -454.80427046263344,
+            "domain_max_measured_m": 12750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1893,
+            "misses": 1445,
+            "false_alarms": 770,
+            "iou": 0.4608081791626095,
+            "probability_of_detection": 0.567106051527861,
+            "false_alarm_ratio": 0.2891475779196395
+          },
+          "echo_top": {
+            "paired_columns": 456,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -718.2017543859649,
+            "domain_max_measured_m": 10250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 32528,
+        "mae_dbz": 3.838016478111166,
+        "rmse_dbz": 5.630472961902683,
+        "bias_dbz": 0.3213846532218396
+      },
+      "inferred_voxels_20plus": 51298,
+      "mean_inference_confidence": 0.6217252016067505
+    },
+    {
+      "validation_frame": 9,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 34301,
+            "misses": 34516,
+            "false_alarms": 20459,
+            "iou": 0.3842130023746584,
+            "probability_of_detection": 0.498437885987474,
+            "false_alarm_ratio": 0.3736121256391527
+          },
+          "echo_top": {
+            "paired_columns": 6521,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1819.736236773501,
+            "domain_max_measured_m": 14250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 17268,
+            "misses": 10391,
+            "false_alarms": 15258,
+            "iou": 0.40235803993755387,
+            "probability_of_detection": 0.6243175819805489,
+            "false_alarm_ratio": 0.46910164176351227
+          },
+          "echo_top": {
+            "paired_columns": 4153,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 28.77437996628943,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 5221,
+            "misses": 4121,
+            "false_alarms": 3278,
+            "iou": 0.41370839936608556,
+            "probability_of_detection": 0.5588739028045386,
+            "false_alarm_ratio": 0.38569243440404755
+          },
+          "echo_top": {
+            "paired_columns": 1424,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -216.6432584269663,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1620,
+            "misses": 1529,
+            "false_alarms": 924,
+            "iou": 0.39774122268598083,
+            "probability_of_detection": 0.5144490314385519,
+            "false_alarm_ratio": 0.3632075471698113
+          },
+          "echo_top": {
+            "paired_columns": 474,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -699.367088607595,
+            "domain_max_measured_m": 10750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 34301,
+        "mae_dbz": 3.7532724993440425,
+        "rmse_dbz": 5.556609344550622,
+        "bias_dbz": 0.32867846418471763
+      },
+      "inferred_voxels_20plus": 54760,
+      "mean_inference_confidence": 0.6216527223587036
+    },
+    {
+      "validation_frame": 10,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 35873,
+            "misses": 34726,
+            "false_alarms": 19715,
+            "iou": 0.3972030914365436,
+            "probability_of_detection": 0.5081233445232936,
+            "false_alarm_ratio": 0.3546628768799021
+          },
+          "echo_top": {
+            "paired_columns": 6898,
+            "median_absolute_error_m": 2500.0,
+            "mean_bias_m": -1982.8935923456074,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 18259,
+            "misses": 10786,
+            "false_alarms": 15910,
+            "iou": 0.4061617172728284,
+            "probability_of_detection": 0.6286452057152694,
+            "false_alarm_ratio": 0.46562673768620677
+          },
+          "echo_top": {
+            "paired_columns": 4425,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 32.429378531073446,
+            "domain_max_measured_m": 12750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 4848,
+            "misses": 4099,
+            "false_alarms": 3686,
+            "iou": 0.38375682735692235,
+            "probability_of_detection": 0.5418576059014195,
+            "false_alarm_ratio": 0.43191938129833607
+          },
+          "echo_top": {
+            "paired_columns": 1396,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -57.306590257879655,
+            "domain_max_measured_m": 11250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1546,
+            "misses": 1391,
+            "false_alarms": 983,
+            "iou": 0.3943877551020408,
+            "probability_of_detection": 0.5263874702076949,
+            "false_alarm_ratio": 0.3886911822854883
+          },
+          "echo_top": {
+            "paired_columns": 462,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -482.68398268398266,
+            "domain_max_measured_m": 9250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 35873,
+        "mae_dbz": 3.720987929640677,
+        "rmse_dbz": 5.590062106799317,
+        "bias_dbz": 0.4585342736877317
+      },
+      "inferred_voxels_20plus": 55588,
+      "mean_inference_confidence": 0.6325956583023071
+    },
+    {
+      "validation_frame": 11,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 38371,
+            "misses": 33379,
+            "false_alarms": 21805,
+            "iou": 0.41014376569932126,
+            "probability_of_detection": 0.534787456445993,
+            "false_alarm_ratio": 0.36235376229726135
+          },
+          "echo_top": {
+            "paired_columns": 7222,
+            "median_absolute_error_m": 2000.0,
+            "mean_bias_m": -1748.9615065078926,
+            "domain_max_measured_m": 13750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 20085,
+            "misses": 9794,
+            "false_alarms": 16679,
+            "iou": 0.431397396795395,
+            "probability_of_detection": 0.6722112520499347,
+            "false_alarm_ratio": 0.45367751060820366
+          },
+          "echo_top": {
+            "paired_columns": 4763,
+            "median_absolute_error_m": 1500.0,
+            "mean_bias_m": 55.742179298761286,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 4751,
+            "misses": 4251,
+            "false_alarms": 3448,
+            "iou": 0.3816064257028112,
+            "probability_of_detection": 0.527771606309709,
+            "false_alarm_ratio": 0.42053909013294305
+          },
+          "echo_top": {
+            "paired_columns": 1427,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -249.1240364400841,
+            "domain_max_measured_m": 10250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1436,
+            "misses": 1420,
+            "false_alarms": 1022,
+            "iou": 0.370293965961836,
+            "probability_of_detection": 0.5028011204481793,
+            "false_alarm_ratio": 0.4157851912123678
+          },
+          "echo_top": {
+            "paired_columns": 439,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -358.76993166287014,
+            "domain_max_measured_m": 9750.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 38371,
+        "mae_dbz": 3.7250136822079174,
+        "rmse_dbz": 5.572966348681463,
+        "bias_dbz": 0.35715774934195094
+      },
+      "inferred_voxels_20plus": 60176,
+      "mean_inference_confidence": 0.6250751614570618
+    },
+    {
+      "validation_frame": 12,
+      "thresholds": {
+        "20": {
+          "contingency": {
+            "hits": 39921,
+            "misses": 32474,
+            "false_alarms": 22905,
+            "iou": 0.41889821615949635,
+            "probability_of_detection": 0.5514331100214103,
+            "false_alarm_ratio": 0.3645783592780059
+          },
+          "echo_top": {
+            "paired_columns": 7466,
+            "median_absolute_error_m": 2000.0,
+            "mean_bias_m": -1680.6857755156711,
+            "domain_max_measured_m": 13250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "30": {
+          "contingency": {
+            "hits": 21479,
+            "misses": 9164,
+            "false_alarms": 17792,
+            "iou": 0.44346030762878086,
+            "probability_of_detection": 0.7009431191462977,
+            "false_alarm_ratio": 0.45305696315347205
+          },
+          "echo_top": {
+            "paired_columns": 4907,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": 188.7100061137151,
+            "domain_max_measured_m": 12250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "40": {
+          "contingency": {
+            "hits": 4860,
+            "misses": 4212,
+            "false_alarms": 4277,
+            "iou": 0.36407221514720206,
+            "probability_of_detection": 0.5357142857142857,
+            "false_alarm_ratio": 0.4680967494801357
+          },
+          "echo_top": {
+            "paired_columns": 1497,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -341.3493653974616,
+            "domain_max_measured_m": 11250.0,
+            "domain_max_inferred_m": 6750.0
+          }
+        },
+        "50": {
+          "contingency": {
+            "hits": 1317,
+            "misses": 1302,
+            "false_alarms": 851,
+            "iou": 0.37953890489913544,
+            "probability_of_detection": 0.5028636884306987,
+            "false_alarm_ratio": 0.39252767527675275
+          },
+          "echo_top": {
+            "paired_columns": 431,
+            "median_absolute_error_m": 1000.0,
+            "mean_bias_m": -642.6914153132251,
+            "domain_max_measured_m": 8750.0,
+            "domain_max_inferred_m": 5750.0
+          }
+        }
+      },
+      "intensity": {
+        "paired_voxels": 39921,
+        "mae_dbz": 3.603742391222665,
+        "rmse_dbz": 5.36300068836068,
+        "bias_dbz": 0.3405100072643471
+      },
+      "inferred_voxels_20plus": 62826,
+      "mean_inference_confidence": 0.6203168034553528
+    }
+  ],
+  "aggregate": {
+    "mean_intensity_mae_dbz": 3.9725745657728404,
+    "mean_intensity_rmse_dbz": 5.858236564106564,
+    "mean_intensity_bias_dbz": 0.4420611304060242,
+    "thresholds": {
+      "20": {
+        "mean_iou": 0.3946372490385475,
+        "mean_probability_of_detection": 0.5192116386913962,
+        "mean_false_alarm_ratio": 0.3759160715339729,
+        "median_echo_top_absolute_error_m": 2500.0,
+        "mean_echo_top_bias_m": -1878.8456463264808
+      },
+      "30": {
+        "mean_iou": 0.4333078471962757,
+        "mean_probability_of_detection": 0.6609182799762802,
+        "mean_false_alarm_ratio": 0.4436043267921329,
+        "median_echo_top_absolute_error_m": 1500.0,
+        "mean_echo_top_bias_m": -13.520492869845441
+      },
+      "40": {
+        "mean_iou": 0.42609300460415417,
+        "mean_probability_of_detection": 0.5706558519070675,
+        "mean_false_alarm_ratio": 0.37459476437124617,
+        "median_echo_top_absolute_error_m": 1000.0,
+        "mean_echo_top_bias_m": -447.61506971182
+      },
+      "50": {
+        "mean_iou": 0.4086191432226828,
+        "mean_probability_of_detection": 0.523375270288234,
+        "mean_false_alarm_ratio": 0.34868918939692617,
+        "median_echo_top_absolute_error_m": 1000.0,
+        "mean_echo_top_bias_m": -713.5217322217749
+      }
+    }
+  },
+  "candidate_model_path": "data/aura/derived/66/2014-11-27/inferred_vertical_profile_model_v1.json"
+}

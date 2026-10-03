@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+<title>
+  StormTracker — Doppler Palette Isolation V2
+</title>
+
+<style>
+  * {
+    box-sizing:border-box;
+  }
+
+  body {
+    margin:0;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:
+      Inter,
+      system-ui,
+      sans-serif;
+  }
+
+  main {
+    max-width:1400px;
+    margin:0 auto;
+    padding:18px;
+  }
+
+  h1 {
+    margin:0 0 5px;
+  }
+
+  .note {
+    max-width:1050px;
+    color:#a9bbc4;
+    line-height:1.45;
+  }
+
+  button {
+    padding:9px 12px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+    margin:10px 0;
+  }
+
+  .card {
+    margin-top:12px;
+    padding:12px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+  }
+
+  #status {
+    white-space:pre-wrap;
+    font-family:
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+    font-size:11px;
+  }
+
+  .footer-scroll {
+    overflow:auto;
+    width:100%;
+    padding:8px;
+    background:#020507;
+    border-radius:6px;
+  }
+
+  .footer-scroll canvas {
+    display:block;
+    max-width:none;
+    image-rendering:pixelated;
+  }
+
+  .runs {
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin-top:8px;
+  }
+
+  .run {
+    min-width:150px;
+    display:grid;
+    grid-template-columns:22px 1fr;
+    gap:6px;
+    align-items:center;
+    font-size:10px;
+    color:#b8c6ce;
+  }
+
+  .swatch {
+    width:22px;
+    height:14px;
+    border:1px solid rgba(255,255,255,.4);
+  }
+
+  .meta {
+    display:grid;
+    grid-template-columns:150px 1fr;
+    gap:4px 8px;
+    font-size:12px;
+    margin-bottom:8px;
+  }
+
+  .meta span:nth-child(odd) {
+    color:#9fb2bc;
+  }
+
+  .warning {
+    border-left:3px solid #d6aa3a;
+    padding:8px;
+    background:#182129;
+    color:#d8e2e7;
+    font-size:11px;
+    line-height:1.45;
+    margin-top:8px;
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>
+    StormTracker Doppler palette isolation V2
+  </h1>
+
+  <p class="note">
+    V1 successfully found the footer area, but its RGB list was contaminated
+    by coloured map pixels. V2 looks specifically for the contiguous chain of
+    equal-width chromatic swatches that forms the Bureau Doppler velocity bar.
+    The full footer around that bar is enlarged 8× so any printed velocity
+    labels can be read directly.
+  </p>
+
+  <button id="loadAll">
+    Load and isolate all three velocity bars
+  </button>
+
+  <section class="card">
+    <strong>Status</strong>
+    <div id="status">
+      Ready.
+    </div>
+  </section>
+
+  <div id="results"></div>
+</main>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js?v=palette-v2";
+
+import {
+  analyseVelocityPalette
+} from "./src/doppler-palette-recovery-v2.js?v=palette-v2";
+
+const status =
+  document.getElementById(
+    "status"
+  );
+
+const results =
+  document.getElementById(
+    "results"
+  );
+
+function rgbCss(
+  rgb
+) {
+  return `rgb(${rgb.join(",")})`;
+}
+
+async function inspect(
+  radarId
+) {
+  status.textContent =
+    `Loading radar ${radarId}…`;
+
+  const source =
+    await loadDopplerDiagnostic(
+      radarId
+    );
+
+  const analysis =
+    analyseVelocityPalette(
+      source.canvas
+    );
+
+  if (!analysis.bar) {
+    throw new Error(
+      `Velocity bar not isolated for radar ${radarId}.`
+    );
+  }
+
+  const card =
+    document.createElement(
+      "section"
+    );
+
+  card.className =
+    "card";
+
+  const heading =
+    document.createElement(
+      "h2"
+    );
+
+  heading.textContent =
+    `${radarId} — ${source.product}`;
+
+  card.appendChild(
+    heading
+  );
+
+  const meta =
+    document.createElement(
+      "div"
+    );
+
+  meta.className =
+    "meta";
+
+  meta.innerHTML = `
+    <span>Image</span>
+    <strong>${source.width} × ${source.height}</strong>
+
+    <span>Detected bar row</span>
+    <strong>y=${analysis.bar.y}</strong>
+
+    <span>Velocity swatches</span>
+    <strong>${analysis.bar.runs.length}</strong>
+
+    <span>Bar span</span>
+    <strong>x=${analysis.bar.minX}…${analysis.bar.maxX}</strong>
+  `;
+
+  card.appendChild(
+    meta
+  );
+
+  const cropTitle =
+    document.createElement(
+      "h3"
+    );
+
+  cropTitle.textContent =
+    "8× pixel-perfect footer crop";
+
+  card.appendChild(
+    cropTitle
+  );
+
+  const scroll =
+    document.createElement(
+      "div"
+    );
+
+  scroll.className =
+    "footer-scroll";
+
+  scroll.appendChild(
+    analysis.footer.canvas
+  );
+
+  card.appendChild(
+    scroll
+  );
+
+  const runTitle =
+    document.createElement(
+      "h3"
+    );
+
+  runTitle.textContent =
+    "Isolated swatches — exact RGB, left to right";
+
+  card.appendChild(
+    runTitle
+  );
+
+  const runs =
+    document.createElement(
+      "div"
+    );
+
+  runs.className =
+    "runs";
+
+  for (
+    const [
+      index,
+      run
+    ]
+    of analysis.bar.runs.entries()
+  ) {
+    const item =
+      document.createElement(
+        "div"
+      );
+
+    item.className =
+      "run";
+
+    const swatch =
+      document.createElement(
+        "span"
+      );
+
+    swatch.className =
+      "swatch";
+
+    swatch.style.background =
+      rgbCss(
+        run.rgb
+      );
+
+    const label =
+      document.createElement(
+        "span"
+      );
+
+    label.textContent =
+      `${String(index + 1).padStart(2,"0")}: ` +
+      `${run.rgb.join(",")} (${run.width}px)`;
+
+    item.append(
+      swatch,
+      label
+    );
+
+    runs.appendChild(
+      item
+    );
+  }
+
+  card.appendChild(
+    runs
+  );
+
+  const warning =
+    document.createElement(
+      "div"
+    );
+
+  warning.className =
+    "warning";
+
+  warning.textContent =
+    "Do not infer the numeric velocities from colour order alone. " +
+    "The next decoder will only be created after the Bureau's printed scale " +
+    "or another authoritative value mapping is confirmed.";
+
+  card.appendChild(
+    warning
+  );
+
+  results.appendChild(
+    card
+  );
+
+  return analysis;
+}
+
+document
+  .getElementById(
+    "loadAll"
+  )
+  .addEventListener(
+    "click",
+    async () => {
+      try {
+        results.innerHTML =
+          "";
+
+        const summaries = [];
+
+        for (
+          const radarId
+          of ["66","50","08"]
+        ) {
+          const analysis =
+            await inspect(
+              radarId
+            );
+
+          summaries.push(
+            `${radarId}:${analysis.bar.runs.length}`
+          );
+        }
+
+        status.textContent =
+          "DOPPLER PALETTE ISOLATION V2: PASS — " +
+          summaries.join(" | ") +
+          ". Numeric velocity mapping still deliberately unset.";
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        status.textContent =
+          `ERROR — ${error.message}`;
+      }
+    }
+  );
+</script>
+</body>
+</html>

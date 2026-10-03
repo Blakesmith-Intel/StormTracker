@@ -93,6 +93,16 @@ export function inferColumn(
       continue;
     }
 
+    const p25Delta =
+      level.p25_delta_dbz == null
+        ? null
+        : Number(level.p25_delta_dbz);
+
+    const p75Delta =
+      level.p75_delta_dbz == null
+        ? null
+        : Number(level.p75_delta_dbz);
+
     points.push({
       altitude_m_amsl:
         Number(level.altitude_m_amsl),
@@ -102,15 +112,24 @@ export function inferColumn(
       confidence:
         occupancy,
 
+      median_delta_dbz:
+        delta,
+
       p25_delta_dbz:
-        level.p25_delta_dbz == null
-          ? null
-          : Number(level.p25_delta_dbz),
+        p25Delta,
 
       p75_delta_dbz:
-        level.p75_delta_dbz == null
-          ? null
-          : Number(level.p75_delta_dbz)
+        p75Delta,
+
+      p25_dbzh:
+        Number.isFinite(p25Delta)
+          ? inputDbz + p25Delta
+          : null,
+
+      p75_dbzh:
+        Number.isFinite(p75Delta)
+          ? inputDbz + p75Delta
+          : null
     });
   }
 

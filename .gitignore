@@ -4,3 +4,9 @@ node_modules/
 .env
 *.log
 coverage/
+
+# StormTracker build-time AURA reference archive
+data/aura/reference/
+
+# StormTracker build-time derived AURA products
+data/aura/derived/

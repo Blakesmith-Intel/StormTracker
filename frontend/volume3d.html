@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StormTracker — Measured AURA 3-D Volume</title>
+  <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
+  <script>
+    window.CESIUM_BASE_URL =
+      "https://unpkg.com/cesium@1.145.0/Build/Cesium/";
+  </script>
+  <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
+  <style>
+    * { box-sizing:border-box; }
+    html,body,#app { width:100%; height:100%; margin:0; }
+    body {
+      background:#081116;
+      color:#edf5f8;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      overflow:hidden;
+    }
+    #app {
+      display:grid;
+      grid-template-columns:minmax(310px,370px) 1fr;
+    }
+    aside {
+      padding:14px;
+      overflow:auto;
+      background:#0e1820;
+      border-right:1px solid #31424d;
+    }
+    #mapPanel { position:relative; min-width:0; overflow:hidden; }
+    #cesiumContainer { width:100%; height:100%; }
+    h1 { font-size:20px; margin:0 0 5px; }
+    .sub { font-size:11px; color:#a9bac4; margin-bottom:12px; }
+    .card {
+      padding:11px;
+      margin-bottom:10px;
+      border:1px solid #31424d;
+      border-radius:9px;
+      background:#16222b;
+    }
+    .card h2 {
+      margin:0 0 8px;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.07em;
+    }
+    .measured {
+      border-color:#4b8469;
+      background:#13251e;
+      font-size:11px;
+      line-height:1.45;
+    }
+    label { display:block; font-size:11px; color:#b6c5cd; margin:8px 0 4px; }
+    input[type=range], select { width:100%; }
+    button,select {
+      border:1px solid #4a6575;
+      background:#203440;
+      color:#f2f7f9;
+      border-radius:6px;
+      padding:7px;
+    }
+    button { cursor:pointer; }
+    .row { display:flex; gap:6px; flex-wrap:wrap; }
+    .row button { flex:1; }
+    .metric {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:4px 10px;
+      font-size:11px;
+      line-height:1.4;
+    }
+    .metric span:nth-child(odd) { color:#9fb1bb; }
+    #status { font-size:11px; line-height:1.45; }
+    #legend {
+      position:absolute;
+      left:10px;
+      bottom:26px;
+      z-index:600;
+      padding:8px;
+      border-radius:8px;
+      background:rgba(8,17,22,.9);
+      border:1px solid rgba(255,255,255,.18);
+      font-size:10px;
+      pointer-events:none;
+    }
+    .legend-row { display:flex; align-items:center; gap:5px; margin:2px 0; }
+    .swatch { width:12px; height:9px; border:1px solid rgba(255,255,255,.35); }
+    #nav {
+      position:absolute;
+      top:10px;
+      right:10px;
+      z-index:700;
+      display:flex;
+      gap:5px;
+      padding:5px;
+      border-radius:8px;
+      background:rgba(8,17,22,.9);
+      border:1px solid rgba(255,255,255,.18);
+    }
+    @media(max-width:850px) {
+      #app { grid-template-columns:1fr; grid-template-rows:48% 52%; }
+      aside { border-right:0; border-bottom:1px solid #31424d; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <h1>StormTracker 3-D</h1>
+    <div class="sub">Mt Stapylton • historical measured AURA volume</div>
+
+    <section class="card measured">
+      <strong>Measured volumetric radar.</strong>
+      This view is built from multi-elevation AURA Level-1 DBZH/VRADH gates
+      mapped into 1 km × 1 km × 500 m Cartesian voxels. It is not a vertical
+      extrusion of the live 2-D mosaic.
+    </section>
+
+    <section class="card">
+      <h2>Volume frame</h2>
+      <label>Frame <span id="frameLabel">—</span></label>
+      <input id="frameSlider" type="range" min="0" max="12" value="6" step="1">
+      <div class="row" style="margin-top:7px">
+        <button id="prevButton">Previous</button>
+        <button id="playButton">Play once</button>
+        <button id="nextButton">Next</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3-D intensity display</h2>
+
+      <label>Minimum reflectivity: <strong><span id="thresholdLabel">30</span> dBZ</strong></label>
+      <input id="thresholdSlider" type="range" min="20" max="60" value="30" step="5">
+
+      <label>Colour mode</label>
+      <select id="colourMode">
+        <option value="dbzh">Reflectivity intensity (dBZ)</option>
+        <option value="vradh">Radial velocity (m/s)</option>
+      </select>
+
+      <label>Vertical scale: <strong><span id="exaggerationLabel">1.0</span>×</strong></label>
+      <input id="exaggerationSlider" type="range" min="1" max="4" value="1" step="0.5">
+
+      <label>Point size: <strong><span id="pointSizeLabel">3</span> px</strong></label>
+      <input id="pointSizeSlider" type="range" min="2" max="7" value="3" step="1">
+    </section>
+
+    <section class="card">
+      <h2>Current measured volume</h2>
+      <div class="metric">
+        <span>Scan</span><strong id="scanTime">—</strong>
+        <span>Rendered voxels</span><strong id="renderedCount">—</strong>
+        <span>Maximum DBZH</span><strong id="maxDbzh">—</strong>
+        <span>40 dBZ echo top</span><strong id="echoTop40">—</strong>
+        <span>50 dBZ echo top</span><strong id="echoTop50">—</strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Status</h2>
+      <div id="status">Loading measured AURA manifest…</div>
+    </section>
+  </aside>
+
+  <main id="mapPanel">
+    <div id="cesiumContainer"></div>
+
+    <div id="nav">
+      <button id="lockButton">Unlock 3-D view</button>
+      <button id="resetViewButton">Reset view</button>
+    </div>
+
+    <div id="legend">
+      <strong>Measured reflectivity</strong>
+      <div class="legend-row"><span class="swatch" style="background:#6ab6ff"></span>20–29 dBZ</div>
+      <div class="legend-row"><span class="swatch" style="background:#1e78ff"></span>30–39 dBZ</div>
+      <div class="legend-row"><span class="swatch" style="background:#00b96b"></span>40–49 dBZ</div>
+      <div class="legend-row"><span class="swatch" style="background:#ffd21a"></span>50–54 dBZ</div>
+      <div class="legend-row"><span class="swatch" style="background:#ff5a22"></span>55–59 dBZ</div>
+      <div class="legend-row"><span class="swatch" style="background:#bd2fff"></span>60+ dBZ</div>
+    </div>
+  </main>
+</div>
+
+<script type="module" src="./src/volume3d-v1.js"></script>
+</body>
+</html>

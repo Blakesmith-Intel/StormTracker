@@ -16,9 +16,21 @@ import { buildTrackLikelihood } from "../lightning.js";
 let tracks = [];
 let nextTrackNumber = 1;
 
-function cleanSegmentation(seg) {
-  const { labels, ...rest } = seg;
-  return rest;
+function cleanSegmentation(
+  seg,
+  includeLabels = false
+) {
+  const {
+    labels,
+    ...rest
+  } = seg;
+
+  return includeLabels
+    ? {
+        ...rest,
+        labels
+      }
+    : rest;
 }
 
 function bestDopplerForTrack(trackDict, frameContexts) {
@@ -123,7 +135,14 @@ async function processFrameBucket(payload) {
       doppler
     });
 
-    segmentations.push(cleanSegmentation(segmentation));
+    segmentations.push(
+      cleanSegmentation(
+        segmentation,
+        Boolean(
+          payload.includeSegmentationLabels
+        )
+      )
+    );
 
     radarObservations.push(
       ...cellsToRadarObservations(

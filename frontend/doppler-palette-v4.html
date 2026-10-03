@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+<title>
+  StormTracker — Doppler Full Palette V4
+</title>
+
+<style>
+  * {
+    box-sizing:border-box;
+  }
+
+  body {
+    margin:0;
+    background:#0b141a;
+    color:#eef5f8;
+    font-family:
+      Inter,
+      system-ui,
+      sans-serif;
+  }
+
+  main {
+    max-width:1500px;
+    margin:0 auto;
+    padding:18px;
+  }
+
+  h1 {
+    margin:0 0 5px;
+  }
+
+  .note {
+    max-width:1100px;
+    color:#a9bbc4;
+    line-height:1.45;
+  }
+
+  button {
+    padding:9px 12px;
+    border:1px solid #496473;
+    border-radius:6px;
+    background:#1a2d38;
+    color:#fff;
+    cursor:pointer;
+    margin:10px 0;
+  }
+
+  .card {
+    margin-top:12px;
+    padding:12px;
+    border:1px solid #30424d;
+    border-radius:8px;
+    background:#111e26;
+  }
+
+  #status {
+    white-space:pre-wrap;
+    font:
+      11px/1.45
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+  }
+
+  .overview canvas {
+    width:100%;
+    height:auto;
+    image-rendering:pixelated;
+    background:#000;
+  }
+
+  .crop {
+    width:100%;
+    overflow:auto;
+    padding:8px;
+    background:#020507;
+    border-radius:6px;
+    margin-top:6px;
+  }
+
+  .crop canvas {
+    display:block;
+    max-width:none;
+    image-rendering:pixelated;
+  }
+
+  .direction-grid {
+    display:grid;
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+    gap:10px;
+  }
+
+  @media (
+    max-width:
+      900px
+  ) {
+    .direction-grid {
+      grid-template-columns:
+        1fr;
+    }
+  }
+
+  .runs {
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+  }
+
+  .run {
+    min-width:145px;
+    display:grid;
+    grid-template-columns:22px 1fr;
+    gap:6px;
+    align-items:center;
+    font-size:10px;
+    color:#b8c6ce;
+  }
+
+  .swatch {
+    width:22px;
+    height:14px;
+    border:
+      1px solid
+      rgba(
+        255,
+        255,
+        255,
+        .4
+      );
+  }
+
+  .meta {
+    display:grid;
+    grid-template-columns:170px 1fr;
+    gap:4px 8px;
+    font-size:12px;
+    margin-bottom:8px;
+  }
+
+  .meta span:nth-child(odd) {
+    color:#9fb2bc;
+  }
+
+  .warning {
+    margin-top:10px;
+    padding:8px;
+    border-left:3px solid #d6aa3a;
+    background:#182129;
+    color:#d8e2e7;
+    font-size:11px;
+    line-height:1.45;
+  }
+
+  pre {
+    overflow:auto;
+    padding:8px;
+    background:#071016;
+    border-radius:6px;
+    color:#c7d5dd;
+    font-size:10px;
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>
+    StormTracker Doppler full-palette V4
+  </h1>
+
+  <p class="note">
+    V3 proved the Bureau footer can be isolated cleanly. V4 keeps the entire
+    footer visible at once, then separately extracts the blue towards-radar
+    side and the warm away-from-radar side. No numeric velocity values are
+    invented here.
+  </p>
+
+  <button id="loadAll">
+    Load full palette for 66 / 50 / 08
+  </button>
+
+  <section class="card">
+    <strong>Status</strong>
+    <div id="status">
+      Ready.
+    </div>
+  </section>
+
+  <div id="results"></div>
+</main>
+
+<script type="module">
+import {
+  loadDopplerDiagnostic
+} from "./src/bom-doppler-intake-v1.js?v=full-palette-v4";
+
+import {
+  buildPaletteDiagnostic
+} from "./src/doppler-palette-full-v4.js?v=full-palette-v4";
+
+const status =
+  document.getElementById(
+    "status"
+  );
+
+const results =
+  document.getElementById(
+    "results"
+  );
+
+function rgbCss(
+  rgb
+) {
+  return `rgb(${rgb.join(",")})`;
+}
+
+function addRuns(
+  container,
+  runs
+) {
+  for (
+    const [
+      index,
+      run
+    ]
+    of runs.entries()
+  ) {
+    const item =
+      document.createElement(
+        "div"
+      );
+
+    item.className =
+      "run";
+
+    const swatch =
+      document.createElement(
+        "span"
+      );
+
+    swatch.className =
+      "swatch";
+
+    swatch.style.background =
+      rgbCss(
+        run.rgb
+      );
+
+    const label =
+      document.createElement(
+        "span"
+      );
+
+    label.textContent =
+      `${String(index + 1).padStart(2,"0")}: ` +
+      `${run.rgb.join(",")}  x=${run.start}…${run.end}`;
+
+    item.append(
+      swatch,
+      label
+    );
+
+    container.appendChild(
+      item
+    );
+  }
+}
+
+async function inspect(
+  radarId
+) {
+  status.textContent =
+    `Loading radar ${radarId}…`;
+
+  const source =
+    await loadDopplerDiagnostic(
+      radarId
+    );
+
+  const diagnostic =
+    buildPaletteDiagnostic(
+      source.canvas
+    );
+
+  const card =
+    document.createElement(
+      "section"
+    );
+
+  card.className =
+    "card";
+
+  const heading =
+    document.createElement(
+      "h2"
+    );
+
+  heading.textContent =
+    `${radarId} — ${source.product}`;
+
+  card.appendChild(
+    heading
+  );
+
+  const meta =
+    document.createElement(
+      "div"
+    );
+
+  meta.className =
+    "meta";
+
+  meta.innerHTML = `
+    <span>Image</span>
+    <strong>${source.width} × ${source.height}</strong>
+
+    <span>Palette row</span>
+    <strong>source y=${diagnostic.palette.y}</strong>
+
+    <span>Towards swatches</span>
+    <strong>${diagnostic.palette.towards.length}</strong>
+
+    <span>Away swatches</span>
+    <strong>${diagnostic.palette.away.length}</strong>
+
+    <span>Neutral candidates</span>
+    <strong>${diagnostic.palette.neutral.length}</strong>
+  `;
+
+  card.appendChild(
+    meta
+  );
+
+  const overviewTitle =
+    document.createElement(
+      "h3"
+    );
+
+  overviewTitle.textContent =
+    "Entire Bureau footer — fitted to page";
+
+  card.appendChild(
+    overviewTitle
+  );
+
+  const overview =
+    document.createElement(
+      "div"
+    );
+
+  overview.className =
+    "overview";
+
+  overview.appendChild(
+    diagnostic.footerOverview
+  );
+
+  card.appendChild(
+    overview
+  );
+
+  const grid =
+    document.createElement(
+      "div"
+    );
+
+  grid.className =
+    "direction-grid";
+
+  for (
+    const direction
+    of [
+      {
+        label:
+          "Towards radar",
+
+        runs:
+          diagnostic.palette.towards,
+
+        canvas:
+          diagnostic.towardsCrop
+      },
+
+      {
+        label:
+          "Away from radar",
+
+        runs:
+          diagnostic.palette.away,
+
+        canvas:
+          diagnostic.awayCrop
+      }
+    ]
+  ) {
+    const panel =
+      document.createElement(
+        "div"
+      );
+
+    const title =
+      document.createElement(
+        "h3"
+      );
+
+    title.textContent =
+      `${direction.label} — 8× crop`;
+
+    panel.appendChild(
+      title
+    );
+
+    if (
+      direction.canvas
+    ) {
+      const crop =
+        document.createElement(
+          "div"
+        );
+
+      crop.className =
+        "crop";
+
+      crop.appendChild(
+        direction.canvas
+      );
+
+      panel.appendChild(
+        crop
+      );
+    }
+
+    const runs =
+      document.createElement(
+        "div"
+      );
+
+    runs.className =
+      "runs";
+
+    addRuns(
+      runs,
+      direction.runs
+    );
+
+    panel.appendChild(
+      runs
+    );
+
+    grid.appendChild(
+      panel
+    );
+  }
+
+  card.appendChild(
+    grid
+  );
+
+  const machineTitle =
+    document.createElement(
+      "h3"
+    );
+
+  machineTitle.textContent =
+    "Machine-readable RGB order";
+
+  card.appendChild(
+    machineTitle
+  );
+
+  const pre =
+    document.createElement(
+      "pre"
+    );
+
+  pre.textContent =
+    JSON.stringify(
+      {
+        radar:
+          radarId,
+
+        product:
+          source.product,
+
+        towards:
+          diagnostic.palette.towards.map(
+            run =>
+              run.rgb
+          ),
+
+        neutral:
+          diagnostic.palette.neutral.map(
+            run =>
+              run.rgb
+          ),
+
+        away:
+          diagnostic.palette.away.map(
+            run =>
+              run.rgb
+          )
+      },
+      null,
+      2
+    );
+
+  card.appendChild(
+    pre
+  );
+
+  const warning =
+    document.createElement(
+      "div"
+    );
+
+  warning.className =
+    "warning";
+
+  warning.textContent =
+    "This establishes exact colour order only. BOM documents blue as toward " +
+    "the radar and yellow/orange/red as away from the radar, but the exact " +
+    "numeric velocity scale must still be verified before km/h values are " +
+    "used in StormTracker.";
+
+  card.appendChild(
+    warning
+  );
+
+  results.appendChild(
+    card
+  );
+
+  return diagnostic;
+}
+
+document
+  .getElementById(
+    "loadAll"
+  )
+  .addEventListener(
+    "click",
+    async () => {
+      try {
+        results.innerHTML =
+          "";
+
+        const summary = [];
+
+        for (
+          const radarId
+          of ["66","50","08"]
+        ) {
+          const diagnostic =
+            await inspect(
+              radarId
+            );
+
+          summary.push(
+            `${radarId}:` +
+            `${diagnostic.palette.towards.length}/` +
+            `${diagnostic.palette.neutral.length}/` +
+            `${diagnostic.palette.away.length}`
+          );
+        }
+
+        status.textContent =
+          "DOPPLER FULL PALETTE V4: PASS — " +
+          summary.join(" | ") +
+          ". Exact RGB order recovered; numeric velocity mapping remains unset.";
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        status.textContent =
+          `ERROR — ${error.message}`;
+      }
+    }
+  );
+</script>
+</body>
+</html>

@@ -13,7 +13,7 @@
 <div id="app">
   <aside class="sidebar">
     <h1>StormTracker</h1>
-    <div class="subtitle">Browser-native reconstruction • 08 / 50 / 66 • DIAGNOSTICS V1</div>
+    <div class="subtitle">Browser-native reconstruction • 08 / 50 / 66 • RADAR OVERLAY V1</div>
 
     <section class="card notice">
       <strong>Scientific status:</strong> live/public tracks are 2-D radar-footprint-derived algorithmic identities. They are not measured volumetric storm objects. Lightning likelihood is inferred, not a direct strike feed.
@@ -30,7 +30,7 @@
 
     <section class="card">
       <h2>Live public BOM reflectivity</h2>
-      <button id="liveBomButton">Load latest SEQ reflectivity — DIAGNOSTICS</button>
+      <button id="liveBomButton">Load latest SEQ reflectivity — SHOW ON MAP</button>
       <div class="small muted" style="margin-top:8px">
         Uses the Bureau public observed reflectivity mosaic around Gympie, Marburg and Mt Stapylton.
         This is live 2-D dBZ data. It is not a measured volumetric radar scan.
@@ -73,6 +73,6 @@
   </aside>
   <main class="map"><div id="cesiumContainer"></div></main>
 </div>
-<script type="module" src="./src/app-diagnostics-v1.js"></script>
+<script type="module" src="./src/app-radar-overlay-v1.js"></script>
 </body>
 </html>

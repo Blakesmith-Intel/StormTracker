@@ -1,7 +1,7 @@
 import { decodeReflectivityImageData, SOURCE_PALETTES } from "./palette.js?v=live-bom-v1";
 import { fetchReadableImage } from "./radar-source.js?v=live-bom-v1";
 
-const BOM_WMTS_BASE = "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
+const BOM_WMTS_BASE = "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts";
 const REFLECTIVITY_LAYER = "atm_surf_air_precip_reflectivity_dbz";
 const TILE_MATRIX_SET = "GoogleMapsCompatible_BoM";
 const ZOOM = 8;
@@ -183,6 +183,8 @@ export async function loadLatestBomReflectivityMosaic(now = Date.now()) {
     },
     sourceMetadata: {
       provider: "Australian Bureau of Meteorology",
+      transport: "StormTracker Cloudflare relay",
+      relay: "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev",
       product: "Public observed rain reflectivity WMTS",
       layer: REFLECTIVITY_LAYER,
       tileMatrixSet: TILE_MATRIX_SET,

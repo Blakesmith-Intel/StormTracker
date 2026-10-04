@@ -67,6 +67,7 @@ import {
 } from "./operational-loop-v1.js?v=operational-v9";
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-1";
+import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-2";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 
 const MODEL_URL =
@@ -194,6 +195,16 @@ let hybridHistory = new Map();
 let sequenceLoading = false;
 let sharedTimeline = null;
 let preparedDopplerStates = [];
+let publishedSharedTimeline = null;
+let loadedLoopMinutes = null;
+let loadedWithDoppler = null;
+let trackedThrough = null;
+const radarFrameCache = new Map();
+const radarResultCache = new Map();
+const autoRefresh = createLiveLoopRefresh({
+  refresh: () => document.hidden ? undefined : runSourceLoad(() => loadHybridSequence(true), true),
+  onError: error => { $("autoRefreshNote").textContent = `Auto update retry: ${error.message}`; }
+});
 
 const playback = createContinuousPlayback({
   count: () => hybridFrames.length,
@@ -272,6 +283,15 @@ function updateLoopButtonLabel() {
   if (loopWindow && !hybridFrames.length) {
     loopWindow.textContent = `${minutes} min requested`;
   }
+  $("dopplerHistoryWarning").hidden = minutes <= 30;
+}
+
+function enforceDopplerWindow() {
+  if ($("showDopplerOverlay").checked && selectedLoopMinutes() > 30) {
+    $("loopDurationMinutes").value = "30";
+    $("autoRefreshNote").textContent = "Doppler selected: loop changed to 30 minutes.";
+  }
+  updateLoopButtonLabel();
 }
 
 function sourceAgeText(
@@ -324,7 +344,7 @@ function updateOperationalOverview(
     sourceMode.textContent =
       mode === "latest"
         ? "Latest frame"
-        : "Radar / Doppler loop";
+        : (loadedWithDoppler ? "Radar / Doppler loop" : "Radar tracking loop");
   }
 
   const age =
@@ -1163,7 +1183,8 @@ function clearDopplerOverlay() {
 
 async function decodeHistoricalDopplerFrame(
   radarId,
-  frameDescriptor
+  frameDescriptor,
+  palettes = dopplerPalettes
 ) {
   const key =
     `${radarId}:${frameDescriptor.filename}`;
@@ -1190,7 +1211,7 @@ async function decodeHistoricalDopplerFrame(
           );
 
         const palette =
-          dopplerPalettes
+          palettes
             .get(
               String(
                 radarId
@@ -1406,13 +1427,13 @@ async function loadDopplerHistoriesAndPalettes() {
       )
     );
 
-  dopplerHistories =
+  const histories =
     new Map();
 
-  dopplerPalettes =
+  const palettes =
     new Map();
 
-  dopplerLatestRecords =
+  const latestRecords =
     new Map();
 
   for (
@@ -1426,12 +1447,12 @@ async function loadDopplerHistoriesAndPalettes() {
       continue;
     }
 
-    dopplerHistories.set(
+    histories.set(
       result.value.radarId,
       result.value.history
     );
 
-    dopplerPalettes.set(
+    palettes.set(
       result.value.radarId,
       result.value.palette
     );
@@ -1440,15 +1461,16 @@ async function loadDopplerHistoriesAndPalettes() {
       result.value.latestRecord
         ?.observedUtc
     ) {
-      dopplerLatestRecords.set(
+      latestRecords.set(
         result.value.radarId,
         result.value.latestRecord
       );
     }
   }
+  return { histories, palettes, latestRecords };
 }
 
-async function prepareDopplerState(entry) {
+async function prepareDopplerState(entry, sources) {
   const pairings = entry.pairings.map(pair => ({ ...pair }));
   const loadResults =
     await Promise.allSettled(
@@ -1486,7 +1508,7 @@ async function prepareDopplerState(entry) {
             === "latest"
           ) {
             const latestRecord =
-              dopplerLatestRecords
+              sources.latestRecords
                 .get(
                   pairing.radarId
                 );
@@ -1504,7 +1526,8 @@ async function prepareDopplerState(entry) {
 
           return decodeHistoricalDopplerFrame(
             pairing.radarId,
-            pairing.candidate
+            pairing.candidate,
+            sources.palettes
           );
         }
       )
@@ -1535,7 +1558,7 @@ async function prepareDopplerState(entry) {
       load.status
       === "fulfilled"
     ) {
-      if (pairing.matched && Math.abs(Date.parse(load.value.observedUtc) - Date.parse(entry.observedUtc)) > 8 * 60000) {
+      if (pairing.matched && (!Number.isFinite(Date.parse(load.value.observedUtc)) || Math.abs(Date.parse(load.value.observedUtc) - Date.parse(entry.observedUtc)) > 8 * 60000)) {
         pairing.matched = false;
         sourceFailures++;
       }
@@ -2508,97 +2531,109 @@ async function showHybridFrame(index) {
   }
 
   setStatus(
-    `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${frame.observedUtc.slice(11,16)} UTC · shared radar / Doppler history`,
+    `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${frame.observedUtc.slice(11,16)} UTC · ${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`,
     "ok"
   );
 }
 
-async function loadHybridSequence() {
-  const loopMinutes =
-    selectedLoopMinutes();
-
-  const requestedFrames =
-    frameCountForLoopMinutes(
-      loopMinutes
-    );
-
-  setStatus(
-    `Loading up to ${requestedFrames} BOM frames for a ${loopMinutes}-minute measured-2D tracking loop + inferred-3D volume…`
-  );
-
-  // Discover both sources first, avoiding downloads outside their shared history.
-  const [times] = await Promise.all([
+async function loadHybridSequence(automatic = false) {
+  const loopMinutes = selectedLoopMinutes();
+  const withDoppler = $("showDopplerOverlay").checked;
+  const requestedFrames = frameCountForLoopMinutes(loopMinutes);
+  if (!automatic) setStatus(`Loading up to ${requestedFrames} radar frames for a ${loopMinutes}-minute tracking loop…`);
+  const [times, sources] = await Promise.all([
     findRecentBomReflectivityTimes(Date.now(), requestedFrames),
     loadDopplerHistoriesAndPalettes()
   ]);
-  const timeline = buildSharedProductTimeline(times, dopplerHistories, dopplerLatestRecords);
-  if (!timeline.entries.length) {
-    throw new Error("No shared radar / Doppler history is currently available. Refresh latest remains available.");
+  const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords);
+  const discoveredImages = new Set([...sources.histories].flatMap(([id, history]) =>
+    history.frames.map(frame => `${id}:${frame.filename}`)));
+  for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
+  if (automatic && (!hasNewMatchedProducts(publishedSharedTimeline, shared) ||
+      (hybridFrames.length && Date.parse(shared.endUtc) <= Date.parse(hybridFrames.at(-1).observedUtc)))) {
+    $("autoRefreshNote").textContent = "Auto update: waiting for new matching radar + Doppler images.";
+    return;
   }
-  dopplerFrameCache = new Map();
-  const frames = [];
-  const states = [];
-  const failures = [];
+  const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(shared.endUtc)) : times;
+  const timeline = withDoppler ? shared : radarHistoryTimeline(radarTimes, shared);
+  if (!timeline.entries.length) throw new Error("No matching source history available. The current loop is retained.");
+  const frames = [], states = [], failures = [];
   for (const [index, entry] of timeline.entries.entries()) {
-    setStatus(`Loading shared frame ${index + 1}/${timeline.entries.length}: ${entry.observedUtc}`);
-    const [radarLoad, dopplerLoad] = await Promise.allSettled([
-      loadBomReflectivityMosaicAtTime(entry.observedUtc),
-      prepareDopplerState(entry)
-    ]);
-    if (radarLoad.status !== "fulfilled" || dopplerLoad.status !== "fulfilled" ||
-        !timeline.radarIds.every(id => dopplerLoad.value.pairings.some(pair => pair.radarId === id && pair.matched))) {
+    if (automatic && trackedThrough && !radarResultCache.has(entry.observedUtc) &&
+        Date.parse(entry.observedUtc) <= Date.parse(trackedThrough)) {
       failures.push(entry.observedUtc);
       continue;
     }
+    if (!automatic) setStatus(`Loading frame ${index + 1}/${timeline.entries.length}: ${entry.observedUtc}`);
+    const [radarLoad, dopplerLoad] = await Promise.allSettled([
+      radarFrameCache.has(entry.observedUtc)
+        ? Promise.resolve(radarFrameCache.get(entry.observedUtc))
+        : loadBomReflectivityMosaicAtTime(entry.observedUtc),
+      prepareDopplerState(entry, sources)
+    ]);
+    const needsPair = withDoppler || (automatic && entry.observedUtc === shared.endUtc);
+    if (radarLoad.status !== "fulfilled" || dopplerLoad.status !== "fulfilled" ||
+        (needsPair && !shared.radarIds.every(id => dopplerLoad.value.pairings.some(pair => pair.radarId === id && pair.matched)))) {
+      failures.push(entry.observedUtc);
+      continue;
+    }
+    radarFrameCache.set(entry.observedUtc, radarLoad.value);
     frames.push(radarLoad.value);
     states.push(dopplerLoad.value);
   }
-  if (!frames.length) throw new Error("The shared frames could not be loaded. Refresh latest or retry the loop.");
-  await hybridWorker.reset();
+  if (!frames.length || (automatic && frames.at(-1).observedUtc !== shared.endUtc)) {
+    throw new Error("Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
+  }
+  // Reuse observations across refreshes so the worker sees each scan once and
+  // retains storm IDs and history. A manual request for older uncached history
+  // rebuilds chronologically; automatic rolling windows never reset tracking.
+  const rebuild = trackedThrough == null || frames.some(frame =>
+    !radarResultCache.has(frame.observedUtc) && Date.parse(frame.observedUtc) <= Date.parse(trackedThrough));
+  if (rebuild) {
+    await hybridWorker.reset();
+    radarResultCache.clear();
+    trackedThrough = null;
+  }
+  const results = [];
+  for (const frame of frames) {
+    let result = radarResultCache.get(frame.observedUtc);
+    if (!result) {
+      result = await hybridWorker.processFrameBucket({ frames: [frame], referenceTime: frame.observedUtc,
+        includeSegmentationLabels: true });
+      radarResultCache.set(frame.observedUtc, result);
+      trackedThrough = frame.observedUtc;
+    }
+    results.push(result);
+  }
+  const oldTime = hybridFrames[hybridFrameIndex]?.observedUtc;
+  const resume = automatic ? playback.isPlaying() : true;
+  $("hybridFrameSlider").disabled = true;
+  $("hybridPlayButton").disabled = true;
+  await playback.pause();
   hybridFrames = frames;
+  hybridResults = results;
   preparedDopplerStates = states;
-  sharedTimeline = {
-    ...timeline,
-    startUtc: frames[0].observedUtc,
-    endUtc: frames.at(-1).observedUtc,
-    spanMinutes: (Date.parse(frames.at(-1).observedUtc) - Date.parse(frames[0].observedUtc)) / 60000,
-    failures
-  };
-  hybridResults = [];
+  dopplerHistories = sources.histories;
+  dopplerPalettes = sources.palettes;
+  dopplerLatestRecords = sources.latestRecords;
+  const publishedEntries = shared.entries.filter(entry => frames.some(frame => frame.observedUtc === entry.observedUtc));
+  publishedSharedTimeline = { ...shared, entries: publishedEntries, endUtc: publishedEntries.at(-1)?.observedUtc ?? null };
+  loadedLoopMinutes = loopMinutes;
+  loadedWithDoppler = withDoppler;
+  sharedTimeline = { ...timeline, startUtc: frames[0].observedUtc, endUtc: frames.at(-1).observedUtc,
+    spanMinutes: (Date.parse(frames.at(-1).observedUtc) - Date.parse(frames[0].observedUtc)) / 60000, failures };
   hybridHistory = new Map();
   hybridTrackVolumes = [];
   hybridDopplerFrameStates = [];
-  hybridFrameIndex = 0;
+  hybridFrameIndex = automatic ? Math.max(0, frames.findIndex(frame => frame.observedUtc === oldTime)) : 0;
   clearDopplerOverlay();
   const range = `${sharedTimeline.startUtc.slice(11,16)}–${sharedTimeline.endUtc.slice(11,16)} UTC`;
   $("operationalLoopWindow").textContent = `${sharedTimeline.spanMinutes} min span`;
-  $("operationalLoopWindow").title = `${loopMinutes} min requested; limited by shared source history`;
-  $("sharedHistoryNote").textContent = `${range} · ${frames.length} shared frames` +
-    (timeline.unavailableRadarIds.length ? ` · unavailable: ${timeline.unavailableRadarIds.join(" / ")}` : " · all 3 Doppler radars") +
+  $("operationalLoopWindow").title = `${loopMinutes} min requested; ${withDoppler ? "shared source" : "radar"} history`;
+  $("sharedHistoryNote").textContent = `${range} · ${frames.length} ${withDoppler ? "shared" : "radar"} frames` +
+    (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
     (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
-
-  for (
-    let index = 0;
-    index < hybridFrames.length;
-    index++
-  ) {
-    const frame =
-      hybridFrames[index];
-
-    const result =
-      await hybridWorker.processFrameBucket({
-        frames: [frame],
-        referenceTime:
-          frame.observedUtc,
-
-        includeSegmentationLabels:
-          true
-      });
-
-    hybridResults.push(
-      result
-    );
-  }
+  $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks matching products every 60 seconds.`;
 
   const previousByTrack =
     new Map();
@@ -2714,23 +2749,41 @@ async function loadHybridSequence() {
   $("hybridFrameSlider").max = String(hybridFrames.length - 1);
   $("hybridFrameSlider").disabled = false;
   $("hybridPlayButton").disabled = hybridFrames.length < 2;
-  await showHybridFrame(0);
-  playback.play();
+  await showHybridFrame(hybridFrameIndex);
+  if (resume) playback.play();
+  // Bound decoded imagery and per-frame results while retaining worker tracks.
+  const retained = new Set([...radarResultCache.keys()].sort().slice(-36));
+  for (const cache of [radarFrameCache, radarResultCache]) {
+    for (const key of cache.keys()) if (!retained.has(key)) cache.delete(key);
+  }
+  const wanted = new Set(states.flatMap(state => state.records.filter(record => record.filename)
+    .map(record => `${record.radarId}:${record.filename}`)));
+  for (const key of dopplerFrameCache.keys()) if (!wanted.has(key)) dopplerFrameCache.delete(key);
 }
 
-async function runSourceLoad(loader) {
+async function runSourceLoad(loader, background = false) {
   if (sequenceLoading || !model) return;
   sequenceLoading = true;
-  const buttons = ["loadHybridButton", "loadButton", "jumpLatestButton", "hybridPlayButton"];
+  $("loopDurationMinutes").disabled = true;
+  $("showDopplerOverlay").disabled = true;
+  const buttons = background ? ["loadHybridButton", "loadButton"] : ["loadHybridButton", "loadButton", "jumpLatestButton", "hybridPlayButton"];
   for (const id of buttons) $(id).disabled = true;
-  $("hybridFrameSlider").disabled = true;
-  await playback.pause();
+  if (!background) {
+    $("hybridFrameSlider").disabled = true;
+    await playback.pause();
+  }
   try {
     await loader();
   } catch (error) {
-    setStatus(error.message, "error");
+    if (background) {
+      $("autoRefreshNote").textContent = "Auto update: newest matched images unavailable; retrying.";
+      $("autoRefreshNote").title = error.message;
+    }
+    else setStatus(error.message, "error");
   } finally {
     sequenceLoading = false;
+    $("loopDurationMinutes").disabled = false;
+    $("showDopplerOverlay").disabled = false;
     for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
     $("hybridPlayButton").disabled = hybridFrames.length < 2;
     $("hybridFrameSlider").disabled = !hybridFrames.length;
@@ -2755,6 +2808,9 @@ async function loadLatest() {
   hybridTrackVolumes = [];
   hybridFrameIndex = 0;
   sharedTimeline = null;
+  publishedSharedTimeline = null;
+  loadedLoopMinutes = null;
+  loadedWithDoppler = null;
   $("hybridFrameLabel").textContent = "—";
   $("hybridRows").innerHTML = '<div class="hybrid-muted">Load a shared loop to view storm tracks.</div>';
   $("operationalLoopWindow").textContent = "Latest only";
@@ -2905,12 +2961,18 @@ async function initialise() {
   );
 
   for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
-  setStatus("Ready. Load a shared radar / Doppler loop for continuous replay.");
+  setStatus("Loading live radar tracking history…");
+  autoRefresh.start();
+  await runSourceLoad(loadHybridSequence);
 }
 
 
 $("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSequence));
-$("loopDurationMinutes").addEventListener("change", updateLoopButtonLabel);
+$("loopDurationMinutes").addEventListener("change", () => {
+  enforceDopplerWindow();
+  if (!sequenceLoading) runSourceLoad(loadHybridSequence);
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefresh.check(); });
 $("jumpLatestButton").addEventListener("click", async () => {
   if (sequenceLoading) return;
   await playback.pause();
@@ -2959,7 +3021,10 @@ $("showTrackVolumes").addEventListener(
 $("showDopplerOverlay").addEventListener(
   "change",
   () => {
-    renderDopplerOverlay();
+    enforceDopplerWindow();
+    if (!sequenceLoading && (loadedWithDoppler !== $("showDopplerOverlay").checked || loadedLoopMinutes !== selectedLoopMinutes())) {
+      runSourceLoad(loadHybridSequence);
+    } else renderDopplerOverlay();
   }
 );
 

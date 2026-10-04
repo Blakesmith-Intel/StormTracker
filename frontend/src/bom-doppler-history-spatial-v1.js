@@ -4,7 +4,7 @@ import {
 
 import {
   dopplerPixelCentreToLonLat
-} from "./bom-doppler-georef-v1.js?v=history-spatial-v1";
+} from "./bom-doppler-georef-v1.js?v=operational-v9-7";
 
 export function historicalPanelLayout(
   width,

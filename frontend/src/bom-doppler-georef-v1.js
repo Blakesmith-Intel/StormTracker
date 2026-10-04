@@ -1,3 +1,4 @@
+import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 import {
   inverseGnomonic
 } from "./geo.js?v=doppler-georef-v1";
@@ -14,6 +15,13 @@ export const BOM_DOPPLER_GIF_LAYOUT =
 
 export const BOM_DOPPLER_MAPS =
   Object.freeze({
+    ...Object.fromEntries(Object.values(QLD_RADAR_SITES)
+      .filter(site => site.dopplerProduct && !['08','50','66'].includes(site.id))
+      .map(site => [site.id, Object.freeze({
+        id: site.id, product: site.dopplerProduct, map: `IDR${site.id}3`,
+        projection: 'Gnomonic', latitude: site.dopplerLatitude, longitude: site.dopplerLongitude,
+        nominalPanel: true, recoveredCentrePixel: Object.freeze({column:256,row:256})
+      })])),
     "08": Object.freeze({
       id: "08",
       product: "IDR08I",
@@ -257,6 +265,8 @@ export function projectedBoundsForRadar(
       `Unsupported Doppler radar: ${radarId}`
     );
   }
+
+  if (radar.nominalPanel) return {west:-128000,east:128000,south:-128000,north:128000};
 
   const sw =
     projectedCorner(

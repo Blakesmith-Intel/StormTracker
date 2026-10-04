@@ -1,13 +1,13 @@
-# StormTracker Operational V9.6
+# StormTracker Operational V9.7
 
-Release date: 4 October 2026 (AEST). Status: agreed operational scope complete;
-V9.6 is ready for installation and publication through the existing Pages workflow.
+Release date: 4 October 2026 (AEST). Status: Queensland expansion prepared for installation;
+relay/frontend publication and deployed acceptance remain pending.
 
 The user confirmed V9.3 presentation controls and AEST display, and confirmed
 V9.4 automatic Doppler recovery works. Automated regression, installer and browser
-fixture checks supplement that deployed confirmation. V9.5 five-minute cadence was also confirmed on the deployed page. V9.6 adds the
-requested longer-window Doppler deselection and smooth visual playback before
-locking the final baseline. The v9.5.0 tag was not created.
+fixture checks supplement that deployed confirmation. V9.5 five-minute cadence was also confirmed on the deployed page. The user accepted V9.6 display refinements, then requested all remaining
+Queensland sites and a map snap to the selected radar. V9.7 adds that coverage;
+new nominally registered Doppler panels remain display-only pending calibration. The v9.5.0 tag was not created.
 
 ## Release changes
 
@@ -18,13 +18,40 @@ locking the final baseline. The v9.5.0 tag was not created.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and all 31 regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and all 32 regression suites must pass before Pages upload/deployment. |
+
+## Queensland expansion
+
+All 19 public Queensland sites are selectable, plus the original regional view.
+The camera centres on a selected site and Reset view returns there. Automatic
+refresh preserves free pan/orbit. Site-specific WMTS windows cover the radar and
+surrounding storm approaches; they remain national reflectivity mosaic data,
+not isolated raw scans from the selected instrument.
+
+The 14 wind products are accepted by the updated transport relay, including
+106/107/108. A single-site view gates publication on its own matching wind only.
+The five standard sites use radar-only histories and update without wind.
+Changing site clears prior geographic image/result caches and starts new ST
+associations; polling within that region preserves associations and observations.
+
+The three existing recovered Doppler map calibrations are unchanged. The 11
+added wind panels use their own BoM loop-page origins and the nominal 128-km,
+512-pixel map plane. Their position is approximate and their samples are excluded
+from footprint-restricted storm analysis until independently calibrated. This
+boundary is visible beside the loop information and recorded in the site registry.
+See [coverage inventory](QUEENSLAND_RADAR_COVERAGE.md).
+
+Deploy the updated relay once with `bash scripts/deploy-qld-relay.sh`, then publish
+the frontend through the existing Pages workflow. Neither has been deployed by
+the installer itself. Tagging remains held until the expanded deployed product is
+accepted.
 
 ## Delivered scope
 
 The main live product combines measured reflectivity, algorithmic persistent
 storm identities and motion, and track-specific inferred vertical structure.
-Doppler context and visual overlay use only radars 66/50/08 and retain independent
+Doppler track analysis retains calibrated radars 66/50/08. Wind overlays now
+cover all 14 Doppler-capable Queensland sites and retain independent
 nearest-scan pairing within eight minutes. Matching tolerance never extends the
 actual shared history. Latest GIF eligibility remains restricted to the original
 newest radar time. Historical wind is never borrowed from current imagery.
@@ -60,20 +87,23 @@ historical; switching modes preserves the loaded live product state.
 
 ## Validation evidence
 
-- Thirty-one existing/new regression suites cover tracking, source palettes,
+- Thirty-two existing/new regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with
   deterministic source imagery. They cover longer radar history, continuous
   playback, paired-source arrival order, outages, failure/retry, rejected source
   timestamps, persistent storm IDs, opacity and AEST/UTC.
+- Queensland checks cover all 19 site changes, camera centring, cache/history
+  resets, single-source update gating, standard-site updates and all 14 real BoM
+  GIF palette/layout decodes.
 - Browser layout checks cover 1366×768, 1280×720, 1024×600, 768×1024, 390×844,
   375×667, 320×568 and 844×390, with the longer-loop warning visible and hidden.
 - Installer validation uses complete staged files, checksum checks, backups,
   rollback and checks of actual installed files. Protected algorithms are unchanged.
 - User deployed confirmation: V9.4 recovery works without manual reload; V9.5
   correctly displays five-minute checks.
-- V9.6 validation logs accompanying the installer record the final cadence,
+- V9.7 validation logs accompanying the installer record the final cadence,
   deployment-gate and browser checks; they do not claim an unattended live soak test.
 
 ## Completion boundaries
@@ -82,11 +112,11 @@ The [scientific contract](SCIENTIFIC_CONTRACT.md) remains authoritative. Live 3-
 structure is inferred, ST identities are algorithmic associations, Doppler is
 radial velocity, and convective/lightning evidence scores are ordinal. Public
 imagery, relay availability and third-party map/browser assets remain dependencies.
-Broader radar coverage, true live multi-elevation volumes and calibrated lightning
+True live multi-elevation volumes and calibrated lightning
 probabilities are future scope, not unfinished requirements of this release.
 
 After publishing, confirm automatic Doppler deselection at longer windows, smooth
-playback and an update without reloading. Use `v9.6.0` for the final baseline tag
+playback and an update without reloading. Use `v9.7.0` for the final baseline tag
 after committing this release. Five-minute checks remain unchanged. If upstream publication or a radar source stalls, the
 current loop is retained, its timestamps/source age remain visible, and automatic
 retry continues. Use manual refresh for an immediate additional check.

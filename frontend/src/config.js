@@ -1,4 +1,6 @@
+import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 export const RADARS = Object.freeze({
+  ...QLD_RADAR_SITES,
   "08": Object.freeze({
     id: "08",
     name: "Gympie (Mt Kanigan)",

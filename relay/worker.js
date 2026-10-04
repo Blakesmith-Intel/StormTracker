@@ -1,3 +1,4 @@
+import { QLD_DOPPLER_PRODUCTS } from "../frontend/src/qld-radar-sites-v1.js";
 import {
   parseBomReceivedAtUtc
 } from "./doppler-time-v1.js";
@@ -24,11 +25,7 @@ const ALLOWED_LAYERS = new Set([
   "atm_surf_air_precip_reflectivity_dbz",
 ]);
 
-const ALLOWED_DOPPLER_PRODUCTS = new Set([
-  "IDR08I",
-  "IDR50I",
-  "IDR66I",
-]);
+const ALLOWED_DOPPLER_PRODUCTS = new Set(Object.values(QLD_DOPPLER_PRODUCTS));
 
 const ALLOWED_PARAMS = new Set([
   "SERVICE",

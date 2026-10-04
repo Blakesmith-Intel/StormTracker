@@ -1,3 +1,4 @@
+import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";
 import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
 
@@ -23,6 +24,22 @@ const SEQ_WINDOW = Object.freeze({
   rowStart: 13,
   rowEnd: 16
 });
+
+export function reflectivityWindowForRegion(region = 'SEQ') {
+  if (region === 'SEQ') return SEQ_WINDOW;
+  const site = QLD_RADAR_SITES[region];
+  if (!site) throw new Error(`Unknown Queensland radar site: ${region}`);
+  const R = 6378137, span = tileSpanM();
+  const x = R * site.longitude * Math.PI / 180;
+  const y = R * Math.log(Math.tan(Math.PI / 4 + site.latitude * Math.PI / 360));
+  const radius = 160000 / Math.cos(site.latitude * Math.PI / 180);
+  return Object.freeze({
+    colStart: Math.max(0, Math.floor((x - radius - MATRIX.tlx) / span)),
+    colEnd: Math.min(MATRIX.width - 1, Math.floor((x + radius - MATRIX.tlx) / span)),
+    rowStart: Math.max(0, Math.floor((MATRIX.tly - y - radius) / span)),
+    rowEnd: Math.min(MATRIX.height - 1, Math.floor((MATRIX.tly - y + radius) / span))
+  });
+}
 
 function tileSpanM() {
   return WORLD_EXTENT_M / (2 ** ZOOM);
@@ -66,18 +83,21 @@ export function candidateBomReflectivityTimes(now = Date.now(), count = 8) {
   );
 }
 
-async function probeTimestamp(observedUtc) {
-  const url = buildBomReflectivityTileUrl(34, 15, observedUtc);
+async function probeTimestamp(observedUtc, region = 'SEQ') {
+  const window = reflectivityWindowForRegion(region);
+  const col = region === "SEQ" ? 34 : Math.floor((window.colStart + window.colEnd) / 2);
+  const row = region === "SEQ" ? 15 : Math.floor((window.rowStart + window.rowEnd) / 2);
+  const url = buildBomReflectivityTileUrl(col, row, observedUtc);
   const image = await fetchReadableImage(url);
   return image.width > 0 && image.height > 0;
 }
 
-export async function findLatestBomReflectivityTime(now = Date.now()) {
+export async function findLatestBomReflectivityTime(now = Date.now(), region = 'SEQ') {
   let lastError = null;
 
   for (const observedUtc of candidateBomReflectivityTimes(now, 10)) {
     try {
-      if (await probeTimestamp(observedUtc)) return observedUtc;
+      if (await probeTimestamp(observedUtc, region)) return observedUtc;
     } catch (error) {
       lastError = error;
     }
@@ -109,11 +129,12 @@ function createCanvas(width, height) {
   throw new Error("No browser canvas implementation is available.");
 }
 
-export async function loadBomReflectivityMosaicAtTime(observedUtc) {
+export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ') {
   if (!observedUtc) throw new Error("observedUtc is required.");
 
-  const columns = SEQ_WINDOW.colEnd - SEQ_WINDOW.colStart + 1;
-  const rows = SEQ_WINDOW.rowEnd - SEQ_WINDOW.rowStart + 1;
+  const window = reflectivityWindowForRegion(region);
+  const columns = window.colEnd - window.colStart + 1;
+  const rows = window.rowEnd - window.rowStart + 1;
   const tileSize = 256;
   const width = columns * tileSize;
   const height = rows * tileSize;
@@ -125,8 +146,8 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc) {
 
   const jobs = [];
 
-  for (let row = SEQ_WINDOW.rowStart; row <= SEQ_WINDOW.rowEnd; row++) {
-    for (let col = SEQ_WINDOW.colStart; col <= SEQ_WINDOW.colEnd; col++) {
+  for (let row = window.rowStart; row <= window.rowEnd; row++) {
+    for (let col = window.colStart; col <= window.colEnd; col++) {
       jobs.push((async () => {
         const image = await fetchReadableImage(
           buildBomReflectivityTileUrl(col, row, observedUtc)
@@ -134,8 +155,8 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc) {
 
         return {
           image,
-          x: (col - SEQ_WINDOW.colStart) * tileSize,
-          y: (row - SEQ_WINDOW.rowStart) * tileSize
+          x: (col - window.colStart) * tileSize,
+          y: (row - window.rowStart) * tileSize
         };
       })());
     }
@@ -156,10 +177,10 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc) {
 
   const span = tileSpanM();
 
-  const minX = MATRIX.tlx + SEQ_WINDOW.colStart * span;
-  const maxX = MATRIX.tlx + (SEQ_WINDOW.colEnd + 1) * span;
-  const maxY = MATRIX.tly - SEQ_WINDOW.rowStart * span;
-  const minY = MATRIX.tly - (SEQ_WINDOW.rowEnd + 1) * span;
+  const minX = MATRIX.tlx + window.colStart * span;
+  const maxX = MATRIX.tlx + (window.colEnd + 1) * span;
+  const maxY = MATRIX.tly - window.rowStart * span;
+  const minY = MATRIX.tly - (window.rowEnd + 1) * span;
 
   let colouredPixelCount = 0;
   let strongPixelCount = 0;
@@ -200,7 +221,8 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc) {
       layer: REFLECTIVITY_LAYER,
       tileMatrixSet: TILE_MATRIX_SET,
       zoom: ZOOM,
-      tileWindow: { ...SEQ_WINDOW },
+      tileWindow: { ...window },
+      region,
       colouredPixelCount,
       strongPixelCount,
       maxCategory,
@@ -212,14 +234,15 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc) {
   };
 }
 
-export async function loadLatestBomReflectivityMosaic(now = Date.now()) {
-  const observedUtc = await findLatestBomReflectivityTime(now);
-  return loadBomReflectivityMosaicAtTime(observedUtc);
+export async function loadLatestBomReflectivityMosaic(now = Date.now(), region = 'SEQ') {
+  const observedUtc = await findLatestBomReflectivityTime(now, region);
+  return loadBomReflectivityMosaicAtTime(observedUtc, region);
 }
 
 export async function findRecentBomReflectivityTimes(
   now = Date.now(),
-  count = 6
+  count = 6,
+  region = 'SEQ'
 ) {
   const available = [];
 
@@ -237,7 +260,7 @@ export async function findRecentBomReflectivityTimes(
     )
   ) {
     try {
-      if (await probeTimestamp(observedUtc)) {
+      if (await probeTimestamp(observedUtc, region)) {
         available.push(observedUtc);
       }
     } catch {
@@ -264,9 +287,10 @@ export async function findRecentBomReflectivityTimes(
 export async function loadRecentBomReflectivityMosaics(
   now = Date.now(),
   count = 6,
-  onProgress = null
+  onProgress = null,
+  region = 'SEQ'
 ) {
-  const times = await findRecentBomReflectivityTimes(now, count);
+  const times = await findRecentBomReflectivityTimes(now, count, region);
   const frames = [];
 
   for (let index = 0; index < times.length; index++) {
@@ -280,7 +304,7 @@ export async function loadRecentBomReflectivityMosaics(
     });
 
     const frame =
-      await loadBomReflectivityMosaicAtTime(observedUtc);
+      await loadBomReflectivityMosaicAtTime(observedUtc, region);
 
     frames.push(frame);
 

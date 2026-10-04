@@ -1,10 +1,9 @@
-# StormTracker — Operational V9.6
+# StormTracker — Operational V9.7
 
 A browser-based storm tracking and radar visualisation product using public Bureau
-of Meteorology reflectivity and Doppler imagery. The agreed operational scope is
-complete. V9.4 automatic Doppler recovery was confirmed working by the user;
+of Meteorology reflectivity and Doppler imagery. The existing operational core is retained. V9.4 automatic Doppler recovery was confirmed working by the user;
 V9.5 reduced scheduled polling to five minutes and added a deployment test gate.
-V9.6 adds automatic Doppler deselection for longer windows and smooth playback transitions.
+V9.7 extends coverage to all 19 public Queensland radar sites, with site-centred maps.
 
 [Open StormTracker](https://blakesmith-intel.github.io/StormTracker/) ·
 [Operational release record](docs/OPERATIONAL_RELEASE.md) ·
@@ -14,7 +13,11 @@ V9.6 adds automatic Doppler deselection for longer windows and smooth playback t
 
 - Measured 2-D reflectivity storm footprints, persistent `STxxxx` tracks and motion.
 - Track-specific inferred 3-D structure, labelled with empirical support.
-- Timestamp-matched Doppler radial velocity from radars 66, 50 and 08.
+- All 19 Queensland sites selectable, plus the original south-east Queensland mosaic.
+- Site selection centres the camera and loads the surrounding reflectivity tiles.
+- Timestamp-matched Doppler overlays at 14 sites; five sites provide radar only.
+- Existing calibrated Doppler analysis at 66/50/08; new wind overlays are display-only
+  with nominal panel registration until independently calibrated.
 - Radar history options of 30/60/90/120/150/180 minutes. Selecting Doppler switches
   to a 30-minute shared loop; choosing a longer window deselects Doppler and loads
   the longer radar history. Longer radar loops show the availability warning.
@@ -33,7 +36,12 @@ scan grid. This is a deliberate discovery offset, not a guarantee of upstream
 latency. Five-minute polling can add up to five minutes before a newly available
 matching pair is discovered, plus request/loading time. Source age and actual
 frame times are displayed. Publication waits for new matching radar and Doppler
-scans from previously available radars; it can wait longer for a lagging source.
+scans from previously available radars in the selected region; it can wait longer
+for a lagging source. Radar-only sites publish new reflectivity without a wind
+request. A single-site view requests only that site's wind; an outage elsewhere
+does not block it. Site changes start a new regional tracking history and clear
+image/result caches; automatic refresh within a site preserves that history.
+The camera snaps only on site selection or Reset view, and remains free otherwise.
 
 The nominal scheduled rate drops from 60 to 12 checks per hour (80% fewer),
 before allowing for request duration. Checks do not overlap. The next scheduled
@@ -61,14 +69,18 @@ npm test
 ```
 
 This validates active-module syntax and runs every `run-*-tests.mjs` suite in
-`frontend/tests/` (31 at this release). GitHub Pages runs the same command on
+`frontend/tests/` (32 at this release). GitHub Pages runs the same command on
 Node 24 before publishing. A failure prevents deployment of that push.
 
 Push changes to `main` to publish `frontend/` through
 [the deployment workflow](.github/workflows/pages.yml). No local server or Python
 runtime is needed to use the product. Node/Python are only development/installer
 tools. The existing Cloudflare relay transports public source files and does no
-storm modelling. This release requires no relay redeployment.
+storm modelling. This release requires one relay redeployment to permit the added wind products.
+Run `bash scripts/deploy-qld-relay.sh` before publishing the frontend.
+The helper runs the full test gate, uses the existing relay configuration when
+available, and keeps its variables. Cloudflare authentication uses your existing
+Wrangler setup. [Queensland coverage and registration](docs/QUEENSLAND_RADAR_COVERAGE.md).
 
 ## Repository
 

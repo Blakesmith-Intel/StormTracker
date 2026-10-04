@@ -10,7 +10,7 @@ export function radarHistoryTimeline(times, shared) {
     .sort((a, b) => Date.parse(a) - Date.parse(b))
     .map(observedUtc => byTime.get(observedUtc) ?? {
       observedUtc,
-      pairings: ACTIVE_DOPPLER_RADARS.map(radarId => ({ radarId, matched: false, candidate: null }))
+      pairings: (shared.requestedRadarIds ?? ACTIVE_DOPPLER_RADARS).map(radarId => ({ radarId, matched: false, candidate: null }))
     });
   return { ...shared, entries, startUtc: entries[0]?.observedUtc ?? null,
     endUtc: entries.at(-1)?.observedUtc ?? null,

@@ -1,19 +1,10 @@
+import { QLD_DOPPLER_PRODUCTS } from "./qld-radar-sites-v1.js";
 import { withFreshDopplerResponse } from "./doppler-request-v1.js?v=operational-v9-4";
 
 const RELAY_ROOT =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
 
-export const DOPPLER_PRODUCTS =
-  Object.freeze({
-    "08":
-      "IDR08I",
-
-    "50":
-      "IDR50I",
-
-    "66":
-      "IDR66I",
-  });
+export const DOPPLER_PRODUCTS = QLD_DOPPLER_PRODUCTS;
 
 function productForRadar(
   radarId

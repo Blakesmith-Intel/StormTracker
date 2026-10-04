@@ -4,12 +4,12 @@ export const ACTIVE_DOPPLER_RADARS = Object.freeze(['66', '50', '08']);
 
 // Clip to real source bounds; the matching tolerance never extends history.
 // The current GIF remains eligible ONLY at the original newest radar time.
-export function buildSharedProductTimeline(reflectivityTimes, histories, latestRecords = new Map()) {
+export function buildSharedProductTimeline(reflectivityTimes, histories, latestRecords = new Map(), radarIds = ACTIVE_DOPPLER_RADARS) {
   const times = [...new Set(reflectivityTimes)]
     .filter(time => Number.isFinite(Date.parse(time)))
     .sort((a, b) => Date.parse(a) - Date.parse(b));
   const newestReflectivityUtc = times.at(-1);
-  const sources = ACTIVE_DOPPLER_RADARS.map(radarId => {
+  const sources = radarIds.map(radarId => {
     const history = (histories.get(radarId)?.frames ?? [])
       .filter(frame => frame.filename && Number.isFinite(Date.parse(frame.observedUtc)))
       .map(frame => ({ ...frame, source_kind: 'history' }));

@@ -41,7 +41,7 @@ import {
   loadDopplerDiagnostic,
   loadDopplerFrame,
   loadDopplerHistory
-} from "./bom-doppler-intake-v3.js?v=per-frame-v1";
+} from "./bom-doppler-intake-v3.js?v=operational-v9-4";
 
 import {
   geolocatedHistoricalDopplerSamples,
@@ -1469,7 +1469,9 @@ async function loadDopplerHistoriesAndPalettes() {
       );
     }
   }
-  return { histories, palettes, latestRecords };
+  const errors = new Map(settled.flatMap((result, index) => result.status === "rejected"
+    ? [[radarIds[index], result.reason?.message ?? "Doppler source unavailable"]] : []));
+  return { histories, palettes, latestRecords, errors };
 }
 
 async function prepareDopplerState(entry, sources) {
@@ -1562,6 +1564,9 @@ async function prepareDopplerState(entry, sources) {
     ) {
       if (pairing.matched && (!Number.isFinite(Date.parse(load.value.observedUtc)) || Math.abs(Date.parse(load.value.observedUtc) - Date.parse(entry.observedUtc)) > 8 * 60000)) {
         pairing.matched = false;
+        pairing.loadError = `Doppler ${pairing.radarId} returned an invalid/out-of-window source timestamp.`;
+        // A successfully decoded but rejected response must not poison retries.
+        dopplerFrameCache.delete(`${pairing.radarId}:${pairing.candidate?.filename}`);
         sourceFailures++;
       }
       records.push(load.value);
@@ -2526,6 +2531,11 @@ async function loadHybridSequence(automatic = false) {
     loadDopplerHistoriesAndPalettes()
   ]);
   const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords);
+  if (automatic) {
+    const required = publishedSharedTimeline?.radarIds.length ? publishedSharedTimeline.radarIds : ["66", "50", "08"];
+    const failed = required.filter(id => sources.errors.has(id));
+    if (failed.length) throw new Error(failed.map(id => `Doppler ${id}: ${sources.errors.get(id)}`).join("; "));
+  }
   const discoveredImages = new Set([...sources.histories].flatMap(([id, history]) =>
     history.frames.map(frame => `${id}:${frame.filename}`)));
   for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
@@ -2538,6 +2548,7 @@ async function loadHybridSequence(automatic = false) {
   const timeline = withDoppler ? shared : radarHistoryTimeline(radarTimes, shared);
   if (!timeline.entries.length) throw new Error("No matching source history available. The current loop is retained.");
   const frames = [], states = [], failures = [];
+  let newestFailure = "";
   for (const [index, entry] of timeline.entries.entries()) {
     if (automatic && trackedThrough && !radarResultCache.has(entry.observedUtc) &&
         Date.parse(entry.observedUtc) <= Date.parse(trackedThrough)) {
@@ -2555,6 +2566,12 @@ async function loadHybridSequence(automatic = false) {
     if (radarLoad.status !== "fulfilled" || dopplerLoad.status !== "fulfilled" ||
         (needsPair && !shared.radarIds.every(id => dopplerLoad.value.pairings.some(pair => pair.radarId === id && pair.matched)))) {
       failures.push(entry.observedUtc);
+      if (entry.observedUtc === shared.endUtc) {
+        newestFailure = radarLoad.status === "rejected" ? `Radar image: ${radarLoad.reason?.message}` :
+          dopplerLoad.status === "rejected" ? `Doppler preparation: ${dopplerLoad.reason?.message}` :
+          dopplerLoad.value.pairings.filter(pair => shared.radarIds.includes(pair.radarId) && !pair.matched)
+            .map(pair => pair.loadError ?? `Doppler ${pair.radarId} image unavailable`).join("; ");
+      }
       continue;
     }
     radarFrameCache.set(entry.observedUtc, radarLoad.value);
@@ -2562,7 +2579,7 @@ async function loadHybridSequence(automatic = false) {
     states.push(dopplerLoad.value);
   }
   if (!frames.length || (automatic && frames.at(-1).observedUtc !== shared.endUtc)) {
-    throw new Error("Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
+    throw new Error(newestFailure || "Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
   }
   // Reuse observations across refreshes so the worker sees each scan once and
   // retains storm IDs and history. A manual request for older uncached history
@@ -2615,6 +2632,7 @@ async function loadHybridSequence(automatic = false) {
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
     (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
   $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks matching products every 60 seconds.`;
+  $("autoRefreshNote").title = "";
 
   const previousByTrack =
     new Map();
@@ -2757,7 +2775,10 @@ async function runSourceLoad(loader, background = false) {
     await loader();
   } catch (error) {
     if (background) {
-      $("autoRefreshNote").textContent = "Auto update: newest matched images unavailable; retrying.";
+      const failedRadar = error.message.match(/Doppler (66|50|08)/)?.[1];
+      $("autoRefreshNote").textContent = failedRadar
+        ? `Auto update: Doppler ${failedRadar} unavailable; retrying.`
+        : "Auto update: newest matched images unavailable; retrying.";
       $("autoRefreshNote").title = error.message;
     }
     else setStatus(error.message, "error");

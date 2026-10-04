@@ -1,3 +1,5 @@
+import { withFreshDopplerResponse } from "./doppler-request-v1.js?v=operational-v9-4";
+
 const RELAY_ROOT =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
 
@@ -411,132 +413,33 @@ export function nearestDopplerFrameForTime(
   };
 }
 
-export async function loadDopplerHistory(
-  radarId
-) {
-  const url =
-    buildDopplerHistoryUrl(
-      radarId
-    );
-
-  const response =
-    await fetch(
-      url,
-      {
-        cache:
-          "no-store"
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      `Doppler history relay failed: HTTP ${response.status}`
-    );
-  }
-
-  const payload =
-    await response.json();
-
-  if (
-    payload?.format
-    !== "StormTrackerDopplerHistoryV1"
-    || !Array.isArray(
-      payload.frames
-    )
-  ) {
-    throw new Error(
-      "Unexpected Doppler history response."
-    );
-  }
-
-  return {
-    radarId:
-      String(
-        radarId
-      ),
-
-    product:
-      payload.product,
-
-    source:
-      payload.source,
-
-    filenameConvention:
-      payload.filename_convention,
-
-    frames:
-      payload.frames
-  };
+export async function loadDopplerHistory(radarId) {
+  const url = buildDopplerHistoryUrl(radarId);
+  return withFreshDopplerResponse(url, async response => {
+    if (!response.ok) throw new Error(`Doppler history relay failed: HTTP ${response.status}`);
+    const payload = await response.json();
+    if (payload?.format !== "StormTrackerDopplerHistoryV1" || !Array.isArray(payload.frames)) {
+      throw new Error("Unexpected Doppler history response.");
+    }
+    return { radarId: String(radarId), product: payload.product, source: payload.source,
+      filenameConvention: payload.filename_convention, frames: payload.frames };
+  });
 }
 
-export async function loadDopplerFrame(
-  radarId,
-  frameDescriptor
-) {
-  const filename =
-    frameDescriptor
-      ?.filename;
-
-  if (!filename) {
-    throw new Error(
-      "Doppler history frame filename is required."
-    );
-  }
-
-  const url =
-    buildDopplerFrameUrl(
-      radarId,
-      filename
-    );
-
-  const response =
-    await fetch(
-      url,
-      {
-        cache:
-          "force-cache"
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      `Doppler history frame relay failed: HTTP ${response.status}`
-    );
-  }
-
-  return loadImageResponse(
-    radarId,
-    response,
-    url
-  );
+export async function loadDopplerFrame(radarId, frameDescriptor) {
+  const filename = frameDescriptor?.filename;
+  if (!filename) throw new Error("Doppler history frame filename is required.");
+  const url = buildDopplerFrameUrl(radarId, filename);
+  return withFreshDopplerResponse(url, async response => {
+    if (!response.ok) throw new Error(`Doppler history frame relay failed: HTTP ${response.status}`);
+    return loadImageResponse(radarId, response, url);
+  });
 }
 
-export async function loadDopplerDiagnostic(
-  radarId
-) {
-  const url =
-    buildDopplerRelayUrl(
-      radarId
-    );
-
-  const response =
-    await fetch(
-      url,
-      {
-        cache:
-          "no-store"
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      `Doppler relay failed: HTTP ${response.status}`
-    );
-  }
-
-  return loadImageResponse(
-    radarId,
-    response,
-    url
-  );
+export async function loadDopplerDiagnostic(radarId) {
+  const url = buildDopplerRelayUrl(radarId);
+  return withFreshDopplerResponse(url, async response => {
+    if (!response.ok) throw new Error(`Doppler relay failed: HTTP ${response.status}`);
+    return loadImageResponse(radarId, response, url);
+  });
 }

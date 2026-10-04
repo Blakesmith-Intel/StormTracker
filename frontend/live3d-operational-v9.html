@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.4</title>
+  <title>StormTracker — Operational V9.5</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.4">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.5">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -59,7 +59,7 @@
     </section>
     <div class="live-notices">
       <div id="dopplerHistoryWarning" class="note" role="status" hidden>Doppler wind: 30-minute loop only. Selecting Doppler switches this window to 30 min.</div>
-      <div id="autoRefreshNote" class="note" role="status">Auto update: checks matching products every 60 seconds.</div>
+      <div id="autoRefreshNote" class="note" role="status">Auto update: checks matching products every 5 minutes.</div>
     </div>
     <div id="status" role="status">Loading inferred-volume model…</div>
   </aside>
@@ -226,6 +226,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.4"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.5"></script>
 </body>
 </html>

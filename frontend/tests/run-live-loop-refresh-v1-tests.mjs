@@ -20,17 +20,19 @@ assert.equal(hasNewMatchedProducts(previous,buildSharedProductTimeline(times(185
 assert.equal(hasNewMatchedProducts(null,buildSharedProductTimeline(times(185),new Map())),false);
 assert.equal(radarHistoryTimeline(times(180),buildSharedProductTimeline(times(180),new Map())).entries.length,36);
 // Timer re-arms only after completion; focus checks cannot overlap a fetch.
-let callback, calls=0, release, cancelled=0, errors=[];
-const scheduler=createLiveLoopRefresh({schedule:cb=>{callback=cb;return 1;},cancel:()=>cancelled++,
+let callback, calls=0, release, cancelled=0, errors=[], delays=[];
+const scheduler=createLiveLoopRefresh({schedule:(cb,delay)=>{callback=cb;delays.push(delay);return 1;},cancel:()=>cancelled++,
  refresh:()=>{calls++;return new Promise(resolve=>release=resolve);},onError:error=>errors.push(error)});
 scheduler.start();scheduler.start();
+assert.deepEqual(delays,[300000]);
 const first=scheduler.check();await Promise.resolve();
 const second=scheduler.check();await Promise.resolve();assert.equal(calls,1);
 release();await Promise.all([first,second]);assert.equal(cancelled,1);
+assert.deepEqual(delays,[300000,300000]);
 callback();await Promise.resolve();assert.equal(calls,2);scheduler.stop();release();await Promise.resolve();await Promise.resolve();
 assert.deepEqual(errors,[]);
 let retries=0;
-const failing=createLiveLoopRefresh({schedule:cb=>{callback=cb;return 1;},cancel:()=>{},
+const failing=createLiveLoopRefresh({schedule:(cb,delay)=>{callback=cb;delays.push(delay);return 1;},cancel:()=>{},
  refresh:()=>{retries++;throw Error('fixture failure');},onError:error=>errors.push(error.message)});
-failing.start();await failing.check();assert.equal(retries,1);assert.equal(errors.at(-1),'fixture failure');failing.stop();
+failing.start();await failing.check();assert.equal(retries,1);assert.equal(errors.at(-1),'fixture failure');assert.equal(delays.at(-1),300000);failing.stop();
 console.log('Live loop checks passed: 36-frame radar history, absent older Doppler context, independent source advance, outages, no overlapping refreshes and retry scheduling.');

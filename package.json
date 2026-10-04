@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Browser-native reconstruction of StormTracker",
   "scripts": {
-    "test": "node frontend/tests/run-node-tests.mjs"
+    "test": "node scripts/check-frontend.mjs"
   }
 }

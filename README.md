@@ -1,45 +1,79 @@
-# StormTracker — browser-native reconstruction
+# StormTracker — Operational V9.5
 
-This is the reconstructed StormTracker baseline after the original Codespace/repository was lost.
+A browser-based storm tracking and radar visualisation product using public Bureau
+of Meteorology reflectivity and Doppler imagery. The agreed operational scope is
+complete. V9.4 automatic Doppler recovery was confirmed working by the user;
+V9.5 reduces scheduled polling to five minutes and adds a deployment test gate.
 
-## What is preserved
+[Open StormTracker](https://blakesmith-intel.github.io/StormTracker/) ·
+[Operational release record](docs/OPERATIONAL_RELEASE.md) ·
+[Scientific contract](docs/SCIENTIFIC_CONTRACT.md)
 
-The validated storm logic has been translated into dependency-free ES modules: categorical reflectivity segmentation, multi-radar duplicate suppression, persistent `STxxxx` tracking, the 140 km/h motion gate, Doppler context scoring, freshness handling and public-only lightning likelihood.
+## Product
 
-## What changed deliberately
+- Measured 2-D reflectivity storm footprints, persistent `STxxxx` tracks and motion.
+- Track-specific inferred 3-D structure, labelled with empirical support.
+- Timestamp-matched Doppler radial velocity from radars 66, 50 and 08.
+- Radar history options of 30/60/90/120/150/180 minutes. Selecting Doppler switches
+  to a 30-minute shared loop; longer radar loops show the availability warning.
+- Continuous replay, Play/Pause, speed, frame slider and jump to latest.
+- Independent radar/Doppler opacity controls and AEST alongside UTC timestamps.
+- Automatic matched-product updates every five minutes while the page is visible,
+  plus a check when the page becomes visible. Manual refresh remains available.
+- A separate, frozen Christmas 2023 historical tracking validation mode.
 
-The live runtime no longer depends on Python, FastAPI, SQLite, NumPy, rasterio, pyproj, GDAL or a modelling service. The application is static HTML/CSS/JavaScript and performs live analysis in the browser using Web Workers.
+## Timing and recovery
 
-Historical AURA true-3-D processing is not part of the live runtime. It remains a validation/reference pathway only.
+Reflectivity discovery starts ten minutes behind wall-clock time, on a five-minute
+scan grid. This is a deliberate discovery offset, not a guarantee of upstream
+latency. Five-minute polling can add up to five minutes before a newly available
+matching pair is discovered, plus request/loading time. Source age and actual
+frame times are displayed. Publication waits for new matching radar and Doppler
+scans from previously available radars; it can wait longer for a lagging source.
 
-## Repository structure
+The nominal scheduled rate drops from 60 to 12 checks per hour (80% fewer),
+before allowing for request duration. Checks do not overlap. The next scheduled
+check runs five minutes after the
+previous check finishes. Hidden pages skip scheduled source requests; returning
+to the page triggers a check. A failed Doppler request has a 20-second deadline,
+rejected images are evicted from the decoded cache, and later checks retry while
+retaining the current loop. Successful refreshes preserve tracking history,
+playback state, opacity settings and camera.
 
-- `frontend/` — deployable browser application
-- `frontend/src/workers/` — browser analysis worker
-- `frontend/tests/` — dependency-free regression tests
-- `config/` — project/source policy
-- `docs/` — scientific and recovery notes
-- `reference/python/` — recovered algorithm specification/reference only
-- `.github/workflows/pages.yml` — optional static GitHub Pages deployment
+## Scientific scope
 
-## Immediate test
+Tracking and motion use measured 2-D reflectivity. The vertical structure is
+inferred, not measured live 3-D radar. Doppler is radial velocity, not storm
+translation speed. Convective/lightning assessments are ordinal evidence scores,
+not direct strike observations or calibrated probabilities. Historical AURA
+multi-elevation data remain a separate reference/validation pathway.
 
-No npm install is required.
+## Validation and deployment
 
-If Node is available, the pure algorithm tests can be run with:
+No npm dependencies need installing. With Node.js available, run:
 
 ```bash
 npm test
 ```
 
-For the actual application, publish the repository as static files (for example GitHub Pages) and open `frontend/index.html`. The browser app includes a synthetic multi-frame Stapylton demo that exercises segmentation, tracking and lightning-likelihood logic without any external data source.
+This validates active-module syntax and runs every `run-*-tests.mjs` suite in
+`frontend/tests/` (30 at this release). GitHub Pages runs the same command on
+Node 24 before publishing. A failure prevents deployment of that push.
 
-## Live Bureau imagery
+Push changes to `main` to publish `frontend/` through
+[the deployment workflow](.github/workflows/pages.yml). No local server or Python
+runtime is needed to use the product. Node/Python are only development/installer
+tools. The existing Cloudflare relay transports public source files and does no
+storm modelling. This release requires no relay redeployment.
 
-The live image adapter accepts an HTTPS image URL or a user-selected image. Browser pixel access requires the remote server to permit CORS. If the Bureau endpoint does not permit readable cross-origin images, use a minimal static/serverless file mirror; do not move analysis into the relay.
+## Repository
 
-The exact final RGB palette tables from the lost repository were not fully recoverable. `frontend/src/palette.js` is intentionally explicit about this: it contains the scientific dBZ class intervals and a configurable RGB decoder. Replace/calibrate the `reflectivityRgb` and `dopplerRgb` mappings using real source frames before claiming live operational parity.
+- `frontend/`: the published application, models and browser regression suites.
+- `scripts/check-frontend.mjs`: the complete frontend test entry point.
+- `relay/`: source transport worker and timestamp/history parsers.
+- `docs/`: release record, scientific constraints and recovery provenance.
+- `reference/python/`: recovered algorithm/reference material outside live runtime.
 
-## Cesium
-
-The browser UI pins CesiumJS 1.145.0 from unpkg. CesiumJS remains a browser library only; it is not a modelling engine. The app uses an ellipsoid globe and OpenStreetMap imagery and does not require a Cesium ion token.
+The frontend uses CesiumJS 1.145.0, an ellipsoid globe and OpenStreetMap imagery;
+it does not require a Cesium ion token. Public imagery availability, the relay,
+and externally hosted browser assets remain operating dependencies.

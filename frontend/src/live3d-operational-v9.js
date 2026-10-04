@@ -68,7 +68,7 @@ import {
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-1";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
-import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-2";
+import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-5";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 
 const MODEL_URL =
@@ -2631,7 +2631,7 @@ async function loadHybridSequence(automatic = false) {
   $("sharedHistoryNote").textContent = `${range} · ${frames.length} ${withDoppler ? "shared" : "radar"} frames` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
     (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
-  $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks matching products every 60 seconds.`;
+  $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks matching products every 5 minutes.`;
   $("autoRefreshNote").title = "";
 
   const previousByTrack =

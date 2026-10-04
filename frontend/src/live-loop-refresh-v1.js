@@ -1,6 +1,6 @@
 import { ACTIVE_DOPPLER_RADARS } from './shared-product-timeline-v1.js';
 
-export const LIVE_LOOP_REFRESH_MS = 60000;
+export const LIVE_LOOP_REFRESH_MS = 300000;
 
 // Radar-only playback retains its older reflectivity frames. Doppler context is
 // absent outside the genuine shared history, never borrowed from newer images.

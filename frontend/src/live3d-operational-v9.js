@@ -1,6 +1,7 @@
 import {
   loadLatestBomReflectivityMosaic,
-  loadRecentBomReflectivityMosaics
+  findRecentBomReflectivityTimes,
+  loadBomReflectivityMosaicAtTime
 } from "./bom-wmts-loop-v2.js?v=operational-v9";
 
 import {
@@ -39,8 +40,7 @@ import {
 import {
   loadDopplerDiagnostic,
   loadDopplerFrame,
-  loadDopplerHistory,
-  nearestDopplerFrameForTime
+  loadDopplerHistory
 } from "./bom-doppler-intake-v3.js?v=per-frame-v1";
 
 import {
@@ -65,6 +65,9 @@ import {
   normaliseLoopMinutes,
   playbackDelayForSpeed
 } from "./operational-loop-v1.js?v=operational-v9";
+
+import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-1";
+import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -188,7 +191,21 @@ let hybridFrames = [];
 let hybridResults = [];
 let hybridFrameIndex = 0;
 let hybridHistory = new Map();
-let hybridPlaying = false;
+let sequenceLoading = false;
+let sharedTimeline = null;
+let preparedDopplerStates = [];
+
+const playback = createContinuousPlayback({
+  count: () => hybridFrames.length,
+  currentIndex: () => hybridFrameIndex,
+  showFrame: showHybridFrame,
+  delay: () => playbackDelayForSpeed(selectedPlaybackSpeed()),
+  onPlayingChange: playing => {
+    $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
+    $("hybridPlayButton").setAttribute("aria-pressed", String(playing));
+  },
+  onError: error => setStatus(error.message, "error")
+});
 
 let hybridTrackVolumes = [];
 let hybridTrackVolumeCollection = null;
@@ -252,9 +269,8 @@ function updateLoopButtonLabel() {
   const loopWindow =
     $("operationalLoopWindow");
 
-  if (loopWindow) {
-    loopWindow.textContent =
-      `${minutes} min`;
+  if (loopWindow && !hybridFrames.length) {
+    loopWindow.textContent = `${minutes} min requested`;
   }
 }
 
@@ -308,7 +324,7 @@ function updateOperationalOverview(
     sourceMode.textContent =
       mode === "latest"
         ? "Latest frame"
-        : `${selectedLoopMinutes()}-min loop`;
+        : "Radar / Doppler loop";
   }
 
   const age =
@@ -385,49 +401,31 @@ function updateOperationalOverview(
         ?? 0;
 
       doppler.textContent =
-        `${matched}/3 matched`;
+        `${matched}/3 matched${sharedTimeline?.unavailableRadarIds.length ? " · degraded" : ""}`;
     }
   }
 
-  const frameTime =
-    $("operationalFrameTime");
-
+  const frameTime = $("operationalFrameTime");
   if (frameTime) {
-    frameTime.textContent =
-      frame?.observedUtc
-        ?.replace(
-          "T",
-          " "
-        )
-        .replace(
-          "Z",
-          " UTC"
-        )
-      ?? "—";
+    frameTime.textContent = frame?.observedUtc ? `${frame.observedUtc.slice(11,16)} UTC` : "—";
+    frameTime.title = frame?.observedUtc ?? "";
   }
+
 }
 
-function setAdvancedScienceVisible(
-  visible
-) {
-  for (
-    const section
-    of document.querySelectorAll(
-      ".science-advanced"
-    )
-  ) {
-    section.hidden =
-      !visible;
+function setAdvancedScienceVisible(visible) {
+  const dialog = $("detailsDialog");
+  if (visible && !dialog.open) dialog.showModal();
+  if (!visible && dialog.open) dialog.close();
+  $("showAdvancedScience").checked = Boolean(visible);
+}
+
+function selectDetailsTab(name) {
+  for (const panel of document.querySelectorAll("[data-detail-panel]")) {
+    panel.hidden = panel.dataset.detailPanel !== name;
   }
-
-  const toggle =
-    $("showAdvancedScience");
-
-  if (toggle) {
-    toggle.checked =
-      Boolean(
-        visible
-      );
+  for (const button of document.querySelectorAll("[data-detail-tab]")) {
+    button.setAttribute("aria-selected", String(button.dataset.detailTab === name));
   }
 }
 
@@ -1450,97 +1448,8 @@ async function loadDopplerHistoriesAndPalettes() {
   }
 }
 
-async function buildDopplerStateForFrame(
-  frameIndex
-) {
-  const frame =
-    hybridFrames[
-      frameIndex
-    ];
-
-  const result =
-    hybridResults[
-      frameIndex
-    ];
-
-  const segmentation =
-    result
-      ?.segmentations
-      ?.[0];
-
-  if (
-    !frame
-    || !segmentation
-  ) {
-    return null;
-  }
-
-  const radarIds =
-    [
-      "66",
-      "50",
-      "08"
-    ];
-
-  const pairings =
-    radarIds.map(
-      radarId => {
-        const history =
-          dopplerHistories
-            .get(
-              radarId
-            );
-
-        const latestRecord =
-          dopplerLatestRecords
-            .get(
-              radarId
-            );
-
-        const candidates =
-          [
-            ...(
-              history?.frames
-              ?? []
-            ).map(
-              candidate => ({
-                ...candidate,
-                source_kind:
-                  "history"
-              })
-            )
-          ];
-
-        if (
-          frameIndex
-          === hybridFrames.length - 1
-          && latestRecord
-            ?.observedUtc
-        ) {
-          candidates.push({
-            filename:
-              latestRecord.filename,
-
-            observedUtc:
-              latestRecord.observedUtc,
-
-            source_kind:
-              "latest"
-          });
-        }
-
-        return {
-          radarId,
-
-          ...nearestDopplerFrameForTime(
-            candidates,
-            frame.observedUtc,
-            8
-          )
-        };
-      }
-    );
-
+async function prepareDopplerState(entry) {
+  const pairings = entry.pairings.map(pair => ({ ...pair }));
   const loadResults =
     await Promise.allSettled(
       pairings.map(
@@ -1626,11 +1535,15 @@ async function buildDopplerStateForFrame(
       load.status
       === "fulfilled"
     ) {
-      records.push(
-        load.value
-      );
+      if (pairing.matched && Math.abs(Date.parse(load.value.observedUtc) - Date.parse(entry.observedUtc)) > 8 * 60000) {
+        pairing.matched = false;
+        sourceFailures++;
+      }
+      records.push(load.value);
     } else {
       sourceFailures++;
+      pairing.matched = false;
+      pairing.loadError = load.reason?.message ?? "Doppler image unavailable";
 
       records.push({
         radarId:
@@ -1655,65 +1568,26 @@ async function buildDopplerStateForFrame(
     }
   }
 
-  const context =
-    buildTrackDopplerContexts({
-      frame,
-
-      segmentation,
-
-      tracks:
-        result?.tracks
-        ?? [],
-
-      dopplerRecords:
-        records,
-
-      maxTimeDeltaMinutes:
-        8,
-
-      minimumSamples:
-        3
-    });
-
-  return {
-    frameIndex,
-
-    reflectivityUtc:
-      frame.observedUtc,
-
-    pairings,
-
-    records,
-
-    context,
-
-    sourceFailures
-  };
+  return { reflectivityUtc: entry.observedUtc, pairings, records, sourceFailures };
 }
 
 async function buildDopplerSequence() {
-  await loadDopplerHistoriesAndPalettes();
-
-  dopplerFrameCache =
-    new Map();
-
-  const states =
-    [];
-
-  for (
-    let frameIndex = 0;
-    frameIndex < hybridFrames.length;
-    frameIndex++
-  ) {
-    states.push(
-      await buildDopplerStateForFrame(
-        frameIndex
-      )
-    );
-  }
-
-  hybridDopplerFrameStates =
-    states;
+  hybridDopplerFrameStates = hybridFrames.map((frame, frameIndex) => {
+    const state = preparedDopplerStates[frameIndex];
+    const result = hybridResults[frameIndex];
+    return {
+      ...state,
+      frameIndex,
+      context: buildTrackDopplerContexts({
+        frame,
+        segmentation: result?.segmentations?.[0],
+        tracks: result?.tracks ?? [],
+        dopplerRecords: state.records,
+        maxTimeDeltaMinutes: 8,
+        minimumSamples: 3
+      })
+    };
+  });
 }
 
 function dopplerStateForFrame(
@@ -1782,8 +1656,7 @@ function selectedDopplerRecord(
         record =>
           record.radarId
           === radarId
-          && record.samples
-            ?.length
+          && Array.isArray(record.displaySamples)
       )
     ?? null
   );
@@ -1840,36 +1713,15 @@ function renderDopplerVelocityLegend(
     return;
   }
 
-  output.innerHTML =
-    palette.swatches
-      .map(
-        swatch => {
-          const [
-            r,
-            g,
-            b
-          ] =
-            swatch.rgb;
+  output.innerHTML = '<div class="velocity-scale">' + palette.swatches.map(swatch => {
+    const label = swatch.velocity_kmh > 0 ? `+${swatch.velocity_kmh}` : String(swatch.velocity_kmh);
+    return `<span class="velocity-step" title="${label} km/h radial velocity"><i style="background:rgb(${swatch.rgb.join(',')})"></i><span>${label}</span></span>`;
+  }).join("") + '</div><div class="velocity-directions"><span>Blue: toward radar</span><span>Yellow/red: away</span></div>';
 
-          const label =
-            swatch.velocity_kmh > 0
-              ? `+${swatch.velocity_kmh}`
-              : String(
-                  swatch.velocity_kmh
-                );
-
-          return (
-            `<span style="display:inline-flex;align-items:center;gap:3px;margin:2px 5px 2px 0;white-space:nowrap">` +
-              `<span style="width:10px;height:10px;border:1px solid rgba(255,255,255,.35);background:rgb(${r},${g},${b})"></span>` +
-              `<span>${label}</span>` +
-            `</span>`
-          );
-        }
-      )
-      .join("");
 }
 
 function renderDopplerOverlay() {
+  renderDopplerVelocityLegend($("dopplerOverlayRadar").value);
   clearDopplerOverlay();
 
   const status =
@@ -2656,51 +2508,9 @@ async function showHybridFrame(index) {
   }
 
   setStatus(
-    `HYBRID frame ${hybridFrameIndex + 1}/${hybridFrames.length}: ` +
-    `${frame.observedUtc}; ST identities and horizontal motion are measured-2D-derived; ` +
-    `vertical intensity is multi-event inferred.`,
+    `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${frame.observedUtc.slice(11,16)} UTC · shared radar / Doppler history`,
     "ok"
   );
-}
-
-function hybridDelay(ms) {
-  return new Promise(
-    resolve =>
-      setTimeout(
-        resolve,
-        ms
-      )
-  );
-}
-
-async function playHybridOnce() {
-  if (
-    hybridPlaying
-    || !hybridFrames.length
-  ) {
-    return;
-  }
-
-  hybridPlaying = true;
-  $("hybridPlayButton").disabled = true;
-
-  try {
-    for (
-      let index = 0;
-      index < hybridFrames.length;
-      index++
-    ) {
-      await showHybridFrame(index);
-      await hybridDelay(
-        playbackDelayForSpeed(
-          selectedPlaybackSpeed()
-        )
-      );
-    }
-  } finally {
-    hybridPlaying = false;
-    $("hybridPlayButton").disabled = false;
-  }
 }
 
 async function loadHybridSequence() {
@@ -2716,52 +2526,56 @@ async function loadHybridSequence() {
     `Loading up to ${requestedFrames} BOM frames for a ${loopMinutes}-minute measured-2D tracking loop + inferred-3D volume…`
   );
 
+  // Discover both sources first, avoiding downloads outside their shared history.
+  const [times] = await Promise.all([
+    findRecentBomReflectivityTimes(Date.now(), requestedFrames),
+    loadDopplerHistoriesAndPalettes()
+  ]);
+  const timeline = buildSharedProductTimeline(times, dopplerHistories, dopplerLatestRecords);
+  if (!timeline.entries.length) {
+    throw new Error("No shared radar / Doppler history is currently available. Refresh latest remains available.");
+  }
+  dopplerFrameCache = new Map();
+  const frames = [];
+  const states = [];
+  const failures = [];
+  for (const [index, entry] of timeline.entries.entries()) {
+    setStatus(`Loading shared frame ${index + 1}/${timeline.entries.length}: ${entry.observedUtc}`);
+    const [radarLoad, dopplerLoad] = await Promise.allSettled([
+      loadBomReflectivityMosaicAtTime(entry.observedUtc),
+      prepareDopplerState(entry)
+    ]);
+    if (radarLoad.status !== "fulfilled" || dopplerLoad.status !== "fulfilled" ||
+        !timeline.radarIds.every(id => dopplerLoad.value.pairings.some(pair => pair.radarId === id && pair.matched))) {
+      failures.push(entry.observedUtc);
+      continue;
+    }
+    frames.push(radarLoad.value);
+    states.push(dopplerLoad.value);
+  }
+  if (!frames.length) throw new Error("The shared frames could not be loaded. Refresh latest or retry the loop.");
   await hybridWorker.reset();
-
-  hybridFrames =
-    await loadRecentBomReflectivityMosaics(
-      Date.now(),
-      requestedFrames,
-      progress => {
-        if (
-          progress.stage
-          === "loading"
-        ) {
-          setStatus(
-            `Loading BOM frame ${progress.index + 1}/${progress.total}: ${progress.observedUtc}`
-          );
-        }
-      }
-    );
-
+  hybridFrames = frames;
+  preparedDopplerStates = states;
+  sharedTimeline = {
+    ...timeline,
+    startUtc: frames[0].observedUtc,
+    endUtc: frames.at(-1).observedUtc,
+    spanMinutes: (Date.parse(frames.at(-1).observedUtc) - Date.parse(frames[0].observedUtc)) / 60000,
+    failures
+  };
   hybridResults = [];
   hybridHistory = new Map();
   hybridTrackVolumes = [];
-
-  $("operationalFramesLoaded").textContent =
-    String(
-      hybridFrames.length
-    );
-
-  $("operationalLoopWindow").textContent =
-    `${loopMinutes} min`;
-
-  hybridDopplerFrameStates =
-    [];
-
-  dopplerHistories =
-    new Map();
-
-  dopplerPalettes =
-    new Map();
-
-  dopplerLatestRecords =
-    new Map();
-
-  dopplerFrameCache =
-    new Map();
-
+  hybridDopplerFrameStates = [];
+  hybridFrameIndex = 0;
   clearDopplerOverlay();
+  const range = `${sharedTimeline.startUtc.slice(11,16)}–${sharedTimeline.endUtc.slice(11,16)} UTC`;
+  $("operationalLoopWindow").textContent = `${sharedTimeline.spanMinutes} min span`;
+  $("operationalLoopWindow").title = `${loopMinutes} min requested; limited by shared source history`;
+  $("sharedHistoryNote").textContent = `${range} · ${frames.length} shared frames` +
+    (timeline.unavailableRadarIds.length ? ` · unavailable: ${timeline.unavailableRadarIds.join(" / ")}` : " · all 3 Doppler radars") +
+    (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
 
   for (
     let index = 0;
@@ -2896,60 +2710,31 @@ async function loadHybridSequence() {
     );
   }
 
-  setStatus(
-    "Tracking complete. Loading timestamped BOM Doppler history for 66 / 50 / 08 and pairing every reflectivity frame independently…"
-  );
+  await buildDopplerSequence();
+  $("hybridFrameSlider").max = String(hybridFrames.length - 1);
+  $("hybridFrameSlider").disabled = false;
+  $("hybridPlayButton").disabled = hybridFrames.length < 2;
+  await showHybridFrame(0);
+  playback.play();
+}
 
+async function runSourceLoad(loader) {
+  if (sequenceLoading || !model) return;
+  sequenceLoading = true;
+  const buttons = ["loadHybridButton", "loadButton", "jumpLatestButton", "hybridPlayButton"];
+  for (const id of buttons) $(id).disabled = true;
+  $("hybridFrameSlider").disabled = true;
+  await playback.pause();
   try {
-    await buildDopplerSequence();
+    await loader();
   } catch (error) {
-    console.warn(
-      "Per-frame Doppler sequence unavailable",
-      error
-    );
-
-    hybridDopplerFrameStates =
-      [];
-
-    $("dopplerRadarsLoaded").textContent =
-      "0";
-
-    $("dopplerRadarsMatched").textContent =
-      "0";
-
-    $("dopplerTracksMatched").textContent =
-      "0";
-
-    $("dopplerFailures").textContent =
-      "3";
+    setStatus(error.message, "error");
+  } finally {
+    sequenceLoading = false;
+    for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
+    $("hybridPlayButton").disabled = hybridFrames.length < 2;
+    $("hybridFrameSlider").disabled = !hybridFrames.length;
   }
-
-  $("hybridFrameSlider").max =
-    String(
-      hybridFrames.length - 1
-    );
-
-  $("hybridFrameSlider").disabled =
-    false;
-
-  $("hybridPlayButton").disabled =
-    false;
-
-  await playHybridOnce();
-
-  const finalResult =
-    hybridResults.at(-1);
-
-  setStatus(
-    `HYBRID CORE COMPLETE: ${hybridFrames.length} frames; ` +
-    `${finalResult?.active_track_ids?.length ?? 0} active measured-2D ST tracks; ` +
-    `${(finalResult?.tracks ?? []).length} total ST identities. ` +
-    `Vertical intensity uses the five-event model; inferred geometry does not create track identity. ` +
-    `Each reflectivity frame is independently paired to the nearest available Doppler frame for 66 / 50 / 08; ` +
-    `strict footprint-restricted Doppler is now included in the existing ordinal convective/lightning assessment. ` +
-    `Doppler does not create or move ST tracks and is not treated as horizontal storm motion or a rotation diagnosis.`,
-    "ok"
-  );
 }
 
 async function loadLatest() {
@@ -2961,6 +2746,22 @@ async function loadLatest() {
     await loadLatestBomReflectivityMosaic();
 
   latestFrame = frame;
+  hybridSource.entities.removeAll();
+  clearHybridTrackVolumeCollection();
+  clearDopplerOverlay();
+  hybridFrames = [];
+  hybridResults = [];
+  hybridDopplerFrameStates = [];
+  hybridTrackVolumes = [];
+  hybridFrameIndex = 0;
+  sharedTimeline = null;
+  $("hybridFrameLabel").textContent = "—";
+  $("hybridRows").innerHTML = '<div class="hybrid-muted">Load a shared loop to view storm tracks.</div>';
+  $("operationalLoopWindow").textContent = "Latest only";
+  $("sharedHistoryNote").textContent = "Load a loop to align radar and Doppler history.";
+  $("hybridTrackCount").textContent = "0";
+  $("hybridPersistentCount").textContent = "0";
+  updateDopplerUiForFrame(0);
 
   const renderToken =
     ++hybridSceneRenderToken;
@@ -3103,108 +2904,44 @@ async function initialise() {
     "latest"
   );
 
-  setStatus(
-    "Operational V9 ready. Load the latest frame or a 30–180 minute storm loop."
-  );
+  for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
+  setStatus("Ready. Load a shared radar / Doppler loop for continuous replay.");
 }
 
 
-$("loadHybridButton").addEventListener(
-  "click",
-  () =>
-    loadHybridSequence()
-      .catch(
-        error => {
-          console.error(error);
-
-          setStatus(
-            error.message,
-            "error"
-          );
-        }
-      )
-);
-
-$("loopDurationMinutes").addEventListener(
-  "change",
-  () => {
-    updateLoopButtonLabel();
+$("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSequence));
+$("loopDurationMinutes").addEventListener("change", updateLoopButtonLabel);
+$("jumpLatestButton").addEventListener("click", async () => {
+  if (sequenceLoading) return;
+  await playback.pause();
+  if (hybridFrames.length) {
+    showHybridFrame(hybridFrames.length - 1).catch(error => setStatus(error.message, "error"));
+  } else {
+    runSourceLoad(loadLatest);
   }
-);
-
-$("jumpLatestButton").addEventListener(
-  "click",
-  () => {
-    if (
-      hybridFrames.length
-    ) {
-      showHybridFrame(
-        hybridFrames.length - 1
-      )
-        .catch(
-          error =>
-            setStatus(
-              error.message,
-              "error"
-            )
-        );
-
-      return;
-    }
-
-    loadLatest()
-      .catch(
-        error => {
-          console.error(
-            error
-          );
-
-          setStatus(
-            error.message,
-            "error"
-          );
-        }
-      );
-  }
-);
-
-$("showAdvancedScience").addEventListener(
-  "change",
-  event => {
-    setAdvancedScienceVisible(
-      event.target.checked
-    );
-  }
-);
-
-$("hybridFrameSlider").addEventListener(
-  "input",
-  event =>
-    showHybridFrame(
-      Number(
-        event.target.value
-      )
-    ).catch(
-      error =>
-        setStatus(
-          error.message,
-          "error"
-        )
-    )
-);
-
-$("hybridPlayButton").addEventListener(
-  "click",
-  () =>
-    playHybridOnce()
-      .catch(
-        error =>
-          setStatus(
-            error.message,
-            "error"
-          )
-      )
-);
+});
+$("showAdvancedScience").addEventListener("change", event => {
+  selectDetailsTab("controls");
+  setAdvancedScienceVisible(event.target.checked);
+});
+$("openDetailsButton").addEventListener("click", () => {
+  selectDetailsTab("tracks");
+  setAdvancedScienceVisible(true);
+});
+$("closeDetailsButton").addEventListener("click", () => setAdvancedScienceVisible(false));
+$("detailsDialog").addEventListener("close", () => { $("showAdvancedScience").checked = false; });
+for (const button of document.querySelectorAll("[data-detail-tab]")) {
+  button.addEventListener("click", () => selectDetailsTab(button.dataset.detailTab));
+}
+$("hybridFrameSlider").addEventListener("input", async event => {
+  const index = Number(event.target.value);
+  await playback.pause();
+  showHybridFrame(index).catch(error => setStatus(error.message, "error"));
+});
+$("hybridPlayButton").addEventListener("click", () => {
+  if (playback.isPlaying()) playback.pause();
+  else playback.play();
+});
 
 $("showTrackVolumes").addEventListener(
   "change",
@@ -3233,20 +2970,7 @@ $("dopplerOverlayRadar").addEventListener(
   }
 );
 
-$("loadButton").addEventListener(
-  "click",
-  () =>
-    loadLatest().catch(
-      error => {
-        console.error(error);
-
-        setStatus(
-          error.message,
-          "error"
-        );
-      }
-    )
-);
+$("loadButton").addEventListener("click", () => runSourceLoad(loadLatest));
 
 $("minimumDbzh").addEventListener(
   "input",

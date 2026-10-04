@@ -95,6 +95,10 @@ const viewer = new Cesium.Viewer(
     fullscreenButton: false,
     infoBox: false,
     selectionIndicator: false,
+    // Keep Cesium attribution outside the crossfaded render surface so its logo
+    // and provider credits remain static while weather frames transition.
+    creditContainer: $("cesiumCredits"),
+    creditViewport: $("mapPanel"),
     terrainProvider:
       new Cesium.EllipsoidTerrainProvider(),
     baseLayer: false,
@@ -152,22 +156,7 @@ const mapCamera =
       ),
 
     home:
-      CORE_HOME,
-
-    onUnexpectedCorrection:
-      count => {
-        const output =
-          document.getElementById(
-            "cameraCorrections"
-          );
-
-        if (output) {
-          output.textContent =
-            String(
-              count
-            );
-        }
-      }
+      CORE_HOME
   });
 
 try {

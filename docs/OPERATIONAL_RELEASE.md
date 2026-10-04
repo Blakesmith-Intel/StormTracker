@@ -1,4 +1,4 @@
-# StormTracker Operational V9.7
+# StormTracker Operational V9.7.2
 
 Release date: 4 October 2026 (AEST). Status: Queensland expansion prepared for installation;
 relay/frontend publication and deployed acceptance remain pending.
@@ -18,7 +18,7 @@ new nominally registered Doppler panels remain display-only pending calibration.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and all 32 regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and all 33 regression suites must pass before Pages upload/deployment. |
 
 ## Queensland expansion
 
@@ -82,12 +82,11 @@ motion and stalled/unsupported capture paths use immediate real-frame display.
 
 The dashboard keeps routine controls and legends visible without sidebar
 scrolling. Advanced science, source information and track details use a dialog.
-Frozen Christmas 2023 historical validation remains separate and explicitly
-historical; switching modes preserves the loaded live product state.
+The Christmas 2023 scenario/regression contracts remain internal engineering tests only. Their user-facing historical-validation page and production mode switch are removed from the published product.
 
 ## Validation evidence
 
-- Thirty-two existing/new regression suites cover tracking, source palettes,
+- Thirty-three existing/new regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with
@@ -103,7 +102,7 @@ historical; switching modes preserves the loaded live product state.
   rollback and checks of actual installed files. Protected algorithms are unchanged.
 - User deployed confirmation: V9.4 recovery works without manual reload; V9.5
   correctly displays five-minute checks.
-- V9.7 validation logs accompanying the installer record the final cadence,
+- V9.7.2 validation logs accompanying the installer record the final cadence,
   deployment-gate and browser checks; they do not claim an unattended live soak test.
 
 ## Completion boundaries
@@ -116,7 +115,32 @@ True live multi-elevation volumes and calibrated lightning
 probabilities are future scope, not unfinished requirements of this release.
 
 After publishing, confirm automatic Doppler deselection at longer windows, smooth
-playback and an update without reloading. Use `v9.7.0` for the final baseline tag
-after committing this release. Five-minute checks remain unchanged. If upstream publication or a radar source stalls, the
+playback and an update without reloading. Use the final annotated `v9.7.2` tag as the restore point after sealing this release. Five-minute checks remain unchanged. If upstream publication or a radar source stalls, the
 current loop is retained, its timestamps/source age remain visible, and automatic
 retry continues. Use manual refresh for an immediate additional check.
+
+## V9.7.1 interface cleanup
+
+Removed the diagnostic camera-corrections counter from the map toolbar and its
+display callback. Reset view remains functional: it returns to the selected
+radar after user pan/orbit, or to the original regional home for SEQ. Camera
+control and site selection are unchanged. This frontend-only update requires
+no additional relay deployment.
+
+## V9.7.2 final production cleanup
+
+The public entry point is now live-weather only. The historical validation page,
+its page controller and the production mode switch are removed from the published
+frontend. The Christmas 2023 scenario/regression modules and Node tests remain
+internal regression protection.
+
+Cesium attribution is hosted in a dedicated DOM credit container above and outside
+the weather-frame crossfade. The Cesium logo/provider credits therefore remain
+static while frames change. Attribution is not hidden or removed.
+
+The camera-corrections counter remains removed. Reset view remains because it
+returns to the selected radar (or SEQ home) after manual pan/orbit.
+
+The final restore point is the annotated tag `v9.7.2` and its exact commit SHA;
+see `docs/BASELINE_RESTORE.md`. No scientific, source-pairing, tracking, scoring,
+radar-site, polling or relay logic changes are made in this cleanup.

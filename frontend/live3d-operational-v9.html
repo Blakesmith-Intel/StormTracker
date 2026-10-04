@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.7</title>
+  <title>StormTracker — Operational V9.7.2</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.7">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.7.2">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -65,7 +65,8 @@
   </aside>
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
-    <div id="nav"><select id="radarSite" aria-label="Queensland radar site"><option value="SEQ">South-east Queensland</option></select><button id="resetButton">Reset view</button><span>Camera corrections: <strong id="cameraCorrections">0</strong></span></div>
+    <div id="cesiumCredits" class="cesium-widget-credits" aria-label="Map attribution"></div>
+    <div id="nav"><select id="radarSite" aria-label="Queensland radar site"><option value="SEQ">South-east Queensland</option></select><button id="resetButton">Reset view</button></div>
     <div id="mapTruthLabel">Measured reflectivity / inferred vertical structure</div>
   </main>
 </div>
@@ -222,10 +223,10 @@
   <div data-detail-panel="sources" hidden>
     <section class="card"><h2>Reflectivity</h2><div class="metric"><span>Source time</span><strong id="sourceTime">—</strong><span>Decoded pixels</span><strong id="decodedPixels">—</strong><span>Observed maximum</span><strong id="sourceMaximum">—</strong></div></section>
     <section class="card"><h2>Time-matched Doppler</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Time-matched radars</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
-    <div id="dopplerSourceRows"><span class="hybrid-muted">Load a loop to retrieve timestamped history for 66 / 50 / 08.</span></div>
+    <div id="dopplerSourceRows"><span class="hybrid-muted">Load a loop to retrieve timestamped history for the selected Doppler site.</span></div>
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.7"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.7.2"></script>
 </body>
 </html>

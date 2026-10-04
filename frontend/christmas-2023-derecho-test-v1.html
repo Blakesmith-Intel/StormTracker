@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>
+    StormTracker — Christmas Night 2023 tracking validation
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css"
+  >
+
+  <script>
+    window.CESIUM_BASE_URL =
+      "https://unpkg.com/cesium@1.145.0/Build/Cesium/";
+  </script>
+
+  <script
+    src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"
+  ></script>
+
+  <style>
+    * {
+      box-sizing:border-box;
+    }
+
+    html,
+    body,
+    #app {
+      width:100%;
+      height:100%;
+      margin:0;
+    }
+
+    body {
+      overflow:hidden;
+      background:#081116;
+      color:#edf5f8;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    #app {
+      display:grid;
+      grid-template-columns:minmax(340px,390px) 1fr;
+    }
+
+    aside {
+      overflow:auto;
+      padding:14px;
+      background:#0e1820;
+      border-right:1px solid #31424d;
+    }
+
+    #mapPanel {
+      position:relative;
+      min-width:0;
+      overflow:hidden;
+    }
+
+    #cesiumContainer {
+      width:100%;
+      height:100%;
+      touch-action:none;
+      overscroll-behavior:none;
+    }
+
+    #nav {
+      position:absolute;
+      z-index:800;
+      top:10px;
+      right:10px;
+      display:flex;
+      gap:6px;
+      padding:5px;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:8px;
+      background:rgba(8,17,22,.92);
+    }
+
+    h1 {
+      margin:0 0 5px;
+      font-size:19px;
+    }
+
+    h2 {
+      margin:0 0 8px;
+      font-size:12px;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+
+    .sub,
+    .note {
+      color:#a9bac4;
+      font-size:11px;
+      line-height:1.45;
+    }
+
+    .card {
+      margin-bottom:10px;
+      padding:11px;
+      border:1px solid #31424d;
+      border-radius:9px;
+      background:#16222b;
+    }
+
+    button,
+    input {
+      font:inherit;
+    }
+
+    button {
+      padding:8px 10px;
+      border:1px solid #426273;
+      border-radius:6px;
+      background:#1b3543;
+      color:#f2f7f9;
+      cursor:pointer;
+    }
+
+    button:disabled {
+      opacity:.55;
+      cursor:default;
+    }
+
+    input[type="range"] {
+      width:100%;
+    }
+
+    .metric {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:5px 10px;
+      font-size:11px;
+    }
+
+    .metric span {
+      color:#a9bac4;
+    }
+
+    .metric strong {
+      text-align:right;
+    }
+
+    #status {
+      color:#7ee2a8;
+      font-weight:700;
+    }
+
+    .source {
+      margin-top:6px;
+      padding-top:6px;
+      border-top:1px solid #31424d;
+      font-size:10px;
+      line-height:1.4;
+      color:#a9bac4;
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <aside>
+    <h1 id="scenarioTitle">
+      Christmas 2023 validation
+    </h1>
+
+    <div class="sub">
+      Deterministic event-constrained simulation using the production
+      StormTracker tracking and footprint-Doppler assessment code.
+    </div>
+
+    <section class="card">
+      <h2>
+        Scenario controls
+      </h2>
+
+      <button
+        id="playButton"
+        style="width:100%;margin-bottom:8px"
+      >
+        Play Christmas Night test
+      </button>
+
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          font-size:11px;
+          margin-bottom:3px
+        "
+      >
+        <span>Frame</span>
+        <strong id="frameNumber">1/6</strong>
+      </div>
+
+      <input
+        id="frameSlider"
+        type="range"
+        min="0"
+        value="0"
+        step="1"
+      >
+    </section>
+
+    <section class="card">
+      <h2>
+        Production tracking result
+      </h2>
+
+      <div class="metric">
+        <span>Local time</span>
+        <strong id="localTime">—</strong>
+
+        <span>Storm corridor</span>
+        <strong id="corridor">—</strong>
+
+        <span>Persistent identity</span>
+        <strong id="trackId">—</strong>
+
+        <span>Associated observations</span>
+        <strong id="observations">—</strong>
+
+        <span>Tracking confidence</span>
+        <strong id="confidence">—</strong>
+
+        <span>Strongest reflectivity</span>
+        <strong id="dbz">—</strong>
+
+        <span>≥40 dBZ footprint</span>
+        <strong id="area">—</strong>
+
+        <span>Observed centroid motion</span>
+        <strong id="motion">—</strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Convective / lightning assessment
+      </h2>
+
+      <div class="metric">
+        <span>Ordinal assessment</span>
+        <strong id="assessment">—</strong>
+
+        <span>Confidence / evidence</span>
+        <strong id="assessmentConfidence">—</strong>
+
+        <span>Doppler contribution</span>
+        <strong id="doppler">—</strong>
+
+        <span>Toward / away classes</span>
+        <strong id="dopplerValues">—</strong>
+
+        <span>Strict footprint samples</span>
+        <strong id="sampleCount">—</strong>
+      </div>
+
+      <div class="note" style="margin-top:8px">
+        Doppler is simulated here as a strict footprint-restricted validation
+        input. It contributes to the assessment only. It does not create the
+        storm identity, move the centroid or determine horizontal motion.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Validation status
+      </h2>
+
+      <div id="status">
+        —
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        Event basis
+      </h2>
+
+      <div class="note">
+        The test follows the documented Christmas Night 2023 QLCS/bow-echo
+        corridor from the Ripley area through Jimboomba/Tamborine toward the
+        northern Gold Coast between about 8:20 and 8:45 pm AEST.
+      </div>
+
+      <div class="source">
+        OBSERVED ANCHORS: Gold Coast detailed warning 7:49 pm; Very Dangerous
+        Thunderstorm 7:56 pm; destructive-wind warning escalation 8:40 pm;
+        Gold Coast Seaway maximum gust 106 km/h at 9:12 pm. Bureau reporting
+        also describes a roughly 3–4 km wide, 30–50 km long damaging-to-locally-
+        destructive wind corridor across the Gold Coast and Scenic Rim.
+      </div>
+
+      <div class="source">
+        SIMULATED INPUTS: exact per-frame centroids, reflectivity categories,
+        footprint areas and Doppler radial-velocity classes. These are chosen
+        to reproduce a fast-moving intensifying severe convective line while
+        remaining within StormTracker's existing tracking contract. They are
+        not represented as archived Bureau radar pixels.
+      </div>
+    </section>
+  </aside>
+
+  <main id="mapPanel">
+    <div id="cesiumContainer"></div>
+
+    <div id="nav">
+      <button id="resetButton">
+        Reset view
+      </button>
+
+      <span
+        style="
+          align-self:center;
+          color:#aebdc6;
+          font-size:10px;
+          padding:0 4px
+        "
+      >
+        camera corrections:
+        <strong id="cameraCorrections">0</strong>
+      </span>
+    </div>
+  </main>
+</div>
+
+<script
+  type="module"
+  src="./src/christmas-2023-derecho-test-v1.js"
+></script>
+</body>
+</html>

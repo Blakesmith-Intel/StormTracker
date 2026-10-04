@@ -67,6 +67,7 @@ import {
 } from "./operational-loop-v1.js?v=operational-v9";
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-1";
+import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-2";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 
@@ -427,8 +428,9 @@ function updateOperationalOverview(
 
   const frameTime = $("operationalFrameTime");
   if (frameTime) {
-    frameTime.textContent = frame?.observedUtc ? `${frame.observedUtc.slice(11,16)} UTC` : "—";
-    frameTime.title = frame?.observedUtc ?? "";
+    frameTime.textContent = frame?.observedUtc ? formatProductTime(frame.observedUtc, { compact: true }) : "—";
+    frameTime.title = frame?.observedUtc ? formatProductTime(frame.observedUtc) : "";
+    frameTime.dataset.observedUtc = frame?.observedUtc ?? "";
   }
 
 }
@@ -572,7 +574,7 @@ async function renderSurface(
       rgb[2];
 
     image.data[i + 3] =
-      175;
+      255;
   }
 
   const geographicRgba =
@@ -647,7 +649,7 @@ async function renderSurface(
     );
 
   surfaceLayer.alpha =
-    0.65;
+    Number($("radarOpacity").value) / 100;
 
   viewer.imageryLayers.add(
     surfaceLayer
@@ -1685,26 +1687,8 @@ function selectedDopplerRecord(
   );
 }
 
-function formatDopplerUtc(
-  value
-) {
-  if (!value) {
-    return "timestamp unavailable";
-  }
-
-  return value
-    .replace(
-      "T",
-      " "
-    )
-    .replace(
-      ":00.000Z",
-      " UTC"
-    )
-    .replace(
-      ".000Z",
-      " UTC"
-    );
+function formatDopplerUtc(value) {
+  return formatProductTime(value);
 }
 
 function renderDopplerVelocityLegend(
@@ -1873,7 +1857,7 @@ function renderDopplerOverlay() {
           ),
 
       color:
-        colour,
+        colour.withAlpha(Number($("dopplerOpacity").value) / 100),
 
       pixelSize:
         4,
@@ -2426,9 +2410,7 @@ function renderHybridTracks(index) {
 }
 function updateHybridSourceMetrics(frame) {
   $("sourceTime").textContent =
-    frame.observedUtc
-      .replace("T", " ")
-      .replace("Z", " UTC");
+    formatProductTime(frame.observedUtc);
 
   $("decodedPixels").textContent =
     (
@@ -2525,13 +2507,11 @@ async function showHybridFrame(index) {
 
   if (sceneFrame) {
     sceneFrame.textContent =
-      frame.observedUtc
-        .replace("T", " ")
-        .replace("Z", " UTC");
+      formatProductTime(frame.observedUtc);
   }
 
   setStatus(
-    `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${frame.observedUtc.slice(11,16)} UTC · ${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`,
+    `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${formatProductTime(frame.observedUtc, { compact: true })} · ${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`,
     "ok"
   );
 }
@@ -2564,7 +2544,7 @@ async function loadHybridSequence(automatic = false) {
       failures.push(entry.observedUtc);
       continue;
     }
-    if (!automatic) setStatus(`Loading frame ${index + 1}/${timeline.entries.length}: ${entry.observedUtc}`);
+    if (!automatic) setStatus(`Loading frame ${index + 1}/${timeline.entries.length}: ${formatProductTime(entry.observedUtc, { compact: true })}`);
     const [radarLoad, dopplerLoad] = await Promise.allSettled([
       radarFrameCache.has(entry.observedUtc)
         ? Promise.resolve(radarFrameCache.get(entry.observedUtc))
@@ -2627,9 +2607,10 @@ async function loadHybridSequence(automatic = false) {
   hybridDopplerFrameStates = [];
   hybridFrameIndex = automatic ? Math.max(0, frames.findIndex(frame => frame.observedUtc === oldTime)) : 0;
   clearDopplerOverlay();
-  const range = `${sharedTimeline.startUtc.slice(11,16)}–${sharedTimeline.endUtc.slice(11,16)} UTC`;
+  const range = formatProductTimeRange(sharedTimeline.startUtc, sharedTimeline.endUtc);
   $("operationalLoopWindow").textContent = `${sharedTimeline.spanMinutes} min span`;
   $("operationalLoopWindow").title = `${loopMinutes} min requested; ${withDoppler ? "shared source" : "radar"} history`;
+  $("sharedHistoryNote").title = `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
   $("sharedHistoryNote").textContent = `${range} · ${frames.length} ${withDoppler ? "shared" : "radar"} frames` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
     (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
@@ -2837,9 +2818,7 @@ async function loadLatest() {
   );
 
   $("sourceTime").textContent =
-    frame.observedUtc
-      .replace("T", " ")
-      .replace("Z", " UTC");
+    formatProductTime(frame.observedUtc);
 
   $("decodedPixels").textContent =
     (
@@ -2872,7 +2851,7 @@ async function loadLatest() {
   );
 
   setStatus(
-    `INFERRED LIVE 3-D built from public BOM 2-D reflectivity at ${frame.observedUtc}. ` +
+    `INFERRED LIVE 3-D built from public BOM 2-D reflectivity at ${formatProductTime(frame.observedUtc)}. ` +
     `Vertical structure is empirical and uncertainty-qualified; it is not measured volumetric radar.`,
     "ok"
   );
@@ -3027,6 +3006,25 @@ $("showDopplerOverlay").addEventListener(
     } else renderDopplerOverlay();
   }
 );
+
+// Opacity changes only rendered colours, never decoded samples or tracking.
+$("radarOpacity").addEventListener("input", event => {
+  const opacity = Number(event.target.value) / 100;
+  $("radarOpacityValue").textContent = `${event.target.value}%`;
+  if (surfaceLayer) surfaceLayer.alpha = opacity;
+  scene.requestRender();
+});
+$("dopplerOpacity").addEventListener("input", event => {
+  const opacity = Number(event.target.value) / 100;
+  $("dopplerOpacityValue").textContent = `${event.target.value}%`;
+  if (dopplerOverlayCollection) {
+    for (let i = 0; i < dopplerOverlayCollection.length; i++) {
+      const point = dopplerOverlayCollection.get(i);
+      point.color = point.color.withAlpha(opacity);
+    }
+  }
+  scene.requestRender();
+});
 
 $("dopplerOverlayRadar").addEventListener(
   "change",

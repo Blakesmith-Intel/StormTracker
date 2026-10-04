@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.2</title>
+  <title>StormTracker — Operational V9.3</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.2">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.3">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -16,7 +16,7 @@
     <section class="card overview">
       <div class="metric">
         <span>Display</span><strong id="operationalSourceMode">Latest frame</strong>
-        <span>Frame (UTC)</span><strong id="operationalFrameTime">—</strong>
+        <span>Frame (AEST / UTC)</span><strong id="operationalFrameTime">—</strong>
         <span>Source age</span><strong id="operationalSourceAge">—</strong>
         <span>Loop window</span><strong id="operationalLoopWindow">30 min requested</strong>
         <span>Frames / tracks</span><strong><span id="operationalFramesLoaded">0</span> / <span id="operationalActiveTracks">—</span></strong>
@@ -40,6 +40,12 @@
     <section class="card layer-controls">
       <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
       <div class="layer-row"><label><input id="showTrackVolumes" type="checkbox" checked> Track-specific 3-D</label><button id="openDetailsButton">Tracks / details</button></div>
+      <div class="opacity-controls">
+        <label for="radarOpacity">Radar opacity <output id="radarOpacityValue" for="radarOpacity">45%</output></label>
+        <input id="radarOpacity" type="range" min="0" max="100" step="5" value="45" aria-label="Radar layer opacity: 0 transparent, 100 opaque">
+        <label for="dopplerOpacity">Doppler opacity <output id="dopplerOpacityValue" for="dopplerOpacity">80%</output></label>
+        <input id="dopplerOpacity" type="range" min="0" max="100" step="5" value="80" aria-label="Doppler layer opacity: 0 transparent, 100 opaque">
+      </div>
       <label class="science-toggle"><input id="showAdvancedScience" type="checkbox"> Inference controls</label>
     </section>
     <section id="legendDock" class="card" aria-label="Weather legends">
@@ -220,6 +226,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.2"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.3"></script>
 </body>
 </html>

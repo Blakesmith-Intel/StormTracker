@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { formatProductTime, formatProductTimeRange } from '../src/product-time-display-v1.js';
+assert.equal(formatProductTime('2026-10-04T04:00:00Z'), '2026-10-04 14:00 AEST / 2026-10-04 04:00 UTC');
+assert.equal(formatProductTime('2026-10-04T18:05:00Z'), '2026-10-05 04:05 AEST / 2026-10-04 18:05 UTC');
+assert.equal(formatProductTime('2026-12-31T23:55:00Z'), '2027-01-01 09:55 AEST / 2026-12-31 23:55 UTC');
+assert.equal(formatProductTime('2026-01-15T00:00:00Z',{compact:true}), '10:00 AEST / 00:00 UTC');
+assert.equal(formatProductTime('2026-10-04T14:00:00+10:00',{compact:true}), '14:00 AEST / 04:00 UTC');
+assert.equal(formatProductTime(null), 'timestamp unavailable');
+assert.equal(formatProductTime('invalid'), 'timestamp unavailable');
+assert.equal(formatProductTimeRange('2026-10-04T04:00Z','2026-10-04T04:30Z'),'14:00–14:30 AEST / 04:00–04:30 UTC');
+assert.equal(formatProductTimeRange('2026-10-04T13:55Z','2026-10-04T14:05Z'),'10-04 23:55–10-05 00:05 AEST / 13:55–14:05 UTC');
+assert.equal(formatProductTimeRange('2026-12-31T23:55Z','2027-01-01T00:05Z'),'09:55–10:05 AEST / 12-31 23:55–01-01 00:05 UTC');
+assert.equal(formatProductTimeRange(null,'2027-01-01T00:05Z'),'timestamp unavailable');
+console.log('11 product-time display checks passed: AEST + UTC, device-independent offset, invalid times and date/year rollover.');

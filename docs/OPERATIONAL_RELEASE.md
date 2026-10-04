@@ -1,12 +1,13 @@
-# StormTracker Operational V9.5
+# StormTracker Operational V9.6
 
 Release date: 4 October 2026 (AEST). Status: agreed operational scope complete;
-V9.5 is ready for installation and publication through the existing Pages workflow.
+V9.6 is ready for installation and publication through the existing Pages workflow.
 
 The user confirmed V9.3 presentation controls and AEST display, and confirmed
 V9.4 automatic Doppler recovery works. Automated regression, installer and browser
-fixture checks supplement that deployed confirmation. V9.5 changes only scheduled
-polling cadence and release/deployment documentation and validation wiring.
+fixture checks supplement that deployed confirmation. V9.5 five-minute cadence was also confirmed on the deployed page. V9.6 adds the
+requested longer-window Doppler deselection and smooth visual playback before
+locking the final baseline. The v9.5.0 tag was not created.
 
 ## Release changes
 
@@ -17,7 +18,7 @@ polling cadence and release/deployment documentation and validation wiring.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and all 30 regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and all 31 regression suites must pass before Pages upload/deployment. |
 
 ## Delivered scope
 
@@ -29,7 +30,9 @@ actual shared history. Latest GIF eligibility remains restricted to the original
 newest radar time. Historical wind is never borrowed from current imagery.
 
 Radar-only history supports the requested 30–180-minute windows. Doppler selection
-switches to 30 minutes and longer radar selections show a warning. A requested
+switches to 30 minutes. Changing from 30 minutes to a longer window automatically
+deselects Doppler and loads the longer radar history, while retaining the
+availability warning. A requested
 30-minute loop retains the accepted six-scan definition (six five-minute scans
 span 25 minutes before source clipping). The BoM Doppler page may list seven
 images; actual shared history, pairing and availability can reduce displayed
@@ -41,6 +44,15 @@ when retained, camera and layer opacity settings. Opacity spans 0–100% for eac
 layer, with radar/Doppler defaults of 45%/80%. Source timestamps show AEST (fixed
 UTC+10) and UTC; internal scientific comparisons remain UTC.
 
+Playback now crossfades snapshots of the complete rendered scene for up to
+200 milliseconds, scaled for playback speed. This smooths radar, Doppler,
+inferred structure and track display together without generating synthetic
+radar scans, interpolated Doppler velocities or new track observations. The
+snapshot is captured inside Cesium's post-render event and faded by the browser
+compositor; point clouds are not recoloured each animation tick. Camera gestures,
+manual controls, pause, resizing and visibility changes cancel the fade. Reduced
+motion and stalled/unsupported capture paths use immediate real-frame display.
+
 The dashboard keeps routine controls and legends visible without sidebar
 scrolling. Advanced science, source information and track details use a dialog.
 Frozen Christmas 2023 historical validation remains separate and explicitly
@@ -48,7 +60,7 @@ historical; switching modes preserves the loaded live product state.
 
 ## Validation evidence
 
-- Thirty existing/new regression suites cover tracking, source palettes,
+- Thirty-one existing/new regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with
@@ -59,8 +71,9 @@ historical; switching modes preserves the loaded live product state.
   375×667, 320×568 and 844×390, with the longer-loop warning visible and hidden.
 - Installer validation uses complete staged files, checksum checks, backups,
   rollback and checks of actual installed files. Protected algorithms are unchanged.
-- User deployed confirmation: V9.4 recovery works without manual reload.
-- V9.5 validation logs accompanying the installer record the final cadence,
+- User deployed confirmation: V9.4 recovery works without manual reload; V9.5
+  correctly displays five-minute checks.
+- V9.6 validation logs accompanying the installer record the final cadence,
   deployment-gate and browser checks; they do not claim an unattended live soak test.
 
 ## Completion boundaries
@@ -72,7 +85,8 @@ imagery, relay availability and third-party map/browser assets remain dependenci
 Broader radar coverage, true live multi-elevation volumes and calibrated lightning
 probabilities are future scope, not unfinished requirements of this release.
 
-After publishing, confirm the page reports five-minute checks and observe an
-update without reloading. If upstream publication or a radar source stalls, the
+After publishing, confirm automatic Doppler deselection at longer windows, smooth
+playback and an update without reloading. Use `v9.6.0` for the final baseline tag
+after committing this release. Five-minute checks remain unchanged. If upstream publication or a radar source stalls, the
 current loop is retained, its timestamps/source age remain visible, and automatic
 retry continues. Use manual refresh for an immediate additional check.

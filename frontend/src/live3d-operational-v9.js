@@ -67,6 +67,7 @@ import {
 } from "./operational-loop-v1.js?v=operational-v9";
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-1";
+import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-5";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
@@ -103,6 +104,13 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
+const frameCrossfade = createSceneCrossfade({ scene, container: $("mapPanel") });
+// Keep every camera gesture and manual control immediate during a visual fade.
+for (const event of ["pointerdown", "pointermove", "wheel", "keydown"]) {
+  document.addEventListener(event, () => frameCrossfade.clear(), { passive: true });
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) frameCrossfade.clear(); });
+window.addEventListener("resize", () => frameCrossfade.clear());
 
 scene.fog.enabled = false;
 scene.globe.enableLighting = false;
@@ -216,7 +224,7 @@ const playback = createContinuousPlayback({
     $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
     $("hybridPlayButton").setAttribute("aria-pressed", String(playing));
   },
-  onError: error => setStatus(error.message, "error")
+  onError: error => { frameCrossfade.clear(); setStatus(error.message, "error"); }
 });
 
 let hybridTrackVolumes = [];
@@ -2461,8 +2469,11 @@ async function showHybridFrame(index) {
       hybridFrameIndex
     ];
 
-  latestFrame =
-    frame;
+  const animateFrame = playback.isPlaying() && latestFrame && latestFrame.observedUtc !== frame.observedUtc;
+  frameCrossfade.clear();
+  if (animateFrame) await frameCrossfade.capture();
+  if (renderToken !== hybridSceneRenderToken) return;
+  latestFrame = frame;
 
   $("hybridFrameSlider").value =
     String(
@@ -2519,6 +2530,7 @@ async function showHybridFrame(index) {
     `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${formatProductTime(frame.observedUtc, { compact: true })} · ${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`,
     "ok"
   );
+  if (animateFrame) await frameCrossfade.play(Math.min(200, playbackDelayForSpeed(selectedPlaybackSpeed()) * .5));
 }
 
 async function loadHybridSequence(automatic = false) {
@@ -2762,6 +2774,7 @@ async function loadHybridSequence(automatic = false) {
 
 async function runSourceLoad(loader, background = false) {
   if (sequenceLoading || !model) return;
+  if (!background) frameCrossfade.clear();
   sequenceLoading = true;
   $("loopDurationMinutes").disabled = true;
   $("showDopplerOverlay").disabled = true;
@@ -2969,7 +2982,12 @@ async function initialise() {
 
 $("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSequence));
 $("loopDurationMinutes").addEventListener("change", () => {
-  enforceDopplerWindow();
+  frameCrossfade.clear();
+  if (selectedLoopMinutes() > 30 && $("showDopplerOverlay").checked) {
+    $("showDopplerOverlay").checked = false;
+    clearDopplerOverlay();
+  }
+  updateLoopButtonLabel();
   if (!sequenceLoading) runSourceLoad(loadHybridSequence);
 });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefresh.check(); });
@@ -2996,11 +3014,13 @@ for (const button of document.querySelectorAll("[data-detail-tab]")) {
   button.addEventListener("click", () => selectDetailsTab(button.dataset.detailTab));
 }
 $("hybridFrameSlider").addEventListener("input", async event => {
+  frameCrossfade.clear();
   const index = Number(event.target.value);
   await playback.pause();
   showHybridFrame(index).catch(error => setStatus(error.message, "error"));
 });
 $("hybridPlayButton").addEventListener("click", () => {
+  frameCrossfade.clear();
   if (playback.isPlaying()) playback.pause();
   else playback.play();
 });
@@ -3030,12 +3050,14 @@ $("showDopplerOverlay").addEventListener(
 
 // Opacity changes only rendered colours, never decoded samples or tracking.
 $("radarOpacity").addEventListener("input", event => {
+  frameCrossfade.clear();
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
   if (surfaceLayer) surfaceLayer.alpha = opacity;
   scene.requestRender();
 });
 $("dopplerOpacity").addEventListener("input", event => {
+  frameCrossfade.clear();
   const opacity = Number(event.target.value) / 100;
   $("dopplerOpacityValue").textContent = `${event.target.value}%`;
   if (dopplerOverlayCollection) {

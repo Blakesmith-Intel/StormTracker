@@ -1,9 +1,10 @@
-# StormTracker — Operational V9.5
+# StormTracker — Operational V9.6
 
 A browser-based storm tracking and radar visualisation product using public Bureau
 of Meteorology reflectivity and Doppler imagery. The agreed operational scope is
 complete. V9.4 automatic Doppler recovery was confirmed working by the user;
-V9.5 reduces scheduled polling to five minutes and adds a deployment test gate.
+V9.5 reduced scheduled polling to five minutes and added a deployment test gate.
+V9.6 adds automatic Doppler deselection for longer windows and smooth playback transitions.
 
 [Open StormTracker](https://blakesmith-intel.github.io/StormTracker/) ·
 [Operational release record](docs/OPERATIONAL_RELEASE.md) ·
@@ -15,8 +16,11 @@ V9.5 reduces scheduled polling to five minutes and adds a deployment test gate.
 - Track-specific inferred 3-D structure, labelled with empirical support.
 - Timestamp-matched Doppler radial velocity from radars 66, 50 and 08.
 - Radar history options of 30/60/90/120/150/180 minutes. Selecting Doppler switches
-  to a 30-minute shared loop; longer radar loops show the availability warning.
-- Continuous replay, Play/Pause, speed, frame slider and jump to latest.
+  to a 30-minute shared loop; choosing a longer window deselects Doppler and loads
+  the longer radar history. Longer radar loops show the availability warning.
+- Continuous replay with short whole-scene crossfades, Play/Pause, speed, frame
+  slider and jump to latest. Camera gestures and manual controls cancel a fade;
+  reduced-motion preferences are respected.
 - Independent radar/Doppler opacity controls and AEST alongside UTC timestamps.
 - Automatic matched-product updates every five minutes while the page is visible,
   plus a check when the page becomes visible. Manual refresh remains available.
@@ -57,7 +61,7 @@ npm test
 ```
 
 This validates active-module syntax and runs every `run-*-tests.mjs` suite in
-`frontend/tests/` (30 at this release). GitHub Pages runs the same command on
+`frontend/tests/` (31 at this release). GitHub Pages runs the same command on
 Node 24 before publishing. A failure prevents deployment of that push.
 
 Push changes to `main` to publish `frontend/` through

@@ -1,0 +1,11 @@
+{
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/operational-dashboard-v9-1.css": true,
+  "frontend/src/scene-crossfade-v1.js": false,
+  "frontend/tests/run-scene-crossfade-v1-tests.mjs": false,
+  "README.md": true,
+  "docs/OPERATIONAL_RELEASE.md": true,
+  "scripts/check-frontend.mjs": true
+}

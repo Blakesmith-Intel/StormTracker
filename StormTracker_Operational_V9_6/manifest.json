@@ -1,0 +1,68 @@
+{
+  "base_commit": "f4a9925d9f356bbf737598a020413080a02ab485",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "9e224044f278a8d8d5908f0ce8c5299bfe3a5812cb87a929f12efae70d7bf0f8",
+      "payload_sha256": "4a8a75d8918cd693c3eb60886513e4fc0ecf3e38d9ab3cdac4697f8c11e9ed84"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "e3e75eaa31b9cf883bf6afb682f39c07a95fab81abb7ec9d7c19e03e89e5b237",
+      "payload_sha256": "3eaf85b4fe3a426d2da83cd431175af9ea6320d2d5e98081addf7e592e000cca"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "5ed58fd9055a6f77627a7043aa21cbfbaae779d56ebf8296f4d84a84896e3375",
+      "payload_sha256": "796fc187c7a214a7c2422c8891c3918ea9208d8049de4f0a378da97d29696fd9"
+    },
+    "frontend/src/operational-dashboard-v9-1.css": {
+      "baseline_sha256": "81e1fefd7901272851273259050d0f0f53167b69742316f2e21b15714f032dc2",
+      "payload_sha256": "a7ebd6c4f1ead51a7a4b89891f4db8f042097f3d7b107d7e3bad2710e2525c17"
+    },
+    "frontend/src/scene-crossfade-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "edeb73a4f4325e88eaf56c663b04cb020fcc8ab02602a11d21a4ac37a90077c9"
+    },
+    "frontend/tests/run-scene-crossfade-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "24774c4a6b911204710f3492019927e82282af930aee094e17d8bdc66db43e4a"
+    },
+    "README.md": {
+      "baseline_sha256": "32c8033cd472b80c940142af3c06b228e6e3277748e14c1c3438820ada2020f6",
+      "payload_sha256": "df7832ac02d0330d21221784daec2741fc5cc63e70dcacee24da4f181410022b"
+    },
+    "docs/OPERATIONAL_RELEASE.md": {
+      "baseline_sha256": "6aee08e3bbd9e263d9ab246d6a5b917d8c7bfb36dc19eca0acd085acd8a2f1bd",
+      "payload_sha256": "68f88193a6bf19529b7dc432fb7fed4a683ee6c62b28bed90518a2f8a5fb1411"
+    },
+    "scripts/check-frontend.mjs": {
+      "baseline_sha256": "df0609f47db768bbc9ad036d0b4fda6d316e2d7580002ae121c94c00721b74ad",
+      "payload_sha256": "a861811f4177d2822aa0bb259cf471fd5a34494ffa2caf6a1dd9d1d5a693d3b9"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/christmas-2023-derecho-test-v1.html",
+    "frontend/src/christmas-2023-derecho-test-v1.js",
+    "frontend/src/stormtracker-product-mode-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/bom-doppler-history-spatial-v1.js",
+    "frontend/src/bom-doppler-display-v2.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js",
+    "frontend/src/shared-product-timeline-v1.js",
+    "frontend/src/product-time-display-v1.js",
+    "frontend/src/continuous-playback-v1.js",
+    "frontend/src/bom-doppler-intake-v3.js",
+    "frontend/src/doppler-request-v1.js",
+    "docs/SCIENTIFIC_CONTRACT.md",
+    "frontend/src/live-loop-refresh-v1.js",
+    "package.json",
+    ".github/workflows/pages.yml"
+  ]
+}

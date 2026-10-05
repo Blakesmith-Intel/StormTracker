@@ -1,0 +1,73 @@
+{
+  "base_commit": "aef6cc4f790774b018f02f5677481b5a2bcdaa04",
+  "base_tag": "v9.7.2",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "e2ff9000599c2eabbde163a03c85619a8fe2a2ebebc137255c35990e21ca8c03",
+      "payload_sha256": "079ac1341010381e7b9101197cf55b666698a98f289162c7517eada75d4548db"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "32a5a75e7e90c5c6bda36efbf777363cdcdc2846e527b4351d5ebb244a5c91ce",
+      "payload_sha256": "08ccaa82f330e4a0fb635043455d1c2106a47909646cfc152410c37a5d623b12"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "4b498415d92d974ff161f22f7ed0754ba2806d3f7e332dbd18cfb9bb1a3711b1",
+      "payload_sha256": "64fdbc965d68f735d77cf28768126402eecca7aba8ec59b41c75a8db8cb4fe7a"
+    },
+    "frontend/src/operational-dashboard-v9-1.css": {
+      "baseline_sha256": "ab4ac9a061d93de00d60df07e3321d2a590e97ecdc6f9a3d8d35b908761e9b61",
+      "payload_sha256": "53fbe44e1ce3a953c05b47ea2c547f3598ed7b318ebdf18a6f74eb4c2f7e36b0"
+    },
+    "frontend/src/touch-camera-gestures-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "d1a4440fd74b4a649150bafe4fd3f238d7fa52a9ae349cafb1a4a035bbf203c6"
+    },
+    "frontend/tests/run-production-shell-v1-tests.mjs": {
+      "baseline_sha256": "8be6a230cc0bb38c77beefa31f5d805ecd434bcb35c02a38b95c26fde71a14f8",
+      "payload_sha256": "b8a62753988f8e5b59b699902ea07553391db422b4e63b0414d6e0f365df45ca"
+    },
+    "frontend/tests/run-touch-camera-gestures-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "4ce0df50c0052679a09c1abce937c63f416444fa942e5a6d5147fa40ead47c5c"
+    },
+    "frontend/tests/run-mobile-ui-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "edd76c2fbf1f23b74c666c3f98401fba4ffec798b65c60c91a200167aa5ac04e"
+    },
+    "scripts/check-frontend.mjs": {
+      "baseline_sha256": "a861811f4177d2822aa0bb259cf471fd5a34494ffa2caf6a1dd9d1d5a693d3b9",
+      "payload_sha256": "349e8b9a68f2fdcb4d17e910f8d432fa16e8af231d92a1856097572fadae7522"
+    },
+    "docs/OPERATIONAL_RELEASE.md": {
+      "baseline_sha256": "71585dad30269a769ab82285fd31b82033730dd3ee5b214c34598a35d22175f6",
+      "payload_sha256": "538e17ef098212852c044e163e8fddbf6ffab0267ed4661bf35206946baf841c"
+    },
+    "frontend/tests/run-track-overlay-visibility-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "31c1b7b1bfb12358246869fc3f144bbf006c1c382b53d3e6b2e3acf7a0e2a3d1"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/src/christmas-2023-regression-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js",
+    "frontend/src/product-time-display-v1.js",
+    "frontend/src/continuous-playback-v1.js",
+    "frontend/src/doppler-request-v1.js",
+    "frontend/src/qld-radar-sites-v1.js",
+    "relay/worker.js",
+    "relay/doppler-history-v1.js",
+    "docs/SCIENTIFIC_CONTRACT.md",
+    ".github/workflows/pages.yml",
+    "package.json"
+  ]
+}

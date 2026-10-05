@@ -1,0 +1,16 @@
+V9.7.4 is a single consolidated patch applied directly to sealed v9.7.2.
+
+Build-time isolated checks cover JavaScript syntax, touch gesture maths/event
+ownership, compact mobile layout contracts, radar/Doppler opacity defaults,
+smaller visual primitives and restoration of visible ST marker/label/trail
+rendering on the original 1.2 km track display plane.
+
+The installer itself stages the patch into the user's complete repository and
+runs scripts/check-frontend.mjs before any write, then repeats validation after
+installation. Because the build sandbox does not contain the entire private
+repository checkout, this package does not claim the full repository suite ran
+in the build sandbox. It does not claim an iPhone/Safari hardware test; live
+mobile acceptance remains required.
+
+No tracking, segmentation, motion, Doppler-context, assessment/scoring, inferred
+volume or worker modules are changed by this patch.

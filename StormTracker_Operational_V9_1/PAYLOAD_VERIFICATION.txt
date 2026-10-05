@@ -1,0 +1,46 @@
+StormTracker V9.1: shared radar / Doppler history, continuous replay, compact GUI.
+Validating complete staged files before repository writes…
+18 Christmas 2023 severe-storm tracking scenario tests passed.
+12 main-product historical-regression contract tests passed.
+9 continuous-playback checks passed.
+4 Core V4 sync/fallback tests passed.
+12 Doppler decoder V1 tests passed.
+7 Doppler display-classifier tests passed.
+7 Doppler footer V3 tests passed.
+19 Doppler geolocation V1 tests passed.
+4 historical Doppler spatial-layout tests passed.
+9 Doppler history/frame-pairing tests passed.
+5 Doppler intake tests passed.
+5 Doppler palette-recovery tests passed.
+6 Doppler palette V2 tests passed.
+7 Doppler full-palette V4 tests passed.
+4 BOM Doppler product timestamp tests passed.
+5 georegistration tests passed.
+5 inferred-confidence tests passed.
+4 inferred-tracking tests passed.
+4 inferred-volume tests passed.
+8 measured-track-volume tests passed.
+PASS 8-connectivity joins diagonal pixels
+PASS 4-connectivity separates diagonal pixels
+PASS segmentation keeps strong component and rejects fragment
+PASS nearby cells from different radars merge
+PASS same-radar cells do not merge
+PASS plausible motion preserves ST0001
+PASS impossible jump creates ST0002
+PASS stronger reflectivity scores higher
+PASS growth and intensification score
+PASS Doppler toward/away span contributes
+PASS stale data is not operationally live
+PASS lightning likelihood categories match recovered thresholds
+PASS current BOM reflectivity palette has all 15 recovered classes
+PASS Web Mercator segmentation georeferences a strong cell
+
+14 tests passed.
+10 operational-loop contract tests passed.
+21 shared-product timeline checks passed.
+11 shared camera controller tests passed.
+8 footprint-restricted track-assessment tests passed.
+11 Doppler-to-track context tests passed.
+11 Web Mercator raster reprojection tests passed.
+27 regression suites passed.
+CHECK ONLY: validation passed. No repository files changed.

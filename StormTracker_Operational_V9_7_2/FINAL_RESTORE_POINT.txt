@@ -1,0 +1,4 @@
+StormTracker Operational V9.7.2 final baseline
+COMMIT: aef6cc4f790774b018f02f5677481b5a2bcdaa04
+TAG: v9.7.2
+RESTORE: git switch -c restore/v9.7.2 v9.7.2

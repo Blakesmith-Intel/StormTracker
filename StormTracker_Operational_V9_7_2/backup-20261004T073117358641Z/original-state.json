@@ -1,0 +1,12 @@
+{
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/operational-dashboard-v9-1.css": true,
+  "docs/OPERATIONAL_RELEASE.md": true,
+  "docs/BASELINE_RESTORE.md": false,
+  "frontend/tests/run-production-shell-v1-tests.mjs": false,
+  "frontend/christmas-2023-derecho-test-v1.html": true,
+  "frontend/src/christmas-2023-derecho-test-v1.js": true,
+  "frontend/src/stormtracker-product-mode-v1.js": true
+}

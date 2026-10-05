@@ -1,0 +1,111 @@
+{
+  "base_commit": "99fcec5197c0a891fdec540214074dc6ac68c0f3",
+  "files": {
+    "README.md": {
+      "baseline_sha256": "df7832ac02d0330d21221784daec2741fc5cc63e70dcacee24da4f181410022b",
+      "payload_sha256": "9112e94904018b6292daf2e76dbb114bcea07663b0040e1ef48aeb8a258851a6"
+    },
+    "docs/OPERATIONAL_RELEASE.md": {
+      "baseline_sha256": "68f88193a6bf19529b7dc432fb7fed4a683ee6c62b28bed90518a2f8a5fb1411",
+      "payload_sha256": "cbe3ee6406d96913d06d0202802a4db268a47dc859f9f52dc1d3648ddc36e730"
+    },
+    "docs/QUEENSLAND_RADAR_COVERAGE.md": {
+      "baseline_sha256": null,
+      "payload_sha256": "9dd3984454aa4b92039ae897d5e5a9fa1936212af1a8e5f892ee95b77931cb03"
+    },
+    "frontend/index.html": {
+      "baseline_sha256": "4a8a75d8918cd693c3eb60886513e4fc0ecf3e38d9ab3cdac4697f8c11e9ed84",
+      "payload_sha256": "a322df1359086a4f3b00aa024c58d5d6f317813981f865104375e52e5a42a11c"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "3eaf85b4fe3a426d2da83cd431175af9ea6320d2d5e98081addf7e592e000cca",
+      "payload_sha256": "5f9d9d94ced5f0a1fbf835026c6d5ba743f9a3d2d451a816e6fe3b0278d5d592"
+    },
+    "frontend/src/bom-doppler-display-v2.js": {
+      "baseline_sha256": "9e354ddf3fe3a9a31079e4c6c6017d2aae3241ad33a0b5ca512a8b54c3f7a9d9",
+      "payload_sha256": "2e46f4610a42c58b1ad53f2d299529e30c0bc57abbef8cbf1398bf4651d3a67b"
+    },
+    "frontend/src/bom-doppler-georef-v1.js": {
+      "baseline_sha256": "3271ca0cab3290a2d9b484c9ba691d6f6cefb951ce97008a0b5908bf1d4e3c9c",
+      "payload_sha256": "8a7ddf4d2f6310c66587a14ae83596a221ed8961f1ed27fb954487178f687fa1"
+    },
+    "frontend/src/bom-doppler-history-spatial-v1.js": {
+      "baseline_sha256": "eea6daf84f37fa6bc708a579b78fefb90ce96a24aaa758828480ffe6c88bf6d8",
+      "payload_sha256": "6ff488ab73faa1331e77864444b9424a750915cb89f4835c2683fe8b2320a0ff"
+    },
+    "frontend/src/bom-doppler-intake-v3.js": {
+      "baseline_sha256": "ad8a8299e1be47b387052146912876425d9dc4b970babd87cfca429b2e21a346",
+      "payload_sha256": "f724cffc1336120e275f3ab372a02560cf2996c3a0ac05439bb35e5166a19a7b"
+    },
+    "frontend/src/bom-wmts-loop-v2.js": {
+      "baseline_sha256": "749f9afcb2807b0305e60754d05911cffa5aaca84dffde1abbaf3c973b4ee500",
+      "payload_sha256": "523ec2b55196d077a41046ca8377b0a23f823089c8cd0a5d8c673989607edf8a"
+    },
+    "frontend/src/config.js": {
+      "baseline_sha256": "9a13ce989073baa0ce5ddf8b4bd0a0bc22c33ecc247c99731e35819cb6c0598b",
+      "payload_sha256": "0e1e452de185fcb48a5c18512e5586fb494e56d2039e6bb73f3d0ca53af3ab8d"
+    },
+    "frontend/src/live-loop-refresh-v1.js": {
+      "baseline_sha256": "bf8fc0c5a0171bc200411df15bec9fd1a5d4afe4f934a60d9befc54e5f41057a",
+      "payload_sha256": "0ec3c79fff19521e3225c5ae0ce7174e87b578a6ea9bcaff98d66d0543ea7904"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "796fc187c7a214a7c2422c8891c3918ea9208d8049de4f0a378da97d29696fd9",
+      "payload_sha256": "7122b581facf80111c5e115a558921a4eccb37f82f6e8b09fdd1bdebfed28fc5"
+    },
+    "frontend/src/operational-dashboard-v9-1.css": {
+      "baseline_sha256": "a7ebd6c4f1ead51a7a4b89891f4db8f042097f3d7b107d7e3bad2710e2525c17",
+      "payload_sha256": "fb83bbae7efee929e1a6b715acc615d67064c4896f2e1d08bda3629a9c0635d7"
+    },
+    "frontend/src/qld-radar-sites-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "ff550540512cf303fa05404554e65c9a357fc61aea2c8ed080ec521c46dd110c"
+    },
+    "frontend/src/shared-product-timeline-v1.js": {
+      "baseline_sha256": "8bbb804488530074ba3cda68649e3e15999e2cd94797be624267bc44616f3688",
+      "payload_sha256": "9db0e56b00997d6e49e0f3b86136fc61b6015ca4dad1c1200b41263a50c7f220"
+    },
+    "frontend/tests/run-qld-radar-sites-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "5ade7ba8eb43e71c69281b50d6e97f1375b72740770d027c0be6b664b3e8b781"
+    },
+    "relay/doppler-history-v1.js": {
+      "baseline_sha256": "f2915266a13ec22bc96b0a358bce9aa3913d283b67c2032e2b3bb23ff291967c",
+      "payload_sha256": "e4cb95eb9fe3ea947cf59ee2dc44f7e2a838d0d2c6beff6c17fb1525244f60f3"
+    },
+    "relay/worker.js": {
+      "baseline_sha256": "6c1d7441ad6e4dc79c565aeb343a02a65bafc7bd7744a35dfd0e9e031ed74275",
+      "payload_sha256": "91b30d85b30e5d96fc2f7daa64b53e357269fd84410c1d92782d3b7143868998"
+    },
+    "scripts/check-frontend.mjs": {
+      "baseline_sha256": "a861811f4177d2822aa0bb259cf471fd5a34494ffa2caf6a1dd9d1d5a693d3b9",
+      "payload_sha256": "a861811f4177d2822aa0bb259cf471fd5a34494ffa2caf6a1dd9d1d5a693d3b9"
+    },
+    "scripts/deploy-qld-relay.sh": {
+      "baseline_sha256": null,
+      "payload_sha256": "6e2993936c6437e96e5103538bafb4465be453690da7e62a5dbf795ca7137645"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/christmas-2023-derecho-test-v1.html",
+    "frontend/src/christmas-2023-derecho-test-v1.js",
+    "frontend/src/stormtracker-product-mode-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js",
+    "frontend/src/product-time-display-v1.js",
+    "frontend/src/continuous-playback-v1.js",
+    "frontend/src/doppler-request-v1.js",
+    "docs/SCIENTIFIC_CONTRACT.md",
+    "package.json",
+    ".github/workflows/pages.yml"
+  ]
+}

@@ -1,0 +1,998 @@
+STORMTRACKER — PROJECT CONTINUATION HANDOFF
+Generated: 2026-10-04
+Repository: https://github.com/Blakesmith-Intel/StormTracker
+Primary deployment: https://blakesmith-intel.github.io/StormTracker/
+
+======================================================================
+1. PROJECT PURPOSE
+======================================================================
+
+StormTracker is a browser-native severe-weather/radar product for South East
+Queensland.
+
+Core objectives:
+- Near-real-time public BOM reflectivity and Doppler display.
+- Persistent storm tracking using measured 2-D reflectivity.
+- Browser-rendered inferred 3-D storm volumes.
+- Doppler radial-velocity context restricted to measured storm footprints.
+- Ordinal convective/lightning/severity assessment.
+- Historical/test validation mode using a Christmas Night 2023 Gold Coast
+  severe-storm scenario.
+- No installed backend science engine for the user-facing product.
+- Normal product use must be from a web browser.
+
+The current project direction is PRODUCT CONSOLIDATION + OPERATIONAL FEATURES.
+Do not return to broad algorithm/science rewrites unless a newly demonstrated
+defect requires it.
+
+
+======================================================================
+2. NON-NEGOTIABLE ARCHITECTURE / PRODUCT CONSTRAINTS
+======================================================================
+
+User-facing runtime:
+- Runs in a web browser.
+- No localhost/local server as the user-facing runtime.
+- No user-managed local backend/runtime instance.
+- Prefer static/browser-native architecture:
+  HTML + CSS + ES modules + Web Workers + IndexedDB + Cesium.
+- Do not introduce Python/FastAPI/rasterio/pyproj/NumPy/GDAL as production
+  runtime dependencies.
+- Pyodide is not wanted.
+- Small static/serverless relay is acceptable only for BOM public-data
+  transport/CORS/delivery. It must not contain tracking/science/model logic.
+- Free/public/no-subscription data only.
+- Do not resurrect paid/registered BOM volumetric radar.
+- GitHub Free only. Do not recommend paid GitHub features.
+- GitHub Pages requires public repository.
+
+Scientific truthfulness:
+- Never vertically extrude 2-D radar and call it measured 3-D.
+- Historical AURA volume work is measured 3-D.
+- Live 3-D is inferred from public 2-D reflectivity and must be labelled as
+  inferred/not measured.
+- Doppler is radial velocity only.
+- Do not call Doppler horizontal storm motion, total wind speed, or a rotation
+  diagnosis by itself.
+- Storm identity and horizontal motion are controlled solely by measured
+  reflectivity tracking.
+- Doppler may contribute to severity/lightning assessment only after being
+  time-matched and sampled inside the measured ST footprint.
+
+Development discipline:
+- Do not rewrite validated work without cause.
+- Avoid broad/slow research unless it directly unlocks the next step.
+- Before issuing a patch, inspect the exact committed source where practical.
+- Patches should be narrow and deterministic.
+- Prefer replacement files or simple payload copy/install over generators that
+  generate generators.
+- Syntax-check generated JS before handoff.
+- Run focused tests plus existing regression tests.
+- Do not claim a browser issue is fixed until the user confirms it.
+- User explicitly asked for better awareness/prevention of self-generated patch
+  errors.
+- User prefers complete downloadable files/patches and minimal terminal commands.
+- User is technically capable but does not want to manually edit code.
+
+
+======================================================================
+3. ACTIVE RADARS / DATA SOURCES
+======================================================================
+
+Active BOM radars:
+- 08 — Gympie / Mt Kanigan
+  approx centre: -25.967000, 152.582990
+- 50 — Brisbane / Marburg
+  approx centre: -27.608000, 152.539000
+- 66 — Brisbane / Mt Stapylton
+  approx centre: -27.718100, 153.240010
+
+Explicitly excluded:
+- Toowoomba radar 108. Do not reintroduce it.
+
+Public reflectivity:
+- BOM public observed-rain reflectivity WMTS.
+- Current layer:
+  atm_surf_air_precip_reflectivity_dbz
+- Existing browser module:
+  frontend/src/bom-wmts-loop-v1.js
+
+Public Doppler:
+- Latest product:
+  /radar/IDR08I.gif
+  /radar/IDR50I.gif
+  /radar/IDR66I.gif
+- Historical individual frame convention:
+  IDRnnnI.T.yyyymmddhhmm.png
+- Public product/loop pages are used to recover timestamped history.
+
+Cloudflare relay currently used by browser:
+https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev
+
+Relay routes in current design:
+- /wmts          public BOM reflectivity WMTS proxy
+- /radar         latest public Doppler image
+- /radar-history Doppler history manifest derived from BOM loop page
+- /radar-frame   individual timestamped historical Doppler PNG
+
+The relay is transport only. Keep science/tracking out of it.
+
+
+======================================================================
+4. REPOSITORY / DEPLOYMENT STATE
+======================================================================
+
+Repository:
+https://github.com/Blakesmith-Intel/StormTracker
+
+Codespace path:
+/workspaces/StormTracker
+
+GitHub Pages:
+https://blakesmith-intel.github.io/StormTracker/
+
+Important current commit:
+79ca746 — "Add main-product historical validation mode"
+
+That commit is on main and was successfully pushed.
+
+Current root product shell:
+frontend/index.html
+
+Current Live mode:
+frontend/live3d-core-v8-3.html
+frontend/src/live3d-core-v8-3.js
+
+Current Historical Validation mode:
+frontend/christmas-2023-derecho-test-v1.html
+frontend/src/christmas-2023-derecho-test-v1.js
+frontend/src/christmas-2023-derecho-scenario-v1.js
+
+Current regression shell/modules:
+frontend/src/stormtracker-product-mode-v1.js
+frontend/src/christmas-2023-regression-v1.js
+frontend/tests/run-christmas-2023-regression-v1-tests.mjs
+
+Root entry points:
+- Live default:
+  https://blakesmith-intel.github.io/StormTracker/
+- Historical validation deep link:
+  https://blakesmith-intel.github.io/StormTracker/?mode=validation
+
+Both were user-validated as PASS:
+- Live -> Validation -> Live preserves working live product state.
+- Historical mode is visibly NOT LIVE.
+- Christmas 2023 regression reports PASS.
+- Camera controls remain stable.
+
+
+======================================================================
+5. SHARED CAMERA / INPUT CONTROLLER — VALIDATED
+======================================================================
+
+A major recurring historical failure was Cesium map drift, runaway zoom, odd
+scrolling and loading from "outer space".
+
+This is now solved by the shared StormTracker camera controller.
+
+Shared file:
+frontend/src/stormtracker-camera-v1.js
+
+Standing requirements:
+- The same camera controller must be used consistently across the product suite.
+- Free rotate/orbit must remain available.
+- Pan/zoom must remain available.
+- Do not reintroduce a lock control.
+- Keep Reset View.
+- Keep zero-inertia / anti-drift behaviour.
+- Mouse wheel zoom should track wheel detents approximately one step per click.
+- Do not modify the shared camera controller casually.
+
+Validated test expectation:
+11 shared camera controller tests passed.
+
+The camera controller was explicitly user-confirmed as working.
+
+
+======================================================================
+6. CORE REFLECTIVITY / STORM TRACKING CONTRACT
+======================================================================
+
+Reflectivity categories:
+1: 12–23 dBZ
+2: 23–28
+3: 28–31
+4: 31–34
+5: 34–37
+6: 37–40
+7: 40–43
+8: 43–46
+9: 46–49
+10: 49–52
+11: 52–55
+12: 55–58
+13: 58–61
+14: 61–64
+15: >=64 dBZ
+
+Segmentation:
+- threshold category 7 = >=40 dBZ
+- minimum 8 pixels
+- 8-neighbour connectivity
+- connected components
+- area, centroid, max category, etc.
+
+Threshold counts:
+- definite >=50: category >=11
+- possible >=50: category >=10
+- definite >=55: category >=12
+- possible >=55: category >=11
+- definite >=60: category >=14
+- possible >=60: category >=13
+
+Persistent tracking:
+- track IDs ST0001...
+- 5-minute buckets
+- cross-radar dedupe only across DIFFERENT radars
+- same-radar observations are never merged in cross-radar dedupe
+- time tolerance 180 seconds
+- category difference >4 blocks merge
+- dedupe radius:
+  min(20 km, max(6 km, 1.25*(equiv-radius-sum)+4))
+- merged centroid is area-weighted
+- sampled merged area = max member area
+- transitive same-radar split
+
+Track association:
+- geodesic centroid motion
+- hard maximum speed 140 km/h
+- max gap 12 minutes
+- adaptive distance:
+  min(45 km, max(10 km, previous radius + current radius + 12 km))
+- score:
+  0.65*distance_score
+  +0.20*area_penalty
+  +0.15*category_penalty
+  +radar_bonus
+- same-radar overlap bonus -0.10
+- greedy lowest-score unique matching
+- motion is observed centroid displacement only
+- motion is NOT Doppler and is NOT a forecast
+
+Tracking confidence:
+- >=4 observations + multi-radar -> high
+- >=4 otherwise -> medium
+- >=2 -> medium
+- else -> low
+
+Relevant production file:
+frontend/src/tracking.js
+
+Do not change this contract during UI/operational consolidation.
+
+
+======================================================================
+7. HISTORICAL MEASURED 3-D / LIVE INFERRED 3-D
+======================================================================
+
+Historical measured 3-D:
+- True AURA Level 1 volume pipeline was built and validated.
+- 2014-11-27 Mt Stapylton reference event:
+  13 scans, approx 05:54–07:06 UTC
+  14 sweeps each
+  DBZH + VRADH
+- Validation showed true volumetric point clouds/voxels, altitude, chronology
+  and geographic error <=5 m.
+- Result:
+  TRUE 3-D ENGINEERING VALIDATION: PASS
+
+Historical measured-3D commits:
+- b7bac13 — measured AURA 3-D volume reference renderer
+- e2fe6e7 — measured 3-D storm objects and persistent tracks
+
+Additional historical AURA event set:
+- 2013-11-10 severe-hail-logan
+- 2013-11-16 severe-hail-sunshine-coast
+- 2015-05-02 east-coast-low-heavy-rain
+- 2015-11-29 severe-hail-brisbane
+plus 2014-11-27.
+
+Leave-one-event-out baseline:
+- MAE 3.81 dBZ
+- RMSE 5.76 dBZ
+- bias +0.51
+- 30 dBZ IoU .354, POD .602, FAR .533, top median-event abs error 2.0 km
+- 40 dBZ IoU .298, POD .466, FAR .528, top 2.0 km
+- 50 dBZ IoU .254, POD .426, FAR .532, top 1.5 km
+
+A morphology candidate did NOT improve overall:
+- MAE 3.86
+- RMSE 5.91
+- bias +0.63
+- 40 dBZ top 1.5 km but worse other metrics
+Baseline retained.
+
+Live 3-D:
+- Built from public 2-D reflectivity using empirical vertical profiles.
+- Must remain clearly labelled inferred/not measured.
+- 3-D support bands high/medium/low are empirical support classes from
+  historical occupancy/P25–P75, not calibrated probabilities.
+- Track-specific volume core constrains inferred 3-D to exact measured >=40 dBZ
+  ST masks when tracks exist.
+- Inferred 3-D must never create/preserve ST identity.
+
+
+======================================================================
+8. 2-D / 3-D GEOREGISTRATION — RESOLVED
+======================================================================
+
+A serious N/S offset was diagnosed and fixed.
+
+Root cause:
+- BOM mosaic raster is uniformly sampled in EPSG:3857 Web Mercator Y.
+- Cesium SingleTileImageryProvider was being fed the raster over a geographic
+  lon/lat Rectangle, effectively stretching rows linearly in latitude.
+- Near Brisbane/Logan this caused about 5 source raster rows of mismatch.
+
+Fix:
+- Resample EPSG:3857 raster rows to geographic-linear latitude before handing
+  the image to Cesium.
+
+Relevant files:
+frontend/src/webmercator-raster-reproject-v1.js
+frontend/src/live3d-registration-v2.js
+frontend/live3d-registration-v2.html
+
+Commit:
+00ae07d — "Add 2-D to 3-D registration diagnostic"
+
+User confirmed:
+"It’s confirmed lined up"
+
+Status:
+2-D/3-D horizontal georegistration: PASS.
+Treat Core V5 registration as the baseline.
+Do not reopen registration work unless a new observable mismatch appears.
+
+
+======================================================================
+9. DOPPLER PIPELINE — CURRENT WORKING CONTRACT
+======================================================================
+
+Public Doppler intake works for 08 / 50 / 66.
+
+Early diagnostic:
+frontend/doppler-intake-v1.html
+Commit:
+2496c04 — "Add public BOM Doppler intake diagnostic"
+
+Typical current latest GIF size observed:
+524 x 564
+
+Panel/footer:
+- radar panel square approx 524x524
+- footer final ~40 rows
+- footer contains printed Doppler scale and direction labels
+
+Recovered printed scale:
+-70, -60, -50, -40, -30, -20, -15, -10, -5,
+0,
++5, +10, +15, +20, +30, +40, +50, +60, +70 km/h
+
+Interpretation:
+- blue = toward radar
+- yellow/orange/red = away from radar
+- Doppler is radial velocity only
+
+Important decoder evolution:
+- V1/V2 palette heuristics captured basemap colours.
+- V3 footer-only palette extraction was a clear success.
+- V4 full palette was improved/fixed.
+- exact decoder originally used exact RGB matches and was good for conservative
+  analysis but too sparse for display.
+
+Current split:
+A. ANALYTICAL DOPPLER
+- strict/exact decoded samples
+- time matched
+- only samples inside measured ST >=40 dBZ footprints contribute
+- used for severity/lightning assessment
+- does not create or move ST tracks
+
+B. DISPLAY DOPPLER
+- broader visual decoder
+- allows tightly controlled near-palette matching
+- uses recovered BOM palette colours
+- renders broad radial-velocity field
+- shows colour scale
+- display-only, not a weakening of analytical science
+
+Important user correction:
+The overlay must show the broader constant radial-velocity field, not only
+sparse red/high-speed dots.
+
+Current user validation:
+- Broad blue/cyan toward-radar field visible.
+- Yellow/orange/red away-from-radar field visible.
+- Radial velocity colour scale visible.
+- User accepted this display result.
+
+Current files:
+frontend/src/bom-doppler-decoder-v1.js
+frontend/src/bom-doppler-georef-v1.js
+frontend/src/bom-doppler-history-spatial-v1.js
+frontend/src/bom-doppler-display-v2.js
+frontend/src/bom-doppler-intake-v3.js
+frontend/src/track-doppler-context-v1.js
+
+Doppler timing/history:
+- Each reflectivity frame independently selects nearest Doppler frame for
+  each radar.
+- Acceptance tolerance = 8 minutes.
+- Never reuse latest Doppler frame for an older reflectivity frame.
+- Visible overlay follows the selected reflectivity frame.
+- ST-footprint analytical sampling follows the same time-matched frame.
+- Current/latest GIF may be used for the latest reflectivity frame when it is
+  the nearest valid candidate.
+- Older reflectivity frames remain history-only.
+
+This behaviour was video/screenshot validated as working.
+
+
+======================================================================
+10. CONVECTIVE / LIGHTNING / SEVERITY ASSESSMENT
+======================================================================
+
+This is an ordinal inferred assessment.
+It is NOT:
+- direct lightning detection
+- a strike probability
+- a calibrated probability
+- a substitute for official severe-weather warnings
+
+Recovered scoring structure:
+Reflectivity max: up to 30
+Persistence: up to 10
+Growth: up to 15
+Intensification: up to 10
+Doppler: up to 15
+Multi-radar: 5
+Himawari: reserved 10
+Warning: reserved 5
+
+Doppler component:
+Maximum absolute radial speed:
+- >=20 -> 2
+- >=40 -> 4
+- >=60 -> 6
+- >=80 -> 8
+
+Same-radar toward-away span:
+- >=50 -> +3
+- >=80 -> +5
+- >=120 -> +7
+
+Doppler component capped at 15.
+
+Assessment categories:
+- >=65 VERY HIGH
+- >=45 HIGH
+- >=25 MODERATE
+- else LOW
+
+Freshness:
+- age < -2 min -> clock anomaly
+- <=15 min -> live
+- <=30 min -> degraded
+- >30 min -> stale
+
+Assessment confidence:
+- coverage >=80 and >=4 observations -> high
+- coverage >=60 and >=2 observations -> medium
+- else low
+
+Relevant files:
+frontend/src/lightning.js
+frontend/src/track-assessment-v2.js
+
+V8.3 integrates strict footprint-restricted Doppler into this existing
+assessment.
+
+User-visible ST row in V8.3 is designed to show:
+- ordinal assessment
+- total score /100
+- confidence
+- evidence coverage
+- Doppler contribution /15
+- primary Doppler radar
+- strict footprint sample count
+
+Live validation limitation:
+The weather was too quiet to exercise a real live >=40 dBZ ST object.
+That gap was addressed with the Christmas 2023 deterministic scenario.
+
+
+======================================================================
+11. CHRISTMAS NIGHT 2023 HISTORICAL / TEST VALIDATION
+======================================================================
+
+Purpose:
+Exercise the real production tracking + assessment pipeline using a known severe
+Gold Coast event without pretending that simulated inputs are archived radar.
+
+The validation is explicitly labelled:
+- event-constrained deterministic simulation
+- NOT live weather
+- NOT an archived BOM radar replay
+
+Historical event anchors used:
+- 19:49 AEST — Gold Coast in Detailed Severe Thunderstorm Warnings
+- 19:56 AEST — Scenic Rim / Gold Coast escalated to Very Dangerous Thunderstorm
+- 20:40 AEST — destructive wind gusts added to warning
+- 21:12 AEST — Gold Coast Seaway maximum gust 106 km/h
+- Bureau post-event summary described ~3–4 km wide, 30–50 km long damaging to
+  locally destructive wind swath across Gold Coast / Scenic Rim
+- event analysed as a QLCS/bow-echo/derecho-style severe convective line
+
+Scenario frames:
+Six 5-minute frames:
+20:20 / 20:25 / 20:30 / 20:35 / 20:40 / 20:45 AEST
+
+Synthetic validation path:
+Ripley / western approach
+-> Greenbank
+-> Jimboomba
+-> Tamborine approach
+-> Tamborine / Wongawallan
+-> Oxenford / Coomera
+
+Production tracking expectations:
+- cross-radar 50/66 observations deduplicate to one object
+- persistent identity ST0001 through all six frames
+- no fragmentation into extra tracks
+- high tracking confidence by later frames
+- southeast observed centroid motion around 122–123 km/h
+- motion remains below the 140 km/h hard association limit
+- footprint Doppler feeds assessment but never motion/identity
+
+Peak validation frame:
+20:40 AEST
+- VERY HIGH
+- 70/100
+- Doppler 15/15
+
+Baseline sequences frozen in regression:
+Score:
+35 -> 60 -> 64 -> 68 -> 70 -> 58
+
+Category:
+MODERATE -> HIGH -> HIGH -> VERY HIGH -> VERY HIGH -> HIGH
+
+Doppler:
+7 -> 9 -> 11 -> 13 -> 15 -> 13
+
+Tests:
+18 Christmas 2023 severe-storm tracking scenario tests passed.
+12 main-product historical-regression contract tests passed.
+
+User visually confirmed the scenario and validation mode as PASS.
+
+
+======================================================================
+12. MAIN PRODUCT LIVE / HISTORICAL VALIDATION SHELL
+======================================================================
+
+Commit:
+79ca746 — "Add main-product historical validation mode"
+
+Current root:
+frontend/index.html
+
+Modes:
+1. LIVE WEATHER
+   - default
+   - currently loads:
+     frontend/live3d-core-v8-3.html
+2. TEST / HISTORICAL VALIDATION
+   - loads:
+     frontend/christmas-2023-derecho-test-v1.html
+
+Mode controller:
+frontend/src/stormtracker-product-mode-v1.js
+
+Regression controller:
+frontend/src/christmas-2023-regression-v1.js
+
+Important behaviour:
+- switching Live -> Validation -> Live must preserve already-loaded live state
+- historical page must remain clearly marked NOT LIVE
+- entering validation automatically runs the frozen regression
+- current user validation result: PASS
+
+Legacy root backup:
+frontend/index-live-loop-legacy.html
+
+
+======================================================================
+13. CURRENT PRODUCT CONSOLIDATION / OPERATIONAL V9 PATHWAY
+======================================================================
+
+User explicitly requested:
+"product consolidation/UI refinement and operational features, not more core
+algorithm surgery."
+
+Planned Operational V9 scope:
+- Keep all science/tracking algorithms unchanged.
+- Main Live mode points to a cleaner Operational V9.
+- Historical Validation remains separate and unchanged.
+- Selectable loop window in 30-minute increments:
+  30 / 60 / 90 / 120 / 150 / 180 minutes.
+- Native 5-minute reflectivity cadence:
+  30 min -> 6 frames
+  60 min -> 12
+  90 min -> 18
+  120 min -> 24
+  150 min -> 30
+  180 min -> 36
+- Playback speed:
+  0.5x / 1x / 2x
+- Jump to latest frame.
+- Compact operational overview:
+  display mode
+  displayed frame
+  source age
+  loop window
+  frames loaded
+  active ST tracks
+  Doppler match coverage
+- Advanced science/validation cards hidden by default but still available.
+- Existing time-matched Doppler rules remain authoritative.
+- Longer reflectivity loop must NOT permit stale Doppler reuse.
+- No relay redeployment should be required for V9.
+
+Planned files:
+frontend/src/bom-wmts-loop-v2.js
+frontend/src/operational-loop-v1.js
+frontend/tests/run-operational-loop-v1-tests.mjs
+frontend/src/live3d-operational-v9.js
+frontend/live3d-operational-v9.html
+frontend/index.html updated so Live mode points to V9
+
+Planned test expectations:
+10 operational-loop contract tests passed.
+12 main-product historical-regression contract tests passed.
+18 Christmas 2023 severe-storm tracking scenario tests passed.
+14 base tests passed.
+11 shared camera controller tests passed.
+
+
+======================================================================
+14. CURRENT BLOCKER — OPERATIONAL V9 INSTALLER FAILED
+======================================================================
+
+Most recent user command:
+python StormTracker_Operational_V9/install_v9.py
+
+Observed output:
+- "10 operational-loop contract tests passed."
+- Then generated bom-wmts-loop-v2 staging failed node --check.
+
+Exact failure:
+The installer inserted literal backslash-n text into JavaScript:
+
+  const probeCount =\n    Math.max(\n      14,\n      Number(count) + 8\n ...
+
+Node error:
+SyntaxError: Invalid or unexpected token
+
+Why:
+The V9 installer replacement string for the WMTS probe-horizon patch used
+escaped "\\n" sequences that were written literally into the JS file rather
+than actual newline characters.
+
+This is a packaging/installer bug, not a StormTracker science/design failure.
+
+IMPORTANT:
+The installer failed BEFORE Operational V9 target files/index were written.
+
+However, before the failing WMTS syntax check the installer DID:
+- copy frontend/src/operational-loop-v1.js into the working tree
+- copy frontend/tests/run-operational-loop-v1-tests.mjs into the working tree
+- run those helper tests successfully
+
+Therefore the Codespace working tree may now contain these TWO uncommitted V9
+helper files:
+- frontend/src/operational-loop-v1.js
+- frontend/tests/run-operational-loop-v1-tests.mjs
+
+The following should NOT yet exist from the failed installer unless separately
+created:
+- frontend/src/bom-wmts-loop-v2.js
+- frontend/src/live3d-operational-v9.js
+- frontend/live3d-operational-v9.html
+- root index change to V9
+
+Do not tell the user to undo validated V8.3 / historical-validation work.
+The next fix should be a narrow V9 installer correction.
+
+
+======================================================================
+15. IMMEDIATE NEXT DEVELOPMENT ACTION
+======================================================================
+
+NEXT STEP:
+Fix and reissue Operational V9 installer only.
+
+Required correction:
+In the installer's replacement for:
+
+  for (const observedUtc of candidateBomReflectivityTimes(now, 14)) {
+
+replace it with a Python multiline string containing ACTUAL newlines, e.g.:
+
+  const probeCount =
+    Math.max(
+      14,
+      Number(count) + 8
+    );
+
+  for (
+    const observedUtc
+    of candidateBomReflectivityTimes(
+      now,
+      probeCount
+    )
+  ) {
+
+Do NOT construct this replacement from concatenated strings containing "\\n".
+
+Before handoff:
+1. py_compile the installer.
+2. node --check the operational helper.
+3. Build a local/staged copy of bom-wmts-loop-v2.js from the exact current
+   bom-wmts-loop-v1.js and node --check the ACTUAL result.
+4. Build/stage live3d-operational-v9.js from exact V8.3 and node --check it.
+5. Verify the installer would not touch:
+   - tracking.js
+   - track-assessment-v2.js
+   - stormtracker-camera-v1.js
+   - christmas-2023-derecho-scenario-v1.js
+   - christmas-2023-derecho-test-v1.html
+6. Re-run existing tests after install.
+7. Then user can commit/push V9.
+
+Do not add unrelated fixes in this recovery patch.
+
+
+======================================================================
+16. CURRENT IMPORTANT FILE MAP
+======================================================================
+
+Main shell:
+frontend/index.html
+frontend/index-live-loop-legacy.html
+frontend/src/stormtracker-product-mode-v1.js
+
+Current Live product:
+frontend/live3d-core-v8-3.html
+frontend/src/live3d-core-v8-3.js
+
+Reflectivity:
+frontend/src/bom-wmts-loop-v1.js
+frontend/src/palette.js
+frontend/src/radar-source.js
+
+Web Mercator/georegistration:
+frontend/src/webmercator-raster-reproject-v1.js
+frontend/src/live3d-registration-v2.js
+frontend/live3d-registration-v2.html
+
+Workers / tracking:
+frontend/src/worker-client.js
+frontend/src/tracking.js
+
+Inferred 3-D:
+frontend/src/inferred-volume-v1.js
+frontend/src/inferred-confidence-v1.js
+frontend/src/measured-track-volume-v1.js
+
+Camera:
+frontend/src/stormtracker-camera-v1.js
+
+Doppler:
+frontend/src/bom-doppler-decoder-v1.js
+frontend/src/bom-doppler-georef-v1.js
+frontend/src/bom-doppler-intake-v3.js
+frontend/src/bom-doppler-history-spatial-v1.js
+frontend/src/bom-doppler-display-v2.js
+frontend/src/track-doppler-context-v1.js
+
+Assessment:
+frontend/src/lightning.js
+frontend/src/track-assessment-v2.js
+
+Historical validation:
+frontend/christmas-2023-derecho-test-v1.html
+frontend/src/christmas-2023-derecho-test-v1.js
+frontend/src/christmas-2023-derecho-scenario-v1.js
+frontend/src/christmas-2023-regression-v1.js
+frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs
+frontend/tests/run-christmas-2023-regression-v1-tests.mjs
+
+Likely uncommitted from failed V9 installer:
+frontend/src/operational-loop-v1.js
+frontend/tests/run-operational-loop-v1-tests.mjs
+
+
+======================================================================
+17. VALIDATED MILESTONES
+======================================================================
+
+PASS:
+- Browser-native architecture established.
+- Public BOM reflectivity ingestion.
+- Public BOM Doppler ingestion for 08/50/66.
+- Toowoomba 108 removed.
+- Core reflectivity segmentation/tracking algorithms recovered.
+- Persistent ST identities implemented.
+- True historical AURA 3-D engineering validation.
+- Live inferred 3-D model implemented.
+- 2-D/3-D horizontal georegistration fixed and user-confirmed.
+- Shared camera controller fixed and user-confirmed.
+- Mouse wheel behaviour improved to approximately one detent per zoom step.
+- Doppler footer palette extraction validated.
+- 19-step radial-velocity scale recovered.
+- Doppler history timestamps / per-frame pairing validated.
+- No stale-latest reuse for older reflectivity frames.
+- Current/latest Doppler candidate supported for latest frame.
+- Doppler broad visual field + colour scale user-confirmed.
+- Strict Doppler analysis remains separate from broader display decoder.
+- Strict footprint Doppler integrated into severity/lightning assessment.
+- Christmas 2023 production tracking/assessment simulation passed.
+- Main product Live/Historical Validation shell passed.
+- Historical regression baseline frozen and passed.
+- Commit 79ca746 pushed to main.
+
+NOT YET COMPLETE:
+- Operational V9 install because installer has the literal "\\n" WMTS patch bug.
+- V9 browser validation.
+- Final UI polish after V9.
+- Any later optional rasterized Doppler overlay improvement; current point-field
+  visual display is acceptable and should not block operations work.
+
+
+======================================================================
+18. THINGS NOT TO REOPEN WITHOUT A NEW FAILURE
+======================================================================
+
+Do not revisit:
+- 2-D/3-D georegistration
+- shared camera architecture
+- basic reflectivity segmentation thresholds
+- persistent tracking algorithm
+- historical AURA 3-D validation
+- Doppler per-frame timestamp/history pairing
+- analytical-vs-display Doppler split
+- Christmas 2023 regression framework
+
+unless a new browser observation or regression failure directly demonstrates
+a problem.
+
+
+======================================================================
+19. USER WORKFLOW / RESPONSE STYLE
+======================================================================
+
+The user wants:
+- direct progress
+- minimal ceremony
+- complete downloadable artifacts
+- exact terminal commands
+- no unnecessary questions
+- no speculative rework
+- no long research detours
+- no repeated "we need to validate the foundation again" behaviour when the
+  foundation is already passed
+- explicit acknowledgement when a generated patch itself caused a failure
+
+When a patch fails:
+- determine whether the failure happened before any repository writes
+- state exactly what may have changed in the working tree
+- fix only the failed scope
+- do not make the user redo validated work
+
+
+======================================================================
+20. NEW-CHAT STARTING POINT
+======================================================================
+
+Start from this statement:
+
+"StormTracker is currently stable at V8.3 + main Live/Historical Validation
+shell on commit 79ca746. The next task is NOT new science. It is to repair the
+Operational V9 installer packaging error. The failed V9 installer passed the
+10 operational-loop helper tests, then failed while staging
+bom-wmts-loop-v2.js because it inserted literal '\\n' characters into the JS.
+The next artifact should be a corrected, narrowly scoped V9 installer that
+uses real multiline replacement text, pre-validates the actual generated WMTS
+and V9 JS files, preserves tracking/scoring/camera/historical-validation files,
+then runs the full regression suite."
+
+======================================================================
+END OF HANDOFF
+======================================================================
+
+
+V9.1 CONTINUATION — 2026-10-04
+Authoritative inspected main commit: b5fb310 (Operational V9 installed).
+The original handoff's failed-installer status was superseded by that commit.
+Current authorised scope: align reflectivity/Doppler to the longest shared
+window limited by the shortest available history; continuous autoreplay;
+all everyday controls and legends visible without scrolling.
+V9.1 uses actual shared start/end timestamps, keeps the 8-minute nearest-scan
+tolerance, and never extends history using tolerance. The latest GIF stays
+eligible only at the original newest reflectivity time. Unreadable shared
+frames are omitted from both products before tracking. Unavailable Doppler
+radars are explicitly identified as degraded coverage. No shared history
+means no paired loop; latest reflectivity refresh remains available.
+Playback starts automatically after loading and repeats until paused; scrubbing
+or jumping to latest pauses playback. Reloading stops the previous player.
+The compact dashboard has permanent intensity, Doppler and support legends.
+Inference controls and detail views use a tabbed dialog.
+The existing science, scoring, camera, georegistration and historical validation
+modules are unchanged. The relay does not require redeployment.
+Release remains a downloadable installer, not pushed/deployed automatically.
+User confirmation of live browser behaviour remains required before declaring
+this iteration visually validated.
+
+
+2026-10-04 OPERATIONAL V9.2 CONTINUATION
+The user superseded the fixed-30-minute request: restore longer historical radar
+loading for storm persistence, warn for >30 minutes, switch to 30 minutes when
+Doppler is selected, and automatically update only when new matching radar and
+Doppler frames become available under the current definitions.
+V9.2 restores independent radar history (up to 36 requested scans) and retains
+shared-source clipping for the selected Doppler overlay. Automatic polling is
+60 seconds and checks source timestamp advance independently. It caches worker
+results and appends only new scans, preserving ST IDs/history during refresh.
+Manual extension to older uncached history rebuilds chronological tracking.
+All previous science, camera, georegistration and validation constraints remain.
+See README.txt and the verification logs for exact behaviour and test scope.
+
+
+2026-10-04 OPERATIONAL V9.3 CONTINUATION
+User confirmed V9.2 looks good. They accepted the explanation that BoM's seven
+Doppler frames can result in five displayed paired frames: our 30-minute setting
+requests six radar scans, shared source bounds/matching can trim these, and radar
+discovery starts ten minutes behind wall-clock time. Do not alter this accepted
+frame-count/matching definition without a new request.
+User then requested radar/Doppler transparency sliders, followed by resuming core
+development towards a working product. They added AEST alongside UTC mid-task.
+V9.3 adds opacity controls and display-only dual timestamps; all scientific source
+times remain UTC. No algorithm changes or new model claims were introduced.
+Defaults approximate previous appearance (radar 45%, Doppler 80%). Both sliders
+range 0..100% and update only current imagery/primitive alpha. Incoming frames
+read the same controls, preserving appearance across playback/automatic refresh.
+AEST fixed UTC+10 is shown before UTC; full detail timestamps have both dates.
+Core development completion remains the next project phase after this UI update;
+previous science/validation constraints and outstanding user live checks remain.
+
+
+2026-10-04 OPERATIONAL V9.4 CONTINUATION
+User asked whether core work remained. Review confirmed V9.3 committed on main
+as 02806c8, with Pages publishing on main pushes. Remaining production sign-off
+was live multi-update/outage confirmation, deployment regression gates and an
+updated repository README. Those release tasks have not yet been implemented.
+User then reported automatic Doppler update failure resolved by a manual reload.
+The original error/response was not captured. We reproduced an automatic retry
+defect with an otherwise decoded image whose source timestamp lay outside the
+8-minute window. V9.3 rejected it but kept its cached record indefinitely;
+correcting the source without reloading still failed. V9.4 evicts that rejected
+record, fetching it again on the next check. All Doppler requests also get
+no-store browser fetches and a 20-second complete-request deadline. The relay
+policy is unchanged and no relay redeployment is needed. Required source errors
+are surfaced with radar identity and retry state; successful recovery clears
+the error tooltip. Existing matching/track/camera/opacity/timezone rules remain.
+The same failing fixture now passes and retains ST identity/history. Thirty
+regression suites and eight viewport browser fixtures pass. Deployed confirmation
+of the user's original live failure is still required.

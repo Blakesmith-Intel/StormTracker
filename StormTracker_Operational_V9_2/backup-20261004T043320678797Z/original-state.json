@@ -1,0 +1,8 @@
+{
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/operational-dashboard-v9-1.css": true,
+  "frontend/src/live-loop-refresh-v1.js": false,
+  "frontend/tests/run-live-loop-refresh-v1-tests.mjs": false
+}

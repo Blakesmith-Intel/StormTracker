@@ -1,0 +1,47 @@
+{
+  "base_commit": "b5fb3108ca35bd127edf5b4c87cc93f1f5adcf6b",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "0972e2c685997a93a316b0369016c894e7076b33ade6349157c7f7bb9eab5184",
+      "payload_sha256": "d48fe17fc0ac6f3788a3c5bf637d9e08c094178e8b231e1a568667e1bd53dfe3"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "d0ea98789d299569fd47b63cdac52a8f0c644a6c86f2a88e4440c7d61119a2f0",
+      "payload_sha256": "ce03d726461f08e1b3b77690267d03c72eac74f865a49d55f43bcc24a473af78"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "fb24f5f3ccdcff4d6599e279005c9a2c3942180576eae8eee28ffe221a5426bf",
+      "payload_sha256": "03657296df409855cf0e93c0af99568287f8270a66a8757752e7a71d4a07f5bc"
+    },
+    "frontend/src/shared-product-timeline-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "8bbb804488530074ba3cda68649e3e15999e2cd94797be624267bc44616f3688"
+    },
+    "frontend/src/continuous-playback-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "ac0889d32b3abe41178df9a27274423ae6a3704736dc1282264cbf4397b6a0dc"
+    },
+    "frontend/src/operational-dashboard-v9-1.css": {
+      "baseline_sha256": null,
+      "payload_sha256": "cedf97cfdce98a067acdeaf6fcca0935f28d60f84e5d9579849f79a28e6d1860"
+    },
+    "frontend/tests/run-shared-product-timeline-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "1962093a81106f2ea319ad36004e6d865cfd06018bcde2b20b5b199dbd2b4ad4"
+    },
+    "frontend/tests/run-continuous-playback-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "8156682abeb5bbbb5acd9d1239b7681a66bc494799c3dc19954359a9e41c11db"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/christmas-2023-derecho-test-v1.html",
+    "frontend/src/christmas-2023-derecho-test-v1.js",
+    "frontend/src/stormtracker-product-mode-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js"
+  ]
+}

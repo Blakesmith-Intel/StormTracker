@@ -1,0 +1,23 @@
+{
+  "README.md": true,
+  "docs/OPERATIONAL_RELEASE.md": true,
+  "docs/QUEENSLAND_RADAR_COVERAGE.md": false,
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/bom-doppler-display-v2.js": true,
+  "frontend/src/bom-doppler-georef-v1.js": true,
+  "frontend/src/bom-doppler-history-spatial-v1.js": true,
+  "frontend/src/bom-doppler-intake-v3.js": true,
+  "frontend/src/bom-wmts-loop-v2.js": true,
+  "frontend/src/config.js": true,
+  "frontend/src/live-loop-refresh-v1.js": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/operational-dashboard-v9-1.css": true,
+  "frontend/src/qld-radar-sites-v1.js": false,
+  "frontend/src/shared-product-timeline-v1.js": true,
+  "frontend/tests/run-qld-radar-sites-v1-tests.mjs": false,
+  "relay/doppler-history-v1.js": true,
+  "relay/worker.js": true,
+  "scripts/check-frontend.mjs": true,
+  "scripts/deploy-qld-relay.sh": false
+}

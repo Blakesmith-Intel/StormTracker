@@ -10,3 +10,12 @@ data/aura/reference/
 
 # StormTracker build-time derived AURA products
 data/aura/derived/
+
+# StormTracker multi-event AURA calibration data
+data/aura/multievent/
+
+# StormTracker cross-event AURA validation products
+data/aura/cross_event_v1/
+
+# StormTracker morphology-conditioned cross-event validation
+data/aura/cross_event_v2/

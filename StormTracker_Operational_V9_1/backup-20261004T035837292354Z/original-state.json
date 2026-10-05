@@ -1,0 +1,10 @@
+{
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/shared-product-timeline-v1.js": false,
+  "frontend/src/continuous-playback-v1.js": false,
+  "frontend/src/operational-dashboard-v9-1.css": false,
+  "frontend/tests/run-shared-product-timeline-v1-tests.mjs": false,
+  "frontend/tests/run-continuous-playback-v1-tests.mjs": false
+}

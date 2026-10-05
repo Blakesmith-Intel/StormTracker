@@ -1,0 +1,52 @@
+{
+  "base_commit": "02806c8719462623a8dea6e9693530756561ccc9",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "f435164e2f097d2dc201ad0bcc24b25960d669e73d657d65f9c03bfbc174c525",
+      "payload_sha256": "3a14af2569deec1487c13b423172ab2cc809b79430e66838e11b3f2f02e96e51"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "3299e09331ffb0c422e15546cb954f0a00a4fca0df6fff5a55d8657ff4e1d203",
+      "payload_sha256": "83b446d9fa9bddc682c5a31749274c4efe8aee4ce83f50da92107f77b5c8e2bd"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "6ef724184dcea0221d43e68208de1d9691ce22a25e60c49fcc62b5bf3a95e7d9",
+      "payload_sha256": "b4d4a285f0702db4ac297e0f526fe88c4f8f761669fbe0d76a181f8ffa861602"
+    },
+    "frontend/src/bom-doppler-intake-v3.js": {
+      "baseline_sha256": "6749a5f436c11085a13142b516e7a3bd32da7a7a3ab7d17bb86267fa6060edff",
+      "payload_sha256": "ad8a8299e1be47b387052146912876425d9dc4b970babd87cfca429b2e21a346"
+    },
+    "frontend/src/doppler-request-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "1e0a39195a38471513775a06c312a0e5470fb1e7e43f72f2e062880a6f7a0988"
+    },
+    "frontend/tests/run-doppler-request-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "03b10d0dbc6546395e3a014d0ff1a837fbea26124fe28beb78d67fe4c15d9474"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/christmas-2023-derecho-test-v1.html",
+    "frontend/src/christmas-2023-derecho-test-v1.js",
+    "frontend/src/stormtracker-product-mode-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/bom-doppler-history-spatial-v1.js",
+    "frontend/src/bom-doppler-display-v2.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js",
+    "frontend/src/shared-product-timeline-v1.js",
+    "frontend/src/live-loop-refresh-v1.js",
+    "frontend/src/product-time-display-v1.js",
+    "frontend/src/continuous-playback-v1.js",
+    "frontend/src/operational-dashboard-v9-1.css"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/live-loop-refresh-v1.js": true,
+  "frontend/tests/run-live-loop-refresh-v1-tests.mjs": true,
+  "README.md": true,
+  "docs/OPERATIONAL_RELEASE.md": false,
+  "package.json": true,
+  "scripts/check-frontend.mjs": false,
+  ".github/workflows/pages.yml": true
+}

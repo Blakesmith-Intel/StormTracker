@@ -1,0 +1,48 @@
+{
+  "base_commit": "155d684d52116ba88d24f5c2b6c9683d9747ed78",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "6bf5e582ed8131b8a0f7d49bef9ed2e1b00edcb593e8376ceb2e255bc435e078",
+      "payload_sha256": "f435164e2f097d2dc201ad0bcc24b25960d669e73d657d65f9c03bfbc174c525"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "3be44fdc69b1380a0b41f46e0ecb323b28d2ec5dedad75364932999e04fb347c",
+      "payload_sha256": "3299e09331ffb0c422e15546cb954f0a00a4fca0df6fff5a55d8657ff4e1d203"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "3b363115972a81de38cbc86d0e23fce38a8ec42113f103f7530c3b68a2c6ca4f",
+      "payload_sha256": "6ef724184dcea0221d43e68208de1d9691ce22a25e60c49fcc62b5bf3a95e7d9"
+    },
+    "frontend/src/operational-dashboard-v9-1.css": {
+      "baseline_sha256": "8b0027b5ba1bc240b9ce8ec1db461d71924f8456fe9cb5210280da074c3d241f",
+      "payload_sha256": "81e1fefd7901272851273259050d0f0f53167b69742316f2e21b15714f032dc2"
+    },
+    "frontend/src/product-time-display-v1.js": {
+      "baseline_sha256": null,
+      "payload_sha256": "e66f9f889d80ab03a6f57ebf0516af7d7c53bc560a0cf44d30da6135661558a3"
+    },
+    "frontend/tests/run-product-time-display-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "319f79356bc9d78523f08562c33a5de16a897d144d67a99a3152e4b542b55e9f"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/christmas-2023-derecho-test-v1.html",
+    "frontend/src/christmas-2023-derecho-test-v1.js",
+    "frontend/src/stormtracker-product-mode-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/bom-doppler-intake-v3.js",
+    "frontend/src/bom-doppler-history-spatial-v1.js",
+    "frontend/src/bom-doppler-display-v2.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js"
+  ]
+}

@@ -1,0 +1,18 @@
+StormTracker V9.7.2 validation scope
+====================================
+
+Inherited evidence:
+- V9.7.1 full clean install passed.
+- V9.7.1 all 32 regression suites passed.
+
+V9.7.2 incremental evidence in this package:
+- modified operational JS passes node --check;
+- installer and finaliser pass Python bytecode compilation;
+- payload SHA256 checks match manifest;
+- production-shell contract passes: live-only public UI, historical engineering modules retained,
+  public historical page/controller absent, functional Reset retained, camera diagnostic absent;
+- Cesium credit container exists outside the crossfade surface and has z-index 900 versus crossfade 400.
+
+The installer itself runs the repository's complete scripts/check-frontend.mjs after staging V9.7.2,
+therefore all 33 suites must pass in the user's repository before it writes any files, and again after installation.
+The finaliser will not commit or push if that gate fails.

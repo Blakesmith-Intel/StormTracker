@@ -1,0 +1,70 @@
+{
+  "base_commit": "fd5564b354d20736e3f805cacdcbec8d834c543e",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "3a14af2569deec1487c13b423172ab2cc809b79430e66838e11b3f2f02e96e51",
+      "payload_sha256": "9e224044f278a8d8d5908f0ce8c5299bfe3a5812cb87a929f12efae70d7bf0f8"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "83b446d9fa9bddc682c5a31749274c4efe8aee4ce83f50da92107f77b5c8e2bd",
+      "payload_sha256": "e3e75eaa31b9cf883bf6afb682f39c07a95fab81abb7ec9d7c19e03e89e5b237"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "b4d4a285f0702db4ac297e0f526fe88c4f8f761669fbe0d76a181f8ffa861602",
+      "payload_sha256": "5ed58fd9055a6f77627a7043aa21cbfbaae779d56ebf8296f4d84a84896e3375"
+    },
+    "frontend/src/live-loop-refresh-v1.js": {
+      "baseline_sha256": "2ca3f9d989c6056e0350520aa97c881de99074abc147584f1f4bab4675277d13",
+      "payload_sha256": "bf8fc0c5a0171bc200411df15bec9fd1a5d4afe4f934a60d9befc54e5f41057a"
+    },
+    "frontend/tests/run-live-loop-refresh-v1-tests.mjs": {
+      "baseline_sha256": "2c1b57722852d71775c1a27974c1c054e9d2ba1b8f10ba005e01d5a6139c31c7",
+      "payload_sha256": "2e0bc8778fee07b3292d03be6a9e30a55d1e06721b560cb61225343e5b704342"
+    },
+    "README.md": {
+      "baseline_sha256": "a82c22113bd005e8588b7b384d76ff4454707876311d0d511bbb659e8c7943ed",
+      "payload_sha256": "32c8033cd472b80c940142af3c06b228e6e3277748e14c1c3438820ada2020f6"
+    },
+    "docs/OPERATIONAL_RELEASE.md": {
+      "baseline_sha256": null,
+      "payload_sha256": "6aee08e3bbd9e263d9ab246d6a5b917d8c7bfb36dc19eca0acd085acd8a2f1bd"
+    },
+    "package.json": {
+      "baseline_sha256": "ec0d6ff9158188d660e390108a719e0a8218de7f34672809f734569e8825f836",
+      "payload_sha256": "e26416f6a727531bc769812aad55d4e64dd915fdfa19a40fc949cfc22efae3f5"
+    },
+    "scripts/check-frontend.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "df0609f47db768bbc9ad036d0b4fda6d316e2d7580002ae121c94c00721b74ad"
+    },
+    ".github/workflows/pages.yml": {
+      "baseline_sha256": "083f0364863cbfdbb301d8ac6bb27bed16266e9a8c7b6ad61583874e542eebeb",
+      "payload_sha256": "9a8552657fb7f6ab7d2c56b3ec53272e4c3f5ed2b0d0abb6f4b592963b86b3b8"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/christmas-2023-derecho-test-v1.html",
+    "frontend/src/christmas-2023-derecho-test-v1.js",
+    "frontend/src/stormtracker-product-mode-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/bom-doppler-history-spatial-v1.js",
+    "frontend/src/bom-doppler-display-v2.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js",
+    "frontend/src/shared-product-timeline-v1.js",
+    "frontend/src/product-time-display-v1.js",
+    "frontend/src/continuous-playback-v1.js",
+    "frontend/src/operational-dashboard-v9-1.css",
+    "frontend/src/bom-doppler-intake-v3.js",
+    "frontend/src/doppler-request-v1.js",
+    "docs/SCIENTIFIC_CONTRACT.md"
+  ]
+}

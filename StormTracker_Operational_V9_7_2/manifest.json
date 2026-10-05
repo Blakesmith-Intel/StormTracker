@@ -1,0 +1,60 @@
+{
+  "base_commit": "fc426949481e6e6b63ede36405fa422644a0a4a3",
+  "files": {
+    "frontend/index.html": {
+      "baseline_sha256": "a322df1359086a4f3b00aa024c58d5d6f317813981f865104375e52e5a42a11c",
+      "payload_sha256": "e2ff9000599c2eabbde163a03c85619a8fe2a2ebebc137255c35990e21ca8c03"
+    },
+    "frontend/live3d-operational-v9.html": {
+      "baseline_sha256": "5f9d9d94ced5f0a1fbf835026c6d5ba743f9a3d2d451a816e6fe3b0278d5d592",
+      "payload_sha256": "32a5a75e7e90c5c6bda36efbf777363cdcdc2846e527b4351d5ebb244a5c91ce"
+    },
+    "frontend/src/live3d-operational-v9.js": {
+      "baseline_sha256": "7122b581facf80111c5e115a558921a4eccb37f82f6e8b09fdd1bdebfed28fc5",
+      "payload_sha256": "4b498415d92d974ff161f22f7ed0754ba2806d3f7e332dbd18cfb9bb1a3711b1"
+    },
+    "frontend/src/operational-dashboard-v9-1.css": {
+      "baseline_sha256": "fb83bbae7efee929e1a6b715acc615d67064c4896f2e1d08bda3629a9c0635d7",
+      "payload_sha256": "ab4ac9a061d93de00d60df07e3321d2a590e97ecdc6f9a3d8d35b908761e9b61"
+    },
+    "docs/OPERATIONAL_RELEASE.md": {
+      "baseline_sha256": "cbe3ee6406d96913d06d0202802a4db268a47dc859f9f52dc1d3648ddc36e730",
+      "payload_sha256": "71585dad30269a769ab82285fd31b82033730dd3ee5b214c34598a35d22175f6"
+    },
+    "docs/BASELINE_RESTORE.md": {
+      "baseline_sha256": null,
+      "payload_sha256": "c9c62f8f33118b9d0e5e13ff309993b3fbda1b1850fa416028d99ab818d3af49"
+    },
+    "frontend/tests/run-production-shell-v1-tests.mjs": {
+      "baseline_sha256": null,
+      "payload_sha256": "8be6a230cc0bb38c77beefa31f5d805ecd434bcb35c02a38b95c26fde71a14f8"
+    }
+  },
+  "protected_files": [
+    "frontend/src/tracking.js",
+    "frontend/src/track-assessment-v2.js",
+    "frontend/src/stormtracker-camera-v1.js",
+    "frontend/src/christmas-2023-derecho-scenario-v1.js",
+    "frontend/src/webmercator-raster-reproject-v1.js",
+    "frontend/src/track-doppler-context-v1.js",
+    "frontend/src/inferred-volume-v1.js",
+    "frontend/src/measured-track-volume-v1.js",
+    "frontend/src/worker-client.js",
+    "frontend/src/workers/radar-worker.js",
+    "frontend/src/operational-loop-v1.js",
+    "frontend/src/product-time-display-v1.js",
+    "frontend/src/continuous-playback-v1.js",
+    "frontend/src/doppler-request-v1.js",
+    "docs/SCIENTIFIC_CONTRACT.md",
+    "package.json",
+    ".github/workflows/pages.yml",
+    "frontend/src/qld-radar-sites-v1.js",
+    "relay/worker.js",
+    "relay/doppler-history-v1.js"
+  ],
+  "delete_files": {
+    "frontend/christmas-2023-derecho-test-v1.html": "2aecc9127405836fbc8d3427afd41824ade31cef",
+    "frontend/src/christmas-2023-derecho-test-v1.js": "0599b292db65f98c0559d820b26f2ea1ef4d3483",
+    "frontend/src/stormtracker-product-mode-v1.js": "6f4b54ffd6b45a060015e5fd52f35efc28de853b"
+  }
+}

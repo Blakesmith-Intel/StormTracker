@@ -1,0 +1,8 @@
+{
+  "frontend/index.html": true,
+  "frontend/live3d-operational-v9.html": true,
+  "frontend/src/live3d-operational-v9.js": true,
+  "frontend/src/bom-doppler-intake-v3.js": true,
+  "frontend/src/doppler-request-v1.js": false,
+  "frontend/tests/run-doppler-request-v1-tests.mjs": false
+}

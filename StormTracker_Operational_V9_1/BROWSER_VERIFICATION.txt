@@ -1,0 +1,21 @@
+StormTracker V9.1 — browser fixture verification
+
+Real production UI, Cesium, camera, worker and assessment modules;
+controlled reflectivity/Doppler intake fixtures. This was not a live BoM test.
+
+PASS: requested 180 min capped to seven paired frames / 30 min actual span
+PASS: all three available radars paired throughout retained sequence
+PASS: continuous playback observed through two wraps
+PASS: pause stops playback; scrub and Latest pause safely
+PASS: Doppler overlay and all 19 palette entries available
+PASS: Live -> Historical Validation -> Live preserves loaded live sequence
+PASS: unreadable Doppler image omitted from both product timelines
+PASS: unavailable radar displayed as degraded coverage
+PASS: latest-only refresh clears previous Doppler and storm display state
+PASS: inference controls dialog fits without scrolling at 375x667
+PASS: no browser JavaScript errors
+
+All tested viewports: zero sidebar overflow, no controls or legends clipped.
+1366x768; 1280x720; 1024x600; 768x1024; 390x844; 375x667; 320x568; 844x390.
+
+Live BoM playback and the user's preferred screen still require user confirmation.

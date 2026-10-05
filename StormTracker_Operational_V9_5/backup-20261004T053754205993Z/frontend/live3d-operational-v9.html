@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StormTracker — Operational V9.4</title>
+  <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.4">
+  <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
+  <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+<div id="app">
+  <aside aria-label="Live weather controls">
+    <header class="dashboard-heading"><strong>Live weather</strong><span>Measured 2-D · inferred 3-D</span></header>
+    <section class="card overview">
+      <div class="metric">
+        <span>Display</span><strong id="operationalSourceMode">Latest frame</strong>
+        <span>Frame (AEST / UTC)</span><strong id="operationalFrameTime">—</strong>
+        <span>Source age</span><strong id="operationalSourceAge">—</strong>
+        <span>Loop window</span><strong id="operationalLoopWindow">30 min requested</strong>
+        <span>Frames / tracks</span><strong><span id="operationalFramesLoaded">0</span> / <span id="operationalActiveTracks">—</span></strong>
+        <span>Doppler</span><strong id="operationalDoppler">not loaded</strong>
+      </div>
+    </section>
+    <section class="card loop-controls">
+      <div class="control-grid">
+        <label for="loopDurationMinutes">Requested window
+          <select id="loopDurationMinutes"><option value="30">30 min</option><option value="60">60 min</option><option value="90">90 min</option><option value="120">120 min</option><option value="150">150 min</option><option value="180">180 min</option></select>
+        </label>
+        <label for="playbackSpeed">Speed
+          <select id="playbackSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+        </label>
+      </div>
+      <div class="button-grid"><button id="loadHybridButton" disabled>Load 30-min storm loop</button><button id="loadButton" disabled>Refresh latest</button></div>
+      <div class="playback-row"><button id="hybridPlayButton" disabled aria-pressed="false">Play</button><button id="jumpLatestButton" disabled>Latest</button><label for="hybridFrameSlider">Frame <strong id="hybridFrameLabel">—</strong></label></div>
+      <input id="hybridFrameSlider" aria-label="Sequence frame" type="range" min="0" max="5" step="1" value="0" disabled>
+      <div id="sharedHistoryNote" class="note">Radar history supports persistent tracking; Doppler uses shared history.</div>
+    </section>
+    <section class="card layer-controls">
+      <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
+      <div class="layer-row"><label><input id="showTrackVolumes" type="checkbox" checked> Track-specific 3-D</label><button id="openDetailsButton">Tracks / details</button></div>
+      <div class="opacity-controls">
+        <label for="radarOpacity">Radar opacity <output id="radarOpacityValue" for="radarOpacity">45%</output></label>
+        <input id="radarOpacity" type="range" min="0" max="100" step="5" value="45" aria-label="Radar layer opacity: 0 transparent, 100 opaque">
+        <label for="dopplerOpacity">Doppler opacity <output id="dopplerOpacityValue" for="dopplerOpacity">80%</output></label>
+        <input id="dopplerOpacity" type="range" min="0" max="100" step="5" value="80" aria-label="Doppler layer opacity: 0 transparent, 100 opaque">
+      </div>
+      <label class="science-toggle"><input id="showAdvancedScience" type="checkbox"> Inference controls</label>
+    </section>
+    <section id="legendDock" class="card" aria-label="Weather legends">
+      <div id="legend"><strong>Inferred intensity · dBZ</strong><div class="intensity-scale">
+        <span><i style="background:#6ab6ff"></i>20–29</span><span><i style="background:#1e78ff"></i>30–39</span><span><i style="background:#00b96b"></i>40–49</span><span><i style="background:#ffd21a"></i>50–54</span><span><i style="background:#ff5a22"></i>55–59</span><span><i style="background:#bd2fff"></i>60+</span>
+      </div></div>
+      <strong class="velocity-title">Doppler radial velocity · km/h</strong>
+      <div id="dopplerVelocityLegend"><span class="note">Bureau palette appears when a loop is loaded.</span></div>
+      <div class="support-scale"><span><i class="support-dot support-high"></i>High support</span><span><i class="support-dot support-medium"></i>Medium</span><span><i class="support-dot support-low"></i>Low</span></div>
+      <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
+    </section>
+    <div class="live-notices">
+      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Doppler wind: 30-minute loop only. Selecting Doppler switches this window to 30 min.</div>
+      <div id="autoRefreshNote" class="note" role="status">Auto update: checks matching products every 60 seconds.</div>
+    </div>
+    <div id="status" role="status">Loading inferred-volume model…</div>
+  </aside>
+  <main id="mapPanel" aria-label="Weather map">
+    <div id="cesiumContainer"></div>
+    <div id="nav"><button id="resetButton">Reset view</button><span>Camera corrections: <strong id="cameraCorrections">0</strong></span></div>
+    <div id="mapTruthLabel">Measured reflectivity / inferred vertical structure</div>
+  </main>
+</div>
+<dialog id="detailsDialog" aria-labelledby="detailsTitle">
+  <header class="details-heading"><strong id="detailsTitle">StormTracker details</strong><button id="closeDetailsButton" aria-label="Close details">Close</button></header>
+  <nav class="details-tabs" aria-label="Detail views">
+    <button data-detail-tab="tracks" aria-selected="true">Tracks</button><button data-detail-tab="controls" aria-selected="false">Inference</button><button data-detail-tab="model" aria-selected="false">Model</button><button data-detail-tab="sources" aria-selected="false">Sources</button>
+  </nav>
+  <div data-detail-panel="tracks">
+    <div class="metric"><span>Measured tracks</span><strong id="hybridTrackCount">0</strong><span>Persistent ≥3 scans</span><strong id="hybridPersistentCount">0</strong><span>3-D display</span><strong id="hybridVolumeMode">—</strong><span>Scene frame</span><strong id="hybridSceneFrame">—</strong></div>
+    <p class="note">Storm identity and motion use measured 2-D reflectivity. The convective/lightning assessment is ordinal and inferred; it is not direct lightning detection or a calibrated probability.</p>
+    <div id="hybridRows"><div class="hybrid-muted">Load a shared loop to view storm tracks.</div></div>
+  </div>
+  <div data-detail-panel="controls" hidden><section class="card">
+      <h2>
+        Inference controls
+      </h2>
+
+      <label>
+        Minimum displayed intensity:
+        <strong>
+          <span id="minimumDbzhValue">30</span> dBZ
+        </strong>
+      </label>
+
+      <input
+        id="minimumDbzh"
+        type="range"
+        min="20"
+        max="60"
+        value="30"
+        step="5"
+      >
+
+      <label>
+        Minimum profile occupancy:
+        <strong>
+          <span id="occupancyValue">0.35</span>
+        </strong>
+      </label>
+
+      <input
+        id="occupancyThreshold"
+        type="range"
+        min="0.35"
+        max="0.85"
+        value="0.35"
+        step="0.05"
+      >
+
+      <label>
+        Vertical scale:
+        <strong>
+          <span id="verticalScaleValue">1.0</span>×
+        </strong>
+      </label>
+
+      <input
+        id="verticalScale"
+        type="range"
+        min="1"
+        max="4"
+        value="1"
+        step="0.5"
+      >
+
+      <label>
+        Point size:
+        <strong>
+          <span id="pointSizeValue">3</span> px
+        </strong>
+      </label>
+
+      <input
+        id="pointSize"
+        type="range"
+        min="2"
+        max="7"
+        value="3"
+        step="1"
+      >
+    </section><p class="note">Vertical intensity uses an empirical five-event AURA model. Inferred geometry never creates or preserves track identity.</p></div>
+  <div data-detail-panel="model" hidden><section class="card">
+      <h2>
+        Current inferred volume
+      </h2>
+
+      <div class="metric">
+        <span>Rendered columns</span>
+        <strong id="renderedColumns">—</strong>
+
+        <span>Rendered 3-D points</span>
+        <strong id="renderedPoints">—</strong>
+
+        <span>Display sampling</span>
+        <strong id="adaptiveStride">—</strong>
+
+        <span>Maximum inferred DBZH</span>
+        <strong id="maxInferredDbzh">—</strong>
+
+        <span>Inferred 40 dBZ top</span>
+        <strong id="inferredTop40">—</strong>
+
+        <span>Inferred 50 dBZ top</span>
+        <strong id="inferredTop50">—</strong>
+
+        <span>Mean profile occupancy</span>
+        <strong id="meanConfidence">—</strong>
+
+        <span>High-support points</span>
+        <strong id="highSupportPoints">—</strong>
+
+        <span>Medium-support points</span>
+        <strong id="mediumSupportPoints">—</strong>
+
+        <span>Low-support points</span>
+        <strong id="lowSupportPoints">—</strong>
+
+        <span>High-support 40 dBZ top</span>
+        <strong id="highSupportTop40">—</strong>
+
+        <span>High-support 50 dBZ top</span>
+        <strong id="highSupportTop50">—</strong>
+      </div>
+    </section><section class="card">
+      <h2>
+        Five-event cross-validation
+      </h2>
+
+      <div class="metric">
+        <span>Intensity MAE</span>
+        <strong id="validationMae">—</strong>
+
+        <span>40 dBZ volume IoU</span>
+        <strong id="validationIou40">—</strong>
+
+        <span>40 dBZ echo-top median error</span>
+        <strong id="validationTop40">—</strong>
+      </div>
+
+      <div
+        style="
+          margin-top:8px;
+          color:#9fb1bb;
+          font-size:10px;
+          line-height:1.4
+        "
+      >
+        Validation is leave-one-entire-event-out across five historical
+        Mt Stapylton event sequences. The inferred geometry remains
+        uncertainty-qualified and is not used to establish ST identity.
+      </div>
+    </section><p class="note">High / medium / low support describe empirical occupancy and P25–P75 spread, not calibrated probabilities.</p></div>
+  <div data-detail-panel="sources" hidden>
+    <section class="card"><h2>Reflectivity</h2><div class="metric"><span>Source time</span><strong id="sourceTime">—</strong><span>Decoded pixels</span><strong id="decodedPixels">—</strong><span>Observed maximum</span><strong id="sourceMaximum">—</strong></div></section>
+    <section class="card"><h2>Time-matched Doppler</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Time-matched radars</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
+    <div id="dopplerSourceRows"><span class="hybrid-muted">Load a loop to retrieve timestamped history for 66 / 50 / 08.</span></div>
+    <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
+  </div>
+</dialog>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.4"></script>
+</body>
+</html>

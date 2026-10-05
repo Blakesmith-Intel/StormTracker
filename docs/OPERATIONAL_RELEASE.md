@@ -1,4 +1,4 @@
-# StormTracker Operational V9.7.2
+# StormTracker Operational V9.7.4
 
 Release date: 4 October 2026 (AEST). Status: Queensland expansion prepared for installation;
 relay/frontend publication and deployed acceptance remain pending.
@@ -144,3 +144,56 @@ returns to the selected radar (or SEQ home) after manual pan/orbit.
 The final restore point is the annotated tag `v9.7.2` and its exact commit SHA;
 see `docs/BASELINE_RESTORE.md`. No scientific, source-pairing, tracking, scoring,
 radar-site, polling or relay logic changes are made in this cleanup.
+
+
+## V9.7.4 mobile bug fix
+
+V9.7.2 remains the sealed recovery baseline while this patch is verified on an
+actual mobile browser. The patch is display/input only; tracking, source timing,
+Doppler matching, inferred-volume science and Queensland source definitions are
+unchanged.
+
+Mobile controls now occupy approximately 40–42% of the dynamic viewport rather
+than expanding around the full overview and legends. The detailed overview,
+legend dock and inference toggle are suppressed only on narrow screens; the map
+remains the dominant panel and the compact control area can scroll if an unusually
+short viewport cannot fit all essential controls. Full desktop/tablet layout is
+unchanged.
+
+Radar is now visually primary by default (65% reflectivity / 45% Doppler). Doppler
+display primitives are reduced from 4 px to 2 px, lowered from 180 m to 90 m above
+the ellipsoid, and no longer disable depth testing. Track-specific inferred points
+default to 2 px and may be reduced to 1 px in inference controls. These are visual
+changes only; decoded pixels/samples and analytical inputs are unchanged.
+
+Touch camera input is now explicitly multi-touch because the shared desktop camera
+controller intentionally disables Cesium native gestures. One finger pans. Pinch
+zooms continuously. Two-finger twist rotates heading, and two-finger vertical drag
+changes pitch. Touch events are intercepted before the legacy single-pointer
+handler so pinch/twist cannot be swallowed as pan. Mouse behaviour and Reset view
+are unchanged.
+
+Do not move or replace tag `v9.7.2`. After live iPhone verification, commit V9.7.4
+as a normal bug-fix release and tag it separately only if accepted.
+
+
+## V9.7.4 consolidated mobile + track-overlay bug fix
+
+V9.7.4 supersedes the uninstalled V9.7.3 candidate and is installed directly on
+the sealed V9.7.2 baseline. It contains all V9.7.3 mobile layout, touch-camera,
+layer-balance and point-size corrections plus the track-rendering correction below.
+Only V9.7.4 needs to be installed.
+
+Project-history review identified the track-visibility regression at commit
+`719ca13020ac209f81855dd7f7c2e6a54ae77fbd` (3 October 2026),
+“Anchor inferred 3-D storm volumes to measured 2-D track masks”. Before that
+change, measured track markers and trails used a fixed 1.2 km display plane. The
+change moved track markers to the inferred echo-top while also introducing a dense
+track-specific point volume. Normal depth testing could therefore hide otherwise
+valid ST markers, labels and trails even though the worker continued producing
+tracks.
+
+V9.7.4 restores only the display contract: track marker/label/history altitude is
+again the fixed 1.2 km tracking plane; markers and labels disable depth testing;
+trails use the same colour as a depth-fail material. Tracking identity, segmentation,
+motion, confidence, Doppler context, inferred volumes and scoring are untouched.

@@ -159,3 +159,86 @@ dialog::backdrop { background:#0009; }
 
 #radarSite { width:180px; min-width:0; font-size:11px; }
 @media(max-width:700px) { #radarSite { width:150px; font-size:10px; } #nav { gap:4px; } }
+
+/* V9.7.4 mobile operational layout: keep the map dominant and controls compact. */
+@media (max-width:700px) {
+  #app {
+    grid-template-columns:1fr;
+    grid-template-rows:minmax(250px,42dvh) minmax(0,1fr);
+  }
+  aside {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:
+      "loop layers"
+      "notices notices"
+      "status status";
+    align-content:start;
+    gap:4px;
+    padding:5px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    border-right:0;
+    border-bottom:1px solid #31424d;
+  }
+  .dashboard-heading,
+  .overview,
+  #legendDock {
+    display:none !important;
+  }
+  .loop-controls { grid-area:loop; }
+  .layer-controls { grid-area:layers; }
+  .live-notices { grid-area:notices; }
+  #status { grid-area:status; }
+
+  .card { padding:5px; border-radius:7px; }
+  button,select { min-height:25px; padding:3px 5px; font-size:10px; }
+  label { font-size:9px; }
+  .control-grid { gap:4px; }
+  .control-grid select { min-height:25px; padding:3px 4px; }
+  .button-grid { grid-template-columns:1fr 1fr; gap:4px; margin-top:4px; }
+  .button-grid button { min-height:25px; font-size:9px; }
+  .playback-row { gap:4px; margin-top:4px; }
+  .playback-row button { min-height:25px; padding:3px 5px; font-size:9px; }
+  #hybridPlayButton { min-width:42px; }
+  .playback-row label { margin-left:auto; font-size:8px; }
+  input[type="range"] { height:14px; margin:2px 0; }
+  #sharedHistoryNote { display:none; }
+
+  .layer-row { gap:3px; flex-wrap:wrap; }
+  .layer-row + .layer-row { margin-top:3px; }
+  .layer-row select { width:100%; max-width:none; min-height:25px; }
+  .layer-row button { min-height:25px; padding:3px 5px; font-size:9px; }
+  .science-toggle { display:none; }
+  .opacity-controls { margin-top:3px; }
+  .opacity-controls label { font-size:8px; }
+  .opacity-controls input[type="range"] { height:12px; margin:0; }
+
+  #autoRefreshNote { display:none; }
+  #dopplerHistoryWarning { margin:0; font-size:8px; }
+  #status {
+    min-height:16px;
+    max-height:18px;
+    font-size:8px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #nav {
+    top:4px;
+    right:4px;
+    left:4px;
+    gap:4px;
+    padding:4px;
+  }
+  #radarSite { flex:1 1 auto; width:auto; min-width:0; font-size:10px; }
+  #resetButton { flex:0 0 auto; white-space:nowrap; }
+  #mapTruthLabel { left:5px; bottom:28px; max-width:calc(100% - 10px); font-size:8px; }
+}
+
+@media (max-width:430px) {
+  #app { grid-template-rows:minmax(240px,40dvh) minmax(0,1fr); }
+  aside { gap:3px; padding:4px; }
+  .card { padding:4px; }
+}

@@ -39,6 +39,10 @@ import {
 } from "./stormtracker-camera-v1.js?v=camera-v1.1-wheel";
 
 import {
+  createStormTrackerTouchCameraGestures
+} from "./touch-camera-gestures-v1.js?v=operational-v9-7-4";
+
+import {
   loadDopplerDiagnostic,
   loadDopplerFrame,
   loadDopplerHistory
@@ -116,6 +120,7 @@ for (const event of ["pointerdown", "pointermove", "wheel", "keydown"]) {
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) frameCrossfade.clear(); });
 window.addEventListener("resize", () => frameCrossfade.clear());
+window.addEventListener("pagehide", () => touchCameraGestures.destroy(), { once:true });
 
 scene.fog.enabled = false;
 scene.globe.enableLighting = false;
@@ -146,7 +151,16 @@ const CORE_HOME =
       )
   });
 
-const mapCamera =
+let mapCamera = null;
+
+const touchCameraGestures =
+  createStormTrackerTouchCameraGestures({
+    container: $("cesiumContainer"),
+    getController: () => mapCamera,
+    onGesture: () => frameCrossfade.clear()
+  });
+
+mapCamera =
   createStormTrackerCameraController({
     viewer,
 
@@ -273,7 +287,9 @@ function updateLoopButtonLabel() {
 
   if (button) {
     button.textContent =
-      `Load ${minutes}-min storm loop`;
+      window.matchMedia?.("(max-width:700px)").matches
+        ? `Load ${minutes}m`
+        : `Load ${minutes}-min storm loop`;
   }
 
   const loopWindow =
@@ -1100,7 +1116,7 @@ function trackPointSize(
         : 0.62;
 
   return Math.max(
-    1.5,
+    1.0,
     base * scale
   );
 }
@@ -1874,17 +1890,17 @@ function renderDopplerOverlay() {
           .fromDegrees(
             sample.longitude,
             sample.latitude,
-            180
+            90
           ),
 
       color:
         colour.withAlpha(Number($("dopplerOpacity").value) / 100),
 
       pixelSize:
-        4,
+        2,
 
       disableDepthTestDistance:
-        Number.POSITIVE_INFINITY
+        0
     });
 
     rendered++;
@@ -2120,12 +2136,11 @@ function renderHybridTracks(index) {
           track.track_id
         );
 
+      // Track identity is a measured 2-D product. Keep its map overlay on the
+      // original fixed tracking plane rather than lifting it to the inferred
+      // echo top, where the dense 3-D volume can occlude the marker/label.
       const altitude =
-        volume
-          ?.high_support_top_40_m_amsl
-        ?? volume
-          ?.inferred_top_40_m_amsl
-        ?? 1200;
+        1200;
 
       const position =
         Cesium.Cartesian3.fromDegrees(
@@ -2153,7 +2168,12 @@ function renderHybridTracks(index) {
             Cesium.Color.WHITE,
 
           outlineWidth:
-            1
+            1,
+
+          // Tracking is an operational overlay and must remain readable above
+          // radar/Doppler/inferred-volume primitives.
+          disableDepthTestDistance:
+            Number.POSITIVE_INFINITY
         },
 
         label: {
@@ -2177,7 +2197,10 @@ function renderHybridTracks(index) {
 
           backgroundColor:
             Cesium.Color.BLACK
-              .withAlpha(0.62)
+              .withAlpha(0.62),
+
+          disableDepthTestDistance:
+            Number.POSITIVE_INFINITY
         }
       });
 
@@ -2289,6 +2312,16 @@ function renderHybridTracks(index) {
                 : 1.5,
 
             material:
+              colour.withAlpha(
+                active.has(track.track_id)
+                  ? 0.9
+                  : 0.35
+              ),
+
+            // Draw the same trail when depth-tested behind the 3-D point cloud.
+            // This restores the original visible tracking path without changing
+            // any tracking calculation or observation coordinates.
+            depthFailMaterial:
               colour.withAlpha(
                 active.has(track.track_id)
                   ? 0.9

@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.7\.2/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.7\.4/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -25,6 +25,11 @@ assert.match(js, /creditViewport:\s*\$\("mapPanel"\)/);
 assert.doesNotMatch(js, /cameraCorrections|onUnexpectedCorrection/);
 assert.match(css, /#cesiumCredits[^}]*z-index:900/);
 assert.match(css, /\.frame-crossfade[^}]*z-index:400/);
+assert.match(css, /max-width:700px[\s\S]*#app[^}]*42dvh/);
+assert.match(html, /radarOpacityValue[^>]*>65%/);
+assert.match(html, /dopplerOpacityValue[^>]*>45%/);
+assert.match(js, /createStormTrackerTouchCameraGestures/);
+assert.match(js, /pixelSize:\s*2,[\s\S]*disableDepthTestDistance:\s*0/);
 
 assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true);
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);

@@ -76,6 +76,7 @@ import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-7";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
+import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -249,8 +250,14 @@ let dopplerLatestRecords =
 let dopplerFrameCache =
   new Map();
 
-let dopplerOverlayCollection =
+let dopplerOverlayLayer =
   null;
+
+let dopplerOverlayRenderToken =
+  0;
+
+let selectedTrackDisplayId =
+  "";
 
 // Prevent an older asynchronous radar-image load from replacing a newer
 // frame after rapid scrubbing/playback.
@@ -692,6 +699,11 @@ async function renderSurface(
     surfaceLayer
   );
 
+  // Reflectivity is the primary weather layer. Doppler is display context below it.
+  viewer.imageryLayers.raiseToTop(
+    surfaceLayer
+  );
+
   scene.requestRender();
 
   return true;
@@ -1058,14 +1070,79 @@ function trackColour(trackId) {
   );
 }
 
+function selectedTrackId() {
+  return selectedTrackDisplayId || null;
+}
+
+function trackObservationForFrame(track, index) {
+  return track?.history?.find(item =>
+    sameObservedInstant(
+      item.observed_utc,
+      hybridFrames[index]?.observedUtc
+    )
+  ) ?? null;
+}
+
 function hasTrackSpecificVolume(
   index
 ) {
-  return (
-    hybridTrackVolumes[index]
-      ?.size
-    ?? 0
-  ) > 0;
+  const volumeMap = hybridTrackVolumes[index];
+  const wanted = selectedTrackId();
+  return wanted
+    ? Boolean(volumeMap?.has(wanted))
+    : (volumeMap?.size ?? 0) > 0;
+}
+
+function updateTrackDisplayControls(index) {
+  const select = $("trackDisplayFilter");
+  const result = hybridResults[index];
+  if (!select || !result) return;
+
+  const frameTracks = (result.tracks ?? [])
+    .filter(track => trackObservationForFrame(track, index))
+    .sort((a, b) => a.track_id.localeCompare(b.track_id));
+
+  const options = [
+    `<option value="">All tracks (${frameTracks.length})</option>`,
+    ...frameTracks.map(track =>
+      `<option value="${track.track_id}">${track.track_id} · ${track.observation_count} obs</option>`
+    )
+  ];
+
+  if (selectedTrackDisplayId && !frameTracks.some(track => track.track_id === selectedTrackDisplayId)) {
+    options.push(`<option value="${selectedTrackDisplayId}">${selectedTrackDisplayId} · not in this frame</option>`);
+  }
+
+  select.innerHTML = options.join("");
+  select.value = selectedTrackDisplayId;
+
+  const selectedTrack = selectedTrackDisplayId
+    ? (result.tracks ?? []).find(track => track.track_id === selectedTrackDisplayId)
+    : null;
+  const observation = selectedTrack
+    ? trackObservationForFrame(selectedTrack, index)
+    : null;
+  const cone = $("showTrackThreatCone");
+  const status = $("trackThreatConeStatus");
+  const canProject = Boolean(selectedTrackDisplayId && selectedTrack?.motion && observation);
+  cone.disabled = !canProject;
+  if (!selectedTrackDisplayId) cone.checked = false;
+  if (status) {
+    status.textContent = !selectedTrackDisplayId
+      ? "Select one track to enable the +90-minute motion cone."
+      : canProject
+        ? `${selectedTrackDisplayId}: +90-minute constant-motion cone available.`
+        : `${selectedTrackDisplayId}: motion cone unavailable in this frame.`;
+  }
+}
+
+function resetTrackDisplaySelection() {
+  selectedTrackDisplayId = "";
+  if ($("trackDisplayFilter")) $("trackDisplayFilter").value = "";
+  if ($("showTrackThreatCone")) {
+    $("showTrackThreatCone").checked = false;
+    $("showTrackThreatCone").disabled = true;
+  }
 }
 
 function useTrackSpecificVolume(
@@ -1085,35 +1162,28 @@ function useTrackSpecificVolume(
 function applyHybridVolumeMode(
   index
 ) {
-  const useTrackSpecific =
-    useTrackSpecificVolume(
-      index
-    );
+  const wanted = selectedTrackId();
+  const trackVolumesRequested = Boolean($("showTrackVolumes")?.checked);
+  const useTrackSpecific = trackVolumesRequested && hasTrackSpecificVolume(index);
 
   if (inferredCollection) {
-    inferredCollection.show =
-      !useTrackSpecific;
+    inferredCollection.show = wanted && trackVolumesRequested
+      ? false
+      : !useTrackSpecific;
   }
 
-  const mode =
-    $("hybridVolumeMode");
-
+  const mode = $("hybridVolumeMode");
   if (mode) {
-    mode.textContent =
-      useTrackSpecific
-        ? "Measured-track-specific"
-        : (
-            Boolean(
-              $("showTrackVolumes")
-                ?.checked
-            )
-              ? "Frame-wide fallback (no measured track)"
-              : "Frame-wide inferred"
-          );
+    mode.textContent = useTrackSpecific
+      ? (wanted ? `Selected ${wanted}` : "Measured-track-specific")
+      : wanted && trackVolumesRequested
+        ? `Selected ${wanted} · no track volume in frame`
+        : trackVolumesRequested
+          ? "Frame-wide fallback (no measured track)"
+          : "Frame-wide inferred";
   }
 
   scene.requestRender();
-
   return useTrackSpecific;
 }
 
@@ -1217,24 +1287,46 @@ function dopplerDisplayColour(
 }
 
 function clearDopplerOverlay() {
-  if (
-    dopplerOverlayCollection
-  ) {
-    scene.primitives.remove(
-      dopplerOverlayCollection
-    );
-
-    dopplerOverlayCollection =
-      null;
+  dopplerOverlayRenderToken++;
+  if (dopplerOverlayLayer) {
+    viewer.imageryLayers.remove(dopplerOverlayLayer, true);
+    dopplerOverlayLayer = null;
   }
+  const count = $("dopplerOverlayCount");
+  if (count) count.textContent = "0";
+}
 
-  const count =
-    $("dopplerOverlayCount");
-
-  if (count) {
-    count.textContent =
-      "0";
+function dopplerCanvasForFrame(frame, samples) {
+  const canvas = document.createElement("canvas");
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Unable to create Doppler overlay canvas.");
+  const southWest = webMercatorToDegrees(frame.georef.minX, frame.georef.minY);
+  const northEast = webMercatorToDegrees(frame.georef.maxX, frame.georef.maxY);
+  const longitudeSpan = northEast.longitude - southWest.longitude;
+  const latitudeSpan = northEast.latitude - southWest.latitude;
+  let rendered = 0;
+  for (const sample of samples) {
+    if (!Number.isFinite(sample.longitude) || !Number.isFinite(sample.latitude)) continue;
+    const x = (sample.longitude - southWest.longitude) / longitudeSpan * canvas.width;
+    const y = (northEast.latitude - sample.latitude) / latitudeSpan * canvas.height;
+    if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
+    const rgb = sample.palette_rgb;
+    context.fillStyle = rgb
+      ? `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`
+      : dopplerDisplayColour(sample.velocity_kmh).toCssColorString();
+    context.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+    rendered++;
   }
+  return {
+    canvas,
+    rectangle: Cesium.Rectangle.fromDegrees(
+      southWest.longitude, southWest.latitude,
+      northEast.longitude, northEast.latitude
+    ),
+    rendered
+  };
 }
 
 async function decodeHistoricalDopplerFrame(
@@ -1784,157 +1876,44 @@ function renderDopplerVelocityLegend(
 function renderDopplerOverlay() {
   renderDopplerVelocityLegend($("dopplerOverlayRadar").value);
   clearDopplerOverlay();
-
-  const status =
-    $("dopplerOverlayStatus");
-
-  if (
-    !$("showDopplerOverlay")
-      ?.checked
-  ) {
-    if (status) {
-      status.textContent =
-        "hidden";
-    }
-
+  const renderToken = dopplerOverlayRenderToken;
+  const status = $("dopplerOverlayStatus");
+  if (!$("showDopplerOverlay")?.checked) {
+    if (status) status.textContent = "hidden";
     return;
   }
+  const state = dopplerStateForFrame(hybridFrameIndex);
+  if (!state) { if (status) status.textContent = "Doppler sequence not loaded"; return; }
+  const radarId = $("dopplerOverlayRadar")?.value ?? "66";
+  const pairing = state.pairings.find(item => item.radarId === radarId);
+  if (!pairing || !pairing.candidate) { if (status) status.textContent = `${radarId} — no historical frame`; return; }
+  if (!pairing.matched) { if (status) status.textContent = `${radarId} — NO MATCH (Δ${pairing.deltaMinutes.toFixed(1)} min)`; return; }
+  const record = selectedDopplerRecord(hybridFrameIndex);
+  if (!record) { if (status) status.textContent = `${radarId} — matched frame failed to decode`; return; }
+  const frame = hybridFrames[hybridFrameIndex];
+  if (!frame) return;
 
-  const state =
-    dopplerStateForFrame(
-      hybridFrameIndex
-    );
+  renderDopplerVelocityLegend(radarId);
+  const displaySamples = record.displaySamples ?? record.samples ?? [];
+  const raster = dopplerCanvasForFrame(frame, displaySamples);
+  $("dopplerOverlayCount").textContent = raster.rendered.toLocaleString();
+  if (status) status.textContent = `${radarId} ${formatDopplerUtc(record.observedUtc)} (Δ${pairing.deltaMinutes.toFixed(1)} min)`;
 
-  if (!state) {
-    if (status) {
-      status.textContent =
-        "Doppler sequence not loaded";
-    }
-
-    return;
-  }
-
-  const radarId =
-    $("dopplerOverlayRadar")
-      ?.value
-    ?? "66";
-
-  const pairing =
-    state.pairings
-      .find(
-        item =>
-          item.radarId
-          === radarId
-      );
-
-  if (
-    !pairing
-    || !pairing.candidate
-  ) {
-    if (status) {
-      status.textContent =
-        `${radarId} — no historical frame`;
-    }
-
-    return;
-  }
-
-  if (
-    !pairing.matched
-  ) {
-    if (status) {
-      status.textContent =
-        `${radarId} — NO MATCH (Δ${pairing.deltaMinutes.toFixed(1)} min)`;
-    }
-
-    return;
-  }
-
-  const record =
-    selectedDopplerRecord(
-      hybridFrameIndex
-    );
-
-  if (!record) {
-    if (status) {
-      status.textContent =
-        `${radarId} — matched frame failed to decode`;
-    }
-
-    return;
-  }
-
-  renderDopplerVelocityLegend(
-    radarId
-  );
-
-  dopplerOverlayCollection =
-    scene.primitives.add(
-      new Cesium
-        .PointPrimitiveCollection()
-    );
-
-  const displaySamples =
-    record.displaySamples
-    ?? record.samples
-    ?? [];
-
-  let rendered =
-    0;
-
-  for (
-    const sample
-    of displaySamples
-  ) {
-    const rgb =
-      sample.palette_rgb;
-
-    const colour =
-      rgb
-        ? Cesium.Color.fromBytes(
-            rgb[0],
-            rgb[1],
-            rgb[2],
-            205
-          )
-        : dopplerDisplayColour(
-            sample.velocity_kmh
-          );
-
-    dopplerOverlayCollection.add({
-      position:
-        Cesium.Cartesian3
-          .fromDegrees(
-            sample.longitude,
-            sample.latitude,
-            90
-          ),
-
-      color:
-        colour.withAlpha(Number($("dopplerOpacity").value) / 100),
-
-      pixelSize:
-        2,
-
-      disableDepthTestDistance:
-        0
-    });
-
-    rendered++;
-  }
-
-  $("dopplerOverlayCount")
-    .textContent =
-      rendered
-        .toLocaleString();
-
-  if (status) {
-    status.textContent =
-      `${radarId} ${formatDopplerUtc(record.observedUtc)} ` +
-      `(Δ${pairing.deltaMinutes.toFixed(1)} min)`;
-  }
-
-  scene.requestRender();
+  Cesium.SingleTileImageryProvider.fromUrl(
+    raster.canvas.toDataURL("image/png"),
+    { rectangle: raster.rectangle }
+  ).then(provider => {
+    if (renderToken !== dopplerOverlayRenderToken || !$("showDopplerOverlay")?.checked) return;
+    dopplerOverlayLayer = new Cesium.ImageryLayer(provider);
+    dopplerOverlayLayer.alpha = Number($("dopplerOpacity").value) / 100;
+    viewer.imageryLayers.add(dopplerOverlayLayer);
+    if (surfaceLayer) viewer.imageryLayers.raiseToTop(surfaceLayer);
+    scene.requestRender();
+  }).catch(error => {
+    if (renderToken !== dopplerOverlayRenderToken) return;
+    if (status) status.textContent = `${radarId} — overlay render failed`;
+    console.warn("Doppler imagery overlay unavailable", error);
+  });
 }
 
 function updateDopplerUiForFrame(
@@ -2087,400 +2066,203 @@ function formatSignedKmh(
 
 function renderHybridTracks(index) {
   hybridSource.entities.suspendEvents();
-
   clearHybridTrackVolumeCollection();
-
-  const showTrackVolumes =
-    useTrackSpecificVolume(
-      index
-    );
-
-  if (showTrackVolumes) {
-    hybridTrackVolumeCollection =
-      scene.primitives.add(
-        new Cesium.PointPrimitiveCollection()
-      );
-  }
-
+  const showTrackVolumes = useTrackSpecificVolume(index);
+  if (showTrackVolumes) hybridTrackVolumeCollection = scene.primitives.add(new Cesium.PointPrimitiveCollection());
   try {
     hybridSource.entities.removeAll();
+    const result = hybridResults[index];
+    const volumeMap = hybridTrackVolumes[index];
+    if (!result) return;
+    const active = new Set(result.active_track_ids ?? []);
+    const rows = [];
+    const frameTracks = (result.tracks ?? []).filter(track => trackObservationForFrame(track, index));
+    const wanted = selectedTrackId();
+    $("hybridTrackCount").textContent = String(frameTracks.length);
 
-    const result =
-      hybridResults[index];
-
-    const volumeMap =
-      hybridTrackVolumes[index];
-
-    if (!result) {
-      return;
-    }
-
-    const active =
-      new Set(
-        result.active_track_ids ?? []
+    for (const track of frameTracks) {
+      if (wanted && track.track_id !== wanted) continue;
+      const observation = trackObservationForFrame(track, index);
+      const volumeRecord = volumeMap?.get(track.track_id) ?? null;
+      const volume = volumeRecord?.volume ?? null;
+      const trend = volumeRecord?.trend ?? null;
+      const colour = trackColour(track.track_id);
+      const altitude = 1200;
+      const position = Cesium.Cartesian3.fromDegrees(
+        observation.centroid_longitude,
+        observation.centroid_latitude,
+        displayAltitude(altitude)
       );
 
-    const rows = [];
-
-    for (const track of result.tracks ?? []) {
-      const observation =
-        track.history?.find(
-          item =>
-            sameObservedInstant(
-              item.observed_utc,
-              hybridFrames[index].observedUtc
-            )
-        );
-
-      if (!observation) {
-        continue;
-      }
-
-      const volumeRecord =
-        volumeMap?.get(
-          track.track_id
-        )
-        ?? null;
-
-      const volume =
-        volumeRecord?.volume
-        ?? null;
-
-      const trend =
-        volumeRecord?.trend
-        ?? null;
-
-      const colour =
-        trackColour(
-          track.track_id
-        );
-
-      // Track identity is a measured 2-D product. Keep its map overlay on the
-      // original fixed tracking plane rather than lifting it to the inferred
-      // echo top, where the dense 3-D volume can occlude the marker/label.
-      const altitude =
-        1200;
-
-      const position =
-        Cesium.Cartesian3.fromDegrees(
-          observation.centroid_longitude,
-          observation.centroid_latitude,
-          displayAltitude(altitude)
-        );
-
       hybridSource.entities.add({
-        id:
-          `hybrid-${index}-${track.track_id}`,
-
+        id: `hybrid-${index}-${track.track_id}`,
         position,
-
         point: {
-          pixelSize:
-            active.has(track.track_id)
-              ? 12
-              : 8,
-
-          color:
-            colour,
-
-          outlineColor:
-            Cesium.Color.WHITE,
-
-          outlineWidth:
-            1,
-
-          // Tracking is an operational overlay and must remain readable above
-          // radar/Doppler/inferred-volume primitives.
-          disableDepthTestDistance:
-            Number.POSITIVE_INFINITY
+          pixelSize: active.has(track.track_id) ? 12 : 8,
+          color: colour,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 1,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
         },
-
         label: {
-          text:
-            `${track.track_id}  ≥${Number(observation.maximum_dbzh_lower_bound).toFixed(0)} dBZ`,
-
-          font:
-            "12px sans-serif",
-
-          pixelOffset:
-            new Cesium.Cartesian2(
-              0,
-              -18
-            ),
-
-          fillColor:
-            Cesium.Color.WHITE,
-
-          showBackground:
-            true,
-
-          backgroundColor:
-            Cesium.Color.BLACK
-              .withAlpha(0.62),
-
-          disableDepthTestDistance:
-            Number.POSITIVE_INFINITY
+          show: Boolean($("showTrackLabels")?.checked),
+          text: `${track.track_id}  ≥${Number(observation.maximum_dbzh_lower_bound).toFixed(0)} dBZ`,
+          font: "12px sans-serif",
+          pixelOffset: new Cesium.Cartesian2(0, -18),
+          fillColor: Cesium.Color.WHITE,
+          showBackground: true,
+          backgroundColor: Cesium.Color.BLACK.withAlpha(0.62),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
         }
       });
 
-      if (
-        showTrackVolumes
-        && volume
-        && hybridTrackVolumeCollection
-      ) {
-        for (
-          const point
-          of volume.points
-        ) {
+      if (showTrackVolumes && volume && hybridTrackVolumeCollection) {
+        for (const point of volume.points) {
           hybridTrackVolumeCollection.add({
-            position:
-              Cesium.Cartesian3
-                .fromDegrees(
-                  point.longitude,
-                  point.latitude,
-                  displayAltitude(
-                    point.altitude_m_amsl
-                  )
-                ),
-
-            color:
-              colourForDbzh(
-                point.dbzh
-              ).withAlpha(
-                point.alpha
-              ),
-
-            pixelSize:
-              trackPointSize(
-                point.support_band
-              ),
-
-            disableDepthTestDistance:
-              0
+            position: Cesium.Cartesian3.fromDegrees(
+              point.longitude,
+              point.latitude,
+              displayAltitude(point.altitude_m_amsl)
+            ),
+            color: colourForDbzh(point.dbzh).withAlpha(point.alpha),
+            pixelSize: trackPointSize(point.support_band),
+            disableDepthTestDistance: 0
           });
         }
       }
 
-      if (!hybridHistory.has(track.track_id)) {
-        hybridHistory.set(
-          track.track_id,
-          []
-        );
-      }
-
-      const history =
-        hybridHistory.get(
-          track.track_id
-        );
-
-      if (
-        !history.some(
-          item =>
-            item.frameIndex
-            === index
-        )
-      ) {
+      if (!hybridHistory.has(track.track_id)) hybridHistory.set(track.track_id, []);
+      const history = hybridHistory.get(track.track_id);
+      if (!history.some(item => item.frameIndex === index)) {
         history.push({
-          frameIndex:
-            index,
-
-          longitude:
-            observation.centroid_longitude,
-
-          latitude:
-            observation.centroid_latitude,
-
+          frameIndex: index,
+          longitude: observation.centroid_longitude,
+          latitude: observation.centroid_latitude,
           altitude
         });
       }
-
-      const trail =
-        history
-          .filter(
-            item =>
-              item.frameIndex
-              <= index
-          )
-          .sort(
-            (a, b) =>
-              a.frameIndex
-              - b.frameIndex
-          );
-
+      const trail = history
+        .filter(item => item.frameIndex <= index)
+        .sort((a, b) => a.frameIndex - b.frameIndex);
       if (trail.length >= 2) {
         hybridSource.entities.add({
-          id:
-            `hybrid-trail-${track.track_id}`,
-
+          id: `hybrid-trail-${track.track_id}`,
           polyline: {
-            positions:
-              trail.map(
-                item =>
-                  Cesium.Cartesian3.fromDegrees(
-                    item.longitude,
-                    item.latitude,
-                    displayAltitude(
-                      item.altitude
-                    )
-                  )
-              ),
-
-            width:
-              active.has(track.track_id)
-                ? 3
-                : 1.5,
-
-            material:
-              colour.withAlpha(
-                active.has(track.track_id)
-                  ? 0.9
-                  : 0.35
-              ),
-
-            // Draw the same trail when depth-tested behind the 3-D point cloud.
-            // This restores the original visible tracking path without changing
-            // any tracking calculation or observation coordinates.
-            depthFailMaterial:
-              colour.withAlpha(
-                active.has(track.track_id)
-                  ? 0.9
-                  : 0.35
-              ),
-
-            clampToGround:
-              false
+            positions: trail.map(item => Cesium.Cartesian3.fromDegrees(
+              item.longitude, item.latitude, displayAltitude(item.altitude)
+            )),
+            width: active.has(track.track_id) ? 3 : 1.5,
+            material: colour.withAlpha(active.has(track.track_id) ? 0.9 : 0.35),
+            depthFailMaterial: colour.withAlpha(active.has(track.track_id) ? 0.9 : 0.35),
+            clampToGround: false
           }
         });
       }
 
-      const top40Text =
-        volume
-          ?.high_support_top_40_m_amsl
-        != null
-          ? `${(
-              volume
-                .high_support_top_40_m_amsl
-              / 1000
-            ).toFixed(1)} km`
-          : "—";
-
-      const trendText =
-        trend
-          ? `${
-              trend.metres_per_10_min
-              >= 0
-                ? "+"
-                : ""
-            }${(
-              trend.metres_per_10_min
-              / 1000
-            ).toFixed(1)} km/10m`
-          : "—";
-
-      const supportText =
-        volume
-          ? `${volume.high_support_points}/${volume.inferred_point_count}`
-          : "—";
-
-      const dopplerContext =
-        dopplerContextForTrack(
-          index,
-          track.track_id
-        );
-
-      const primaryDoppler =
-        dopplerContext
-          ?.primary
-        ?? null;
-
-      const dopplerSummary =
-        primaryDoppler
-          ? (
-              `Doppler ${primaryDoppler.radar_id}: ` +
-              `${formatSignedKmh(primaryDoppler.strongest_toward_kmh)} toward / ` +
-              `${formatSignedKmh(primaryDoppler.strongest_away_kmh)} away; ` +
-              `span ${
-                primaryDoppler.radial_span_kmh == null
-                  ? "—"
-                  : `${primaryDoppler.radial_span_kmh.toFixed(0)} km/h`
-              }; ${primaryDoppler.sample_count} footprint samples`
-            )
-          : "Doppler — no time-matched non-zero samples in this measured footprint";
-
-      const assessment =
-        buildFootprintRestrictedTrackAssessment(
-          track,
-          dopplerContext,
-          {
-            referenceTime:
-              new Date(
-                hybridFrames[index].observedUtc
-              )
+      if (wanted === track.track_id && $("showTrackThreatCone")?.checked) {
+        const cone = buildTrackThreatCone(track, observation, { horizonMinutes: 90 });
+        if (cone) {
+          const coneAltitude = displayAltitude(350);
+          hybridSource.entities.add({
+            id: `hybrid-threat-cone-${track.track_id}`,
+            polygon: {
+              hierarchy: new Cesium.PolygonHierarchy(
+                cone.polygon.map(point => Cesium.Cartesian3.fromDegrees(
+                  point.longitude, point.latitude, coneAltitude
+                ))
+              ),
+              perPositionHeight: true,
+              material: colour.withAlpha(0.16)
+            }
+          });
+          hybridSource.entities.add({
+            id: `hybrid-threat-centreline-${track.track_id}`,
+            polyline: {
+              positions: cone.centreline.map(point => Cesium.Cartesian3.fromDegrees(
+                point.longitude, point.latitude, coneAltitude + 20
+              )),
+              width: 2,
+              material: new Cesium.PolylineDashMaterialProperty({
+                color: colour.withAlpha(0.95),
+                dashLength: 12
+              }),
+              depthFailMaterial: colour.withAlpha(0.8),
+              clampToGround: false
+            }
+          });
+          for (const sample of cone.samples.filter(item => item.minutes_ahead > 0)) {
+            hybridSource.entities.add({
+              id: `hybrid-threat-marker-${track.track_id}-${sample.minutes_ahead}`,
+              position: Cesium.Cartesian3.fromDegrees(
+                sample.centre.longitude,
+                sample.centre.latitude,
+                coneAltitude + 30
+              ),
+              point: {
+                pixelSize: 5,
+                color: colour,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 1,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              },
+              label: {
+                text: `+${sample.minutes_ahead}m`,
+                font: "11px sans-serif",
+                pixelOffset: new Cesium.Cartesian2(0, -14),
+                fillColor: Cesium.Color.WHITE,
+                showBackground: true,
+                backgroundColor: Cesium.Color.BLACK.withAlpha(0.62),
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              }
+            });
           }
-        );
+          const status = $("trackThreatConeStatus");
+          if (status) {
+            status.textContent = `${track.track_id}: +90m constant-motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ±${cone.heading_half_angle_degrees.toFixed(0)}° heading spread. Not a forecast probability.`;
+          }
+        }
+      }
 
-      const dopplerAssessmentText =
-        assessment.doppler_integrated
-          ? (
-              `Doppler contribution ${assessment.doppler_component_score}/` +
-              `${assessment.doppler_component_maximum} from radar ` +
-              `${assessment.doppler_radar_id} ` +
-              `(${assessment.doppler_sample_count} strict footprint samples)`
-            )
-          : "Doppler contribution unavailable for this ST footprint";
-
-      const assessmentText =
-        `Convective/lightning assessment ${assessment.category} ` +
-        `${assessment.score}/100; confidence ${assessment.confidence}; ` +
-        `evidence ${assessment.evidence_coverage_percent}/100`;
-
+      const top40Text = volume?.high_support_top_40_m_amsl != null
+        ? `${(volume.high_support_top_40_m_amsl / 1000).toFixed(1)} km`
+        : "—";
+      const trendText = trend
+        ? `${trend.metres_per_10_min >= 0 ? "+" : ""}${(trend.metres_per_10_min / 1000).toFixed(1)} km/10m`
+        : "—";
+      const supportText = volume
+        ? `${volume.high_support_points}/${volume.inferred_point_count}`
+        : "—";
+      const dopplerContext = dopplerContextForTrack(index, track.track_id);
+      const primaryDoppler = dopplerContext?.primary ?? null;
+      const dopplerSummary = primaryDoppler
+        ? `Doppler ${primaryDoppler.radar_id}: ${formatSignedKmh(primaryDoppler.strongest_toward_kmh)} toward / ${formatSignedKmh(primaryDoppler.strongest_away_kmh)} away; span ${primaryDoppler.radial_span_kmh == null ? "—" : `${primaryDoppler.radial_span_kmh.toFixed(0)} km/h`}; ${primaryDoppler.sample_count} footprint samples`
+        : "Doppler — no time-matched non-zero samples in this measured footprint";
+      const assessment = buildFootprintRestrictedTrackAssessment(
+        track,
+        dopplerContext,
+        { referenceTime: new Date(hybridFrames[index].observedUtc) }
+      );
+      const dopplerAssessmentText = assessment.doppler_integrated
+        ? `Doppler contribution ${assessment.doppler_component_score}/${assessment.doppler_component_maximum} from radar ${assessment.doppler_radar_id} (${assessment.doppler_sample_count} strict footprint samples)`
+        : "Doppler contribution unavailable for this ST footprint";
+      const assessmentText = `Convective/lightning assessment ${assessment.category} ${assessment.score}/100; confidence ${assessment.confidence}; evidence ${assessment.evidence_coverage_percent}/100`;
       rows.push(
-        `<div class="track-volume-row">
-          <div>
-            <strong>${track.track_id}</strong>
-            <span>${track.observation_count} obs</span>
-            <span>${
-              track.motion
-                ? `${track.motion.speed_kmh.toFixed(0)} km/h`
-                : "motion —"
-            }</span>
-          </div>
-          <div>
-            <span>high-support 40 dBZ top ${top40Text}</span>
-            <span>vertical trend ${trendText}</span>
-            <span>support ${supportText}</span>
-            <span>${dopplerSummary}</span>
-            <span><strong>${assessmentText}</strong></span>
-            <span>${dopplerAssessmentText}</span>
-          </div>
-        </div>`
+        `<div class="track-volume-row"><div><strong>${track.track_id}</strong><span>${track.observation_count} obs</span><span>${track.motion ? `${track.motion.speed_kmh.toFixed(0)} km/h` : "motion —"}</span></div><div><span>high-support 40 dBZ top ${top40Text}</span><span>vertical trend ${trendText}</span><span>support ${supportText}</span><span>${dopplerSummary}</span><span><strong>${assessmentText}</strong></span><span>${dopplerAssessmentText}</span></div></div>`
       );
     }
 
-    $("hybridTrackCount").textContent =
-      String(rows.length);
-
-    $("hybridPersistentCount").textContent =
-      String(
-        (result.tracks ?? [])
-          .filter(
-            track =>
-              track.observation_count >= 3
-          )
-          .length
-      );
-
-    $("hybridRows").innerHTML =
-      rows.length
-        ? rows.join("")
-        : '<div class="hybrid-muted">No measured ≥40 dBZ 2-D storm tracks in this frame.</div>';
-
+    $("hybridPersistentCount").textContent = String(
+      (result.tracks ?? []).filter(track => track.observation_count >= 3).length
+    );
+    $("hybridRows").innerHTML = rows.length
+      ? rows.join("")
+      : '<div class="hybrid-muted">No measured ≥40 dBZ 2-D storm tracks in this frame.</div>';
   } finally {
     hybridSource.entities.resumeEvents();
   }
-
   scene.requestRender();
 }
+
 function updateHybridSourceMetrics(frame) {
   $("sourceTime").textContent =
     formatProductTime(frame.observedUtc);
@@ -2555,6 +2337,10 @@ async function showHybridFrame(index) {
 
   renderInferredVolume(
     frame
+  );
+
+  updateTrackDisplayControls(
+    hybridFrameIndex
   );
 
   applyHybridVolumeMode(
@@ -3052,7 +2838,7 @@ async function initialise() {
 
 $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   frameCrossfade.clear();
-  configureRadarSite(); resetView(); clearDopplerOverlay();
+  configureRadarSite(); resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;
   if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
@@ -3120,6 +2906,16 @@ $("showTrackVolumes").addEventListener(
   }
 );
 
+$("showTrackLabels").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
+$("trackDisplayFilter").addEventListener("change", event => {
+  selectedTrackDisplayId = event.target.value || "";
+  if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
+  updateTrackDisplayControls(hybridFrameIndex);
+  applyHybridVolumeMode(hybridFrameIndex);
+  renderHybridTracks(hybridFrameIndex);
+});
+$("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
+
 $("showDopplerOverlay").addEventListener(
   "change",
   () => {
@@ -3142,12 +2938,7 @@ $("dopplerOpacity").addEventListener("input", event => {
   frameCrossfade.clear();
   const opacity = Number(event.target.value) / 100;
   $("dopplerOpacityValue").textContent = `${event.target.value}%`;
-  if (dopplerOverlayCollection) {
-    for (let i = 0; i < dopplerOverlayCollection.length; i++) {
-      const point = dopplerOverlayCollection.get(i);
-      point.color = point.color.withAlpha(opacity);
-    }
-  }
+  if (dopplerOverlayLayer) dopplerOverlayLayer.alpha = opacity;
   scene.requestRender();
 });
 

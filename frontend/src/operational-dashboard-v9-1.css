@@ -36,6 +36,10 @@ input[type="checkbox"] { margin:0; accent-color:#92d3ef; }
 .layer-row label,.science-toggle { display:flex; align-items:center; gap:5px; }
 .layer-row select { min-width:0; max-width:155px; }
 .science-toggle { margin-top:7px; }
+.track-display-controls { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:5px; margin-top:5px; }
+.track-display-controls label { display:flex; align-items:center; gap:4px; white-space:nowrap; }
+.track-display-controls select { min-width:0; width:100%; }
+#trackThreatConeStatus { margin-top:3px; }
 #legendDock { margin-top:auto; font-size:10px; }
 .intensity-scale { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; margin:5px 0 8px; font-size:9px; }
 .intensity-scale span { display:grid; gap:3px; }
@@ -210,6 +214,10 @@ dialog::backdrop { background:#0009; }
   .layer-row select { width:100%; max-width:none; min-height:25px; }
   .layer-row button { min-height:25px; padding:3px 5px; font-size:9px; }
   .science-toggle { display:none; }
+  .track-display-controls { grid-template-columns:auto minmax(0,1fr); gap:3px; margin-top:3px; }
+  .track-display-controls label:last-child { grid-column:1/-1; }
+  .track-display-controls select { min-height:25px; font-size:9px; }
+  #trackThreatConeStatus { display:none; }
   .opacity-controls { margin-top:3px; }
   .opacity-controls label { font-size:8px; }
   .opacity-controls input[type="range"] { height:12px; margin:0; }

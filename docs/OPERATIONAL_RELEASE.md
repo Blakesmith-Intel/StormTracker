@@ -1,4 +1,4 @@
-# StormTracker Operational V9.7.4
+# StormTracker Operational V9.8.0
 
 Release date: 4 October 2026 (AEST). Status: Queensland expansion prepared for installation;
 relay/frontend publication and deployed acceptance remain pending.
@@ -197,3 +197,14 @@ V9.7.4 restores only the display contract: track marker/label/history altitude i
 again the fixed 1.2 km tracking plane; markers and labels disable depth testing;
 trails use the same colour as a depth-fail material. Tracking identity, segmentation,
 motion, confidence, Doppler context, inferred volumes and scoring are untouched.
+
+
+## V9.8.0 track focus, motion cone and display layering
+
+V9.8.0 builds on accepted V9.7.5 track timestamp matching. Track labels can be hidden without hiding measured ST points/trails. A track selector can focus the display on one current ST identity while the underlying tracker continues processing the complete scene.
+
+For one selected track, an optional +90-minute motion cone is drawn from the current measured track motion. Its centreline is constant-speed/constant-heading extrapolation; width starts with the current measured >=40 dBZ footprint radius and widens using recent track-heading variability, bounded to a display heuristic. The cone is an operational extrapolation aid only: it is not a forecast probability, warning polygon, lightning forecast or modelled storm evolution.
+
+The inferred-volume point-size default is 3 px. The Doppler wind display is now a transparent georeferenced imagery layer below the reflectivity imagery, making radar visually primary by deterministic Cesium layer order. Doppler analysis inputs, calibration boundaries and source matching are unchanged.
+
+V9.8.0 is a production-baseline candidate until live desktop/mobile acceptance and a dedicated v9.8.0 tag are completed. The v9.7.2 tag remains immutable historical recovery.

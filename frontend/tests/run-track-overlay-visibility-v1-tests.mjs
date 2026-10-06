@@ -14,4 +14,10 @@ assert.ok((block.match(/disableDepthTestDistance:\s*Number\.POSITIVE_INFINITY/g)
 assert.match(block,/depthFailMaterial:\s*colour\.withAlpha/);
 assert.match(block,/history\.push\(\{[\s\S]*altitude/);
 assert.match(block,/hybrid-trail-/);
-console.log('Track overlay visibility checks passed: fixed 1.2 km tracking plane, always-visible markers/labels and depth-fail trails.');
+assert.match(source,/function sameObservedInstant/);
+assert.ok((source.match(/sameObservedInstant\(/g)??[]).length>=3,
+  'timestamp-normalised matching must be used by track rendering and track-volume construction');
+assert.doesNotMatch(source,/item\.observed_utc\s*===\s*hybridFrames\[index\]\.observedUtc/);
+assert.doesNotMatch(source,/item\.observed_utc\s*===\s*frame\.observedUtc/);
+assert.equal(Date.parse('2026-10-05T19:45:00Z'),Date.parse('2026-10-05T19:45:00.000Z'));
+console.log('Track overlay visibility checks passed: timestamp-normalised observations, fixed 1.2 km tracking plane, always-visible markers/labels and depth-fail trails.');

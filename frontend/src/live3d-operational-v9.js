@@ -1027,6 +1027,23 @@ function renderInferredVolume(frame) {
 }
 
 
+function sameObservedInstant(
+  left,
+  right
+) {
+  const leftTime =
+    Date.parse(left);
+
+  const rightTime =
+    Date.parse(right);
+
+  return (
+    Number.isFinite(leftTime)
+    && Number.isFinite(rightTime)
+    && leftTime === rightTime
+  );
+}
+
 function trackColour(trackId) {
   const number =
     Number(
@@ -2109,8 +2126,10 @@ function renderHybridTracks(index) {
       const observation =
         track.history?.find(
           item =>
-            item.observed_utc
-            === hybridFrames[index].observedUtc
+            sameObservedInstant(
+              item.observed_utc,
+              hybridFrames[index].observedUtc
+            )
         );
 
       if (!observation) {
@@ -2726,8 +2745,10 @@ async function loadHybridSequence(automatic = false) {
       const observation =
         track.history?.find(
           item =>
-            item.observed_utc
-            === frame.observedUtc
+            sameObservedInstant(
+              item.observed_utc,
+              frame.observedUtc
+            )
         );
 
       if (!observation) {

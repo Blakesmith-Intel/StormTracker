@@ -208,3 +208,22 @@ For one selected track, an optional +90-minute motion cone is drawn from the cur
 The inferred-volume point-size default is 3 px. The Doppler wind display is now a transparent georeferenced imagery layer below the reflectivity imagery, making radar visually primary by deterministic Cesium layer order. Doppler analysis inputs, calibration boundaries and source matching are unchanged.
 
 V9.8.0 is a production-baseline candidate until live desktop/mobile acceptance and a dedicated v9.8.0 tag are completed. The v9.7.2 tag remains immutable historical recovery.
+
+
+## V9.8.1 threat-cone visibility and turn response
+
+V9.8.1 is a display/prediction-aid refinement on the accepted V9.8.0 feature set.
+The selected-track +90-minute motion cone now uses a 12-degree direction-change
+tolerance. Small frame-to-frame heading changes are smoothed from recent measured
+motion segments; a turn of 12 degrees or more relative to the recent heading
+baseline reorients the cone immediately on the next displayed radar frame.
+
+The cone is more prominent on the map: fill opacity is increased, a distinct
+track-coloured boundary is drawn, the dashed centreline is thicker, and the
++30/+60/+90 minute markers are larger with stronger outlines. The cone remains
+a measured-motion extrapolation aid only. It is not a forecast probability,
+warning polygon, or replacement for Bureau warnings.
+
+No segmentation, ST identity association, Doppler analysis, inferred-volume model,
+convective/lightning scoring, source timing, polling or radar-site logic changes
+are made in this release.

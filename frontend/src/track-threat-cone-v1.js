@@ -12,6 +12,15 @@ function angularDifferenceDegrees(left, right) {
   return Number.isFinite(delta) ? delta : 0;
 }
 
+function circularMeanDegrees(values) {
+  const valid = values.filter(Number.isFinite);
+  if (!valid.length) return null;
+  const x = valid.reduce((sum, value) => sum + Math.cos(value * Math.PI / 180), 0);
+  const y = valid.reduce((sum, value) => sum + Math.sin(value * Math.PI / 180), 0);
+  if (Math.abs(x) < 1e-9 && Math.abs(y) < 1e-9) return valid.at(-1);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 function equivalentRadiusKm(areaKm2) {
   const area = Number(areaKm2);
   return area > 0 ? Math.sqrt(area / Math.PI) : 0;
@@ -64,18 +73,20 @@ export function buildTrackThreatCone(
     minimumHeadingSpreadDegrees = 8,
     maximumHeadingSpreadDegrees = 25,
     minimumFootprintRadiusKm = 2,
-    maximumFootprintRadiusKm = 25
+    maximumFootprintRadiusKm = 25,
+    directionChangeThresholdDegrees = 12,
+    smoothingSegments = 3
   } = {}
 ) {
   const motion = track?.motion;
   const speedKmh = Number(motion?.speed_kmh);
-  const headingDegrees = Number(motion?.heading_degrees);
+  const measuredHeadingDegrees = Number(motion?.heading_degrees);
   const longitude = Number(observation?.centroid_longitude);
   const latitude = Number(observation?.centroid_latitude);
 
   if (
     !(speedKmh > 0)
-    || !Number.isFinite(headingDegrees)
+    || !Number.isFinite(measuredHeadingDegrees)
     || !Number.isFinite(longitude)
     || !Number.isFinite(latitude)
     || !(horizonMinutes > 0)
@@ -84,6 +95,23 @@ export function buildTrackThreatCone(
   }
 
   const recent = recentMotions(track, observation);
+  const smoothingCount = Math.max(1, Math.floor(Number(smoothingSegments) || 3));
+  const previousHeadingDegrees = circularMeanDegrees(
+    recent.slice(0, -1).slice(-smoothingCount).map(item => item.heading_degrees)
+  );
+  const directionChangeDegrees = previousHeadingDegrees == null
+    ? 0
+    : angularDifferenceDegrees(measuredHeadingDegrees, previousHeadingDegrees);
+  const directionChangeDetected =
+    previousHeadingDegrees != null
+    && directionChangeDegrees >= Number(directionChangeThresholdDegrees);
+  const smoothedHeadingDegrees = circularMeanDegrees(
+    recent.slice(-smoothingCount).map(item => item.heading_degrees)
+  ) ?? measuredHeadingDegrees;
+  const headingDegrees = directionChangeDetected
+    ? measuredHeadingDegrees
+    : smoothedHeadingDegrees;
+
   const recentHeadingDeviation = recent.length
     ? Math.max(
         ...recent.map(item =>
@@ -154,7 +182,11 @@ export function buildTrackThreatCone(
     track_id: track.track_id ?? null,
     horizon_minutes: horizonMinutes,
     speed_kmh: speedKmh,
+    measured_heading_degrees: ((measuredHeadingDegrees % 360) + 360) % 360,
     heading_degrees: ((headingDegrees % 360) + 360) % 360,
+    direction_change_threshold_degrees: Number(directionChangeThresholdDegrees),
+    direction_change_degrees: directionChangeDegrees,
+    direction_change_detected: directionChangeDetected,
     heading_half_angle_degrees: headingHalfAngleDegrees,
     footprint_radius_km: baseRadiusKm,
     recent_motion_segment_count: recent.length,
@@ -165,6 +197,6 @@ export function buildTrackThreatCone(
       ...samples.slice().reverse().map(item => item.right)
     ],
     interpretation:
-      "Constant-motion extrapolation using the current measured ST motion. Cone width combines the current measured footprint radius with recent heading variability; it is not a forecast probability."
+      "Motion extrapolation using measured ST motion. Small heading changes are smoothed; a direction change at or above the configured tolerance reorients the cone immediately. Cone width combines the current measured footprint radius with recent heading variability; it is not a forecast probability."
   };
 }

@@ -22,4 +22,14 @@ assert.ok(d0>=0&&d1>d0);
 const block=js.slice(d0,d1);
 assert.doesNotMatch(block,/PointPrimitiveCollection/);
 assert.match(block,/SingleTileImageryProvider/);
-console.log("Track display controls and radar-over-Doppler layering checks passed.");
+const c0=js.indexOf("const coneColour = colour.withAlpha(0.30)");
+const c1=js.indexOf("const top40Text",c0);
+assert.ok(c0>=0&&c1>c0,"threat cone render block missing");
+const coneBlock=js.slice(c0,c1);
+assert.match(coneBlock,/const coneColour = colour\.withAlpha\(0\.30\)/);
+assert.match(coneBlock,/hybrid-threat-boundary-/);
+assert.match(coneBlock,/width:\s*4/);
+assert.match(coneBlock,/pixelSize:\s*8/);
+assert.match(coneBlock,/direction_change_threshold_degrees/);
+
+console.log("Track display controls, stronger threat-cone visibility and radar-over-Doppler layering checks passed.");

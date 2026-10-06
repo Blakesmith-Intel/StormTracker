@@ -76,7 +76,7 @@ import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-7";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
-import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1";
+import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -2160,9 +2160,13 @@ function renderHybridTracks(index) {
       }
 
       if (wanted === track.track_id && $("showTrackThreatCone")?.checked) {
-        const cone = buildTrackThreatCone(track, observation, { horizonMinutes: 90 });
+        const cone = buildTrackThreatCone(track, observation, {
+          horizonMinutes: 90,
+          directionChangeThresholdDegrees: 12
+        });
         if (cone) {
           const coneAltitude = displayAltitude(350);
+          const coneColour = colour.withAlpha(0.30);
           hybridSource.entities.add({
             id: `hybrid-threat-cone-${track.track_id}`,
             polygon: {
@@ -2172,53 +2176,76 @@ function renderHybridTracks(index) {
                 ))
               ),
               perPositionHeight: true,
-              material: colour.withAlpha(0.16)
+              material: coneColour
             }
           });
+
+          const boundary = [...cone.polygon, cone.polygon[0]];
+          hybridSource.entities.add({
+            id: `hybrid-threat-boundary-${track.track_id}`,
+            polyline: {
+              positions: boundary.map(point => Cesium.Cartesian3.fromDegrees(
+                point.longitude, point.latitude, coneAltitude + 25
+              )),
+              width: 4,
+              material: colour.withAlpha(1.0),
+              depthFailMaterial: Cesium.Color.WHITE.withAlpha(0.85),
+              clampToGround: false
+            }
+          });
+
           hybridSource.entities.add({
             id: `hybrid-threat-centreline-${track.track_id}`,
             polyline: {
               positions: cone.centreline.map(point => Cesium.Cartesian3.fromDegrees(
-                point.longitude, point.latitude, coneAltitude + 20
+                point.longitude, point.latitude, coneAltitude + 35
               )),
-              width: 2,
+              width: 3,
               material: new Cesium.PolylineDashMaterialProperty({
-                color: colour.withAlpha(0.95),
+                color: colour.withAlpha(1.0),
                 dashLength: 12
               }),
-              depthFailMaterial: colour.withAlpha(0.8),
+              depthFailMaterial: colour.withAlpha(0.95),
               clampToGround: false
             }
           });
+
           for (const sample of cone.samples.filter(item => item.minutes_ahead > 0)) {
             hybridSource.entities.add({
               id: `hybrid-threat-marker-${track.track_id}-${sample.minutes_ahead}`,
               position: Cesium.Cartesian3.fromDegrees(
                 sample.centre.longitude,
                 sample.centre.latitude,
-                coneAltitude + 30
+                coneAltitude + 45
               ),
               point: {
-                pixelSize: 5,
+                pixelSize: 8,
                 color: colour,
                 outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 1,
+                outlineWidth: 2,
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               },
               label: {
                 text: `+${sample.minutes_ahead}m`,
-                font: "11px sans-serif",
-                pixelOffset: new Cesium.Cartesian2(0, -14),
+                font: "12px sans-serif",
+                pixelOffset: new Cesium.Cartesian2(0, -16),
                 fillColor: Cesium.Color.WHITE,
                 showBackground: true,
-                backgroundColor: Cesium.Color.BLACK.withAlpha(0.62),
+                backgroundColor: Cesium.Color.BLACK.withAlpha(0.72),
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
           }
+
           const status = $("trackThreatConeStatus");
           if (status) {
-            status.textContent = `${track.track_id}: +90m constant-motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ±${cone.heading_half_angle_degrees.toFixed(0)}° heading spread. Not a forecast probability.`;
+            const turnText = cone.direction_change_detected
+              ? `direction updated ${cone.direction_change_degrees.toFixed(0)}°`
+              : `${cone.direction_change_threshold_degrees.toFixed(0)}° turn tolerance`;
+            status.textContent =
+              `${track.track_id}: +90m motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ` +
+              `heading ${cone.heading_degrees.toFixed(0)}° · ±${cone.heading_half_angle_degrees.toFixed(0)}° spread · ` +
+              `${turnText}. Not a forecast probability.`;
           }
         }
       }

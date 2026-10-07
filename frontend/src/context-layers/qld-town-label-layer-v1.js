@@ -226,6 +226,12 @@ export function createQueenslandTownLabelLayer({
     get visibleCount() { return selectedIds.length; },
     get visibleIds() { return [...selectedIds]; },
     get visibleLabels() { return displayedPlaces.map(place => ({ ...place })); },
-    get calculationCount() { return updated; }
+    get calculationCount() { return updated; },
+    get mode() { return currentMode; },
+    get cameraHeight() { return scene.camera?.positionCartographic?.height ?? null; },
+    get cameraPitchDegrees() {
+      return Number.isFinite(scene.camera?.pitch)
+        ? scene.camera.pitch * 180 / Math.PI : null;
+    }
   };
 }

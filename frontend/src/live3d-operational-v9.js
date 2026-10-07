@@ -1,6 +1,7 @@
 import { QLD_RADAR_SITES, dopplerRadarsForRegion } from "./qld-radar-sites-v1.js";
 import {
   loadLatestBomReflectivityMosaic,
+  findLatestBomReflectivityTime,
   discoverBomReflectivityHistory,
   loadBomReflectivityMosaicAtTime
 } from "./bom-wmts-loop-v2.js?v=operational-v9-7";
@@ -83,6 +84,12 @@ import {
   interpolateRadarFrame,
   isTemporallyInferredRadarFrame
 } from "./radar-temporal-interpolation-v1.js?v=9.8.3";
+
+import {
+  getRadarFrames,
+  putRadarFrame,
+  pruneRadarFrames
+} from "./storage.js?v=9.8.3";
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
@@ -2611,12 +2618,74 @@ async function showHybridFrame(index) {
 async function loadHybridSequence(automatic = false) {
   if (!automatic) setStatus("Checking available BOM radar history…");
 
-  const [discoveredTimes, sources] = await Promise.all([
-    discoverBomReflectivityHistory(Date.now(), 180, selectedRadarRegion()),
+  const region = selectedRadarRegion();
+  const now = Date.now();
+  const cacheCutoff =
+    now - 4 * 60 * 60 * 1000;
+
+  const [
+    discoveredTimes,
+    cachedFrames,
+    sources
+  ] = await Promise.all([
+    automatic
+      ? findLatestBomReflectivityTime(
+          now,
+          region
+        ).then(observedUtc => [observedUtc])
+      : discoverBomReflectivityHistory(
+          now,
+          90,
+          region
+        ),
+    getRadarFrames(
+      region,
+      cacheCutoff
+    ).catch(error => {
+      console.warn(
+        "Persistent radar history cache unavailable",
+        error
+      );
+      return [];
+    }),
     loadDopplerHistoriesAndPalettes()
   ]);
 
-  updateRadarHistoryOptions(discoveredTimes);
+  for (const frame of cachedFrames) {
+    radarFrameCache.set(
+      frame.observedUtc,
+      frame
+    );
+  }
+
+  const combinedHistory =
+    normaliseRadarHistoryTimes([
+      ...cachedFrames.map(
+        frame => frame.observedUtc
+      ),
+      ...discoveredTimes
+    ]);
+
+  const newestHistoryEpoch =
+    Math.max(
+      ...combinedHistory.map(
+        observedUtc =>
+          Date.parse(observedUtc)
+      )
+    );
+
+  const threeHourCutoff =
+    newestHistoryEpoch
+    - 180 * 60 * 1000;
+
+  const historyTimes =
+    combinedHistory.filter(
+      observedUtc =>
+        Date.parse(observedUtc)
+        >= threeHourCutoff
+    );
+
+  updateRadarHistoryOptions(historyTimes);
   enforceDopplerWindow();
 
   const loopSelection = selectedLoopSelection();
@@ -2695,7 +2764,27 @@ async function loadHybridSequence(automatic = false) {
       }
       continue;
     }
-    radarFrameCache.set(entry.observedUtc, radarLoad.value);
+    radarFrameCache.set(
+      entry.observedUtc,
+      radarLoad.value
+    );
+
+    if (
+      !isTemporallyInferredRadarFrame(
+        radarLoad.value
+      )
+    ) {
+      putRadarFrame(
+        region,
+        radarLoad.value
+      ).catch(error =>
+        console.warn(
+          "Unable to persist radar history frame",
+          error
+        )
+      );
+    }
+
     frames.push(radarLoad.value);
     states.push(dopplerLoad.value);
   }
@@ -3029,6 +3118,18 @@ async function loadHybridSequence(automatic = false) {
   const wanted = new Set(states.flatMap(state => state.records.filter(record => record.filename)
     .map(record => `${record.radarId}:${record.filename}`)));
   for (const key of dopplerFrameCache.keys()) if (!wanted.has(key)) dopplerFrameCache.delete(key);
+
+  pruneRadarFrames({
+    beforeEpoch:
+      Date.now()
+      - 4 * 60 * 60 * 1000,
+    maxRecords: 240
+  }).catch(error =>
+    console.warn(
+      "Unable to prune persistent radar history cache",
+      error
+    )
+  );
 }
 
 async function runSourceLoad(loader, background = false) {

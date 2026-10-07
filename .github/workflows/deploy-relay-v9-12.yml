@@ -12,6 +12,7 @@ on:
       - "frontend/tests/run-river-height-bulletin-v1-tests.mjs"
       - "frontend/tests/run-river-gauge-metadata-relay-v1-tests.mjs"
       - "frontend/tests/run-river-height-relay-v1-tests.mjs"
+      - "scripts/smoke-river-gauge-live.mjs"
       - ".github/workflows/deploy-relay-v9-12.yml"
 
 permissions:
@@ -59,3 +60,6 @@ jobs:
           echo "River-height relay smoke test failed."
           head -c 1000 /tmp/river-heights.json 2>/dev/null || true
           exit 1
+
+      - name: End-to-end live gauge join
+        run: node scripts/smoke-river-gauge-live.mjs

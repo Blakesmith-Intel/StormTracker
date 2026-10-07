@@ -2638,6 +2638,8 @@ async function warmRadarHistoryCache(
       observedTimes
     );
 
+  let warmedCount = 0;
+
   for (const observedUtc of candidates) {
     if (
       selectedRadarRegion() !== region
@@ -2666,6 +2668,8 @@ async function warmRadarHistoryCache(
         region,
         frame
       );
+
+      warmedCount++;
     } catch (error) {
       // Probe-readable timestamps can still fail if one tile in the complete
       // mosaic disappears. Cache warming is best-effort and never affects the
@@ -2688,6 +2692,15 @@ async function warmRadarHistoryCache(
       error
     )
   );
+
+  if (
+    warmedCount > 0
+    && selectedRadarRegion() === region
+  ) {
+    // Re-run the cheap automatic path immediately so newly warmed historical
+    // observations become visible without requiring a manual Refresh click.
+    void autoRefresh.check();
+  }
 }
 
 async function loadHybridSequence(automatic = false) {

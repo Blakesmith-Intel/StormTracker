@@ -18,6 +18,38 @@ export function radarHistoryTimeline(times, shared) {
       ? (Date.parse(entries.at(-1).observedUtc) - Date.parse(entries[0].observedUtc)) / 60000 : 0 };
 }
 
+export function needsChronologicalRadarRebuild(
+  times,
+  trackedThrough,
+  processedTimes = []
+) {
+  const trackedEpoch =
+    Date.parse(trackedThrough);
+
+  if (!Number.isFinite(trackedEpoch)) {
+    return false;
+  }
+
+  const processedEpochs =
+    new Set(
+      [...processedTimes]
+        .map(time => Date.parse(time))
+        .filter(Number.isFinite)
+    );
+
+  return [...new Set(times ?? [])]
+    .some(time => {
+      const epoch =
+        Date.parse(time);
+
+      return (
+        Number.isFinite(epoch)
+        && epoch <= trackedEpoch
+        && !processedEpochs.has(epoch)
+      );
+    });
+}
+
 // Within-tolerance reuse of yesterday's tail is not a newly published pair.
 // Every previously available radar must advance independently.
 export function hasNewMatchedProducts(previous, next) {

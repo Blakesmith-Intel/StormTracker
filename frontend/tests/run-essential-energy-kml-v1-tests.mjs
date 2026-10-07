@@ -1,19 +1,27 @@
 import assert from "node:assert/strict";
 
 import {
-  parseAestDateTime,
+  parseEssentialLocalDateTime,
   parseEssentialEnergyKml
 } from "../src/context-layers/essential-energy-kml-v1.js";
 
 assert.equal(
-  parseAestDateTime(
+  parseEssentialLocalDateTime(
     "29/07/2025 08:30:00"
   ),
   "2025-07-29T08:30:00+10:00"
 );
 
 assert.equal(
-  parseAestDateTime(
+  parseEssentialLocalDateTime(
+    "07/10/2026 10:00:00"
+  ),
+  "2026-10-07T10:00:00+11:00",
+  "Essential Energy provider-clock timestamps must follow NSW daylight saving in October."
+);
+
+assert.equal(
+  parseEssentialLocalDateTime(
     ""
   ),
   ""
@@ -187,5 +195,5 @@ assert.equal(
 );
 
 console.log(
-  "Essential Energy KML checks passed: live placemark IDs, outage fields, AEST timestamps, real planned/unplanned style IDs and polygon geometry convert to StormTracker GeoJSON."
+  "Essential Energy KML checks passed: live placemark IDs, DST-aware provider timestamps, real planned/unplanned style IDs and polygon geometry convert to StormTracker GeoJSON."
 );

@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.3/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.4/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -34,7 +34,7 @@ assert.match(html, /id="showTrackThreatCone"/);
 assert.match(html, /id="basemapSelect"/);
 assert.match(html, /QLD imagery/);
 assert.match(html, /value="qld-imagery"/);
-assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.10\.3/);
+assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.10\.4/);
 assert.match(js, /createReferenceLabelProvider/);
 assert.match(js, /keepBasemapReferenceLabelsVisible/);
 assert.match(html, /id="terrainEnabled"/);
@@ -104,4 +104,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.10.3 Queensland imagery, stable map labels, touch-safe flood closure interaction and historical regressions retained.");
+console.log("Production shell checks passed: V9.10.4 Queensland imagery, stable map labels, touch-safe flood closure interaction and historical regressions retained.");

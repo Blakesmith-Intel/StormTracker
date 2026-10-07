@@ -43,6 +43,22 @@ class FakeUrlTemplateProvider {
 
 class FakeWebMercatorTilingScheme {}
 
+class FakeRectangle {
+  static fromDegrees(
+    west,
+    south,
+    east,
+    north
+  ) {
+    return {
+      west,
+      south,
+      east,
+      north
+    };
+  }
+}
+
 const Cesium = {
   Credit: FakeCredit,
   OpenStreetMapImageryProvider:
@@ -50,7 +66,9 @@ const Cesium = {
   UrlTemplateImageryProvider:
     FakeUrlTemplateProvider,
   WebMercatorTilingScheme:
-    FakeWebMercatorTilingScheme
+    FakeWebMercatorTilingScheme,
+  Rectangle:
+    FakeRectangle
 };
 
 const qld =
@@ -82,6 +100,11 @@ assert.ok(
 assert.match(
   qld.options.credit.text,
   /State of Queensland/
+);
+
+assert.deepEqual(
+  qld.options.rectangle,
+  QLD_IMAGERY_BASEMAP.rectangleDegrees
 );
 
 assert.equal(
@@ -240,11 +263,17 @@ assert.equal(
 );
 assert.equal(
   layers.length,
-  1
+  2
 );
 assert.equal(
   layers[0].provider.constructor,
-  FakeUrlTemplateProvider
+  FakeStreetProvider,
+  "QLD imagery mode keeps a global fallback underneath."
+);
+assert.equal(
+  layers[1].provider.constructor,
+  FakeUrlTemplateProvider,
+  "QLD imagery overlays the generic fallback."
 );
 
 const street =
@@ -307,5 +336,5 @@ assert.equal(
 );
 
 console.log(
-  "Basemap manager checks passed: Queensland cached aerial/satellite imagery, place-name reference overlay contract, legacy preference migration, persistence, layer replacement and camera isolation."
+  "Basemap manager checks passed: Queensland imagery is clipped to its published extent, generic fallback fills outside coverage, labels stay clipped, and layer replacement remains camera-safe."
 );

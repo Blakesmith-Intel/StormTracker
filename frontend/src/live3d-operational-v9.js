@@ -1,7 +1,7 @@
 import { QLD_RADAR_SITES, dopplerRadarsForRegion } from "./qld-radar-sites-v1.js";
 import {
   loadLatestBomReflectivityMosaic,
-  findRecentBomReflectivityTimes,
+  discoverBomReflectivityHistory,
   loadBomReflectivityMosaicAtTime
 } from "./bom-wmts-loop-v2.js?v=operational-v9-7";
 
@@ -72,6 +72,7 @@ import {
 import {
   ALL_AVAILABLE_LOOP_VALUE,
   availableRadarLoopMinutes,
+  continuousRadarHistoryTimes,
   normaliseRadarHistoryTimes,
   radarHistorySpanMinutes,
   selectRadarHistoryTimes
@@ -277,7 +278,7 @@ function setStatus(message, kind = "normal") {
 }
 
 function selectedLoopSelection() {
-  return $("loopDurationMinutes")?.value ?? "30";
+  return $("loopDurationMinutes")?.value || "30";
 }
 
 function selectedLoopMinutes() {
@@ -295,7 +296,7 @@ function availableHistorySummary(times = availableRadarHistoryTimes) {
 }
 
 function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
-  availableRadarHistoryTimes = normaliseRadarHistoryTimes(times);
+  availableRadarHistoryTimes = continuousRadarHistoryTimes(times);
   const selector = $("loopDurationMinutes");
   const previous = preserveSelection ? selector.value : "30";
   const available = availableRadarLoopMinutes(availableRadarHistoryTimes);
@@ -329,7 +330,11 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   const values = new Set(options.map(option => option.value));
   let desired = values.has(previous)
     ? previous
-    : ALL_AVAILABLE_LOOP_VALUE;
+    : (
+        previous === "" && values.has("30")
+          ? "30"
+          : ALL_AVAILABLE_LOOP_VALUE
+      );
 
   if (
     $("showDopplerOverlay")?.checked
@@ -618,7 +623,9 @@ function configureRadarSite() {
     option.textContent = `${id} · ${QLD_RADAR_SITES[id].name}`; return option;
   }));
   selector.disabled = ids.length === 0;
-  $("showDopplerOverlay").disabled = ids.length === 0;
+  $("showDopplerOverlay").disabled =
+    ids.length === 0
+    || !availableRadarLoopMinutes(availableRadarHistoryTimes).includes(30);
   if (!ids.length) $("showDopplerOverlay").checked = false;
   $("radarSite").title = selectedRadarRegion() === "SEQ" ? "Regional mosaic: Mt Stapylton, Marburg and Gympie" :
     `${QLD_RADAR_SITES[selectedRadarRegion()].name}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
@@ -2496,7 +2503,7 @@ async function loadHybridSequence(automatic = false) {
   if (!automatic) setStatus("Checking available BOM radar history…");
 
   const [discoveredTimes, sources] = await Promise.all([
-    findRecentBomReflectivityTimes(Date.now(), 36, selectedRadarRegion()),
+    discoverBomReflectivityHistory(Date.now(), 180, selectedRadarRegion()),
     loadDopplerHistoriesAndPalettes()
   ]);
 
@@ -2792,7 +2799,9 @@ async function runSourceLoad(loader, background = false) {
   } finally {
     sequenceLoading = false;
     $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
-    $("showDopplerOverlay").disabled = selectedSourceRadars().length === 0;
+    $("showDopplerOverlay").disabled =
+      selectedSourceRadars().length === 0
+      || !availableRadarLoopMinutes(availableRadarHistoryTimes).includes(30);
 
     $("radarSite").disabled = false;
     for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
@@ -2984,6 +2993,13 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
   if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];
+  availableRadarHistoryTimes = [];
+  const historyOption = document.createElement("option");
+  historyOption.value = "";
+  historyOption.textContent = "Checking radar history…";
+  $("loopDurationMinutes").replaceChildren(historyOption);
+  $("loopDurationMinutes").disabled = true;
+  $("operationalLoopWindow").textContent = "Checking history";
   hybridSource.entities.removeAll(); clearHybridTrackVolumeCollection();
   await loadHybridSequence();
 }));

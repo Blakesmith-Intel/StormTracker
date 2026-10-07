@@ -278,7 +278,18 @@ available**. The status line reports observed and inferred display-frame counts.
 Doppler remains a real-source-only 30-minute shared-history product and does not
 use inferred reflectivity frames.
 
-This change does not invent weather before the oldest readable Bureau observation:
-a three-hour option appears only when real observations provide bounding coverage
-across that window (with individual gaps no larger than the bounded interpolation
-limit).
+This change does not invent weather before the oldest readable Bureau observation.
+Live source frames are persisted in IndexedDB by radar view and retained as a
+rolling browser-local history, so an actively used radar view can accumulate up
+to three hours even when the upstream WMTS service exposes a shorter rolling
+window. A three-hour option appears only when real observations plus bounded
+interpolation provide coverage across that window (with individual gaps no larger
+than the interpolation limit). Closing or not using a radar before its local cache
+has accumulated that history cannot reconstruct earlier weather that the Bureau
+no longer serves.
+
+Live source diagnostics on 7 October 2026 found the production WMTS endpoint
+exposing a variable recent window of roughly 40–65 minutes of scan span during
+the checks. The automatic five-minute refresh therefore probes only for the
+newest source image and adds it to the local history; full-horizon discovery is
+reserved for initial/manual/site-change loads.

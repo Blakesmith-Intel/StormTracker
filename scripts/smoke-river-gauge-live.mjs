@@ -1,7 +1,8 @@
 import {
   DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
   DEFAULT_RIVER_HEIGHT_RELAY_URL,
-  joinRiverGaugeObservations
+  joinRiverGaugeObservations,
+  normaliseRiverStationName
 } from "../frontend/src/context-layers/river-gauge-observations-v1.js";
 
 async function timedJson(
@@ -133,6 +134,106 @@ if (
   );
 }
 
+function tokenOverlapCandidates(
+  stationName
+) {
+  const wanted =
+    normaliseRiverStationName(
+      stationName
+    );
+
+  const wantedTokens =
+    new Set(
+      wanted
+        .split(" ")
+        .filter(Boolean)
+    );
+
+  return (
+    metadataResult
+      .payload
+      ?.features
+      ?? []
+  )
+    .map(
+      feature => {
+        const name =
+          String(
+            feature?.properties
+              ?.name
+            ?? ""
+          );
+
+        const normalised =
+          normaliseRiverStationName(
+            name
+          );
+
+        const tokens =
+          new Set(
+            normalised
+              .split(" ")
+              .filter(Boolean)
+          );
+
+        const intersection =
+          [
+            ...wantedTokens
+          ]
+            .filter(
+              token =>
+                tokens.has(
+                  token
+                )
+            )
+            .length;
+
+        const union =
+          new Set([
+            ...wantedTokens,
+            ...tokens
+          ]).size;
+
+        return {
+          name,
+          bomStation:
+            String(
+              feature?.properties
+                ?.bom_stn_num
+              ?? ""
+            ),
+          awrcStation:
+            String(
+              feature?.properties
+                ?.awrc_stateid
+              ?? ""
+            ),
+          score:
+            union
+              ? intersection
+                / union
+              : 0
+        };
+      }
+    )
+    .filter(
+      item =>
+        item.score > 0
+    )
+    .sort(
+      (
+        left,
+        right
+      ) =>
+        right.score
+        - left.score
+    )
+    .slice(
+      0,
+      3
+    );
+}
+
 const result =
   joinRiverGaugeObservations({
     gauges:
@@ -241,7 +342,13 @@ const summary = {
           stationId:
             item.stationId,
           sourceProduct:
-            item.sourceProduct
+            item.sourceProduct,
+          recentDataHref:
+            item.recentDataHref,
+          candidates:
+            tokenOverlapCandidates(
+              item.stationName
+            )
         })
       )
 };

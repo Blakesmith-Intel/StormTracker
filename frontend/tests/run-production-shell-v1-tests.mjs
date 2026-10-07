@@ -39,7 +39,11 @@ assert.match(js, /Radar history available:/);
 assert.match(js, /INFERRED temporal gap-fill/);
 assert.match(js, /excluded from tracking\/scoring/);
 assert.match(js, /interpolateRadarFrame/);
-assert.match(html, /playback scans up to 3 hours/);
+assert.match(html, /retains up to 3 hours per viewed radar/);
+assert.match(js, /getRadarFrames/);
+assert.match(js, /putRadarFrame/);
+assert.match(js, /pruneRadarFrames/);
+assert.match(js, /findLatestBomReflectivityTime/);
 assert.match(js, /createStormTrackerTouchCameraGestures/);
 assert.match(js, /SingleTileImageryProvider/);
 

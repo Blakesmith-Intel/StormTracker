@@ -60,8 +60,32 @@ function parsedEventTime(value) {
     return null;
   }
 
+  let normalisedText =
+    text;
+
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      normalisedText
+    )
+  ) {
+    normalisedText =
+      `${normalisedText}T00:00:00+10:00`;
+  } else if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(
+      normalisedText
+    )
+    && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(
+      normalisedText
+    )
+  ) {
+    normalisedText =
+      `${normalisedText}+10:00`;
+  }
+
   const parsed =
-    Date.parse(text);
+    Date.parse(
+      normalisedText
+    );
 
   return Number.isFinite(parsed)
     ? parsed

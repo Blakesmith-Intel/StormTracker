@@ -414,8 +414,24 @@ export function initialiseOperationalFloodRoadClosures({
       viewer.scene.canvas
     );
 
+  let lastHoverPickAt =
+    0;
+
   hoverHandler.setInputAction(
     movement => {
+      const now =
+        performance.now();
+
+      if (
+        now - lastHoverPickAt
+        < 80
+      ) {
+        return;
+      }
+
+      lastHoverPickAt =
+        now;
+
       const picked =
         viewer.scene.pick(
           movement.endPosition

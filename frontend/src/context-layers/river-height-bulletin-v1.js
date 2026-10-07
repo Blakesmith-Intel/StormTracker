@@ -254,9 +254,10 @@ function stationIdFromHref(
     );
 
   const candidates = [
+    /\b(?:IDQ\d+)\.(\d{5,})\.plt(?:\.shtml)?\b/i,
     /\b(?:station|stn|site|id)=([A-Za-z0-9_-]+)/i,
-    /\b([A-Z]{1,4}\d{4,})\b/,
-    /\b(\d{5,})\b/
+    /\b(\d{5,})\b/,
+    /\b([A-Z]{1,4}\d{4,})\b/
   ];
 
   for (

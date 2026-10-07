@@ -105,7 +105,11 @@ import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.9.0";
+} from "./context-layers/basemap-manager-v1.js?v=9.9.0-2";
+
+import {
+  syncFrameSlider
+} from "./frame-slider-v1.js?v=9.9.0-2";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -2596,10 +2600,11 @@ async function showHybridFrame(index) {
   if (renderToken !== hybridSceneRenderToken) return;
   latestFrame = frame;
 
-  $("hybridFrameSlider").value =
-    String(
-      hybridFrameIndex
-    );
+  syncFrameSlider(
+    $("hybridFrameSlider"),
+    hybridFrames.length,
+    hybridFrameIndex
+  );
 
   const temporalInferred =
     isTemporallyInferredRadarFrame(frame);
@@ -3299,8 +3304,11 @@ async function loadHybridSequence(automatic = false) {
   }
 
   await buildDopplerSequence();
-  $("hybridFrameSlider").max = String(hybridFrames.length - 1);
-  $("hybridFrameSlider").disabled = false;
+  syncFrameSlider(
+    $("hybridFrameSlider"),
+    hybridFrames.length,
+    hybridFrameIndex
+  );
   $("hybridPlayButton").disabled = hybridFrames.length < 2;
   await showHybridFrame(hybridFrameIndex);
   if (resume) playback.play();
@@ -3392,6 +3400,11 @@ async function loadLatest() {
   hybridFrames = [];
   hybridResults = [];
   hybridDopplerFrameStates = [];
+  syncFrameSlider(
+    $("hybridFrameSlider"),
+    0,
+    0
+  );
   hybridTrackVolumes = [];
   hybridFrameIndex = 0;
   sharedTimeline = null;
@@ -3563,6 +3576,11 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
   if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];
+  syncFrameSlider(
+    $("hybridFrameSlider"),
+    0,
+    0
+  );
   availableRadarHistoryTimes = [];
   const historyOption = document.createElement("option");
   historyOption.value = "";

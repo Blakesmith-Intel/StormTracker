@@ -15,10 +15,8 @@ export const DEA_BASEMAP =
       "ga_ls8cls9c_gm_cyear_3",
     style:
       "simple_rgb",
-    date:
-      "2025-01-01",
     label:
-      "GA satellite · DEA GeoMAD 2025"
+      "GA satellite · DEA GeoMAD latest annual"
   });
 
 export function normaliseBasemapId(
@@ -80,13 +78,10 @@ export function createBasemapProvider(
           "image/png",
 
         transparent:
-          false,
+          true,
 
         styles:
-          DEA_BASEMAP.style,
-
-        time:
-          DEA_BASEMAP.date
+          DEA_BASEMAP.style
       },
 
       credit:

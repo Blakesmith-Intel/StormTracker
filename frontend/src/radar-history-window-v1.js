@@ -5,7 +5,7 @@ import {
 
 export const ALL_AVAILABLE_LOOP_VALUE = "all";
 export const RADAR_PLAYBACK_CADENCE_MINUTES = 5;
-export const MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES = 15;
+export const MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES = 30;
 
 export function normaliseRadarHistoryTimes(times = []) {
   const byEpoch = new Map();

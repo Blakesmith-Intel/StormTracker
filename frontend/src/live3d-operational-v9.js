@@ -122,6 +122,12 @@ import {
   createCameraPerformanceGovernor
 } from "./camera-performance-v1.js?v=9.9.0-5";
 
+import {
+  DEFAULT_DOPPLER_FADE_OUT_MS,
+  dopplerOverlayFrameKey,
+  createDopplerLayerTransition
+} from "./doppler-layer-transition-v1.js?v=9.9.1";
+
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
 
@@ -489,8 +495,15 @@ let dopplerLatestRecords =
 let dopplerFrameCache =
   new Map();
 
-let dopplerOverlayLayer =
-  null;
+const dopplerOverlayTransition =
+  createDopplerLayerTransition({
+    imageryLayers:
+      viewer.imageryLayers,
+
+    requestRender:
+      () =>
+        scene.requestRender()
+  });
 
 let dopplerOverlayRenderToken =
   0;
@@ -1684,14 +1697,45 @@ function dopplerDisplayColour(
     );
 }
 
-function clearDopplerOverlay() {
+function dopplerCrossfadeDurationMs() {
+  const playbackDelay =
+    playbackDelayForSpeed(
+      selectedPlaybackSpeed()
+    );
+
+  return Math.max(
+    100,
+    Math.min(
+      180,
+      Math.round(
+        playbackDelay * 0.45
+      )
+    )
+  );
+}
+
+function clearDopplerOverlay({
+  smooth = false
+} = {}) {
   dopplerOverlayRenderToken++;
-  if (dopplerOverlayLayer) {
-    viewer.imageryLayers.remove(dopplerOverlayLayer, true);
-    dopplerOverlayLayer = null;
+
+  dopplerOverlayTransition.clear({
+    durationMs:
+      smooth
+        ? Math.min(
+            DEFAULT_DOPPLER_FADE_OUT_MS,
+            dopplerCrossfadeDurationMs()
+          )
+        : 0
+  });
+
+  const count =
+    $("dopplerOverlayCount");
+
+  if (count) {
+    count.textContent =
+      "0";
   }
-  const count = $("dopplerOverlayCount");
-  if (count) count.textContent = "0";
 }
 
 function dopplerCanvasForFrame(frame, samples) {
@@ -2272,47 +2316,256 @@ function renderDopplerVelocityLegend(
 }
 
 function renderDopplerOverlay() {
-  renderDopplerVelocityLegend($("dopplerOverlayRadar").value);
-  clearDopplerOverlay();
-  const renderToken = dopplerOverlayRenderToken;
-  const status = $("dopplerOverlayStatus");
-  if (!$("showDopplerOverlay")?.checked) {
-    if (status) status.textContent = "hidden";
+  renderDopplerVelocityLegend(
+    $("dopplerOverlayRadar").value
+  );
+
+  const renderToken =
+    ++dopplerOverlayRenderToken;
+
+  const status =
+    $("dopplerOverlayStatus");
+
+  const clearForMissingFrame =
+    message => {
+      dopplerOverlayTransition.clear({
+        durationMs:
+          DEFAULT_DOPPLER_FADE_OUT_MS
+      });
+
+      const count =
+        $("dopplerOverlayCount");
+
+      if (count) {
+        count.textContent =
+          "0";
+      }
+
+      if (status) {
+        status.textContent =
+          message;
+      }
+    };
+
+  if (
+    !$("showDopplerOverlay")
+      ?.checked
+  ) {
+    dopplerOverlayTransition.clear();
+
+    const count =
+      $("dopplerOverlayCount");
+
+    if (count) {
+      count.textContent =
+        "0";
+    }
+
+    if (status) {
+      status.textContent =
+        "hidden";
+    }
+
     return;
   }
-  const state = dopplerStateForFrame(hybridFrameIndex);
-  if (!state) { if (status) status.textContent = "Doppler sequence not loaded"; return; }
-  const radarId = $("dopplerOverlayRadar")?.value ?? "66";
-  const pairing = state.pairings.find(item => item.radarId === radarId);
-  if (!pairing || !pairing.candidate) { if (status) status.textContent = `${radarId} — no historical frame`; return; }
-  if (!pairing.matched) { if (status) status.textContent = `${radarId} — NO MATCH (Δ${pairing.deltaMinutes.toFixed(1)} min)`; return; }
-  const record = selectedDopplerRecord(hybridFrameIndex);
-  if (!record) { if (status) status.textContent = `${radarId} — matched frame failed to decode`; return; }
-  const frame = hybridFrames[hybridFrameIndex];
-  if (!frame) return;
 
-  renderDopplerVelocityLegend(radarId);
-  const displaySamples = record.displaySamples ?? record.samples ?? [];
-  const raster = dopplerCanvasForFrame(frame, displaySamples);
-  $("dopplerOverlayCount").textContent = raster.rendered.toLocaleString();
-  if (status) status.textContent = `${radarId} ${formatDopplerUtc(record.observedUtc)} (Δ${pairing.deltaMinutes.toFixed(1)} min)`;
+  const state =
+    dopplerStateForFrame(
+      hybridFrameIndex
+    );
 
-  Cesium.SingleTileImageryProvider.fromUrl(
-    raster.canvas.toDataURL("image/png"),
-    { rectangle: raster.rectangle }
-  ).then(provider => {
-    if (renderToken !== dopplerOverlayRenderToken || !$("showDopplerOverlay")?.checked) return;
-    dopplerOverlayLayer = new Cesium.ImageryLayer(provider);
-    dopplerOverlayLayer.alpha = Number($("dopplerOpacity").value) / 100;
-    viewer.imageryLayers.add(dopplerOverlayLayer);
-    if (surfaceLayer) viewer.imageryLayers.raiseToTop(surfaceLayer);
-    keepBasemapReferenceLabelsVisible();
-    scene.requestRender();
-  }).catch(error => {
-    if (renderToken !== dopplerOverlayRenderToken) return;
-    if (status) status.textContent = `${radarId} — overlay render failed`;
-    console.warn("Doppler imagery overlay unavailable", error);
-  });
+  if (!state) {
+    clearForMissingFrame(
+      "Doppler sequence not loaded"
+    );
+
+    return;
+  }
+
+  const radarId =
+    $("dopplerOverlayRadar")
+      ?.value
+    ?? "66";
+
+  const pairing =
+    state.pairings.find(
+      item =>
+        item.radarId === radarId
+    );
+
+  if (
+    !pairing
+    || !pairing.candidate
+  ) {
+    clearForMissingFrame(
+      `${radarId} — no historical frame`
+    );
+
+    return;
+  }
+
+  if (!pairing.matched) {
+    clearForMissingFrame(
+      `${radarId} — NO MATCH (Δ${pairing.deltaMinutes.toFixed(1)} min)`
+    );
+
+    return;
+  }
+
+  const record =
+    selectedDopplerRecord(
+      hybridFrameIndex
+    );
+
+  if (!record) {
+    clearForMissingFrame(
+      `${radarId} — matched frame failed to decode`
+    );
+
+    return;
+  }
+
+  const frame =
+    hybridFrames[
+      hybridFrameIndex
+    ];
+
+  if (!frame) {
+    return;
+  }
+
+  renderDopplerVelocityLegend(
+    radarId
+  );
+
+  const displaySamples =
+    record.displaySamples
+    ?? record.samples
+    ?? [];
+
+  const frameKey =
+    dopplerOverlayFrameKey(
+      radarId,
+      record
+    );
+
+  const opacity =
+    Number(
+      $("dopplerOpacity").value
+    )
+    / 100;
+
+  if (
+    frameKey
+    && dopplerOverlayTransition.currentKey
+      === frameKey
+  ) {
+    dopplerOverlayTransition
+      .setOpacity(
+        opacity
+      );
+
+    if (status) {
+      status.textContent =
+        `${radarId} ${formatDopplerUtc(record.observedUtc)} (Δ${pairing.deltaMinutes.toFixed(1)} min)`;
+    }
+
+    return;
+  }
+
+  const raster =
+    dopplerCanvasForFrame(
+      frame,
+      displaySamples
+    );
+
+  $("dopplerOverlayCount")
+    .textContent =
+      raster.rendered
+        .toLocaleString();
+
+  if (status) {
+    status.textContent =
+      `${radarId} ${formatDopplerUtc(record.observedUtc)} (Δ${pairing.deltaMinutes.toFixed(1)} min)`;
+  }
+
+  Cesium.SingleTileImageryProvider
+    .fromUrl(
+      raster.canvas
+        .toDataURL(
+          "image/png"
+        ),
+      {
+        rectangle:
+          raster.rectangle
+      }
+    )
+    .then(
+      provider => {
+        if (
+          renderToken
+            !== dopplerOverlayRenderToken
+          || !$("showDopplerOverlay")
+            ?.checked
+        ) {
+          return;
+        }
+
+        const layer =
+          new Cesium.ImageryLayer(
+            provider
+          );
+
+        dopplerOverlayTransition
+          .replace({
+            layer,
+            key:
+              frameKey,
+            alpha:
+              opacity,
+            durationMs:
+              dopplerCrossfadeDurationMs(),
+
+            onAdded:
+              () => {
+                if (surfaceLayer) {
+                  viewer.imageryLayers
+                    .raiseToTop(
+                      surfaceLayer
+                    );
+                }
+
+                keepBasemapReferenceLabelsVisible();
+              }
+          });
+      }
+    )
+    .catch(
+      error => {
+        if (
+          renderToken
+          !== dopplerOverlayRenderToken
+        ) {
+          return;
+        }
+
+        dopplerOverlayTransition
+          .clear({
+            durationMs:
+              DEFAULT_DOPPLER_FADE_OUT_MS
+          });
+
+        if (status) {
+          status.textContent =
+            `${radarId} — overlay render failed`;
+        }
+
+        console.warn(
+          "Doppler imagery overlay unavailable",
+          error
+        );
+      }
+    );
 }
 
 function updateDopplerUiForFrame(
@@ -3378,7 +3631,8 @@ async function loadHybridSequence(automatic = false) {
         )
       )
     : 0;
-  clearDopplerOverlay();
+  // Keep the current Doppler layer visible while the replacement frame is
+  // prepared. showHybridFrame() will reuse, crossfade or fade it out as required.
   const range = formatProductTimeRange(sharedTimeline.startUtc, sharedTimeline.endUtc);
   $("operationalLoopWindow").textContent =
     loopSelection === ALL_AVAILABLE_LOOP_VALUE
@@ -3970,9 +4224,32 @@ $("showDopplerOverlay").addEventListener(
   "change",
   () => {
     enforceDopplerWindow();
-    if (!sequenceLoading && (loadedWithDoppler !== $("showDopplerOverlay").checked || loadedLoopSelection !== selectedLoopSelection())) {
-      runSourceLoad(loadHybridSequence);
-    } else renderDopplerOverlay();
+
+    if (
+      !$("showDopplerOverlay")
+        .checked
+    ) {
+      clearDopplerOverlay({
+        smooth:
+          true
+      });
+    }
+
+    if (
+      !sequenceLoading
+      && (
+        loadedWithDoppler
+          !== $("showDopplerOverlay").checked
+        || loadedLoopSelection
+          !== selectedLoopSelection()
+      )
+    ) {
+      runSourceLoad(
+        loadHybridSequence
+      );
+    } else {
+      renderDopplerOverlay();
+    }
   }
 );
 
@@ -3988,7 +4265,9 @@ $("dopplerOpacity").addEventListener("input", event => {
   frameCrossfade.clear();
   const opacity = Number(event.target.value) / 100;
   $("dopplerOpacityValue").textContent = `${event.target.value}%`;
-  if (dopplerOverlayLayer) dopplerOverlayLayer.alpha = opacity;
+  dopplerOverlayTransition.setOpacity(
+    opacity
+  );
   scene.requestRender();
 });
 

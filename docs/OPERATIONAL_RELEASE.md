@@ -17,7 +17,7 @@ new nominally registered Doppler panels remain display-only pending calibration.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and the current 44 frontend regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and the current 45 frontend regression suites must pass before Pages upload/deployment. |
 
 ## Queensland expansion
 
@@ -89,7 +89,7 @@ The Christmas 2023 scenario/regression contracts remain internal engineering tes
 
 ## Validation evidence
 
-- Forty-four frontend regression suites cover tracking, source palettes,
+- Forty-five frontend regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with
@@ -470,3 +470,25 @@ renders for high-delta mouse-wheel zoom.
 No V9.9.0 change alters measured-reflectivity tracking, persistent ST identity,
 Doppler science, temporal inference rules, three-hour history limits or the
 scientific contract. `restore/v9.8.4` remains an immutable historical fallback.
+
+
+## V9.9.1 Doppler playback smoothing candidate
+
+V9.9.1 addresses the visible Doppler flicker observed during live loop playback.
+The defect was in display-layer lifecycle rather than in Doppler data: the old
+Cesium imagery layer was removed synchronously before the next
+`SingleTileImageryProvider` had finished preparing, which exposed a blank interval
+between otherwise valid frames.
+
+The candidate now double-buffers Doppler imagery. The current genuine Doppler
+frame remains visible until the next genuine matched frame is ready, then the two
+layers crossfade using complementary alpha for approximately 100–180 ms depending
+on playback speed. Repeated use of the same source frame is reused without a
+rebuild. If a radar frame has no valid matched Doppler observation, the old wind
+layer fades out over 120 ms rather than being held or temporally invented.
+
+This is a presentation-only change. Doppler decoding, radial velocities,
+georegistration, matching tolerance, 30-minute source-history boundary, analytical
+samples, radar tracking and inferred-volume science are unchanged.
+
+V9.9.0 remains the sealed recovery baseline pending live acceptance of this patch.

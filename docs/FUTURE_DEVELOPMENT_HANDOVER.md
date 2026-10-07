@@ -97,6 +97,12 @@ temporarily relaxed only while the camera is moving, then returns to normal afte
 the gesture settles. Multi-touch pinch/rotate/pitch and high-delta wheel zoom are
 batched to avoid redundant camera renders.
 
+A V9.9.1 display refinement is being live-tested before V9.10.0 lightning work:
+Doppler imagery is double-buffered and crossfaded between genuine matched frames.
+Unmatched frames fade the old layer out rather than holding or inventing wind data.
+This must remain a display-only contract; Doppler pairing and analysis are
+unchanged.
+
 ## 4. Architecture for future situational layers
 
 Do not bolt each new feed directly into `live3d-operational-v9.js`. Create a
@@ -190,7 +196,7 @@ For every accepted release:
 7. Perform live desktop/mobile acceptance.
 8. Create the next immutable recovery reference only after acceptance.
 
-The repository currently contains 44 frontend regression suites.
+The repository currently contains 45 frontend regression suites.
 
 ## 8. Current important files
 

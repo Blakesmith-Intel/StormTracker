@@ -12,6 +12,8 @@ on:
       - "scripts/smoke-qld-town-label-visual.mjs"
       - "scripts/smoke-qld-town-label-production-ui.mjs"
       - "frontend/src/live3d-operational-v9.js"
+      - "frontend/index.html"
+      - "frontend/live3d-operational-v9.html"
       - ".github/workflows/visual-smoke-v9-12-3-labels.yml"
 
 permissions:

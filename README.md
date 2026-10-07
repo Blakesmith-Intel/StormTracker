@@ -41,7 +41,14 @@ protected radar/tracking core.
   Landsat-derived satellite imagery and is published as a Web Mercator tile cache.
   StormTracker consumes the cached tiles directly rather than relying on the DEA
   time-enabled WMS path that proved unreliable in browser acceptance testing.
-- The selected basemap is stored in localStorage and restored on the next visit.
+- GA satellite mode adds a transparent **World Boundaries and Places** reference
+  layer above the weather imagery so towns and place names remain readable.
+- Optional **3-D terrain** uses the public ArcGIS WorldElevation3D/Terrain3D
+  elevation service through Cesium's native ArcGIS terrain provider. If terrain
+  fails, StormTracker falls back to the normal ellipsoid surface without affecting
+  radar, tracks or playback.
+- The selected basemap and terrain preference are stored in localStorage and
+  restored on the next visit.
 - Switching basemaps replaces only the bottom imagery layer. It does not reset the
   camera, selected radar, radar history, tracks, Doppler state, playback or motion
   cone.
@@ -121,7 +128,7 @@ No production npm package installation is required. With Node.js available:
 npm test
 ```
 
-The repository currently contains 40 `frontend/tests/run-*-tests.mjs` regression
+The repository currently contains 42 `frontend/tests/run-*-tests.mjs` regression
 suites covering source timing, tracking, Doppler, georegistration, inferred
 structure, Queensland sites, playback/history, temporal interpolation, mobile UI
 and production-shell contracts. GitHub Pages runs the frontend validation gate

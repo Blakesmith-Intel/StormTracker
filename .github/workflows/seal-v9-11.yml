@@ -1,0 +1,41 @@
+name: Seal StormTracker V9.11.0
+
+on:
+  push:
+    branches:
+      - feature/v9.11-power-outages
+    paths:
+      - ".github/workflows/seal-v9-11.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create V9.11.0 production tag
+        run: |
+          set -euo pipefail
+          target="b64a1c091284226202d34d587cf36f0e15c38185"
+          git fetch origin main --tags
+          git cat-file -e "$target^{commit}"
+
+          if git rev-parse -q --verify "refs/tags/v9.11.0" >/dev/null; then
+            existing="$(git rev-list -n 1 v9.11.0)"
+            if [ "$existing" != "$target" ]; then
+              echo "v9.11.0 already exists at $existing, expected $target" >&2
+              exit 1
+            fi
+            echo "v9.11.0 already points to production target."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a v9.11.0 "$target" -m "StormTracker V9.11.0 — operational power outages"
+          git push origin refs/tags/v9.11.0

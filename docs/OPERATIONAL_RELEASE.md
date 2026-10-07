@@ -251,3 +251,34 @@ longer or All available radar-only window still deselects Doppler.
 No segmentation, ST identity association, inferred-volume science, Doppler
 decoding, motion-cone logic, polling cadence or radar-site definitions are
 changed by this source-history correction.
+
+
+## V9.8.3 three-hour radar playback
+
+V9.8.3 extends reflectivity-history discovery across the complete three-hour
+window for every selectable Queensland view. Discovery no longer stops at the
+first missing timestamp; it probes the full horizon and retains older readable
+observations when they exist.
+
+Radar-only playback may fill missing five-minute display slots by temporal
+interpolation between two genuine Bureau reflectivity observations. Interpolation
+is bounded to gaps of 30 minutes or less and never extrapolates before the oldest
+real observation or after the newest one. Each generated frame is visibly marked
+as **INFERRED**, records its two bounding observation times, and is display-only.
+
+Temporally inferred frames are excluded from storm-track association, Doppler
+matching/analysis, convective-lightning scoring and measured-track-specific
+volumes. The existing vertical-profile renderer may display inferred 3-D structure
+from an inferred 2-D gap frame, but the interface labels the complete frame as
+temporally inferred/display-only.
+
+The history selector continues to expose only windows supported by the discovered
+observed-plus-bounded-interpolation timeline, up to 180 minutes, plus **All
+available**. The status line reports observed and inferred display-frame counts.
+Doppler remains a real-source-only 30-minute shared-history product and does not
+use inferred reflectivity frames.
+
+This change does not invent weather before the oldest readable Bureau observation:
+a three-hour option appears only when real observations provide bounding coverage
+across that window (with individual gaps no larger than the bounded interpolation
+limit).

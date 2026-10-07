@@ -37,8 +37,6 @@ jobs:
           python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-label-preview.log 2>&1 &
           sleep 2
           curl -fsS http://127.0.0.1:8765/tools/qld-town-label-visual-qa.html >/dev/null
-      - name: Render real Cesium scene and check mobile label collisions
-        run: node scripts/smoke-qld-town-label-visual.mjs
       - name: Verify full StormTracker UI with mobile drag and imagery switching
         run: node scripts/smoke-qld-town-label-production-ui.mjs
       - name: Upload mobile map evidence

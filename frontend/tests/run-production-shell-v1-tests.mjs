@@ -31,6 +31,11 @@ assert.match(html, /dopplerOpacityValue[^>]*>45%/);
 assert.match(html, /id="showTrackLabels"/);
 assert.match(html, /id="trackDisplayFilter"/);
 assert.match(html, /id="showTrackThreatCone"/);
+assert.match(html, /Available window/);
+assert.doesNotMatch(html, /<option value="150">150 min<\/option>/);
+assert.match(js, /availableRadarLoopMinutes/);
+assert.match(js, /All available/);
+assert.match(js, /Radar history available:/);
 assert.match(js, /createStormTrackerTouchCameraGestures/);
 assert.match(js, /SingleTileImageryProvider/);
 

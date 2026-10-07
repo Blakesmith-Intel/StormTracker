@@ -45,10 +45,11 @@ try{
   verify(state,"Initial full UI");
   const screenshot = async (fileName) => {
     try {
-      await page.locator("#cesiumContainer").screenshot({
+      await page.screenshot({
         path:`qa-screenshots/${fileName}.png`,
-        timeout:9000,
-        animations:"disabled"
+        timeout:3500,
+        captureBeyondViewport:false,
+        animations:"allow"
       });
     } catch (error) {
       // In headless SwiftShader, a busy scene may prevent GPU screenshot
@@ -67,7 +68,6 @@ try{
   await page.waitForTimeout(650);
   state=await inspect();
   verify(state,"After mobile-sized camera drag");
-  await screenshot("full-ui-street-after-pan");
   await page.locator("#basemapSelect").selectOption("qld-imagery");
   await page.waitForTimeout(1000);
   state=await inspect();
@@ -91,9 +91,9 @@ try{
     const inspection = await inspect();
     verify(inspection, scenario.id);
     assert.ok(inspection.visible.length<=scenario.limit,
-      `${scenario.id}: too many names at horizon`);
+      `${scenario.id}: ${inspection.visible.length} names at horizon (altitude ${Math.round(inspection.cameraHeight)}m, pitch ${inspection.cameraPitchDegrees.toFixed(1)}°, recalculations ${inspection.labelCalculations})`);
     console.log(`Actual full app ${scenario.id}: ${inspection.visible.length} non-overlapping names [${inspection.visible.map(t=>t.name).join(", ")}]`);
-    await screenshot(`full-ui-${scenario.id}`);
+    if (scenario.id === "birdsville") await screenshot("full-ui-birdsville");
     if (scenario.id === "birdsville") {
       assert.ok(inspection.visible.some(t=>t.name.toLowerCase()==="birdsville"),
         `Actual StormTracker Birdsville view must identify Birdsville. Visible: ${inspection.visible.map(t=>t.name).join(", ")}`);

@@ -1,7 +1,7 @@
 import {
   createPowerOutageLayer,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.11.1";
+} from "./power-outages-v1.js?v=9.11.2";
 
 const $ = id =>
   document.getElementById(id);
@@ -59,10 +59,7 @@ export function formatPowerOutageTime(
       "en-AU",
       {
         timeZone:
-          provider
-          === "Essential Energy"
-            ? "Australia/Sydney"
-            : "Australia/Brisbane",
+          "Australia/Brisbane",
         day:
           "2-digit",
         month:

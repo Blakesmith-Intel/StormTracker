@@ -1,0 +1,30 @@
+name: Smoke V9.11.2 Essential Queensland-only
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.11.2-essential-qld-only
+    paths:
+      - "scripts/smoke-essential-qld-only.mjs"
+      - "frontend/src/context-layers/essential-energy-kml-v1.js"
+      - "frontend/src/context-layers/queensland-mainland-filter-v1.js"
+      - "frontend/src/context-layers/power-outages-v1.js"
+      - ".github/workflows/smoke-v9-11-2-essential-qld.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run Queensland-only Essential Energy live smoke
+        run: node scripts/smoke-essential-qld-only.mjs

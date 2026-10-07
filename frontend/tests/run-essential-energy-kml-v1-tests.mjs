@@ -41,18 +41,21 @@ const kml = `<?xml version="1.0" encoding="UTF-8"?>
       <div><span>Reason:</span>We are investigating</div>
       <div><span>Last Updated:</span>29/07/2025 08:39:23</div>
     ]]></description>
-    <Polygon>
-      <outerBoundaryIs>
-        <LinearRing>
-          <coordinates>
-            153.10,-30.30,0
-            153.20,-30.30,0
-            153.20,-30.40,0
-            153.10,-30.30,0
-          </coordinates>
-        </LinearRing>
-      </outerBoundaryIs>
-    </Polygon>
+    <MultiGeometry>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              153.10,-30.30,0
+              153.20,-30.30,0
+              153.20,-30.40,0
+              153.10,-30.30,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+      <Point><coordinates>153.15,-30.35,0</coordinates></Point>
+    </MultiGeometry>
   </Placemark>
 
   <Placemark id="INCD-107145-r">
@@ -117,6 +120,18 @@ assert.equal(
   unplanned.properties
     .STORMTRACKER_PROVIDER,
   "Essential Energy"
+);
+
+assert.equal(
+  unplanned.properties
+    .STORMTRACKER_SOURCE_LONGITUDE,
+  153.15
+);
+
+assert.equal(
+  unplanned.properties
+    .STORMTRACKER_SOURCE_LATITUDE,
+  -30.35
 );
 
 assert.equal(
@@ -195,5 +210,5 @@ assert.equal(
 );
 
 console.log(
-  "Essential Energy KML checks passed: live placemark IDs, DST-aware provider timestamps, real planned/unplanned style IDs and polygon geometry convert to StormTracker GeoJSON."
+  "Essential Energy KML checks passed: live placemark IDs, provider incident anchor points, DST-aware source timestamps, real planned/unplanned style IDs and polygon geometry convert to StormTracker GeoJSON."
 );

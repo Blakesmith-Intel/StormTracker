@@ -4,6 +4,7 @@ import {
   QUEENSLAND_MAINLAND_QUERY_URL,
   filterFeaturesToQueensland,
   pointInGeoJsonBoundary,
+  representativePointForFeature,
   representativePointForGeometry
 } from "../src/context-layers/queensland-mainland-filter-v1.js";
 
@@ -104,6 +105,24 @@ const qldPoint =
   representativePointForGeometry(
     qldPolygon
   );
+
+assert.deepEqual(
+  representativePointForFeature({
+    properties: {
+      STORMTRACKER_SOURCE_LONGITUDE:
+        150.31,
+      STORMTRACKER_SOURCE_LATITUDE:
+        -28.55
+    },
+    geometry:
+      nswPolygon
+  }),
+  [
+    150.31,
+    -28.55
+  ],
+  "Essential's provider-supplied incident point must take precedence over polygon centroid near the state border."
+);
 
 assert.ok(
   qldPoint

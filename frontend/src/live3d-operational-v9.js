@@ -123,8 +123,8 @@ import {
 } from "./camera-performance-v1.js?v=9.9.0-5";
 
 import {
-  createFloodRoadClosureLayer
-} from "./context-layers/flood-road-closures-v1.js?v=9.10.0";
+  initialiseOperationalFloodRoadClosures
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.10.0";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
@@ -446,6 +446,10 @@ const hybridSource =
 viewer.dataSources.add(
   hybridSource
 );
+
+initialiseOperationalFloodRoadClosures({
+  viewer
+});
 
 let hybridFrames = [];
 let hybridResults = [];

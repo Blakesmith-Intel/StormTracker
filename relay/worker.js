@@ -130,14 +130,198 @@ function jsonResponse(payload, origin) {
   );
 }
 
+const FLOOD_ROAD_CACHE_URL =
+  "https://stormtracker.internal/flood-road-closures-cache";
+
+const FLOOD_ROAD_FRESH_MS =
+  5 * 60 * 1000;
+
+const FLOOD_ROAD_STALE_MS =
+  2 * 60 * 60 * 1000;
+
+function floodRoadResponse(
+  payload,
+  origin,
+  {
+    cacheStatus = "fresh",
+    upstreamStatus = 200,
+    storedAt = new Date().toISOString()
+  } = {}
+) {
+  const headers =
+    corsHeaders(origin);
+
+  headers.set(
+    "Content-Type",
+    "application/json; charset=utf-8"
+  );
+
+  headers.set(
+    "Cache-Control",
+    "public, max-age=60"
+  );
+
+  headers.set(
+    "X-StormTracker-Road-Cache",
+    cacheStatus
+  );
+
+  headers.set(
+    "X-StormTracker-Road-Upstream-Status",
+    String(upstreamStatus)
+  );
+
+  return new Response(
+    JSON.stringify({
+      ...payload,
+      stormtracker: {
+        ...(payload?.stormtracker ?? {}),
+        cache_status:
+          cacheStatus,
+        stored_at:
+          storedAt,
+        upstream_status:
+          upstreamStatus
+      }
+    }),
+    {
+      status: 200,
+      headers
+    }
+  );
+}
+
+async function cachedFloodRoadSnapshot() {
+  try {
+    const cache =
+      caches.default;
+
+    const cached =
+      await cache.match(
+        FLOOD_ROAD_CACHE_URL
+      );
+
+    if (!cached) {
+      return null;
+    }
+
+    const wrapper =
+      await cached.json();
+
+    const storedAtMs =
+      Date.parse(
+        wrapper?.stored_at
+        ?? ""
+      );
+
+    if (
+      !Number.isFinite(storedAtMs)
+      || !wrapper?.payload
+    ) {
+      return null;
+    }
+
+    return {
+      payload:
+        wrapper.payload,
+      storedAt:
+        wrapper.stored_at,
+      ageMs:
+        Date.now()
+        - storedAtMs
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function storeFloodRoadSnapshot(
+  payload
+) {
+  try {
+    const cache =
+      caches.default;
+
+    const storedAt =
+      new Date().toISOString();
+
+    const response =
+      new Response(
+        JSON.stringify({
+          stored_at:
+            storedAt,
+          payload
+        }),
+        {
+          headers: {
+            "Content-Type":
+              "application/json; charset=utf-8",
+            "Cache-Control":
+              "public, max-age=7200"
+          }
+        }
+      );
+
+    await cache.put(
+      FLOOD_ROAD_CACHE_URL,
+      response
+    );
+
+    return storedAt;
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
 async function relayFloodRoadClosures(
   origin,
   env
 ) {
+  const cached =
+    await cachedFloodRoadSnapshot();
+
+  if (
+    cached
+    && cached.ageMs
+      <= FLOOD_ROAD_FRESH_MS
+  ) {
+    return floodRoadResponse(
+      cached.payload,
+      origin,
+      {
+        cacheStatus:
+          "fresh-cache",
+        upstreamStatus:
+          200,
+        storedAt:
+          cached.storedAt
+      }
+    );
+  }
+
   const apiKey =
     env?.QLDTRAFFIC_API_KEY;
 
   if (!apiKey) {
+    if (
+      cached
+      && cached.ageMs
+        <= FLOOD_ROAD_STALE_MS
+    ) {
+      return floodRoadResponse(
+        cached.payload,
+        origin,
+        {
+          cacheStatus:
+            "stale-no-key",
+          upstreamStatus:
+            503,
+          storedAt:
+            cached.storedAt
+        }
+      );
+    }
+
     return errorResponse(
       "QLDTraffic API key is not configured",
       503,
@@ -166,11 +350,30 @@ async function relayFloodRoadClosures(
         },
         cf: {
           cacheEverything: true,
-          cacheTtl: 120
+          cacheTtl: 300
         }
       }
     );
   } catch (error) {
+    if (
+      cached
+      && cached.ageMs
+        <= FLOOD_ROAD_STALE_MS
+    ) {
+      return floodRoadResponse(
+        cached.payload,
+        origin,
+        {
+          cacheStatus:
+            "stale-upstream-error",
+          upstreamStatus:
+            502,
+          storedAt:
+            cached.storedAt
+        }
+      );
+    }
+
     return errorResponse(
       `QLDTraffic fetch failed: ${
         error?.message || String(error)
@@ -181,6 +384,25 @@ async function relayFloodRoadClosures(
   }
 
   if (!upstream.ok) {
+    if (
+      cached
+      && cached.ageMs
+        <= FLOOD_ROAD_STALE_MS
+    ) {
+      return floodRoadResponse(
+        cached.payload,
+        origin,
+        {
+          cacheStatus:
+            `stale-upstream-${upstream.status}`,
+          upstreamStatus:
+            upstream.status,
+          storedAt:
+            cached.storedAt
+        }
+      );
+    }
+
     return errorResponse(
       `QLDTraffic HTTP ${upstream.status}`,
       502,
@@ -193,7 +415,26 @@ async function relayFloodRoadClosures(
   try {
     payload =
       await upstream.json();
-  } catch (error) {
+  } catch {
+    if (
+      cached
+      && cached.ageMs
+        <= FLOOD_ROAD_STALE_MS
+    ) {
+      return floodRoadResponse(
+        cached.payload,
+        origin,
+        {
+          cacheStatus:
+            "stale-invalid-json",
+          upstreamStatus:
+            upstream.status,
+          storedAt:
+            cached.storedAt
+        }
+      );
+    }
+
     return errorResponse(
       "QLDTraffic response was not valid JSON",
       502,
@@ -208,19 +449,33 @@ async function relayFloodRoadClosures(
         )
       : [];
 
-  return jsonResponse(
+  const filteredPayload = {
+    type:
+      "FeatureCollection",
+    features,
+    stormtracker: {
+      filter:
+        "published + flood-related + closures",
+      source:
+        "Queensland Department of Transport and Main Roads · QLDTraffic"
+    }
+  };
+
+  const storedAt =
+    await storeFloodRoadSnapshot(
+      filteredPayload
+    );
+
+  return floodRoadResponse(
+    filteredPayload,
+    origin,
     {
-      type:
-        "FeatureCollection",
-      features,
-      stormtracker: {
-        filter:
-          "published + flood-related + closures",
-        source:
-          "Queensland Department of Transport and Main Roads · QLDTraffic"
-      }
-    },
-    origin
+      cacheStatus:
+        "fresh-upstream",
+      upstreamStatus:
+        upstream.status,
+      storedAt
+    }
   );
 }
 

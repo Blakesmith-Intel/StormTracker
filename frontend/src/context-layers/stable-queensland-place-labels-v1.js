@@ -35,6 +35,7 @@ export function normaliseQueenslandPopulationCentres(payload) {
   const result = [];
   for (const feature of payload.features) {
     const name = String(feature?.properties?.name ?? "").trim();
+    if (feature?.geometry?.type !== "Point") continue;
     const coordinates = feature?.geometry?.coordinates;
     const lon = Number(coordinates?.[0]);
     const lat = Number(coordinates?.[1]);
@@ -112,9 +113,10 @@ export function townLabelRange(population) {
   // terrain refinement. Small towns show when viewing a region, major
   // population centres are visible from farther away.
   if (population >= 100000) return 12000000;
-  if (population >= 10000) return 6000000;
-  if (population >= 1000) return 3000000;
-  return 1600000;
+  if (population >= 10000) return 9000000;
+  if (population >= 1000) return 7500000;
+  // Small isolated settlements must remain visible over wide outback views.
+  return 6000000;
 }
 
 export function createStableQueenslandPlaceLabels({

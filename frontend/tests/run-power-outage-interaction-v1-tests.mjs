@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   powerOutageEntityFromPick,
   powerOutageIdFromPick
-} from "../src/context-layers/power-outages-operational-v1.js?v=9.11.0-dev2";
+} from "../src/context-layers/power-outages-operational-v1.js?v=9.11.0";
 
 const directEntity = {
   stormTrackerPowerOutageId:

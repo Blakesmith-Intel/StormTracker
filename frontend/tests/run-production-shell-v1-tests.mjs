@@ -66,6 +66,9 @@ assert.match(outageLayer, /VwEnergexOutages\/FeatureServer\/0\/query/);
 assert.match(outageLayer, /VwErgonOutages\/FeatureServer\/0\/query/);
 assert.match(outageLayer, /essential-energy-outages/);
 assert.match(outageLayer, /parseEssentialEnergyKml/);
+assert.match(outageLayer, /QUEENSLAND_MAINLAND_QUERY_URL/);
+assert.match(outageLayer, /filterFeaturesToQueensland/);
+assert.equal(exists("frontend/src/context-layers/queensland-mainland-filter-v1.js"), true);
 assert.equal(exists("frontend/src/context-layers/essential-energy-kml-v1.js"), true);
 assert.match(outageLayer, /DEFAULT_POWER_OUTAGE_REFRESH_MS/);
 assert.match(outageLayer, /GeoJsonDataSource/);
@@ -145,4 +148,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.12.0-dev1 adds BoM live river gauges while retaining outages, V9.10.4 imagery, road closures and historical regressions.");
+console.log("Production shell checks passed: V9.12.0-dev1 adds BoM live river gauges while retaining Queensland-only outages, V9.10.4 imagery, road closures and historical regressions.");

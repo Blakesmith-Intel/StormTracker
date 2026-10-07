@@ -285,8 +285,6 @@ if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
     labelMode: queenslandTownLabels?.mode ?? "unloaded",
     cameraHeight: queenslandTownLabels?.cameraHeight ?? null,
     cameraPitchDegrees: queenslandTownLabels?.cameraPitchDegrees ?? null,
-    cameraHeight: viewer.camera.positionCartographic.height,
-    cameraPitchDegrees: Cesium.Math.toDegrees(viewer.camera.pitch),
     labelCalculations: queenslandTownLabels?.calculationCount ?? 0
   });
   // Development-only reproducible camera positions for mobile visual QA.

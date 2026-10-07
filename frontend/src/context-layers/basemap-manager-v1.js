@@ -48,10 +48,12 @@ export const QUEENSLAND_PLACE_LABELS =
   Object.freeze({
     service:
       "https://spatial-gis.information.qld.gov.au/arcgis/rest/services/Location/Places/MapServer",
+    // Only named population centres: the other service layers add beaches,
+    // cemeteries, airfields and landmarks which collide with town labels.
     layers:
-      "20,10,11,12,13,16,17,18,19",
+      "20",
     label:
-      "Queensland Globe Places"
+      "Queensland Globe population centres"
   });
 
 export function normaliseBasemapId(

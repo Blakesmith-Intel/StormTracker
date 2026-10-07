@@ -230,6 +230,16 @@ export function isCurrentPowerOutage(
       featureOrProperties
     );
 
+  // Only confirmed unplanned faults belong on an operational outage map.
+  // Planned, scheduled and unclassified records are excluded before rendering.
+  if (
+    normalise(
+      properties.TYPE
+    ) !== "unplanned"
+  ) {
+    return false;
+  }
+
   const status =
     normalise(
       properties.STATUS
@@ -735,7 +745,7 @@ export async function loadPowerOutages({
       failed.length > 0,
 
     transport:
-      "Queensland-only Energex/Ergon ArcGIS GeoJSON + Essential Energy KML clipped by Queensland Government mainland boundary"
+      "Queensland-only unplanned Energex/Ergon ArcGIS GeoJSON + Essential Energy KML clipped by Queensland Government mainland boundary"
   };
 }
 
@@ -799,12 +809,6 @@ export function createPowerOutageLayer({
     CesiumRef.Color
       .fromCssColorString(
         "#ff5252"
-      );
-
-  const plannedColour =
-    CesiumRef.Color
-      .fromCssColorString(
-        "#ffb300"
       );
 
   const outlineColour =
@@ -879,19 +883,10 @@ export function createPowerOutageLayer({
       if (
         entity.polygon
       ) {
-        const colour =
-          summary.type
-          === "PLANNED"
-            ? plannedColour
-            : unplannedColour;
-
         entity.polygon
           .material =
-          colour.withAlpha(
-            summary.type
-            === "PLANNED"
-              ? 0.26
-              : 0.34
+          unplannedColour.withAlpha(
+            0.34
           );
 
         entity.polygon
@@ -961,17 +956,6 @@ export function createPowerOutageLayer({
               powerOutageSummary
             );
 
-        const unplanned =
-          summaries.filter(
-            item =>
-              item.type
-              === "UNPLANNED"
-          ).length;
-
-        const planned =
-          summaries.length
-          - unplanned;
-
         const customers =
           summaries.reduce(
             (
@@ -1000,7 +984,7 @@ export function createPowerOutageLayer({
               : "ok",
 
           message:
-            `${summaries.length} current outage${summaries.length === 1 ? "" : "s"} | ${unplanned} unplanned | ${planned} planned | ${customers.toLocaleString("en-AU")} customers | ${providerText}${partialText}`,
+            `${summaries.length} unplanned outage${summaries.length === 1 ? "" : "s"} | ${customers.toLocaleString("en-AU")} customers | ${providerText}${partialText}`,
 
           count:
             summaries.length,

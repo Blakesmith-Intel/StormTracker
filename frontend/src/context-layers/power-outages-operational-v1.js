@@ -1,7 +1,7 @@
 import {
   createPowerOutageLayer,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.12.0-dev1";
+} from "./power-outages-v1.js?v=9.12.1";
 
 const $ = id =>
   document.getElementById(id);
@@ -19,7 +19,7 @@ function setPowerStatus({
 
   target.textContent =
     message
-    || "Energex + Ergon + Essential Energy | current outages";
+    || "Energex + Ergon + Essential Energy | unplanned outages";
 
   target.dataset.kind =
     kind;

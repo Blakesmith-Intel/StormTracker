@@ -472,12 +472,6 @@ dialog::backdrop { background:#0009; }
 .power-outage-info .map-info-kicker {
   color:#ff7b72;
 }
-.power-outage-info[data-outage-type="planned"] .power-outage-key {
-  background:#ffb300;
-}
-.power-outage-info[data-outage-type="planned"] .map-info-kicker {
-  color:#ffc44d;
-}
 #powerOutageInfoTitle {
   display:block;
   max-width:250px;

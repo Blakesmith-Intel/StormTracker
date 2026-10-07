@@ -106,10 +106,9 @@ import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operatio
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
   BASEMAP_IDS,
-  createReferenceLabelProvider,
   createQueenslandPlaceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.11.3";
+} from "./context-layers/basemap-manager-v1.js?v=9.12.1";
 
 import {
   syncFrameSlider
@@ -129,7 +128,7 @@ import {
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.12.0";
+} from "./context-layers/power-outages-operational-v1.js?v=9.12.1";
 
 import {
   initialiseOperationalRiverGauges
@@ -256,13 +255,7 @@ mapCamera =
         cameraPerformance.pulse()
   });
 
-let basemapGlobalReferenceLayer =
-  null;
-
 let basemapQueenslandPlaceLayer =
-  null;
-
-let basemapGlobalReferenceErrorDisposer =
   null;
 
 let basemapQueenslandPlaceErrorDisposer =
@@ -287,15 +280,6 @@ function clearBasemapReferenceLayer() {
     1;
 
   if (
-    basemapGlobalReferenceLayer
-  ) {
-    viewer.imageryLayers.remove(
-      basemapGlobalReferenceLayer,
-      true
-    );
-  }
-
-  if (
     basemapQueenslandPlaceLayer
   ) {
     viewer.imageryLayers.remove(
@@ -304,36 +288,18 @@ function clearBasemapReferenceLayer() {
     );
   }
 
-  basemapGlobalReferenceLayer =
-    null;
-
   basemapQueenslandPlaceLayer =
     null;
 
   disposeBasemapReferenceListener(
-    basemapGlobalReferenceErrorDisposer
-  );
-
-  disposeBasemapReferenceListener(
     basemapQueenslandPlaceErrorDisposer
   );
-
-  basemapGlobalReferenceErrorDisposer =
-    null;
 
   basemapQueenslandPlaceErrorDisposer =
     null;
 }
 
 function keepBasemapReferenceLabelsVisible() {
-  if (
-    basemapGlobalReferenceLayer
-  ) {
-    viewer.imageryLayers.raiseToTop(
-      basemapGlobalReferenceLayer
-    );
-  }
-
   if (
     basemapQueenslandPlaceLayer
   ) {
@@ -362,46 +328,8 @@ function syncBasemapReferenceLayer(
   const generation =
     basemapReferenceGeneration;
 
-  if (
-    basemapId
-    === BASEMAP_IDS.QLD_IMAGERY
-  ) {
-    const globalProvider =
-      createReferenceLabelProvider(
-        Cesium
-      );
-
-    if (
-      globalProvider.errorEvent
-      ?.addEventListener
-    ) {
-      basemapGlobalReferenceErrorDisposer =
-        globalProvider.errorEvent
-          .addEventListener(
-            () => {
-              if (
-                generation
-                !== basemapReferenceGeneration
-                || basemapManager.currentId
-                !== BASEMAP_IDS.QLD_IMAGERY
-              ) {
-                return;
-              }
-
-              setBasemapStatus(
-                "Queensland imagery loaded · global reference labels are currently unavailable",
-                "normal"
-              );
-            }
-          );
-    }
-
-    basemapGlobalReferenceLayer =
-      viewer.imageryLayers
-        .addImageryProvider(
-          globalProvider
-        );
-  }
+  // Use a single authoritative Queensland population-centre overlay.
+  // The global ArcGIS reference overlay was doubling town labels on imagery.
 
   createQueenslandPlaceLabelProvider(
     Cesium

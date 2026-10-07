@@ -10,7 +10,7 @@ export function labelBudget(width, height, cameraHeight, mode = "street", camera
   const cap = width < 600 ? 9 : 28;
   let budget = Math.min(cap, Math.floor(area / density));
   if (cameraHeight > 700000) budget = Math.min(budget, 5);
-  else if (cameraHeight > 250000) budget = Math.min(budget, 8);
+  else if (cameraHeight > 250000) budget = Math.min(budget, 5);
   // Oblique views compress a large geographic area into a narrow horizon.
   // Reduce the number of labels independently of camera altitude.
   if (cameraPitchDegrees > -20) budget = Math.min(budget, 4);

@@ -1,4 +1,4 @@
-# StormTracker — Operational V9.9.1 candidate
+# StormTracker — Operational V9.9.1
 
 StormTracker is a browser-native Queensland radar and storm-tracking product built
 from public Bureau of Meteorology imagery. The production application runs from
@@ -63,12 +63,13 @@ protected radar/tracking core.
   frame count whenever history grows, rather than retaining its original six-frame
   startup maximum.
 
-V9.9.0 is the current sealed production baseline. The previous
-`restore/v9.8.4` recovery point remains unchanged as a historical fallback.
+V9.9.1 is the current sealed production baseline. The previous
+`restore/v9.9.0` and `restore/v9.8.4` recovery points remain unchanged as
+historical fallbacks.
 
-## V9.9.1 Doppler playback smoothing candidate
+## V9.9.1 Doppler playback smoothing
 
-V9.9.1 is a display-only refinement on the sealed V9.9.0 baseline.
+V9.9.1 is the accepted display-only refinement on the sealed V9.9.0 feature set.
 
 - The current Doppler imagery layer remains visible while the next matched source
   frame is decoded and prepared, removing the blank interval caused by deleting the
@@ -82,8 +83,7 @@ V9.9.1 is a display-only refinement on the sealed V9.9.0 baseline.
 - Doppler opacity continues to affect display only. Decoding, radial-velocity
   values, pairing tolerance and analytical inputs are unchanged.
 
-`restore/v9.9.0` remains the sealed production recovery point until this patch is
-live-accepted.
+`restore/v9.9.1` is the current production recovery point.
 
 ## Radar history and automatic updating
 
@@ -158,15 +158,15 @@ structure, Queensland sites, playback/history, temporal interpolation, mobile UI
 and production-shell contracts. GitHub Pages runs the frontend validation gate
 before publishing; a failed gate prevents deployment.
 
-The accepted V9.9.0 runtime commit is:
+The accepted V9.9.1 runtime commit is:
 
 ```text
-de724bdeb1d92d4dd4cb2e7f99492f548dd418f4
+a14a5f458d2e79b8afabe51a5f5f797fdeea1366
 ```
 
-Its frontend validation and Pages deployment completed successfully on
+Its full frontend validation and Pages deployment completed successfully on
 8 October 2026 (AEST). The complete sealed repository state is preserved by
-`restore/v9.9.0`; see [docs/BASELINE_RESTORE.md](docs/BASELINE_RESTORE.md).
+`restore/v9.9.1`; see [docs/BASELINE_RESTORE.md](docs/BASELINE_RESTORE.md).
 
 The user-facing product requires only a web browser. Node/Python are development
 and test tools, not runtime requirements. The Cloudflare worker remains a

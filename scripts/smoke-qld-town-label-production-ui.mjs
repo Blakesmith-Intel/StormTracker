@@ -77,6 +77,28 @@ try{
   // WebGL screenshot. The live imagery-mode collision and count assertions
   // above are still required; preserve before/after drag screenshots.
   console.log("Imagery basemap switched successfully; town labels remain bounded and collision-free.");
+  const actualCameraCases = [
+    {id:"birdsville",coords:[139.35,-25.9,110000,-70],mode:"qld-imagery",limit:9},
+    {id:"birdsville-low-angle",coords:[139.35,-25.9,110000,-12],mode:"qld-imagery",limit:9},
+    {id:"brisbane",coords:[153.03,-27.47,110000,-70],mode:"qld-imagery",limit:9},
+    {id:"qld-low-angle",coords:[146.0,-23.6,1450000,-12],mode:"qld-imagery",limit:5}
+  ];
+  for (const scenario of actualCameraCases) {
+    await page.evaluate(coords => {
+      window.__stormtrackerTownLabelTestCamera(...coords);
+    }, scenario.coords);
+    await page.waitForTimeout(900);
+    const inspection = await inspect();
+    verify(inspection, scenario.id);
+    assert.ok(inspection.visible.length<=scenario.limit,
+      `${scenario.id}: too many names at horizon`);
+    if (scenario.id === "birdsville") {
+      assert.ok(inspection.visible.some(t=>t.name.toLowerCase()==="birdsville"),
+        "Actual StormTracker Birdsville view must identify Birdsville");
+    }
+    await screenshot(`full-ui-${scenario.id}`);
+    console.log(`Actual full app ${scenario.id}: ${inspection.visible.length} non-overlapping names`);
+  }
   assert.ok(await page.locator("#showPowerOutages").count()===1);
   assert.ok(await page.locator("#showFloodRoadClosures").count()===1);
   assert.ok(await page.locator("#showRiverGauges").count()===1);

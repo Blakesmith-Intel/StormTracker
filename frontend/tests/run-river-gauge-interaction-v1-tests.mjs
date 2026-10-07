@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   riverGaugeEntityFromPick,
   riverGaugeIdFromPick
-} from "../src/context-layers/river-gauges-operational-v1.js?v=9.12.0-dev1";
+} from "../src/context-layers/river-gauges-operational-v1.js?v=9.12.0";
 
 const directEntity = {
   stormTrackerRiverGaugeId:

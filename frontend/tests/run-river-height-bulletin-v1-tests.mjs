@@ -42,6 +42,14 @@ const html = `
     <td></td>
     <td></td>
   </tr>
+  <tr>
+    <td>Tingalpa Creek at Leslie Harrison Dam</td>
+    <td>10.23am Tue</td>
+    <td>1.25</td>
+    <td>Rising</td>
+    <td></td>
+    <td><a href="/fwo/IDQ65388/IDQ65388.540384.plt.shtml">Plot</a></td>
+  </tr>
 </table>
 </body>
 </html>
@@ -55,7 +63,7 @@ const observations =
 
 assert.equal(
   observations.length,
-  3
+  4
 );
 
 assert.deepEqual(
@@ -114,6 +122,13 @@ assert.equal(
   observations[2]
     .floodClass,
   ""
+);
+
+assert.equal(
+  observations[3]
+    .stationId,
+  "540384",
+  "BoM recent-data plot links must yield the embedded gauge station number, not the IDQ product number."
 );
 
 const flat =

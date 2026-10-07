@@ -16,6 +16,10 @@ import {
   parseRiverHeightBulletin
 } from "../frontend/src/context-layers/river-height-bulletin-v1.js";
 
+import {
+  BOM_RIVER_TIDE_GAUGE_QUERY_URL
+} from "../frontend/src/context-layers/river-gauges-v1.js";
+
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
 
@@ -559,6 +563,99 @@ function dopplerProduct(incoming) {
   return ALLOWED_DOPPLER_PRODUCTS.has(product)
     ? product
     : null;
+}
+
+async function relayRiverGaugeMetadata(
+  request,
+  origin
+) {
+  let upstream;
+
+  try {
+    upstream =
+      await fetch(
+        BOM_RIVER_TIDE_GAUGE_QUERY_URL,
+        {
+          method:
+            "GET",
+
+          headers: {
+            Accept:
+              "application/geo+json,application/json"
+          },
+
+          cf: {
+            cacheEverything:
+              true,
+            cacheTtl:
+              300
+          }
+        }
+      );
+  } catch (error) {
+    return errorResponse(
+      `BoM river-gauge metadata fetch failed: ${error?.message || String(error)}`,
+      502,
+      origin
+    );
+  }
+
+  if (!upstream.ok) {
+    return errorResponse(
+      `BoM river-gauge metadata HTTP ${upstream.status}`,
+      502,
+      origin
+    );
+  }
+
+  const headers =
+    new Headers(
+      upstream.headers
+    );
+
+  for (
+    const [
+      key,
+      value
+    ]
+    of corsHeaders(
+      origin
+    ).entries()
+  ) {
+    headers.set(
+      key,
+      value
+    );
+  }
+
+  headers.set(
+    "Content-Type",
+    "application/geo+json; charset=utf-8"
+  );
+
+  headers.set(
+    "Cross-Origin-Resource-Policy",
+    "cross-origin"
+  );
+
+  headers.set(
+    "Cache-Control",
+    "public, max-age=300"
+  );
+
+  return new Response(
+    request.method
+    === "HEAD"
+      ? null
+      : upstream.body,
+    {
+      status:
+        upstream.status,
+      statusText:
+        upstream.statusText,
+      headers
+    }
+  );
 }
 
 function riverHeightProductUrls(
@@ -1261,6 +1358,13 @@ export default {
 
     if (incoming.pathname === "/essential-energy-outages") {
       return relayEssentialEnergyOutages(
+        request,
+        origin
+      );
+    }
+
+    if (incoming.pathname === "/river-gauge-metadata") {
+      return relayRiverGaugeMetadata(
         request,
         origin
       );

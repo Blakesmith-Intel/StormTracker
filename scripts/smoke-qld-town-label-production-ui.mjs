@@ -43,7 +43,7 @@ try{
   await page.waitForTimeout(1800);
   let state=await inspect();
   verify(state,"Initial full UI");
-  await page.locator("#mapPanel").screenshot({
+  await page.screenshot({
     path:"qa-screenshots/full-ui-street-before-pan.png"
   });
   const rect=await page.locator("#cesiumContainer").boundingBox();
@@ -56,7 +56,7 @@ try{
   await page.waitForTimeout(650);
   state=await inspect();
   verify(state,"After mobile-sized camera drag");
-  await page.locator("#mapPanel").screenshot({
+  await page.screenshot({
     path:"qa-screenshots/full-ui-street-after-pan.png"
   });
   await page.locator("#basemapSelect").selectOption("qld-imagery");
@@ -64,7 +64,7 @@ try{
   state=await inspect();
   verify(state,"After imagery basemap switch");
   assert.equal(state.mode,"qld-imagery");
-  await page.locator("#mapPanel").screenshot({
+  await page.screenshot({
     path:"qa-screenshots/full-ui-imagery-after-pan.png"
   });
   assert.ok(await page.locator("#showPowerOutages").count()===1);

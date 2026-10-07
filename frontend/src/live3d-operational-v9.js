@@ -281,7 +281,10 @@ function syncBasemapReferenceLayer(basemapId) {
 if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
   window.__stormtrackerTownLabelDiagnostics = () => ({
     count: queenslandTownLabels?.count ?? 0,
-    visible: queenslandTownLabels?.visibleLabels ?? []
+    visible: queenslandTownLabels?.visibleLabels ?? [],
+    cameraHeight: viewer.camera.positionCartographic.height,
+    cameraPitchDegrees: Cesium.Math.toDegrees(viewer.camera.pitch),
+    labelCalculations: queenslandTownLabels?.calculationCount ?? 0
   });
   // Development-only reproducible camera positions for mobile visual QA.
   window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {

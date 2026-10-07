@@ -15,6 +15,9 @@ export function labelBudget(width, height, cameraHeight, mode = "street", camera
   // Reduce the number of labels independently of camera altitude.
   if (cameraPitchDegrees > -20) budget = Math.min(budget, 4);
   else if (cameraPitchDegrees > -40) budget = Math.min(budget, 6);
+  // Absolute mobile imagery cap: terrain/heading calculations can differ
+  // between camera transforms, but cannot bypass this final safety gate.
+  if (mode === "qld-imagery" && width < 600) budget = Math.min(budget, 5);
   return Math.max(0, budget);
 }
 

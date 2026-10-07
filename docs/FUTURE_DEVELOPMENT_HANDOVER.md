@@ -1,13 +1,13 @@
 # StormTracker future development handover
 
-**Starting production baseline:** V9.9.0  
-**Accepted runtime commit:** `de724bdeb1d92d4dd4cb2e7f99492f548dd418f4`  
-**Recovery reference:** `restore/v9.9.0`  
+**Starting production baseline:** V9.9.1  
+**Accepted runtime commit:** `a14a5f458d2e79b8afabe51a5f5f797fdeea1366`  
+**Recovery reference:** `restore/v9.9.1`  
 **Prepared:** 8 October 2026
 
 ## 1. Executive handover
 
-StormTracker V9.9.0 is the protected production starting point for the next
+StormTracker V9.9.1 is the protected production starting point for the next
 development workflow. Wishlist item 1 — GA satellite context, place names and
 optional 3-D terrain — is complete and sealed. The radar/tracking product is considered operationally
 complete unless a specific defect is demonstrated. Future work should add
@@ -44,7 +44,7 @@ item. Road closures, power outages and flood gauges move back one release each.
 - Five-minute live polling, Queensland radar coverage, mobile controls, track
   selection and source-recovery behaviour are protected baseline behaviour.
 
-## 3. V9.8.2–V9.9.0 changes that must be preserved
+## 3. V9.8.2–V9.9.1 changes that must be preserved
 
 ### Source-aware history
 
@@ -97,11 +97,11 @@ temporarily relaxed only while the camera is moving, then returns to normal afte
 the gesture settles. Multi-touch pinch/rotate/pitch and high-delta wheel zoom are
 batched to avoid redundant camera renders.
 
-A V9.9.1 display refinement is being live-tested before V9.10.0 lightning work:
-Doppler imagery is double-buffered and crossfaded between genuine matched frames.
-Unmatched frames fade the old layer out rather than holding or inventing wind data.
-This must remain a display-only contract; Doppler pairing and analysis are
-unchanged.
+V9.9.1 is accepted and sealed. Doppler imagery is double-buffered and crossfaded
+between genuine matched frames. Adjacent radar frames that reuse the same genuine
+Doppler source frame reuse the existing display layer. Unmatched frames fade the
+old layer out rather than holding or inventing wind data. This remains a
+display-only contract; Doppler pairing and analysis are unchanged.
 
 ## 4. Architecture for future situational layers
 
@@ -219,7 +219,7 @@ The repository currently contains 45 frontend regression suites.
 
 ```bash
 git fetch origin
-git switch -c feature/lightning-v9.10.0 origin/restore/v9.9.0
+git switch -c feature/lightning-v9.10.0 origin/restore/v9.9.1
 npm test
 ```
 

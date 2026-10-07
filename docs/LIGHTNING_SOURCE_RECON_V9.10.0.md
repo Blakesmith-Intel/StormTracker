@@ -1,6 +1,6 @@
 # V9.10.0 observed-lightning source reconnaissance
 
-Status: **source selection in progress — no production provider accepted yet**.
+Status: **PARKED / BLOCKED — no source currently satisfies the StormTracker operational constraints**.
 
 The V9.10.0 user-facing requirement is genuine observed lightning events with
 timestamps and coordinates. Forecast proxies, radar-only convective evidence and
@@ -110,18 +110,27 @@ strike contract.
 
 ## Current conclusion
 
-There is no accepted zero-cost, public, near-real-time individual-strike API for
-Australia identified in the first source pass.
+Under StormTracker's standing constraints, observed lightning is **not presently
+practical to implement**.
 
-Do **not** implement a production strike layer against an undocumented feed merely
-because it is technically reachable.
+The blocker is not rendering or browser technology. The blocker is the data
+contract: no zero-cost, legitimate, near-real-time individual-strike feed with
+Australian coverage was identified that also fits the required operational
+cadence. The technically suitable commercial feeds either exceed the acceptable
+free allowance or require enterprise/commercial access, while the attractive
+community feeds do not grant StormTracker an appropriate production-use contract.
 
-The current preferred paths are:
+Do **not** implement a production strike layer against an undocumented,
+reverse-engineered or terms-incompatible feed merely because it is technically
+reachable.
 
-1. continue searching for an Australian/open-data provider that satisfies the
-   source contract; or
-2. if no such provider exists, decide whether a credentialed Xweather/Vaisala
-   integration is acceptable and what update cadence/budget is supportable.
+Lightning is therefore parked rather than cancelled. Reopen this work only if one
+of the following changes:
 
-Until that decision is made, V9.10.0 remains in source-discovery state and the
-sealed V9.9.1 production product must remain unchanged.
+1. an authoritative/open Australian strike feed becomes available;
+2. a provider introduces a genuinely workable free/community tier for the required
+   cadence; or
+3. the project explicitly accepts an ongoing paid lightning-data service.
+
+The next active wishlist item is road closures. The sealed V9.9.1 production
+product remains unchanged.

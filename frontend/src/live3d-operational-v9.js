@@ -98,6 +98,7 @@ import {
   radarHistoryTimeline,
   needsChronologicalRadarRebuild,
   automaticRefreshUsesDopplerGate,
+  automaticRefreshEndUtc,
   hasNewMatchedProducts,
   createLiveLoopRefresh
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
@@ -3066,9 +3067,13 @@ async function loadHybridSequence(automatic = false) {
     history.frames.map(frame => `${id}:${frame.filename}`)));
   for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
   const availableEndUtc =
-    withDoppler
-      ? shared.endUtc
-      : times.at(-1);
+    automaticRefreshEndUtc({
+      withDoppler,
+      radarTimes:
+        times,
+      sharedEndUtc:
+        shared.endUtc
+    });
 
   if (
     automatic

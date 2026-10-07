@@ -43,6 +43,14 @@ const html = `
     <td></td>
   </tr>
   <tr>
+    <td>The river height observations are real-time operational data and are supplied for flood warning purposes.</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
     <td>Tingalpa Creek at Leslie Harrison Dam</td>
     <td>10.23am Tue</td>
     <td>1.25</td>
@@ -63,7 +71,8 @@ const observations =
 
 assert.equal(
   observations.length,
-  4
+  4,
+  "Narrative/footer rows without a numeric river height must not be emitted as observations."
 );
 
 assert.deepEqual(

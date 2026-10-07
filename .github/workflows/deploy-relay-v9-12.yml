@@ -8,7 +8,9 @@ on:
     paths:
       - "relay/**"
       - "frontend/src/context-layers/river-height-bulletin-v1.js"
+      - "frontend/src/context-layers/river-gauges-v1.js"
       - "frontend/tests/run-river-height-bulletin-v1-tests.mjs"
+      - "frontend/tests/run-river-gauge-metadata-relay-v1-tests.mjs"
       - "frontend/tests/run-river-height-relay-v1-tests.mjs"
       - ".github/workflows/deploy-relay-v9-12.yml"
 

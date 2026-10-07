@@ -233,7 +233,109 @@ function field(
   );
 }
 
-function parseAestDateTime(
+function timeZoneOffsetMinutes(
+  timeZone,
+  epochMs
+) {
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone,
+        year:
+          "numeric",
+        month:
+          "2-digit",
+        day:
+          "2-digit",
+        hour:
+          "2-digit",
+        minute:
+          "2-digit",
+        second:
+          "2-digit",
+        hour12:
+          false,
+        hourCycle:
+          "h23"
+      }
+    )
+      .formatToParts(
+        new Date(
+          epochMs
+        )
+      );
+
+  const values =
+    Object.fromEntries(
+      parts
+        .filter(
+          part =>
+            part.type
+            !== "literal"
+        )
+        .map(
+          part => [
+            part.type,
+            part.value
+          ]
+        )
+    );
+
+  const zonedAsUtc =
+    Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      Number(values.second)
+    );
+
+  return Math.round(
+    (
+      zonedAsUtc
+      - epochMs
+    )
+    / 60000
+  );
+}
+
+function offsetText(
+  minutes
+) {
+  const sign =
+    minutes >= 0
+      ? "+"
+      : "-";
+
+  const absolute =
+    Math.abs(
+      minutes
+    );
+
+  const hours =
+    Math.floor(
+      absolute / 60
+    );
+
+  const remainder =
+    absolute % 60;
+
+  const pad =
+    part =>
+      String(part)
+        .padStart(
+          2,
+          "0"
+        );
+
+  return (
+    `${sign}${pad(hours)}:${pad(remainder)}`
+  );
+}
+
+export function parseEssentialLocalDateTime(
   value
 ) {
   const text =
@@ -264,6 +366,48 @@ function parseAestDateTime(
     second = "00"
   ] = match;
 
+  const localAsUtc =
+    Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+
+  let offsetMinutes =
+    timeZoneOffsetMinutes(
+      "Australia/Sydney",
+      localAsUtc
+    );
+
+  let epochMs =
+    localAsUtc
+    - offsetMinutes
+      * 60
+      * 1000;
+
+  const resolvedOffset =
+    timeZoneOffsetMinutes(
+      "Australia/Sydney",
+      epochMs
+    );
+
+  if (
+    resolvedOffset
+    !== offsetMinutes
+  ) {
+    offsetMinutes =
+      resolvedOffset;
+
+    epochMs =
+      localAsUtc
+      - offsetMinutes
+        * 60
+        * 1000;
+  }
+
   const pad =
     part =>
       String(part)
@@ -274,7 +418,10 @@ function parseAestDateTime(
 
   return (
     `${year}-${pad(month)}-${pad(day)}`
-    + `T${pad(hour)}:${pad(minute)}:${pad(second)}+10:00`
+    + `T${pad(hour)}:${pad(minute)}:${pad(second)}`
+    + offsetText(
+        offsetMinutes
+      )
   );
 }
 
@@ -565,7 +712,7 @@ export function parseEssentialEnergyKml(
             "",
 
           START:
-            parseAestDateTime(
+            parseEssentialLocalDateTime(
               field(
                 fields,
                 "Time Off"
@@ -576,7 +723,7 @@ export function parseEssentialEnergyKml(
             "",
 
           EST_FIX_TIME:
-            parseAestDateTime(
+            parseEssentialLocalDateTime(
               field(
                 fields,
                 "Est. Time On"
@@ -590,7 +737,7 @@ export function parseEssentialEnergyKml(
             ),
 
           EXTRACTED:
-            parseAestDateTime(
+            parseEssentialLocalDateTime(
               field(
                 fields,
                 "Last Updated"
@@ -613,6 +760,4 @@ export function parseEssentialEnergyKml(
   };
 }
 
-export {
-  parseAestDateTime
-};
+

@@ -89,6 +89,9 @@ try{
     }, scenario.coords);
     await page.waitForTimeout(900);
     const inspection = await inspect();
+    console.log(`Full app QA ${scenario.id}: basemap=${inspection.mode}, labels=${inspection.labelMode}, height=${inspection.cameraHeight}, pitch=${inspection.cameraPitchDegrees}, visible=${inspection.visible.map(t=>t.name).join(", ")}`);
+    assert.equal(inspection.labelMode, scenario.mode,
+      "Label layer basemap mode must match the actual basemap selector");
     verify(inspection, scenario.id);
     assert.ok(inspection.visible.length<=scenario.limit,
       `${scenario.id}: ${inspection.visible.length} names at horizon (altitude ${Math.round(inspection.cameraHeight)}m, pitch ${inspection.cameraPitchDegrees.toFixed(1)}°, recalculations ${inspection.labelCalculations})`);

@@ -50,8 +50,15 @@ const roadLayer = read("frontend/src/context-layers/flood-road-closures-v1.js");
 const roadUi = read("frontend/src/context-layers/flood-road-closures-operational-v1.js");
 assert.match(roadLayer, /createRoadClosureBadgeCanvas/);
 assert.match(roadLayer, /stormTrackerFloodClosureId/);
-assert.match(roadLayer, /FLOOD CLOSURE/);
-assert.match(roadUi, /ScreenSpaceEventType[\s\S]*LEFT_CLICK/);
+assert.doesNotMatch(
+  roadLayer,
+  /text:\s*"FLOOD CLOSURE"/,
+  "Closure markers must not render floating map labels that drift in pitched 3-D views."
+);
+assert.match(roadUi, /primitive\?\.id/);
+assert.match(roadUi, /drillPick/);
+assert.match(roadUi, /pointerdown/);
+assert.match(roadUi, /pointerup/);
 assert.match(roadUi, /showClosureInfo/);
 assert.match(roadUi, /floodRoadClosureInfoRows/);
 assert.match(js, /terrain-manager-v1\.js\?v=9\.9\.0-4/);

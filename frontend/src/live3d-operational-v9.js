@@ -104,7 +104,6 @@ import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operatio
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
   BASEMAP_IDS,
-  basemapLabel,
   createStormTrackerBasemapManager
 } from "./context-layers/basemap-manager-v1.js?v=9.9.0";
 

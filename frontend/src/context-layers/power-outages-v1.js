@@ -1,6 +1,11 @@
 import {
   parseEssentialEnergyKml
-} from "./essential-energy-kml-v1.js?v=9.11.1";
+} from "./essential-energy-kml-v1.js?v=9.11.2";
+
+import {
+  QUEENSLAND_MAINLAND_QUERY_URL,
+  filterFeaturesToQueensland
+} from "./queensland-mainland-filter-v1.js?v=9.11.2";
 
 export const ENERGEX_ATTRIBUTION =
   "Energex | Energy Queensland";
@@ -429,8 +434,14 @@ async function fetchJson(
       );
 
     if (!response.ok) {
+      const label =
+        provider
+        === "Queensland boundary"
+          ? provider
+          : `${provider} outage feed`;
+
       throw new Error(
-        `${provider} outage feed HTTP ${response.status}`
+        `${label} HTTP ${response.status}`
       );
     }
 
@@ -529,13 +540,36 @@ async function loadProvider({
 async function loadEssentialProvider({
   fetchImpl,
   url,
+  boundaryUrl,
   nowMs
 }) {
-  const kml =
-    await fetchText(
-      fetchImpl,
-      url,
-      "Essential Energy"
+  const [
+    kml,
+    queenslandBoundary
+  ] =
+    await Promise.all([
+      fetchText(
+        fetchImpl,
+        url,
+        "Essential Energy"
+      ),
+
+      fetchJson(
+        fetchImpl,
+        boundaryUrl,
+        "Queensland boundary"
+      )
+    ]);
+
+  const parsed =
+    parseEssentialEnergyKml(
+      kml
+    );
+
+  const queenslandOnly =
+    filterFeaturesToQueensland(
+      parsed,
+      queenslandBoundary
     );
 
   return {
@@ -544,9 +578,7 @@ async function loadEssentialProvider({
 
     payload:
       filterCurrentPowerOutages(
-        parseEssentialEnergyKml(
-          kml
-        ),
+        queenslandOnly,
         nowMs
       )
   };
@@ -564,6 +596,9 @@ export async function loadPowerOutages({
 
   essentialUrl =
     DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
+
+  queenslandBoundaryUrl =
+    QUEENSLAND_MAINLAND_QUERY_URL,
 
   nowMs =
     Date.now()
@@ -613,6 +648,8 @@ export async function loadPowerOutages({
                 fetchImpl,
                 url:
                   request.url,
+                boundaryUrl:
+                  queenslandBoundaryUrl,
                 nowMs
               })
             : loadProvider({
@@ -698,7 +735,7 @@ export async function loadPowerOutages({
       failed.length > 0,
 
     transport:
-      "First-party Energex/Ergon ArcGIS GeoJSON + Essential Energy KML"
+      "Queensland-only Energex/Ergon ArcGIS GeoJSON + Essential Energy KML clipped by Queensland Government mainland boundary"
   };
 }
 
@@ -719,6 +756,9 @@ export function createPowerOutageLayer({
 
   essentialUrl =
     DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
+
+  queenslandBoundaryUrl =
+    QUEENSLAND_MAINLAND_QUERY_URL,
 
   refreshMs =
     DEFAULT_POWER_OUTAGE_REFRESH_MS,
@@ -904,7 +944,8 @@ export function createPowerOutageLayer({
             fetchImpl,
             energexUrl,
             ergonUrl,
-            essentialUrl
+            essentialUrl,
+            queenslandBoundaryUrl
           });
 
         await render(

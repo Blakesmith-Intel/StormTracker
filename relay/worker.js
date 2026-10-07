@@ -12,6 +12,14 @@ import {
   filterFloodRoadClosures
 } from "../frontend/src/context-layers/flood-road-closure-filter-v1.js";
 
+import {
+  parseRiverHeightBulletin
+} from "../frontend/src/context-layers/river-height-bulletin-v1.js";
+
+import {
+  BOM_RIVER_TIDE_GAUGE_QUERY_URL
+} from "../frontend/src/context-layers/river-gauges-v1.js";
+
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
 
@@ -26,6 +34,22 @@ const QLD_TRAFFIC_EVENTS =
 
 const ESSENTIAL_ENERGY_OUTAGES =
   "https://www.essentialenergy.com.au/Assets/kmz/current.kml";
+
+const QLD_RIVER_HEIGHT_PRODUCTS =
+  Object.freeze([
+    "IDQ60285",
+    "IDQ60286",
+    "IDQ60287",
+    "IDQ60288",
+    "IDQ60289",
+    "IDQ60290",
+    "IDQ60291",
+    "IDQ60292",
+    "IDQ60293",
+    "IDQ60294",
+    "IDQ60295",
+    "IDQ60296"
+  ]);
 
 const ALLOWED_ORIGINS = new Set([
   "https://blakesmith-intel.github.io",
@@ -541,6 +565,315 @@ function dopplerProduct(incoming) {
     : null;
 }
 
+async function relayRiverGaugeMetadata(
+  request,
+  origin
+) {
+  let upstream;
+
+  try {
+    upstream =
+      await fetch(
+        BOM_RIVER_TIDE_GAUGE_QUERY_URL,
+        {
+          method:
+            "GET",
+
+          headers: {
+            Accept:
+              "application/geo+json,application/json"
+          },
+
+          cf: {
+            cacheEverything:
+              true,
+            cacheTtl:
+              300
+          }
+        }
+      );
+  } catch (error) {
+    return errorResponse(
+      `BoM river-gauge metadata fetch failed: ${error?.message || String(error)}`,
+      502,
+      origin
+    );
+  }
+
+  if (!upstream.ok) {
+    return errorResponse(
+      `BoM river-gauge metadata HTTP ${upstream.status}`,
+      502,
+      origin
+    );
+  }
+
+  const headers =
+    new Headers(
+      upstream.headers
+    );
+
+  for (
+    const [
+      key,
+      value
+    ]
+    of corsHeaders(
+      origin
+    ).entries()
+  ) {
+    headers.set(
+      key,
+      value
+    );
+  }
+
+  headers.set(
+    "Content-Type",
+    "application/geo+json; charset=utf-8"
+  );
+
+  headers.set(
+    "Cross-Origin-Resource-Policy",
+    "cross-origin"
+  );
+
+  headers.set(
+    "Cache-Control",
+    "public, max-age=300"
+  );
+
+  return new Response(
+    request.method
+    === "HEAD"
+      ? null
+      : upstream.body,
+    {
+      status:
+        upstream.status,
+      statusText:
+        upstream.statusText,
+      headers
+    }
+  );
+}
+
+function riverHeightProductUrls(
+  product
+) {
+  return [
+    `https://www.bom.gov.au/fwo/${product}.html`,
+    `https://www.bom.gov.au/cgi-bin/wrap_fwo.pl?${product}.html`
+  ];
+}
+
+async function fetchRiverHeightProduct(
+  product
+) {
+  const failures = [];
+
+  for (
+    const url
+    of riverHeightProductUrls(
+      product
+    )
+  ) {
+    let response;
+
+    try {
+      response =
+        await fetch(
+          url,
+          {
+            method:
+              "GET",
+
+            headers: {
+              Accept:
+                "text/html"
+            },
+
+            cf: {
+              cacheEverything:
+                true,
+              cacheTtl:
+                300
+            }
+          }
+        );
+    } catch (error) {
+      failures.push(
+        `${url}: ${error?.message || String(error)}`
+      );
+
+      continue;
+    }
+
+    if (!response.ok) {
+      failures.push(
+        `${url}: HTTP ${response.status}`
+      );
+
+      continue;
+    }
+
+    const html =
+      await response.text();
+
+    const observations =
+      parseRiverHeightBulletin({
+        html,
+        sourceProduct:
+          product
+      });
+
+    if (!observations.length) {
+      failures.push(
+        `${url}: no river-height observations parsed`
+      );
+
+      continue;
+    }
+
+    return {
+      product,
+      source:
+        url,
+      observations
+    };
+  }
+
+  throw new Error(
+    failures.join(
+      " | "
+    )
+    || `${product}: no usable BoM river-height source`
+  );
+}
+
+function riverHeightResponse(
+  payload,
+  origin,
+  method = "GET"
+) {
+  const headers =
+    corsHeaders(
+      origin
+    );
+
+  headers.set(
+    "Content-Type",
+    "application/json; charset=utf-8"
+  );
+
+  headers.set(
+    "Cache-Control",
+    "public, max-age=300"
+  );
+
+  return new Response(
+    method === "HEAD"
+      ? null
+      : JSON.stringify(
+          payload
+        ),
+    {
+      status:
+        200,
+      headers
+    }
+  );
+}
+
+async function relayRiverHeightBulletins(
+  request,
+  origin
+) {
+  const settled =
+    await Promise.allSettled(
+      QLD_RIVER_HEIGHT_PRODUCTS
+        .map(
+          fetchRiverHeightProduct
+        )
+    );
+
+  const products = [];
+  const failed = [];
+
+  settled.forEach(
+    (
+      result,
+      index
+    ) => {
+      const product =
+        QLD_RIVER_HEIGHT_PRODUCTS[
+          index
+        ];
+
+      if (
+        result.status
+        === "fulfilled"
+      ) {
+        products.push(
+          result.value
+        );
+
+        return;
+      }
+
+      failed.push({
+        product,
+
+        message:
+          result.reason
+            ?.message
+          ?? String(
+            result.reason
+          )
+      });
+    }
+  );
+
+  if (!products.length) {
+    return errorResponse(
+      failed
+        .map(
+          item =>
+            `${item.product}: ${item.message}`
+        )
+        .join(
+          " | "
+        )
+      || "BoM river-height bulletins unavailable",
+      502,
+      origin
+    );
+  }
+
+  return riverHeightResponse(
+    {
+      format:
+        "StormTrackerRiverHeightBulletinsV1",
+
+      loaded_at:
+        new Date()
+          .toISOString(),
+
+      partial:
+        failed.length > 0,
+
+      source_products:
+        QLD_RIVER_HEIGHT_PRODUCTS,
+
+      products,
+
+      failed
+    },
+    origin,
+    request.method
+  );
+}
+
 async function relayWmts(request, incoming, origin) {
   const layer =
     incoming.searchParams.get("LAYER");
@@ -1025,6 +1358,20 @@ export default {
 
     if (incoming.pathname === "/essential-energy-outages") {
       return relayEssentialEnergyOutages(
+        request,
+        origin
+      );
+    }
+
+    if (incoming.pathname === "/river-gauge-metadata") {
+      return relayRiverGaugeMetadata(
+        request,
+        origin
+      );
+    }
+
+    if (incoming.pathname === "/river-height-bulletins") {
+      return relayRiverHeightBulletins(
         request,
         origin
       );

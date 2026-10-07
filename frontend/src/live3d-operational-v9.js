@@ -3589,13 +3589,6 @@ $("basemapSelect").addEventListener(
 
       event.target.value =
         result.id;
-
-      setBasemapStatus(
-        basemapLabel(
-          result.id
-        ),
-        "ok"
-      );
     } catch (error) {
       event.target.value =
         basemapManager.currentId

@@ -226,6 +226,27 @@ jobs:
           );
 
           console.log(
+            "Qualifying field snapshot:",
+            JSON.stringify(
+              qualifying.map(f => {
+                const p = f?.properties ?? {};
+                return {
+                  id: p.id,
+                  status: p.status,
+                  event_type: p.event_type,
+                  event_subtype: p.event_subtype,
+                  event_due_to: p.event_due_to,
+                  impact: p.impact,
+                  duration: p.duration,
+                  road_summary: p.road_summary
+                };
+              }),
+              null,
+              2
+            )
+          );
+
+          console.log(
             "StormTracker event IDs:",
             outputIds.join(", ") || "(none)"
           );

@@ -1,0 +1,165 @@
+name: Smoke StormTracker V9.12 River Gauges
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.12-flood-gauges
+    paths:
+      - "frontend/src/context-layers/river-gauges-v1.js"
+      - "frontend/src/context-layers/river-gauge-observations-v1.js"
+      - "frontend/src/context-layers/river-gauge-layer-v1.js"
+      - ".github/workflows/smoke-v9-12-river-gauges.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-join:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Live BoM gauge join smoke
+        run: |
+          node --input-type=module <<'NODE'
+          import {
+            BOM_RIVER_TIDE_GAUGE_QUERY_URL
+          } from "./frontend/src/context-layers/river-gauges-v1.js";
+
+          import {
+            loadRiverGaugeOperationalSnapshot
+          } from "./frontend/src/context-layers/river-gauge-observations-v1.js";
+
+          const metadataResponse =
+            await fetch(
+              BOM_RIVER_TIDE_GAUGE_QUERY_URL,
+              {
+                headers: {
+                  Origin:
+                    "https://blakesmith-intel.github.io"
+                }
+              }
+            );
+
+          console.log(
+            "metadata_status",
+            metadataResponse.status
+          );
+
+          console.log(
+            "metadata_cors",
+            metadataResponse.headers.get(
+              "access-control-allow-origin"
+            )
+          );
+
+          if (!metadataResponse.ok) {
+            throw new Error(
+              `BoM gauge metadata HTTP ${metadataResponse.status}`
+            );
+          }
+
+          const cors =
+            metadataResponse.headers.get(
+              "access-control-allow-origin"
+            );
+
+          if (
+            cors !== "*"
+            && cors !==
+              "https://blakesmith-intel.github.io"
+          ) {
+            throw new Error(
+              `BoM gauge metadata CORS unsuitable for browser use: ${cors}`
+            );
+          }
+
+          const snapshot =
+            await loadRiverGaugeOperationalSnapshot();
+
+          const states =
+            snapshot.payload.features
+              .reduce(
+                (
+                  counts,
+                  feature
+                ) => {
+                  const state =
+                    feature.properties
+                      ?.STORMTRACKER_DISPLAY_STATE
+                    ?? "unknown";
+
+                  counts[state] =
+                    (
+                      counts[state]
+                      ?? 0
+                    )
+                    + 1;
+
+                  return counts;
+                },
+                {}
+              );
+
+          console.log(
+            JSON.stringify(
+              {
+                totalGaugeLocations:
+                  snapshot.totalGaugeLocations,
+                totalObservations:
+                  snapshot.totalObservations,
+                matchedCount:
+                  snapshot.matchedCount,
+                unmatchedCount:
+                  snapshot.unmatchedObservations.length,
+                partialBulletins:
+                  snapshot.partialBulletins,
+                failedProducts:
+                  snapshot.failedProducts.map(
+                    item =>
+                      item.product
+                  ),
+                states,
+                unmatchedSample:
+                  snapshot.unmatchedObservations
+                    .slice(0, 12)
+                    .map(
+                      item => ({
+                        stationName:
+                          item.stationName,
+                        stationId:
+                          item.stationId,
+                        sourceProduct:
+                          item.sourceProduct
+                      })
+                    )
+              },
+              null,
+              2
+            )
+          );
+
+          if (
+            snapshot.matchedCount
+            <= 0
+          ) {
+            throw new Error(
+              "No live BoM river observations matched gauge metadata."
+            );
+          }
+
+          if (
+            snapshot.matchedCount
+            < 25
+          ) {
+            throw new Error(
+              `Live match count too low for operational display: ${snapshot.matchedCount}`
+            );
+          }
+          NODE

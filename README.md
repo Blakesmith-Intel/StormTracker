@@ -133,7 +133,7 @@ No production npm package installation is required. With Node.js available:
 npm test
 ```
 
-The repository currently contains 43 `frontend/tests/run-*-tests.mjs` regression
+The repository currently contains 44 `frontend/tests/run-*-tests.mjs` regression
 suites covering source timing, tracking, Doppler, georegistration, inferred
 structure, Queensland sites, playback/history, temporal interpolation, mobile UI
 and production-shell contracts. GitHub Pages runs the frontend validation gate

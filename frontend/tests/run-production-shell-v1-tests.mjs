@@ -60,6 +60,8 @@ assert.match(js, /pruneRadarFrames/);
 assert.match(js, /warmRadarHistoryCache/);
 assert.match(js, /Bootstrap the browser-local archive/);
 assert.match(js, /needsChronologicalRadarRebuild/);
+assert.match(js, /automaticRefreshUsesDopplerGate/);
+assert.doesNotMatch(js, /radarOnlySite/);
 assert.match(js, /historical cache expanded; loop rebuilt chronologically/);
 assert.match(js, /void autoRefresh\.check\(\)/);
 assert.match(js, /findLatestBomReflectivityTime/);

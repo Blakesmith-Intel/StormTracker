@@ -57,6 +57,13 @@ assert.throws(
   /cannot currently supply/
 );
 
+const sparseTail = [stamp(0), stamp(45), stamp(50)];
+assert.deepEqual(
+  continuousRadarHistoryTimes(sparseTail),
+  [stamp(45), stamp(50)]
+);
+assert.deepEqual(availableRadarLoopMinutes(sparseTail), []);
+
 assert.deepEqual(
   normaliseRadarHistoryTimes([
     stamp(10), "invalid", stamp(5), stamp(10)

@@ -20,6 +20,8 @@ button{padding:8px 10px;background:#263f51;border:1px solid #8acde7;border-radiu
 <script type="module">
 import { createQueenslandTownLabelLayer } from "../src/context-layers/qld-town-label-layer-v1.js?v=9.12.3";
 import { townLabelBox, boxesOverlap } from "../src/context-layers/qld-town-label-declutter-v1.js?v=9.12.3";
+import { createStormTrackerBasemapManager } from "../src/context-layers/basemap-manager-v1.js?v=9.12.3";
+import { createStormTrackerTerrainManager } from "../src/context-layers/terrain-manager-v1.js?v=9.9.0-4";
 const Cesium = window.Cesium;
 const status = document.getElementById("status");
 try {
@@ -33,6 +35,17 @@ try {
   });
   viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#2b3b42");
   viewer.scene.globe.enableLighting = false;
+  const basemap = createStormTrackerBasemapManager({
+    Cesium, viewer, storage:{getItem:()=>null,setItem(){}},
+    onStatus:(message,kind)=>{if(kind==="error")console.warn("Basemap:",message);}
+  });
+  basemap.initialise();
+  const terrain = createStormTrackerTerrainManager({
+    Cesium, viewer, storage:{getItem:()=> "on",setItem(){}},
+    onStatus:(message,kind)=>{if(kind==="error")console.warn("Terrain:",message);}
+  });
+  const terrainResult = await terrain.setEnabled(true,{persist:false});
+  if (!terrainResult.enabled) throw new Error("Operational ArcGIS terrain failed to load; visual test cannot pass with flat substitute.");
   viewer.scene.skyAtmosphere.show = false;
   const layer = createQueenslandTownLabelLayer({
     viewer, CesiumRef:Cesium,
@@ -57,7 +70,10 @@ try {
   window.visualQA={
     ready:false,
     move,
-    setMode:mode=>layer.setMode(mode),
+    setMode:mode=>{
+      basemap.setBasemap(mode,{persist:false});
+      layer.setMode(mode);
+    },
     inspect() {
       layer.draw(true);
       const labels=layer.visibleLabels;
@@ -69,6 +85,10 @@ try {
         }
       }
       return {
+        basemap:basemap.currentId,
+        terrainEnabled:terrain.enabled,
+        imageryLayerCount:viewer.imageryLayers.length,
+        globeTilesLoaded:viewer.scene.globe.tilesLoaded,
         count:layer.count,visible:layer.visibleCount,
         labels,overlaps,
         canvas:{width:viewer.scene.canvas.clientWidth,height:viewer.scene.canvas.clientHeight},

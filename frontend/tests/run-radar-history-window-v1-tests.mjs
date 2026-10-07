@@ -39,8 +39,8 @@ assert.deepEqual(availableRadarLoopMinutes(tenMinuteCadence), [30, 60]);
 assert.equal(selectRadarHistoryTimes(tenMinuteCadence, 60).length, 6);
 
 const gappy = [
-  stamp(0), stamp(5), stamp(10), stamp(15),
-  stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)
+  stamp(0), stamp(5), stamp(10),
+  stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)
 ];
 assert.deepEqual(availableRadarLoopMinutes(gappy), [30]);
 assert.throws(

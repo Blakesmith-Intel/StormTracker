@@ -102,6 +102,11 @@ import {
 } from "./live-loop-refresh-v1.js?v=9.8.4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
+import {
+  BASEMAP_IDS,
+  basemapLabel,
+  createStormTrackerBasemapManager
+} from "./context-layers/basemap-manager-v1.js?v=9.9.0";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -199,14 +204,63 @@ mapCamera =
       CORE_HOME
   });
 
+function setBasemapStatus(
+  message,
+  kind = "ok"
+) {
+  const status =
+    $("basemapStatus");
+
+  if (!status) return;
+
+  status.textContent =
+    message;
+
+  status.dataset.kind =
+    kind;
+}
+
+const basemapManager =
+  createStormTrackerBasemapManager({
+    Cesium,
+    viewer,
+    storage:
+      window.localStorage,
+    onStatus:
+      setBasemapStatus
+  });
+
 try {
-  viewer.imageryLayers.addImageryProvider(
-    new Cesium.OpenStreetMapImageryProvider({
-      url: "https://tile.openstreetmap.org/"
-    })
-  );
+  const initialBasemap =
+    basemapManager.initialise();
+
+  $("basemapSelect").value =
+    initialBasemap.id;
 } catch (error) {
-  console.warn("OSM imagery unavailable", error);
+  console.warn(
+    "Stored basemap unavailable; falling back to Street.",
+    error
+  );
+
+  try {
+    const fallback =
+      basemapManager.setBasemap(
+        BASEMAP_IDS.STREET
+      );
+
+    $("basemapSelect").value =
+      fallback.id;
+  } catch (fallbackError) {
+    console.warn(
+      "Street basemap unavailable",
+      fallbackError
+    );
+
+    setBasemapStatus(
+      "Basemap unavailable · weather layers remain active",
+      "error"
+    );
+  }
 }
 
 let model = null;
@@ -3522,6 +3576,39 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
 }));
 
 $("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSequence));
+$("basemapSelect").addEventListener(
+  "change",
+  event => {
+    frameCrossfade.clear();
+
+    try {
+      const result =
+        basemapManager.setBasemap(
+          event.target.value
+        );
+
+      event.target.value =
+        result.id;
+
+      setBasemapStatus(
+        basemapLabel(
+          result.id
+        ),
+        "ok"
+      );
+    } catch (error) {
+      event.target.value =
+        basemapManager.currentId
+        ?? BASEMAP_IDS.STREET;
+
+      setBasemapStatus(
+        `Basemap switch failed · ${error.message ?? error}`,
+        "error"
+      );
+    }
+  }
+);
+
 $("loopDurationMinutes").addEventListener("change", () => {
   frameCrossfade.clear();
   if (

@@ -7,7 +7,7 @@ const index=read('frontend/index.html');
 const html=read('frontend/live3d-operational-v9.html');
 const css=read('frontend/src/operational-dashboard-v9-1.css');
 const js=read('frontend/src/live3d-operational-v9.js');
-assert.match(index,/live3d-operational-v9\.html\?v=9\.9\.0-4/);
+assert.match(index,/live3d-operational-v9\.html\?v=9\.9\.0-5/);
 assert.match(html,/Operational V9\.9\.0/);
 assert.match(html,/radarOpacityValue[^>]*>65%/);
 assert.match(html,/dopplerOpacityValue[^>]*>45%/);
@@ -25,6 +25,8 @@ assert.match(css,/@media \(max-width:700px\)[\s\S]*grid-template-rows:minmax\(25
 assert.match(css,/\.dashboard-heading,[\s\S]*\.overview,[\s\S]*#legendDock[\s\S]*display:none !important/);
 assert.match(css,/#autoRefreshNote \{ display:none; \}/);
 assert.match(js,/createStormTrackerTouchCameraGestures/);
+assert.match(js,/createCameraPerformanceGovernor/);
+assert.match(js,/cameraPerformance\.pulse\(\)/);
 assert.match(js,/SingleTileImageryProvider/);
 assert.match(js,/Math\.max\(\s*1\.0,\s*base \* scale/);
 console.log('Mobile UI checks passed: compact map-first layout, radar-dominant opacity defaults, smaller display points and touch camera integration.');

@@ -126,25 +126,58 @@ export function createStormTrackerTouchCameraGestures({
       const current = touchPairMetrics(points[0], points[1]);
       if (pairLast) {
         const state = controller.getState();
-        controller.setView({
-          range: pinchRange(
-            state.range,
-            pairLast.distance,
-            current.distance,
-            { minimumRange, maximumRange }
-          )
-        });
 
-        const angleDelta = shortestAngleDelta(pairLast.angle, current.angle);
-        const rotationDegrees = angleDelta * 180 / Math.PI;
-        if (Math.abs(rotationDegrees) >= 0.08) {
-          controller.rotateDegrees(rotationDegrees);
+        const angleDelta =
+          shortestAngleDelta(
+            pairLast.angle,
+            current.angle
+          );
+
+        const midpointDy =
+          current.midpointY
+          - pairLast.midpointY;
+
+        const next = {
+          range:
+            pinchRange(
+              state.range,
+              pairLast.distance,
+              current.distance,
+              {
+                minimumRange,
+                maximumRange
+              }
+            )
+        };
+
+        if (
+          Math.abs(
+            angleDelta
+            * 180
+            / Math.PI
+          ) >= 0.08
+        ) {
+          next.heading =
+            Number(state.heading ?? 0)
+            + angleDelta;
         }
 
-        const midpointDy = current.midpointY - pairLast.midpointY;
-        if (Math.abs(midpointDy) >= 0.25) {
-          controller.tiltDegrees(midpointDy * pitchDegreesPerPixel);
+        if (
+          Math.abs(
+            midpointDy
+          ) >= 0.25
+        ) {
+          next.pitch =
+            Number(state.pitch ?? 0)
+            + midpointDy
+              * pitchDegreesPerPixel
+              * Math.PI
+              / 180;
         }
+
+        controller.setView(
+          next
+        );
       }
       pairLast = current;
       singleLast = null;

@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.0-4/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.0-5/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -67,6 +67,9 @@ assert.match(js, /historical cache expanded; loop rebuilt chronologically/);
 assert.match(js, /void autoRefresh\.check\(\)/);
 assert.match(js, /findLatestBomReflectivityTime/);
 assert.match(js, /createStormTrackerTouchCameraGestures/);
+assert.match(js, /createCameraPerformanceGovernor/);
+assert.match(js, /cameraPerformance\.pulse\(\)/);
+assert.match(js, /onInteraction/);
 assert.match(js, /SingleTileImageryProvider/);
 
 assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true);

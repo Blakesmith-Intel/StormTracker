@@ -118,6 +118,10 @@ import {
   createStormTrackerTerrainManager
 } from "./context-layers/terrain-manager-v1.js?v=9.9.0-4";
 
+import {
+  createCameraPerformanceGovernor
+} from "./camera-performance-v1.js?v=9.9.0-5";
+
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
 
@@ -159,13 +163,25 @@ const frameCrossfade = createSceneCrossfade({ scene, container: $("mapPanel") })
 for (const event of ["pointerdown", "pointermove", "wheel", "keydown"]) {
   document.addEventListener(event, () => frameCrossfade.clear(), { passive: true });
 }
-document.addEventListener("visibilitychange", () => { if (document.hidden) frameCrossfade.clear(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    frameCrossfade.clear();
+    cameraPerformance.restore();
+  }
+});
 window.addEventListener("resize", () => frameCrossfade.clear());
 window.addEventListener("pagehide", () => touchCameraGestures.destroy(), { once:true });
 
 scene.fog.enabled = false;
 scene.globe.enableLighting = false;
 scene.globe.maximumScreenSpaceError = 4;
+
+const cameraPerformance =
+  createCameraPerformanceGovernor({
+    globe:
+      scene.globe,
+    scene
+  });
 
 const CORE_HOME =
   Object.freeze({
@@ -198,7 +214,10 @@ const touchCameraGestures =
   createStormTrackerTouchCameraGestures({
     container: $("cesiumContainer"),
     getController: () => mapCamera,
-    onGesture: () => frameCrossfade.clear()
+    onGesture: () => {
+      frameCrossfade.clear();
+      cameraPerformance.pulse();
+    }
   });
 
 mapCamera =
@@ -211,7 +230,11 @@ mapCamera =
       ),
 
     home:
-      CORE_HOME
+      CORE_HOME,
+
+    onInteraction:
+      () =>
+        cameraPerformance.pulse()
   });
 
 let basemapReferenceLayer =

@@ -17,7 +17,7 @@ new nominally registered Doppler panels remain display-only pending calibration.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and the current 43 frontend regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and the current 44 frontend regression suites must pass before Pages upload/deployment. |
 
 ## Queensland expansion
 
@@ -89,7 +89,7 @@ The Christmas 2023 scenario/regression contracts remain internal engineering tes
 
 ## Validation evidence
 
-- Forty-three frontend regression suites cover tracking, source palettes,
+- Forty-four frontend regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with
@@ -421,3 +421,21 @@ Live acceptance exposed two candidate defects before V9.9.0 was sealed.
 
 These are display/source-integration fixes only; radar tracking, Doppler science,
 three-hour history accumulation and temporal inference contracts are unchanged.
+
+
+### V9.9.0 camera performance pass
+
+Before sealing wishlist item 1, the live map received a low-risk interaction
+performance pass. While the user is actively panning, zooming, rotating or
+pitching, Cesium terrain mesh detail is temporarily relaxed by increasing globe
+screen-space error from 4 to 8. The normal detail level is restored 160 ms after
+the last interaction.
+
+Two-finger touch handling now combines pinch range, rotation and pitch into one
+camera view update per pointer event instead of up to three sequential Cesium
+camera updates. High-delta mouse-wheel input similarly computes the complete zoom
+step before rendering once.
+
+These changes affect rendering workload only. Radar imagery, tracking, terrain
+source, Doppler, source timing, three-hour history and inferred-volume science are
+unchanged.

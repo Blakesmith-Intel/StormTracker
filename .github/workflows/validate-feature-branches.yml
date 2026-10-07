@@ -1,0 +1,29 @@
+name: Validate StormTracker feature branches
+
+on:
+  push:
+    branches:
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run full frontend regression suite
+        run: npm test
+
+      - name: Validate relay worker syntax
+        run: node --check relay/worker.js

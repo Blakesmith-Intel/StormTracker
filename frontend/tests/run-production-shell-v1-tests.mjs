@@ -54,7 +54,7 @@ assert.match(css, /\.power-outage-key/);
 assert.match(js, /createStormTrackerTerrainManager/);
 assert.match(js, /initialiseOperationalFloodRoadClosures/);
 assert.match(js, /initialiseOperationalPowerOutages/);
-assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=9\.11\.3/);
+assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=9\.11\.2/);
 const outageLayer = read("frontend/src/context-layers/power-outages-v1.js");
 const outageUi = read("frontend/src/context-layers/power-outages-operational-v1.js");
 assert.match(outageLayer, /VwEnergexOutages\/FeatureServer\/0\/query/);

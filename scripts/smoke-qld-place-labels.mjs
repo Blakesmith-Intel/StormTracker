@@ -75,17 +75,7 @@ const layerIds =
 
 for (
   const layerId
-  of [
-    20,
-    10,
-    11,
-    12,
-    13,
-    16,
-    17,
-    18,
-    19
-  ]
+  of [20]
 ) {
   assert.equal(
     layerIds.has(
@@ -116,7 +106,7 @@ exportUrl.search =
     transparent:
       "true",
     layers:
-      "show:20,10,11,12,13,16,17,18,19",
+      "show:20",
     f:
       "image"
   }).toString();
@@ -167,5 +157,5 @@ assert.ok(
 );
 
 console.log(
-  `Queensland Places live smoke passed: ${metadata.layers.length} service layer(s), ${imageBytes.length} byte transparent map export, browser CORS available.`
+  `Queensland population centre labels live smoke passed: ${metadata.layers.length} service layer(s), ${imageBytes.length} byte transparent map export, browser CORS available.`
 );

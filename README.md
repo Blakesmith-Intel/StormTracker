@@ -1,4 +1,4 @@
-# StormTracker — Operational V9.9.0
+# StormTracker — Operational V9.9.1 candidate
 
 StormTracker is a browser-native Queensland radar and storm-tracking product built
 from public Bureau of Meteorology imagery. The production application runs from
@@ -65,6 +65,25 @@ protected radar/tracking core.
 
 V9.9.0 is the current sealed production baseline. The previous
 `restore/v9.8.4` recovery point remains unchanged as a historical fallback.
+
+## V9.9.1 Doppler playback smoothing candidate
+
+V9.9.1 is a display-only refinement on the sealed V9.9.0 baseline.
+
+- The current Doppler imagery layer remains visible while the next matched source
+  frame is decoded and prepared, removing the blank interval caused by deleting the
+  old layer before its replacement was ready.
+- Matched Doppler frames crossfade with complementary alpha rather than switching
+  abruptly.
+- If adjacent radar frames use the same genuine Doppler source frame, StormTracker
+  reuses the existing layer instead of rebuilding it.
+- A radar frame with no valid Doppler match still shows no invented wind data; the
+  previous layer fades out briefly instead of disappearing in one render.
+- Doppler opacity continues to affect display only. Decoding, radial-velocity
+  values, pairing tolerance and analytical inputs are unchanged.
+
+`restore/v9.9.0` remains the sealed production recovery point until this patch is
+live-accepted.
 
 ## Radar history and automatic updating
 
@@ -133,7 +152,7 @@ No production npm package installation is required. With Node.js available:
 npm test
 ```
 
-The repository currently contains 44 `frontend/tests/run-*-tests.mjs` regression
+The repository currently contains 45 `frontend/tests/run-*-tests.mjs` regression
 suites covering source timing, tracking, Doppler, georegistration, inferred
 structure, Queensland sites, playback/history, temporal interpolation, mobile UI
 and production-shell contracts. GitHub Pages runs the frontend validation gate

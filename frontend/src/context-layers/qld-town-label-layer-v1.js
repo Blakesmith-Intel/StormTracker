@@ -7,6 +7,26 @@ import {
   labelBudget
 } from "./qld-town-label-declutter-v1.js?v=9.12.3";
 
+// Cesium camera.pitch may describe the camera's current reference frame
+// (for example after lookAt transforms). Use the actual world-space line of
+// sight relative to the ellipsoid surface normal for a reliable horizon angle.
+export function cameraLookDownDegrees(camera, CesiumRef, ellipsoid) {
+  const fallback = Number.isFinite(camera?.pitch)
+    ? camera.pitch * 180 / Math.PI : -90;
+  const position = camera?.positionWC;
+  const direction = camera?.directionWC;
+  const normalAtCamera = ellipsoid?.geodeticSurfaceNormal;
+  const Cartesian3 = CesiumRef?.Cartesian3;
+  if (!position || !direction ||
+      typeof normalAtCamera !== "function" ||
+      typeof Cartesian3?.dot !== "function") return fallback;
+  const normal = normalAtCamera.call(ellipsoid, position, new Cartesian3());
+  if (!normal) return fallback;
+  const cosine = Cartesian3.dot(direction, normal);
+  if (!Number.isFinite(cosine)) return fallback;
+  return Math.asin(Math.max(-1, Math.min(1, cosine))) * 180 / Math.PI;
+}
+
 export function createQueenslandTownLabelLayer({
   viewer,
   CesiumRef = globalThis.Cesium,
@@ -65,8 +85,9 @@ export function createQueenslandTownLabelLayer({
     const width = canvas?.clientWidth ?? 0;
     const height = canvas?.clientHeight ?? 0;
     const cameraHeight = Math.max(0, camera?.positionCartographic?.height ?? 0);
-    const cameraPitchDegrees = Number.isFinite(camera?.pitch)
-      ? camera.pitch * 180 / Math.PI : -90;
+    const cameraPitchDegrees = cameraLookDownDegrees(
+      camera, CesiumRef, scene.globe?.ellipsoid ?? CesiumRef.Ellipsoid?.WGS84
+    );
     const budget = labelBudget(width, height, cameraHeight, currentMode, cameraPitchDegrees);
     const candidates = [];
 

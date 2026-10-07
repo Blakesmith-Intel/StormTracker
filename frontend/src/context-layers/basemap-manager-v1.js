@@ -22,6 +22,16 @@ export const GA_BASEMAP =
       "GA satellite · Landsat imagery"
   });
 
+export const REFERENCE_LABELS =
+  Object.freeze({
+    tileTemplate:
+      "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    maximumLevel:
+      23,
+    label:
+      "World Boundaries and Places"
+  });
+
 export function normaliseBasemapId(
   value
 ) {
@@ -59,6 +69,32 @@ function persistBasemap(
   } catch {
     // Storage is an optional convenience. Basemap switching must still work.
   }
+}
+
+export function createReferenceLabelProvider(
+  Cesium
+) {
+  return new Cesium.UrlTemplateImageryProvider({
+    url:
+      REFERENCE_LABELS.tileTemplate,
+
+    tilingScheme:
+      new Cesium.WebMercatorTilingScheme(),
+
+    tileWidth:
+      256,
+
+    tileHeight:
+      256,
+
+    maximumLevel:
+      REFERENCE_LABELS.maximumLevel,
+
+    credit:
+      new Cesium.Credit(
+        "Reference labels: Esri, HERE, Garmin, OpenStreetMap contributors, GIS user community"
+      )
+  });
 }
 
 export function createBasemapProvider(

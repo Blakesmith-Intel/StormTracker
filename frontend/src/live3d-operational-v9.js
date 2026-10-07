@@ -97,19 +97,26 @@ import { formatProductTime, formatProductTimeRange } from "./product-time-displa
 import {
   radarHistoryTimeline,
   needsChronologicalRadarRebuild,
+  automaticRefreshUsesDopplerGate,
+  automaticRefreshEndUtc,
   hasNewMatchedProducts,
   createLiveLoopRefresh
-} from "./live-loop-refresh-v1.js?v=9.8.4";
+} from "./live-loop-refresh-v1.js?v=9.9.0-4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
   BASEMAP_IDS,
+  createReferenceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.9.0-3";
+} from "./context-layers/basemap-manager-v1.js?v=9.9.0-4";
 
 import {
   syncFrameSlider
 } from "./frame-slider-v1.js?v=9.9.0-2";
+
+import {
+  createStormTrackerTerrainManager
+} from "./context-layers/terrain-manager-v1.js?v=9.9.0-4";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -207,6 +214,121 @@ mapCamera =
       CORE_HOME
   });
 
+let basemapReferenceLayer =
+  null;
+
+let basemapReferenceErrorDisposer =
+  null;
+
+function clearBasemapReferenceLayer() {
+  if (!basemapReferenceLayer) {
+    return;
+  }
+
+  viewer.imageryLayers.remove(
+    basemapReferenceLayer,
+    true
+  );
+
+  basemapReferenceLayer =
+    null;
+
+  if (
+    typeof basemapReferenceErrorDisposer
+    === "function"
+  ) {
+    basemapReferenceErrorDisposer();
+  }
+
+  basemapReferenceErrorDisposer =
+    null;
+}
+
+function keepBasemapReferenceLabelsVisible() {
+  if (!basemapReferenceLayer) {
+    return;
+  }
+
+  viewer.imageryLayers.raiseToTop(
+    basemapReferenceLayer
+  );
+}
+
+function syncBasemapReferenceLayer(
+  basemapId
+) {
+  clearBasemapReferenceLayer();
+
+  if (
+    basemapId
+    !== BASEMAP_IDS.GA_SATELLITE
+  ) {
+    return;
+  }
+
+  const provider =
+    createReferenceLabelProvider(
+      Cesium
+    );
+
+  if (
+    provider.errorEvent
+    ?.addEventListener
+  ) {
+    basemapReferenceErrorDisposer =
+      provider.errorEvent
+        .addEventListener(
+          () => {
+            if (
+              basemapManager.currentId
+              !== BASEMAP_IDS.GA_SATELLITE
+            ) {
+              return;
+            }
+
+            setBasemapStatus(
+              "GA imagery loaded · place-name labels are currently unavailable",
+              "error"
+            );
+          }
+        );
+  }
+
+  basemapReferenceLayer =
+    viewer.imageryLayers
+      .addImageryProvider(
+        provider
+      );
+
+  keepBasemapReferenceLabelsVisible();
+}
+
+function setTerrainStatus(
+  message,
+  kind = "ok"
+) {
+  const status =
+    $("terrainStatus");
+
+  if (!status) return;
+
+  status.textContent =
+    message;
+
+  status.dataset.kind =
+    kind;
+}
+
+const terrainManager =
+  createStormTrackerTerrainManager({
+    Cesium,
+    viewer,
+    storage:
+      window.localStorage,
+    onStatus:
+      setTerrainStatus
+  });
+
 function setBasemapStatus(
   message,
   kind = "ok"
@@ -239,6 +361,10 @@ try {
 
   $("basemapSelect").value =
     initialBasemap.id;
+
+  syncBasemapReferenceLayer(
+    initialBasemap.id
+  );
 } catch (error) {
   console.warn(
     "Stored basemap unavailable; falling back to Street.",
@@ -253,6 +379,10 @@ try {
 
     $("basemapSelect").value =
       fallback.id;
+
+    syncBasemapReferenceLayer(
+      fallback.id
+    );
   } catch (fallbackError) {
     console.warn(
       "Street basemap unavailable",
@@ -915,6 +1045,8 @@ async function renderSurface(
   viewer.imageryLayers.raiseToTop(
     surfaceLayer
   );
+
+  keepBasemapReferenceLabelsVisible();
 
   scene.requestRender();
 
@@ -2151,6 +2283,7 @@ function renderDopplerOverlay() {
     dopplerOverlayLayer.alpha = Number($("dopplerOpacity").value) / 100;
     viewer.imageryLayers.add(dopplerOverlayLayer);
     if (surfaceLayer) viewer.imageryLayers.raiseToTop(surfaceLayer);
+    keepBasemapReferenceLabelsVisible();
     scene.requestRender();
   }).catch(error => {
     if (renderToken !== dopplerOverlayRenderToken) return;
@@ -2885,7 +3018,16 @@ async function loadHybridSequence(automatic = false) {
 
   const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords, selectedSourceRadars());
   shared.requestedRadarIds = selectedSourceRadars();
-  const radarOnlySite = shared.requestedRadarIds.length === 0;
+
+  // Radar-only playback must advance on new reflectivity even at sites that
+  // also have a Doppler product. Doppler availability gates automatic refresh
+  // only while the user has explicitly enabled the Doppler overlay.
+  const dopplerGatedRefresh =
+    automaticRefreshUsesDopplerGate(
+      withDoppler,
+      shared.requestedRadarIds
+    );
+
   const needsHistoricalRebuild =
     automatic
     && !withDoppler
@@ -2894,31 +3036,70 @@ async function loadHybridSequence(automatic = false) {
       trackedThrough,
       radarResultCache.keys()
     );
-  if (automatic) {
-    const required = publishedSharedTimeline?.radarIds.length ? publishedSharedTimeline.radarIds : selectedSourceRadars();
-    const failed = required.filter(id => sources.errors.has(id));
-    if (failed.length) throw new Error(failed.map(id => `Doppler ${id}: ${sources.errors.get(id)}`).join("; "));
+
+  if (
+    automatic
+    && dopplerGatedRefresh
+  ) {
+    const required =
+      publishedSharedTimeline?.radarIds.length
+        ? publishedSharedTimeline.radarIds
+        : selectedSourceRadars();
+
+    const failed =
+      required.filter(
+        id =>
+          sources.errors.has(id)
+      );
+
+    if (failed.length) {
+      throw new Error(
+        failed
+          .map(
+            id =>
+              `Doppler ${id}: ${sources.errors.get(id)}`
+          )
+          .join("; ")
+      );
+    }
   }
   const discoveredImages = new Set([...sources.histories].flatMap(([id, history]) =>
     history.frames.map(frame => `${id}:${frame.filename}`)));
   for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
-  const availableEndUtc = radarOnlySite ? times.at(-1) : shared.endUtc;
+  const availableEndUtc =
+    automaticRefreshEndUtc({
+      withDoppler,
+      radarTimes:
+        times,
+      sharedEndUtc:
+        shared.endUtc
+    });
+
   if (
     automatic
     && !needsHistoricalRebuild
     && (
-      (!radarOnlySite && !hasNewMatchedProducts(publishedSharedTimeline, shared))
+      (
+        dopplerGatedRefresh
+        && !hasNewMatchedProducts(
+          publishedSharedTimeline,
+          shared
+        )
+      )
       || (
         hybridFrames.length
         && Date.parse(availableEndUtc)
-          <= Date.parse(hybridFrames.at(-1).observedUtc)
+          <= Date.parse(
+            hybridFrames.at(-1).observedUtc
+          )
       )
     )
   ) {
     $("autoRefreshNote").textContent =
-      radarOnlySite
-        ? "Auto update: waiting for a new radar image."
-        : "Auto update: waiting for new matching radar + Doppler images.";
+      dopplerGatedRefresh
+        ? "Auto update: waiting for new matching radar + Doppler images."
+        : "Auto update: waiting for a new radar image.";
+
     return;
   }
   const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(availableEndUtc)) : times;
@@ -2944,9 +3125,25 @@ async function loadHybridSequence(automatic = false) {
         : loadBomReflectivityMosaicAtTime(entry.observedUtc, selectedRadarRegion()),
       prepareDopplerState(entry, sources)
     ]);
-    const needsPair = withDoppler || (automatic && entry.observedUtc === shared.endUtc);
-    if (radarLoad.status !== "fulfilled" || dopplerLoad.status !== "fulfilled" ||
-        (needsPair && !shared.radarIds.every(id => dopplerLoad.value.pairings.some(pair => pair.radarId === id && pair.matched)))) {
+    const needsPair =
+      withDoppler;
+
+    if (
+      radarLoad.status !== "fulfilled"
+      || dopplerLoad.status !== "fulfilled"
+      || (
+        needsPair
+        && !shared.radarIds.every(
+          id =>
+            dopplerLoad.value.pairings
+              .some(
+                pair =>
+                  pair.radarId === id
+                  && pair.matched
+              )
+        )
+      )
+    ) {
       failures.push(entry.observedUtc);
       if (entry.observedUtc === availableEndUtc) {
         newestFailure = radarLoad.status === "rejected" ? `Radar image: ${radarLoad.reason?.message}` :
@@ -3185,8 +3382,14 @@ async function loadHybridSequence(automatic = false) {
   $("autoRefreshNote").textContent =
     needsHistoricalRebuild
       ? "Auto update: historical cache expanded; loop rebuilt chronologically."
-      : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${radarOnlySite ? "radar images" : "matching products"} every 5 minutes.`;
-  if (selectedRadarRegion() !== "SEQ" && !["66","50","08"].includes(selectedRadarRegion()) && !radarOnlySite) {
+      : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${dopplerGatedRefresh ? "matching radar + Doppler products" : "radar images"} every 5 minutes.`;
+  if (
+    selectedRadarRegion() !== "SEQ"
+    && !["66","50","08"].includes(
+      selectedRadarRegion()
+    )
+    && shared.requestedRadarIds.length > 0
+  ) {
     $("sharedHistoryNote").textContent += " · wind display only (nominal registration)";
   }
   $("autoRefreshNote").title = "";
@@ -3545,6 +3748,30 @@ async function initialise() {
     DEFAULT_OCCUPANCY_THRESHOLD
       .toFixed(2);
 
+  const terrainControl =
+    $("terrainEnabled");
+
+  terrainManager
+    .initialise()
+    .then(result => {
+      terrainControl.checked =
+        Boolean(result?.enabled);
+    })
+    .catch(error => {
+      console.warn(
+        "3-D terrain initialisation failed",
+        error
+      );
+
+      terrainControl.checked =
+        false;
+
+      setTerrainStatus(
+        "3-D terrain unavailable · using flat fallback",
+        "error"
+      );
+    });
+
   resetView();
 
   updateLoopButtonLabel();
@@ -3606,6 +3833,10 @@ $("basemapSelect").addEventListener(
 
       event.target.value =
         result.id;
+
+      syncBasemapReferenceLayer(
+        result.id
+      );
     } catch (error) {
       event.target.value =
         basemapManager.currentId
@@ -3615,6 +3846,29 @@ $("basemapSelect").addEventListener(
         `Basemap switch failed · ${error.message ?? error}`,
         "error"
       );
+    }
+  }
+);
+
+$("terrainEnabled").addEventListener(
+  "change",
+  async event => {
+    frameCrossfade.clear();
+
+    const requested =
+      event.target.checked;
+
+    const result =
+      await terrainManager.setEnabled(
+        requested
+      );
+
+    if (
+      requested
+      && result.failed
+    ) {
+      event.target.checked =
+        false;
     }
   }
 );

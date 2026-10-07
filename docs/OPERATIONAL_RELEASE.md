@@ -17,7 +17,7 @@ new nominally registered Doppler panels remain display-only pending calibration.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and the current 40 frontend regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and the current 43 frontend regression suites must pass before Pages upload/deployment. |
 
 ## Queensland expansion
 
@@ -89,7 +89,7 @@ The Christmas 2023 scenario/regression contracts remain internal engineering tes
 
 ## Validation evidence
 
-- Thirty-three existing/new regression suites cover tracking, source palettes,
+- Forty-three frontend regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with
@@ -382,8 +382,18 @@ Basemap state is isolated in `frontend/src/context-layers/basemap-manager-v1.js`
 Switching replaces the bottom imagery provider only and must not reset or reload
 radar history, storm tracks, Doppler state, playback, camera position or the
 selected motion cone. The preference is persisted in browser localStorage.
-Basemap tile failures report their own source status and do not block the weather
-product.
+GA imagery adds a transparent World Boundaries and Places reference layer that is
+raised above radar/Doppler imagery so place names remain readable.
+
+V9.9.0 also adds an independent optional terrain subsystem in
+`frontend/src/context-layers/terrain-manager-v1.js`. It uses Cesium's native
+`ArcGISTiledElevationTerrainProvider` against the public ArcGIS
+WorldElevation3D/Terrain3D ImageServer. Terrain defaults on, persists its user
+preference, and falls back to the normal ellipsoid surface if the elevation source
+cannot be loaded. Terrain failure must never block radar, tracking or playback.
+
+Basemap/label/terrain source failures report independently and do not block the
+weather product.
 
 V9.8.4 remains the sealed recovery baseline until this candidate receives live
 desktop/mobile acceptance.
@@ -403,6 +413,11 @@ Live acceptance exposed two candidate defects before V9.9.0 was sealed.
    thumb could remain clamped to that original limit. Slider min/max/value are now
    synchronised from the complete current frame array whenever frames load, grow,
    reset or render.
+3. Live acceptance also showed that satellite imagery without a reference overlay
+   was operationally poor for place recognition. GA mode now adds a transparent
+   place-name/boundary overlay above the weather layers. An optional 3-D terrain
+   control was added at the same time using ArcGIS WorldElevation3D/Terrain3D with
+   automatic flat-terrain fallback.
 
 These are display/source-integration fixes only; radar tracking, Doppler science,
 three-hour history accumulation and temporal inference contracts are unchanged.

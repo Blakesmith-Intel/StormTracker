@@ -115,7 +115,7 @@ block radar publication, playback, tracking or Doppler.
 
 | Release | Work package | Priority |
 | --- | --- | --- |
-| V9.9.0 | Layer framework + GA/DEA satellite basemap — candidate implemented | 1 |
+| V9.9.0 | GA satellite + place labels + optional 3-D terrain — candidate implemented | 1 |
 | V9.10.0 | Road closures | 2 |
 | V9.11.0 | Power outages | 3 |
 | V9.12.0 | Flood gauges | 4 |
@@ -126,12 +126,14 @@ authorised machine feed becomes available, the order can change.
 
 ## 6. Feature guardrails
 
-### GA satellite basemap
+### GA satellite basemap and terrain
 
 Use the accepted Geoscience Australia cached imagery service unless a future
-replacement is live-tested in the browser first. Basemap switching must not reset
-radar history, camera, selected site, tracks, playback or the motion cone. Keep
-weather imagery and vector overlays above the basemap.
+replacement is live-tested in the browser first. GA mode includes a transparent
+place-name/boundary reference overlay raised above weather imagery. Optional 3-D
+terrain uses ArcGIS WorldElevation3D/Terrain3D and must fall back cleanly to the
+ellipsoid if unavailable. Basemap or terrain switching must not reset radar
+history, camera, selected site, tracks, playback or the motion cone.
 
 ### Observed lightning
 
@@ -173,7 +175,7 @@ For every accepted release:
 7. Perform live desktop/mobile acceptance.
 8. Create the next immutable recovery reference only after acceptance.
 
-The repository currently contains 40 frontend regression suites.
+The repository currently contains 43 frontend regression suites.
 
 ## 8. Current important files
 

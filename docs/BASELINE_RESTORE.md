@@ -1,33 +1,38 @@
-# StormTracker final baseline — V9.7.2
+# StormTracker production baseline — V9.8.3
 
-The final production baseline is sealed by the annotated Git tag `v9.7.2`.
-The finaliser prints and records the exact commit SHA after it commits and pushes.
+The current full production baseline is sealed by the annotated Git tag `v9.8.3`.
+
+V9.8.3 includes the complete Queensland radar-site expansion, source-aware radar
+history windows, browser-local accumulation of genuine reflectivity frames toward
+a three-hour history, bounded display-only temporal interpolation across short
+missing intervals, the accepted 30-minute Doppler contract, persistent storm
+tracking, inferred 3-D structure, mobile controls, and the selected-track motion
+cone.
 
 To restore without overwriting current work:
 
 ```bash
 git fetch origin --tags
-git switch -c restore/v9.7.2 v9.7.2
+git switch -c restore/v9.8.3 v9.8.3
 npm test
 ```
+
+A repository restore branch named `restore/v9.8.3` also points to the exact
+sealed production commit.
 
 For future feature work:
 
 ```bash
-git switch -c feature/next-work v9.7.2
+git switch -c feature/next-work v9.8.3
 ```
 
-Do not move or reuse the `v9.7.2` tag. Future changes receive new commits/tags.
+Do not move or reuse the `v9.8.3` tag. Future production changes receive new
+commits and a new version tag.
 
-The production UI is live-weather only. Christmas 2023 scenario/regression modules
-remain internal engineering tests and continue to run under `npm test`; the public
-historical-validation page/controller are deliberately removed.
+The production UI remains browser-only and live-weather focused. Radar history
+older than the Bureau's current rolling WMTS window is accumulated locally in
+IndexedDB while that radar view is used; it is not fabricated retrospectively.
+Temporally inferred gap-fill frames are clearly labelled and excluded from storm
+identity, Doppler analysis and scoring.
 
-Reset view remains because it is functional. Cesium/OpenStreetMap attribution is
-required and is deliberately rendered in a static credit container outside the
-weather-frame crossfade.
-
-Scientific boundaries are unchanged: only the recovered 08/50/66 registrations
-feed exact storm-footprint wind analysis; the 11 added Doppler panels remain
-nominally registered display overlays. Inferred vertical structure and ordinal
-convective/lightning assessment remain explicitly inferred.
+The previous `v9.7.2` baseline remains an immutable historical recovery point.

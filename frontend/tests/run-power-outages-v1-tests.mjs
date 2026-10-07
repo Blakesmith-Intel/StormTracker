@@ -657,6 +657,101 @@ assert.equal(
   2
 );
 
+const boundaryFailure =
+  await loadPowerOutages({
+    nowMs:
+      now,
+
+    fetchImpl:
+      async url => {
+        const target =
+          String(url);
+
+        if (
+          target.includes(
+            "VwErgonOutages"
+          )
+        ) {
+          return okResponse(
+            ergonPayload
+          );
+        }
+
+        if (
+          target.includes(
+            "essential-energy-outages"
+          )
+        ) {
+          return textResponse(
+            essentialKml
+          );
+        }
+
+        if (
+          target.includes(
+            "Locality/FeatureServer/5/query"
+          )
+        ) {
+          return {
+            ok:
+              false,
+            status:
+              503
+          };
+        }
+
+        return okResponse(
+          energexPayload
+        );
+      }
+  });
+
+assert.deepEqual(
+  boundaryFailure.providers,
+  [
+    "Energex",
+    "Ergon"
+  ],
+  "Boundary failure must fail Essential Energy closed without affecting Queensland distributors."
+);
+
+assert.equal(
+  boundaryFailure.partial,
+  true
+);
+
+assert.equal(
+  boundaryFailure.failedProviders
+    .length,
+  1
+);
+
+assert.equal(
+  boundaryFailure.failedProviders[0]
+    .provider,
+  "Essential Energy"
+);
+
+assert.match(
+  boundaryFailure.failedProviders[0]
+    .message,
+  /Queensland boundary HTTP 503/
+);
+
+assert.equal(
+  boundaryFailure.payload
+    .features
+    .some(
+      feature =>
+        String(
+          feature.id
+        ).startsWith(
+          "essential:"
+        )
+    ),
+  false
+);
+
 await assert.rejects(
   () =>
     loadPowerOutages({

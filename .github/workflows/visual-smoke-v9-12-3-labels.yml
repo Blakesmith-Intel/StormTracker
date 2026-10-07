@@ -1,0 +1,45 @@
+name: Visual QA V9.12.3 Queensland town labels
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.12.3-decluttered-town-labels
+    paths:
+      - "frontend/src/context-layers/qld-town-label-*"
+      - "frontend/src/context-layers/qld-population-centres-v2.js"
+      - "frontend/tools/qld-town-label-visual-qa.html"
+      - "scripts/smoke-qld-town-label-visual.mjs"
+      - ".github/workflows/visual-smoke-v9-12-3-labels.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  browser-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install headless Chromium browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start isolated branch preview HTTP server
+        run: |
+          python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-label-preview.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/tools/qld-town-label-visual-qa.html >/dev/null
+      - name: Render real Cesium scene and check mobile label collisions
+        run: node scripts/smoke-qld-town-label-visual.mjs
+      - name: Upload mobile map evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stormtracker-v9-12-3-mobile-label-visual-evidence
+          path: qa-screenshots/
+          if-no-files-found: ignore
+          retention-days: 7

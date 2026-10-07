@@ -1,8 +1,10 @@
 import {
-  BOM_RIVER_TIDE_GAUGE_QUERY_URL,
   filterQueenslandRiverGauges,
   riverGaugeSummary
 } from "./river-gauges-v1.js?v=9.12.0-dev1";
+
+export const DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL =
+  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-gauge-metadata";
 
 export const DEFAULT_RIVER_HEIGHT_RELAY_URL =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-height-bulletins";
@@ -481,7 +483,7 @@ export async function loadRiverGaugeOperationalSnapshot({
     globalThis.fetch,
 
   gaugeUrl =
-    BOM_RIVER_TIDE_GAUGE_QUERY_URL,
+    DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
 
   relayUrl =
     DEFAULT_RIVER_HEIGHT_RELAY_URL

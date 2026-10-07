@@ -283,6 +283,19 @@ if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
     count: queenslandTownLabels?.count ?? 0,
     visible: queenslandTownLabels?.visibleLabels ?? []
   });
+  // Development-only reproducible camera positions for mobile visual QA.
+  window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, height),
+      orientation: {
+        heading: 0,
+        pitch: Cesium.Math.toRadians(pitch),
+        roll: 0
+      }
+    });
+    queenslandTownLabels?.draw(true);
+    scene.requestRender();
+  };
 }
 
 function setTerrainStatus(

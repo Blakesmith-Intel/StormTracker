@@ -17,7 +17,7 @@ new nominally registered Doppler panels remain display-only pending calibration.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and all 33 regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and the current 40 frontend regression suites must pass before Pages upload/deployment. |
 
 ## Queensland expansion
 
@@ -40,10 +40,9 @@ from footprint-restricted storm analysis until independently calibrated. This
 boundary is visible beside the loop information and recorded in the site registry.
 See [coverage inventory](QUEENSLAND_RADAR_COVERAGE.md).
 
-Deploy the updated relay once with `bash scripts/deploy-qld-relay.sh`, then publish
-the frontend through the existing Pages workflow. Neither has been deployed by
-the installer itself. Tagging remains held until the expanded deployed product is
-accepted.
+The Queensland relay expansion and frontend are deployed. V9.8.x radar-history
+changes are browser/frontend changes and do not require a new relay deployment
+unless a transport route itself changes.
 
 ## Delivered scope
 
@@ -55,19 +54,24 @@ nearest-scan pairing within eight minutes. Matching tolerance never extends the
 actual shared history. Latest GIF eligibility remains restricted to the original
 newest radar time. Historical wind is never borrowed from current imagery.
 
-Radar-only history supports the requested 30–180-minute windows. Doppler selection
-switches to 30 minutes. Changing from 30 minutes to a longer window automatically
-deselects Doppler and loads the longer radar history, while retaining the
-availability warning. A requested
-30-minute loop retains the accepted six-scan definition (six five-minute scans
-span 25 minutes before source clipping). The BoM Doppler page may list seven
-images; actual shared history, pairing and availability can reduce displayed
-frames to five or fewer. The GUI shows actual frame count and span.
+Radar-only history is source-aware. The UI exposes only supported
+30/60/90/120/150/180-minute windows plus All available. Genuine reflectivity
+frames are persisted per viewed radar in browser IndexedDB and can accumulate to
+a rolling three-hour display history. The browser retains roughly four hours as a
+storage buffer before pruning. As new observations arrive beyond three hours, the
+oldest displayed observations fall outside the 180-minute window and the newest
+ones enter.
+
+Missing five-minute display slots may be interpolated only between genuine
+bounding observations, for gaps no larger than 30 minutes. Those frames are
+explicitly labelled INFERRED and excluded from tracking, Doppler analysis and
+scoring. Doppler selection remains constrained to genuine shared 30-minute
+history; selecting a longer or All available radar window deselects Doppler.
 
 Playback repeats and supports pause, speed, scrubbing and latest-frame selection.
 Automatic updates retain storm IDs/history, Play/Pause state, selected timestamp
 when retained, camera and layer opacity settings. Opacity spans 0–100% for each
-layer, with radar/Doppler defaults of 45%/80%. Source timestamps show AEST (fixed
+layer, with radar/Doppler defaults of 65%/45%. Source timestamps show AEST (fixed
 UTC+10) and UTC; internal scientific comparisons remain UTC.
 
 Playback now crossfades snapshots of the complete rendered scene for up to
@@ -114,9 +118,11 @@ True live multi-elevation volumes and calibrated lightning
 probabilities are future scope, not unfinished requirements of this release.
 
 After publishing, confirm automatic Doppler deselection at longer windows, smooth
-playback and an update without reloading. Use the final annotated `v9.7.2` tag as the restore point after sealing this release. Five-minute checks remain unchanged. If upstream publication or a radar source stalls, the
-current loop is retained, its timestamps/source age remain visible, and automatic
-retry continues. Use manual refresh for an immediate additional check.
+playback, forward live updates and automatic history growth without a manual
+refresh. Five-minute checks remain unchanged. If upstream publication or a radar
+source stalls, the current loop is retained, its timestamps/source age remain
+visible, and automatic retry continues. The current production recovery reference
+is `restore/v9.8.4`; manual Refresh remains available for an immediate check.
 
 ## V9.7.1 interface cleanup
 
@@ -301,18 +307,10 @@ three hours.
 
 ## V9.8.3 production seal
 
-V9.8.3 is the current full production release. The production build passed the
-repository frontend validation gate and GitHub Pages deployment before sealing.
-The immutable annotated tag `v9.8.3` and restore branch `restore/v9.8.3` identify
-the release commit.
-
-This seal includes the source-aware three-hour radar-history architecture and its
-browser-local cache warm-up hardening. The Bureau WMTS source remains authoritative
-for genuine observations; browser persistence extends usable history prospectively,
-and bounded temporal interpolation remains display-only and explicitly excluded
-from measured tracking, Doppler analysis and scoring.
-
-The historical `v9.7.2` tag is retained unchanged as an earlier recovery point.
+V9.8.3 was the accepted predecessor to V9.8.4. It introduced source-aware
+three-hour radar history, browser-local persistence and cache warming. V9.8.4
+supersedes it because automatic incorporation of newly recovered historical cache
+frames required the chronology-rebuild correction documented below.
 
 
 ## V9.8.4 automatic history growth
@@ -335,3 +333,33 @@ waiting for the next five-minute scheduled check.
 The chronology guard remains in place for ordinary forward-only refreshes. It is
 bypassed only when a real historical backfill is detected. Doppler remains limited
 to genuine shared 30-minute history and does not use temporally inferred frames.
+
+
+## V9.8.4 production seal
+
+V9.8.4 is the current accepted full production release.
+
+Accepted runtime commit:
+
+```text
+acbc6aa63829d0532e32c28c2b0a49030a29b276
+```
+
+The GitHub Pages deployment for that runtime completed successfully on
+7 October 2026. The complete sealed repository state is preserved by
+`restore/v9.8.4`.
+
+The release keeps the five-minute lightweight newest-frame poll while restoring
+automatic growth of the displayed loop when genuine older observations are added
+to IndexedDB. Historical backfill is detected explicitly, the chronology guard is
+relaxed only for that case, and the tracking worker is rebuilt from the available
+observations in chronological order. Cache warm-up requests one immediate normal
+refresh after it adds frames.
+
+At the three-hour display limit the history behaves as a rolling window: new
+observations enter, observations older than the 180-minute display cutoff leave,
+and the persistent browser cache retains roughly four hours as a safety buffer
+before pruning.
+
+No V9.8.4 change converts inferred temporal frames into measurements. They remain
+display-only and excluded from track identity, Doppler analysis and scoring.

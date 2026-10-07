@@ -56,7 +56,8 @@ jobs:
                 String(d.getUTCDate()).padStart(2,"0")+
                 String(d.getUTCHours()).padStart(2,"0")+
                 String(d.getUTCMinutes()).padStart(2,"0");
-              const url="https://www.bom.gov.au/radar/IDR663.T."+stamp+".png";
+              const host = cadence===6 ? "https://ftp.bom.gov.au/anon/gen/radar/" : "https://www.bom.gov.au/radar/";
+              const url=host+"IDR663.T."+stamp+".png";
               const response=await fetch(url,{redirect:"manual",headers:{Accept:"image/png","User-Agent":"StormTracker-source-diagnostic"}});
               const bytes=new Uint8Array(await response.arrayBuffer());
               const png=bytes.length>=8&&bytes[0]===137&&bytes[1]===80&&bytes[2]===78&&bytes[3]===71;

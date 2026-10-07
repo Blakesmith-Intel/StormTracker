@@ -189,6 +189,12 @@ function showClosureInfo(
       feature
     );
 
+  $("powerOutageInfo")
+    ?.setAttribute(
+      "hidden",
+      ""
+    );
+
   panel.dataset.closureId =
     String(
       summary.id

@@ -13,7 +13,7 @@ function run(args) {
 
 const root = new URL('../', import.meta.url);
 for (const name of ['live3d-operational-v9.js', 'bom-wmts-loop-v2.js', 'bom-doppler-intake-v3.js',
-  'live-loop-refresh-v1.js', 'product-time-display-v1.js', 'doppler-request-v1.js', 'scene-crossfade-v1.js', 'touch-camera-gestures-v1.js', 'track-threat-cone-v1.js', 'radar-history-window-v1.js', 'radar-temporal-interpolation-v1.js', 'storage.js', 'context-layers/basemap-manager-v1.js']) {
+  'live-loop-refresh-v1.js', 'product-time-display-v1.js', 'doppler-request-v1.js', 'scene-crossfade-v1.js', 'touch-camera-gestures-v1.js', 'track-threat-cone-v1.js', 'radar-history-window-v1.js', 'radar-temporal-interpolation-v1.js', 'storage.js', 'frame-slider-v1.js', 'context-layers/basemap-manager-v1.js']) {
   run(['--check', fileURLToPath(new URL(`frontend/src/${name}`, root))]);
 }
 const tests = new URL('frontend/tests/', root);

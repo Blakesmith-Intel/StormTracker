@@ -1,8 +1,7 @@
 import {
   createPowerOutageLayer,
-  ENERGEX_ATTRIBUTION,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.11.0-dev1";
+} from "./power-outages-v1.js?v=9.11.0-dev2";
 
 const $ = id =>
   document.getElementById(id);
@@ -20,7 +19,7 @@ function setPowerStatus({
 
   target.textContent =
     message
-    || "Energex | current outages";
+    || "Energex + Ergon | current outages";
 
   target.dataset.kind =
     kind;
@@ -34,8 +33,9 @@ function formatQldTime(
 
   const parsed =
     Number.isFinite(numeric)
-    && String(value ?? "")
-      .trim() !== ""
+    && String(
+      value ?? ""
+    ).trim() !== ""
       ? numeric
       : Date.parse(
           String(
@@ -177,7 +177,7 @@ function showPowerOutageInfo(
 
   title.textContent =
     summary.suburbs
-    || `Event ${summary.id}`;
+    || `Event ${summary.eventId || summary.id}`;
 
   if (kicker) {
     kicker.textContent =
@@ -260,20 +260,30 @@ function showPowerOutageInfo(
   addDetailRow(
     rows,
     "Source",
-    ENERGEX_ATTRIBUTION
+    summary.attribution
   );
 
   panel.hidden =
     false;
 }
 
+export function powerOutageEntityFromPick(
+  picked
+) {
+  return (
+    picked?.id
+    ?? picked?.primitive?.id
+    ?? null
+  );
+}
+
 export function powerOutageIdFromPick(
   picked
 ) {
   const entity =
-    picked?.id
-    ?? picked?.primitive?.id
-    ?? null;
+    powerOutageEntityFromPick(
+      picked
+    );
 
   const id =
     entity
@@ -300,13 +310,12 @@ function outageIdNearPosition({
   const picks =
     typeof viewer.scene
       .drillPick === "function"
-      ? viewer.scene
-          .drillPick(
-            position,
-            24,
-            width,
-            height
-          )
+      ? viewer.scene.drillPick(
+          position,
+          24,
+          width,
+          height
+        )
       : [];
 
   for (
@@ -323,12 +332,15 @@ function outageIdNearPosition({
     }
   }
 
-  return powerOutageIdFromPick(
+  const picked =
     viewer.scene.pick(
       position,
       width,
       height
-    )
+    );
+
+  return powerOutageIdFromPick(
+    picked
   );
 }
 
@@ -355,16 +367,23 @@ export function initialiseOperationalPowerOutages({
   const canvas =
     viewer.scene.canvas;
 
+  const mapContainer =
+    $("cesiumContainer")
+    ?? canvas.parentElement;
+
   const layer =
     createPowerOutageLayer({
       viewer,
       CesiumRef,
+
       visible:
         Boolean(
           checkbox?.checked
         ),
+
       onStatus:
         setPowerStatus,
+
       onUpdate:
         features => {
           if (
@@ -384,9 +403,7 @@ export function initialiseOperationalPowerOutages({
             && !features.some(
               feature =>
                 String(
-                  powerOutageSummary(
-                    feature
-                  ).id
+                  feature.id
                 )
                 === selectedId
             )
@@ -421,25 +438,245 @@ export function initialiseOperationalPowerOutages({
     return true;
   }
 
-  const clickHandler =
-    new CesiumRef
-      .ScreenSpaceEventHandler(
-        canvas
-      );
+  function canvasPositionFromPointer(
+    event
+  ) {
+    const rect =
+      canvas
+        .getBoundingClientRect();
 
-  clickHandler
-    .setInputAction(
+    return new CesiumRef
+      .Cartesian2(
+        event.clientX
+          - rect.left,
+        event.clientY
+          - rect.top
+      );
+  }
+
+  function selectNearPosition(
+    position,
+    {
+      width = 30,
+      height = 30
+    } = {}
+  ) {
+    return showById(
+      outageIdNearPosition({
+        viewer,
+        position,
+        width,
+        height
+      })
+    );
+  }
+
+  const pointerTap =
+    {
+      id:
+        null,
+
+      x:
+        0,
+
+      y:
+        0,
+
+      startedAt:
+        0,
+
+      moved:
+        false
+    };
+
+  const onPointerDown =
+    event => {
+      if (
+        event.button !== undefined
+        && event.button !== 0
+      ) {
+        return;
+      }
+
+      if (
+        !mapContainer
+        || !mapContainer
+          .contains(
+            event.target
+          )
+      ) {
+        return;
+      }
+
+      const blockedControl =
+        event.target
+          ?.closest?.(
+            "#nav,#powerOutageInfo,#floodRoadClosureInfo"
+          );
+
+      if (blockedControl) {
+        return;
+      }
+
+      pointerTap.id =
+        event.pointerId;
+
+      pointerTap.x =
+        event.clientX;
+
+      pointerTap.y =
+        event.clientY;
+
+      pointerTap.startedAt =
+        performance.now();
+
+      pointerTap.moved =
+        false;
+    };
+
+  const onPointerMove =
+    event => {
+      if (
+        pointerTap.id
+        !== event.pointerId
+      ) {
+        return;
+      }
+
+      if (
+        Math.hypot(
+          event.clientX
+            - pointerTap.x,
+          event.clientY
+            - pointerTap.y
+        ) > 12
+      ) {
+        pointerTap.moved =
+          true;
+      }
+    };
+
+  const clearPointerTap =
+    event => {
+      if (
+        pointerTap.id
+        !== event.pointerId
+      ) {
+        return;
+      }
+
+      pointerTap.id =
+        null;
+    };
+
+  const onPointerUp =
+    event => {
+      if (
+        pointerTap.id
+        !== event.pointerId
+      ) {
+        return;
+      }
+
+      const duration =
+        performance.now()
+        - pointerTap.startedAt;
+
+      const isTap =
+        !pointerTap.moved
+        && duration <= 700;
+
+      pointerTap.id =
+        null;
+
+      if (!isTap) {
+        return;
+      }
+
+      selectNearPosition(
+        canvasPositionFromPointer(
+          event
+        ),
+        {
+          width:
+            event.pointerType
+            === "touch"
+              ? 42
+              : 28,
+
+          height:
+            event.pointerType
+            === "touch"
+              ? 42
+              : 28
+        }
+      );
+    };
+
+  window.addEventListener(
+    "pointerdown",
+    onPointerDown,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  window.addEventListener(
+    "pointermove",
+    onPointerMove,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  window.addEventListener(
+    "pointerup",
+    onPointerUp,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  window.addEventListener(
+    "pointercancel",
+    clearPointerTap,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  const clickFallback =
+    typeof PointerEvent
+      === "undefined"
+      ? new CesiumRef
+          .ScreenSpaceEventHandler(
+            canvas
+          )
+      : null;
+
+  clickFallback
+    ?.setInputAction(
       movement => {
-        showById(
-          outageIdNearPosition({
-            viewer,
-            position:
-              movement.position,
+        selectNearPosition(
+          movement.position,
+          {
             width:
               32,
             height:
               32
-          })
+          }
         );
       },
       CesiumRef
@@ -453,7 +690,7 @@ export function initialiseOperationalPowerOutages({
         canvas
       );
 
-  let lastHoverAt =
+  let lastHoverPickAt =
     0;
 
   hoverHandler
@@ -463,13 +700,13 @@ export function initialiseOperationalPowerOutages({
           performance.now();
 
         if (
-          now - lastHoverAt
+          now - lastHoverPickAt
           < 80
         ) {
           return;
         }
 
-        lastHoverAt =
+        lastHoverPickAt =
           now;
 
         const outageId =
@@ -479,20 +716,14 @@ export function initialiseOperationalPowerOutages({
               movement
                 .endPosition,
             width:
-              12,
+              18,
             height:
-              12
+              18
           });
 
         if (outageId) {
           canvas.style.cursor =
             "pointer";
-        } else if (
-          canvas.style.cursor
-          === "pointer"
-        ) {
-          canvas.style.cursor =
-            "";
         }
       },
       CesiumRef
@@ -520,7 +751,7 @@ export function initialiseOperationalPowerOutages({
             kind:
               "normal",
             message:
-              "Energex power outages hidden"
+              "Power outages hidden"
           });
         }
       }
@@ -554,11 +785,36 @@ export function initialiseOperationalPowerOutages({
     () => {
       layer.stop();
 
+      window.removeEventListener(
+        "pointerdown",
+        onPointerDown,
+        true
+      );
+
+      window.removeEventListener(
+        "pointermove",
+        onPointerMove,
+        true
+      );
+
+      window.removeEventListener(
+        "pointerup",
+        onPointerUp,
+        true
+      );
+
+      window.removeEventListener(
+        "pointercancel",
+        clearPointerTap,
+        true
+      );
+
       if (
-        !clickHandler
+        clickFallback
+        && !clickFallback
           .isDestroyed()
       ) {
-        clickHandler
+        clickFallback
           .destroy();
       }
 

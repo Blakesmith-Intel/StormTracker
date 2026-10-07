@@ -434,8 +434,14 @@ async function fetchJson(
       );
 
     if (!response.ok) {
+      const label =
+        provider
+        === "Queensland boundary"
+          ? provider
+          : `${provider} outage feed`;
+
       throw new Error(
-        `${provider} outage feed HTTP ${response.status}`
+        `${label} HTTP ${response.status}`
       );
     }
 

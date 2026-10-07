@@ -78,7 +78,25 @@ export function layoutTownLabels({
   cameraPitchDegrees = -90,
   previousVisible = []
 }) {
-  const budget = labelBudget(width, height, cameraHeight, mode, cameraPitchDegrees);
+  let budget = labelBudget(width, height, cameraHeight, mode, cameraPitchDegrees);
+  // Camera altitude and pitch can be misleading after Cesium lookAt transforms.
+  // Measure how much of Queensland is actually visible. A view spanning
+  // multiple distant regions is always a statewide-scale view, even when
+  // the camera is low and almost horizontal.
+  const positions = candidates.filter(place =>
+    Number.isFinite(place.longitude) && Number.isFinite(place.latitude)
+  );
+  if (positions.length > 1) {
+    const latitudes = positions.map(place => place.latitude);
+    const longitudes = positions.map(place => place.longitude);
+    const middleLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+    const northSouthKm = (Math.max(...latitudes) - Math.min(...latitudes)) * 111.2;
+    const eastWestKm = (Math.max(...longitudes) - Math.min(...longitudes)) *
+      111.2 * Math.cos(middleLat * Math.PI / 180);
+    if (Math.hypot(northSouthKm, eastWestKm) > 450) {
+      budget = Math.min(budget, 5);
+    }
+  }
   if (!budget) return [];
   const prev = new Set(previousVisible.map(String));
   const margin = 14;

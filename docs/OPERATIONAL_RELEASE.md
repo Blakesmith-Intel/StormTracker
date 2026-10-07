@@ -363,3 +363,26 @@ before pruning.
 
 No V9.8.4 change converts inferred temporal frames into measurements. They remain
 display-only and excluded from track identity, Doppler analysis and scoring.
+
+
+## V9.9.0 GA / DEA basemap
+
+V9.9.0 begins the situational-awareness layer programme with a basemap-only
+extension. The existing OpenStreetMap basemap remains available as **Street** and
+a new **GA satellite** option uses the official Digital Earth Australia OGC WMS
+service.
+
+The satellite source is the 2025 annual Landsat 8/9 GeoMAD product
+`ga_ls8cls9c_gm_cyear_3`, rendered with the DEA `simple_rgb` style. It is a
+30-metre annual representative cloud-reduced composite intended as stable map
+context; it is not current weather satellite imagery.
+
+Basemap state is isolated in `frontend/src/context-layers/basemap-manager-v1.js`.
+Switching replaces the bottom imagery provider only and must not reset or reload
+radar history, storm tracks, Doppler state, playback, camera position or the
+selected motion cone. The preference is persisted in browser localStorage.
+Basemap tile failures report their own source status and do not block the weather
+product.
+
+V9.8.4 remains the sealed recovery baseline until this candidate receives live
+desktop/mobile acceptance.

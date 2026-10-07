@@ -167,6 +167,12 @@ function showPowerOutageInfo(
       ""
     );
 
+  $("riverGaugeInfo")
+    ?.setAttribute(
+      "hidden",
+      ""
+    );
+
   panel.dataset
     .outageId =
     String(

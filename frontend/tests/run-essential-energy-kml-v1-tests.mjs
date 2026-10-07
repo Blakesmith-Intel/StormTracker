@@ -22,16 +22,16 @@ assert.equal(
 const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-  <Placemark>
-    <name>Coffs Harbour</name>
-    <styleUrl>#unplanned-outage</styleUrl>
+  <Placemark id="INCD-107941-r">
+    <Snippet><![CDATA[INCD-107941-r]]></Snippet>
+    <styleUrl>#sw_1249554_normal_unplanned</styleUrl>
     <description><![CDATA[
-      <span>Time Off:</span>29/07/2025 08:30:00
-      <span>Est. Time On:</span>29/07/2025 14:30:00
-      <span>No. of Customers affected:</span>281
-      <span>Reason:</span>We are investigating
-      <span>Last Updated:</span>29/07/2025 08:39:23
-      <span>Incident ID</span>INCD-107941-r
+      <h2>INCD-107941-r</h2>
+      <div><span>Time Off:</span>29/07/2025 08:30:00</div>
+      <div><span>Est. Time On:</span>29/07/2025 14:30:00</div>
+      <div><span>No. of Customers affected:</span>281</div>
+      <div><span>Reason:</span>We are investigating</div>
+      <div><span>Last Updated:</span>29/07/2025 08:39:23</div>
     ]]></description>
     <Polygon>
       <outerBoundaryIs>
@@ -47,16 +47,16 @@ const kml = `<?xml version="1.0" encoding="UTF-8"?>
     </Polygon>
   </Placemark>
 
-  <Placemark>
-    <name>Tamworth</name>
-    <styleUrl>#planned-outage</styleUrl>
+  <Placemark id="INCD-107145-r">
+    <Snippet><![CDATA[INCD-107145-r]]></Snippet>
+    <styleUrl>#sw_1249554_normal_planned</styleUrl>
     <description><![CDATA[
-      <span>Time Off:</span>03/07/2025 09:30:00
-      <span>Est. Time On:</span>03/07/2025 13:30:00
-      <span>No. of Customers affected:</span>64
-      <span>Reason:</span>General network maintenance
-      <span>Last Updated:</span>03/07/2025 09:34:43
-      <span>Incident ID:</span>INCD-107145-r
+      <h2>INCD-107145-r</h2>
+      <div><span>Time Off:</span>03/07/2025 09:30:00</div>
+      <div><span>Est. Time On:</span>03/07/2025 13:30:00</div>
+      <div><span>No. of Customers affected:</span>64</div>
+      <div><span>Reason:</span>General network maintenance</div>
+      <div><span>Last Updated:</span>03/07/2025 09:34:43</div>
     ]]></description>
     <MultiGeometry>
       <Polygon>
@@ -124,7 +124,8 @@ assert.equal(
 
 assert.equal(
   unplanned.properties.SUBURBS,
-  "Coffs Harbour"
+  "",
+  "The live Essential Energy KML does not publish a suburb/name field on each placemark."
 );
 
 assert.equal(
@@ -186,5 +187,5 @@ assert.equal(
 );
 
 console.log(
-  "Essential Energy KML checks passed: outage fields, AEST timestamps, planned/unplanned styling and polygon geometry convert to StormTracker GeoJSON."
+  "Essential Energy KML checks passed: live placemark IDs, outage fields, AEST timestamps, real planned/unplanned style IDs and polygon geometry convert to StormTracker GeoJSON."
 );

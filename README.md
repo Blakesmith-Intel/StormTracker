@@ -193,7 +193,11 @@ Wishlist item 1 is complete: Street/OpenStreetMap and GA satellite context,
 place-name reference labels and optional 3-D terrain are now part of the protected
 production UI.
 
-The next planned release is **V9.10.0 — observed lightning tracker**. It must use
-a genuine strike/event source with clear reuse rights and must remain separate
-from the existing radar/Doppler convective-lightning evidence score. Road
-closures, power outages and flood gauges now follow after lightning.
+Observed lightning is currently **parked**. Source reconnaissance did not identify
+a legitimate, zero-cost, near-real-time Australian strike feed that fits
+StormTracker's browser-first situational-awareness use and required polling
+cadence. The feature can be reopened if a suitable open feed appears or the
+project later accepts a paid data service.
+
+The next planned release is **V9.10.0 — road closures**, followed by power outages
+and flood gauges.

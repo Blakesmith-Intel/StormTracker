@@ -14,16 +14,16 @@ complete unless a specific defect is demonstrated. Future work should add
 situational-awareness layers around it rather than casually reopening validated
 tracking, Doppler or inferred-volume science.
 
-Remaining context capabilities are now prioritised as:
+Remaining active context capabilities are now prioritised as:
 
-1. **Observed lightning tracker**, using an actual strike/event feed with clear
-   reuse rights and browser-safe access.
-2. Road closures from authoritative Queensland/NSW sources.
-3. Electricity outage areas from Energex, Ergon Energy and Essential Energy.
-4. Bureau of Meteorology flood/river gauges with tidal-aware abnormal-rise logic.
+1. Road closures from authoritative Queensland/NSW sources.
+2. Electricity outage areas from Energex, Ergon Energy and Essential Energy.
+3. Bureau of Meteorology flood/river gauges with tidal-aware abnormal-rise logic.
 
-Observed lightning has been deliberately brought forward as the next development
-item. Road closures, power outages and flood gauges move back one release each.
+Observed lightning is **parked** after source reconnaissance found no legitimate,
+zero-cost, near-real-time Australian strike feed that fits the required cadence
+and browser-first operating model. Reopen it only if an appropriate open source
+appears or the project explicitly accepts a paid provider.
 
 ## 2. Non-negotiable production contract
 
@@ -135,15 +135,14 @@ block radar publication, playback, tracking or Doppler.
 | Release | Work package | Priority |
 | --- | --- | --- |
 | V9.9.0 | GA satellite + place labels + optional 3-D terrain — COMPLETE / SEALED | 1 |
-| V9.10.0 | Observed lightning tracker | 2 |
-| V9.11.0 | Road closures | 3 |
-| V9.12.0 | Power outages | 4 |
-| V9.13.0 | Flood gauges | 5 |
+| V9.10.0 | Road closures | 2 |
+| V9.11.0 | Power outages | 3 |
+| V9.12.0 | Flood gauges | 4 |
+| Parked | Observed lightning tracker | Reopen only if source constraints change |
 
-V9.10.0 begins with lightning-source discovery. Do not build the visible layer
-until the source contract is confirmed: strike/event timestamps, coordinates,
-age/freshness, reuse rights, browser accessibility and update cadence all need to
-be explicit.
+V9.10.0 begins with authoritative road-closure source discovery. Keep provider
+failure isolated from radar/tracking and preserve the source's own geometry and
+official advice.
 
 ## 6. Feature guardrails
 
@@ -219,15 +218,14 @@ The repository currently contains 45 frontend regression suites.
 
 ```bash
 git fetch origin
-git switch -c feature/lightning-v9.10.0 origin/restore/v9.9.1
+git switch -c feature/road-closures-v9.10.0 origin/restore/v9.9.1
 npm test
 ```
 
-Start with observed-lightning source discovery and keep the provider inside the
-context-layer subsystem. Prefer an authoritative or clearly licensed machine feed
-with real strike coordinates and timestamps. Do not infer observed lightning from
-the existing radar/Doppler convective score, and do not reopen tracking/science
-merely because the lightning layer is being added.
+Start with authoritative Queensland and NSW road-closure source discovery and
+keep each provider inside the context-layer subsystem. Preserve source geometry,
+timestamps and official advice, and do not reopen radar/tracking science merely
+because the road-closure layer is being added.
 
 ## 10. Optional harmless easter egg
 

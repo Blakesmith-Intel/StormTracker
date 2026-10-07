@@ -1,6 +1,6 @@
-# StormTracker Operational V9.9.0
+# StormTracker Operational V9.9.1
 
-Release date: 8 October 2026 (AEST). Status: V9.9.0 full production release sealed and deployed; wishlist item 1 complete.
+Release date: 8 October 2026 (AEST). Status: V9.9.1 full production release sealed and deployed; wishlist item 1 complete and Doppler playback smoothing accepted.
 
 The user confirmed V9.3 presentation controls and AEST display, and confirmed
 V9.4 automatic Doppler recovery works. Automated regression, installer and browser
@@ -472,7 +472,7 @@ Doppler science, temporal inference rules, three-hour history limits or the
 scientific contract. `restore/v9.8.4` remains an immutable historical fallback.
 
 
-## V9.9.1 Doppler playback smoothing candidate
+## V9.9.1 Doppler playback smoothing
 
 V9.9.1 addresses the visible Doppler flicker observed during live loop playback.
 The defect was in display-layer lifecycle rather than in Doppler data: the old
@@ -491,4 +491,20 @@ This is a presentation-only change. Doppler decoding, radial velocities,
 georegistration, matching tolerance, 30-minute source-history boundary, analytical
 samples, radar tracking and inferred-volume science are unchanged.
 
-V9.9.0 remains the sealed recovery baseline pending live acceptance of this patch.
+V9.9.1 is accepted and sealed. The complete recovery reference is `restore/v9.9.1`; `restore/v9.9.0` remains an unchanged historical fallback.
+
+
+### V9.9.1 production seal
+
+The V9.9.1 Doppler smoothing patch was live-accepted from recorded playback and
+passed the complete 45-suite frontend validation gate before deployment.
+
+Accepted runtime commit:
+
+```text
+a14a5f458d2e79b8afabe51a5f5f797fdeea1366
+```
+
+The current recovery reference is `restore/v9.9.1`. V9.10.0 observed-lightning
+work must branch from that restore point so the accepted double-buffered Doppler
+presentation behaviour remains protected.

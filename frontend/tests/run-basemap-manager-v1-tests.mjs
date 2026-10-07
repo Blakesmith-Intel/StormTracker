@@ -192,7 +192,7 @@ assert.equal(
 
 assert.match(
   QUEENSLAND_PLACE_LABELS.label,
-  /Queensland Globe Places/
+  /Queensland Globe population centres/
 );
 assert.equal(
   normaliseBasemapId("nonsense"),

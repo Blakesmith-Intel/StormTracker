@@ -97,9 +97,10 @@ import { formatProductTime, formatProductTimeRange } from "./product-time-displa
 import {
   radarHistoryTimeline,
   needsChronologicalRadarRebuild,
+  automaticRefreshUsesDopplerGate,
   hasNewMatchedProducts,
   createLiveLoopRefresh
-} from "./live-loop-refresh-v1.js?v=9.8.4";
+} from "./live-loop-refresh-v1.js?v=9.9.0-4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
@@ -3016,7 +3017,16 @@ async function loadHybridSequence(automatic = false) {
 
   const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords, selectedSourceRadars());
   shared.requestedRadarIds = selectedSourceRadars();
-  const radarOnlySite = shared.requestedRadarIds.length === 0;
+
+  // Radar-only playback must advance on new reflectivity even at sites that
+  // also have a Doppler product. Doppler availability gates automatic refresh
+  // only while the user has explicitly enabled the Doppler overlay.
+  const dopplerGatedRefresh =
+    automaticRefreshUsesDopplerGate(
+      withDoppler,
+      shared.requestedRadarIds
+    );
+
   const needsHistoricalRebuild =
     automatic
     && !withDoppler
@@ -3025,31 +3035,66 @@ async function loadHybridSequence(automatic = false) {
       trackedThrough,
       radarResultCache.keys()
     );
-  if (automatic) {
-    const required = publishedSharedTimeline?.radarIds.length ? publishedSharedTimeline.radarIds : selectedSourceRadars();
-    const failed = required.filter(id => sources.errors.has(id));
-    if (failed.length) throw new Error(failed.map(id => `Doppler ${id}: ${sources.errors.get(id)}`).join("; "));
+
+  if (
+    automatic
+    && dopplerGatedRefresh
+  ) {
+    const required =
+      publishedSharedTimeline?.radarIds.length
+        ? publishedSharedTimeline.radarIds
+        : selectedSourceRadars();
+
+    const failed =
+      required.filter(
+        id =>
+          sources.errors.has(id)
+      );
+
+    if (failed.length) {
+      throw new Error(
+        failed
+          .map(
+            id =>
+              `Doppler ${id}: ${sources.errors.get(id)}`
+          )
+          .join("; ")
+      );
+    }
   }
   const discoveredImages = new Set([...sources.histories].flatMap(([id, history]) =>
     history.frames.map(frame => `${id}:${frame.filename}`)));
   for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
-  const availableEndUtc = radarOnlySite ? times.at(-1) : shared.endUtc;
+  const availableEndUtc =
+    withDoppler
+      ? shared.endUtc
+      : times.at(-1);
+
   if (
     automatic
     && !needsHistoricalRebuild
     && (
-      (!radarOnlySite && !hasNewMatchedProducts(publishedSharedTimeline, shared))
+      (
+        dopplerGatedRefresh
+        && !hasNewMatchedProducts(
+          publishedSharedTimeline,
+          shared
+        )
+      )
       || (
         hybridFrames.length
         && Date.parse(availableEndUtc)
-          <= Date.parse(hybridFrames.at(-1).observedUtc)
+          <= Date.parse(
+            hybridFrames.at(-1).observedUtc
+          )
       )
     )
   ) {
     $("autoRefreshNote").textContent =
-      radarOnlySite
-        ? "Auto update: waiting for a new radar image."
-        : "Auto update: waiting for new matching radar + Doppler images.";
+      dopplerGatedRefresh
+        ? "Auto update: waiting for new matching radar + Doppler images."
+        : "Auto update: waiting for a new radar image.";
+
     return;
   }
   const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(availableEndUtc)) : times;
@@ -3075,9 +3120,25 @@ async function loadHybridSequence(automatic = false) {
         : loadBomReflectivityMosaicAtTime(entry.observedUtc, selectedRadarRegion()),
       prepareDopplerState(entry, sources)
     ]);
-    const needsPair = withDoppler || (automatic && entry.observedUtc === shared.endUtc);
-    if (radarLoad.status !== "fulfilled" || dopplerLoad.status !== "fulfilled" ||
-        (needsPair && !shared.radarIds.every(id => dopplerLoad.value.pairings.some(pair => pair.radarId === id && pair.matched)))) {
+    const needsPair =
+      withDoppler;
+
+    if (
+      radarLoad.status !== "fulfilled"
+      || dopplerLoad.status !== "fulfilled"
+      || (
+        needsPair
+        && !shared.radarIds.every(
+          id =>
+            dopplerLoad.value.pairings
+              .some(
+                pair =>
+                  pair.radarId === id
+                  && pair.matched
+              )
+        )
+      )
+    ) {
       failures.push(entry.observedUtc);
       if (entry.observedUtc === availableEndUtc) {
         newestFailure = radarLoad.status === "rejected" ? `Radar image: ${radarLoad.reason?.message}` :
@@ -3316,7 +3377,7 @@ async function loadHybridSequence(automatic = false) {
   $("autoRefreshNote").textContent =
     needsHistoricalRebuild
       ? "Auto update: historical cache expanded; loop rebuilt chronologically."
-      : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${radarOnlySite ? "radar images" : "matching products"} every 5 minutes.`;
+      : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${dopplerGatedRefresh ? "matching radar + Doppler products" : "radar images"} every 5 minutes.`;
   if (selectedRadarRegion() !== "SEQ" && !["66","50","08"].includes(selectedRadarRegion()) && !radarOnlySite) {
     $("sharedHistoryNote").textContent += " · wind display only (nominal registration)";
   }

@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.8\.2/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.8\.3/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -36,6 +36,14 @@ assert.doesNotMatch(html, /<option value="150">150 min<\/option>/);
 assert.match(js, /availableRadarLoopMinutes/);
 assert.match(js, /All available/);
 assert.match(js, /Radar history available:/);
+assert.match(js, /INFERRED temporal gap-fill/);
+assert.match(js, /excluded from tracking\/scoring/);
+assert.match(js, /interpolateRadarFrame/);
+assert.match(html, /retains up to 3 hours per viewed radar/);
+assert.match(js, /getRadarFrames/);
+assert.match(js, /putRadarFrame/);
+assert.match(js, /pruneRadarFrames/);
+assert.match(js, /findLatestBomReflectivityTime/);
 assert.match(js, /createStormTrackerTouchCameraGestures/);
 assert.match(js, /SingleTileImageryProvider/);
 

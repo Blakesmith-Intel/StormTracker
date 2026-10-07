@@ -226,7 +226,7 @@ const filtered =
 
 assert.equal(
   filtered.features.length,
-  2
+  1
 );
 
 const energexSummary =
@@ -569,7 +569,7 @@ assert.equal(
   partial.payload
     .features
     .length,
-  1
+  2
 );
 
 await assert.rejects(

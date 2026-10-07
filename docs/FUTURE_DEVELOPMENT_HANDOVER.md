@@ -115,7 +115,7 @@ block radar publication, playback, tracking or Doppler.
 
 | Release | Work package | Priority |
 | --- | --- | --- |
-| V9.9.0 | Layer framework + GA/DEA satellite basemap | 1 |
+| V9.9.0 | Layer framework + GA/DEA satellite basemap — candidate implemented | 1 |
 | V9.10.0 | Road closures | 2 |
 | V9.11.0 | Power outages | 3 |
 | V9.12.0 | Flood gauges | 4 |

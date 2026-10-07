@@ -1,7 +1,7 @@
 import {
   createPowerOutageLayer,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.11.2";
+} from "./power-outages-v1.js?v=9.12.0-dev1";
 
 const $ = id =>
   document.getElementById(id);
@@ -59,7 +59,10 @@ export function formatPowerOutageTime(
       "en-AU",
       {
         timeZone:
-          "Australia/Brisbane",
+          provider
+          === "Essential Energy"
+            ? "Australia/Sydney"
+            : "Australia/Brisbane",
         day:
           "2-digit",
         month:
@@ -159,6 +162,12 @@ function showPowerOutageInfo(
     );
 
   $("floodRoadClosureInfo")
+    ?.setAttribute(
+      "hidden",
+      ""
+    );
+
+  $("riverGaugeInfo")
     ?.setAttribute(
       "hidden",
       ""

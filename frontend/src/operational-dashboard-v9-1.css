@@ -500,3 +500,129 @@ dialog::backdrop { background:#0009; }
     margin:-1px 0 3px;
   }
 }
+
+
+/* V9.12.0 BoM river gauges */
+.river-gauge-row button {
+  min-height:25px;
+  padding:3px 7px;
+}
+.river-gauge-row label {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+#riverGaugeStatus {
+  margin:-2px 0 5px;
+  text-align:right;
+}
+#riverGaugeStatus[data-kind="error"] {
+  color:#ff9d91;
+}
+#riverGaugeStatus[data-kind="ok"] {
+  color:#99e2b7;
+}
+#riverGaugeStatus[data-kind="warning"] {
+  color:#ffc44d;
+}
+.river-gauge-key {
+  position:relative;
+  display:inline-block;
+  flex:0 0 auto;
+  width:14px;
+  height:14px;
+  border:2px solid #111;
+  border-radius:50%;
+  outline:1px solid #fff;
+  background:#4ca6ff;
+  box-sizing:border-box;
+}
+.river-gauge-key::before {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:6px;
+  height:2px;
+  border-radius:2px;
+  background:#111;
+  transform:translate(-50%,-50%);
+}
+.river-gauge-key-large {
+  width:24px;
+  height:24px;
+  border-width:3px;
+}
+.river-gauge-key-large::before {
+  width:11px;
+  height:3px;
+}
+.river-gauge-info-heading {
+  display:flex;
+  align-items:center;
+  min-width:0;
+  gap:10px;
+}
+.river-gauge-info-heading > div {
+  display:grid;
+  min-width:0;
+  gap:2px;
+}
+.river-gauge-info .map-info-kicker {
+  color:#72c7ff;
+}
+.river-gauge-info[data-gauge-state="rising"] .river-gauge-key {
+  background:#ffd43b;
+}
+.river-gauge-info[data-gauge-state="rising"] .map-info-kicker {
+  color:#ffd43b;
+}
+.river-gauge-info[data-gauge-state="tidal-rise"] .river-gauge-key {
+  background:#45c7e8;
+}
+.river-gauge-info[data-gauge-state="tidal-rise"] .map-info-kicker {
+  color:#7ee4f5;
+}
+.river-gauge-info[data-gauge-state="falling"] .river-gauge-key {
+  background:#56c596;
+}
+.river-gauge-info[data-gauge-state="minor"] .river-gauge-key {
+  background:#ff8c1a;
+}
+.river-gauge-info[data-gauge-state="minor"] .map-info-kicker {
+  color:#ffad5c;
+}
+.river-gauge-info[data-gauge-state="moderate"] .river-gauge-key {
+  background:#ff4d4d;
+}
+.river-gauge-info[data-gauge-state="moderate"] .map-info-kicker {
+  color:#ff7777;
+}
+.river-gauge-info[data-gauge-state="major"] .river-gauge-key {
+  background:#bd2fff;
+}
+.river-gauge-info[data-gauge-state="major"] .map-info-kicker {
+  color:#dc8aff;
+}
+#riverGaugeInfoTitle {
+  display:block;
+  max-width:250px;
+  overflow-wrap:anywhere;
+}
+#riverGaugeInfoRows {
+  border-top:1px solid #31424d;
+  padding-top:8px;
+}
+#riverGaugeInfoRows > strong {
+  text-align:left;
+}
+@media (max-width:700px) {
+  .river-gauge-row button {
+    min-height:25px;
+    font-size:9px;
+  }
+  #riverGaugeStatus {
+    font-size:8px;
+    margin:-1px 0 3px;
+  }
+}

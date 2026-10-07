@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.11.3</title>
+  <title>StormTracker — Operational V9.12.0</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.11.3">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.12.0">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -46,6 +46,8 @@
       <div id="floodRoadClosureStatus" class="note" role="status">QLDTraffic · flood closures only</div>
       <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox" checked> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Power outages</label><button id="refreshPowerOutagesButton" type="button">Refresh</button></div>
       <div id="powerOutageStatus" class="note" role="status">Energex + Ergon + Essential Energy · current outages</div>
+      <div class="layer-row river-gauge-row"><label><input id="showRiverGauges" type="checkbox"> <span class="river-gauge-key" aria-hidden="true"></span> River gauges</label><button id="refreshRiverGaugesButton" type="button">Refresh</button></div>
+      <div id="riverGaugeStatus" class="note" role="status">BoM · live river heights</div>
       <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
       <div class="layer-row"><label><input id="showTrackVolumes" type="checkbox" checked> Track-specific 3-D</label><button id="openDetailsButton">Tracks / details</button></div>
       <div class="track-display-controls">
@@ -89,6 +91,10 @@
     <section id="powerOutageInfo" class="map-info-card power-outage-info" aria-live="polite" hidden>
       <header><div class="power-outage-info-heading"><span class="power-outage-key power-outage-key-large" aria-hidden="true"></span><div><span id="powerOutageInfoKicker" class="map-info-kicker">POWER OUTAGE</span><strong id="powerOutageInfoTitle">Power outage</strong></div></div><button id="closePowerOutageInfo" type="button" aria-label="Close power outage details">×</button></header>
       <div id="powerOutageInfoRows" class="metric"></div>
+    </section>
+    <section id="riverGaugeInfo" class="map-info-card river-gauge-info" aria-live="polite" hidden>
+      <header><div class="river-gauge-info-heading"><span class="river-gauge-key river-gauge-key-large" aria-hidden="true"></span><div><span id="riverGaugeInfoKicker" class="map-info-kicker">RIVER GAUGE</span><strong id="riverGaugeInfoTitle">River gauge</strong></div></div><button id="closeRiverGaugeInfo" type="button" aria-label="Close river gauge details">×</button></header>
+      <div id="riverGaugeInfoRows" class="metric"></div>
     </section>
     <div id="mapTruthLabel">Measured reflectivity / inferred vertical structure</div>
   </main>
@@ -250,6 +256,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.11.3"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.12.0"></script>
 </body>
 </html>

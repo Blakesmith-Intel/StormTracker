@@ -1,0 +1,30 @@
+name: Smoke StormTracker V9.12 River Gauges
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.12-flood-gauges
+    paths:
+      - "frontend/src/context-layers/river-gauges-v1.js"
+      - "frontend/src/context-layers/river-gauge-observations-v1.js"
+      - "frontend/src/context-layers/river-gauge-layer-v1.js"
+      - "scripts/smoke-river-gauge-live.mjs"
+      - ".github/workflows/smoke-v9-12-river-gauges.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-join:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Live BoM gauge join smoke
+        run: node scripts/smoke-river-gauge-live.mjs

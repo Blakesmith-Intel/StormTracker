@@ -43,6 +43,8 @@ assert.match(html, /retains up to 3 hours per viewed radar/);
 assert.match(js, /getRadarFrames/);
 assert.match(js, /putRadarFrame/);
 assert.match(js, /pruneRadarFrames/);
+assert.match(js, /warmRadarHistoryCache/);
+assert.match(js, /Bootstrap the browser-local archive/);
 assert.match(js, /findLatestBomReflectivityTime/);
 assert.match(js, /createStormTrackerTouchCameraGestures/);
 assert.match(js, /SingleTileImageryProvider/);

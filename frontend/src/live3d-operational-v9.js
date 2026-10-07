@@ -2618,6 +2618,73 @@ async function showHybridFrame(index) {
   if (animateFrame) await frameCrossfade.play(Math.min(200, playbackDelayForSpeed(selectedPlaybackSpeed()) * .5));
 }
 
+async function warmRadarHistoryCache(
+  region,
+  observedTimes
+) {
+  // Let the interactive load finish first. Cache warming is opportunistic and
+  // must never compete with a user-requested loop or a site change.
+  await new Promise(
+    resolve => setTimeout(resolve, 1500)
+  );
+
+  const candidates =
+    normaliseRadarHistoryTimes(
+      observedTimes
+    );
+
+  for (const observedUtc of candidates) {
+    if (
+      selectedRadarRegion() !== region
+      || sequenceLoading
+    ) {
+      return;
+    }
+
+    if (radarFrameCache.has(observedUtc)) {
+      continue;
+    }
+
+    try {
+      const frame =
+        await loadBomReflectivityMosaicAtTime(
+          observedUtc,
+          region
+        );
+
+      radarFrameCache.set(
+        observedUtc,
+        frame
+      );
+
+      await putRadarFrame(
+        region,
+        frame
+      );
+    } catch (error) {
+      // Probe-readable timestamps can still fail if one tile in the complete
+      // mosaic disappears. Cache warming is best-effort and never affects the
+      // currently displayed loop.
+      console.warn(
+        `Unable to warm radar history cache for ${region} at ${observedUtc}`,
+        error
+      );
+    }
+  }
+
+  pruneRadarFrames({
+    beforeEpoch:
+      Date.now()
+      - 4 * 60 * 60 * 1000,
+    maxRecords: 240
+  }).catch(error =>
+    console.warn(
+      "Unable to prune warmed radar history cache",
+      error
+    )
+  );
+}
+
 async function loadHybridSequence(automatic = false) {
   if (!automatic) setStatus("Checking available BOM radar history…");
 
@@ -3153,6 +3220,19 @@ async function loadHybridSequence(automatic = false) {
       error
     )
   );
+
+  // Bootstrap the browser-local archive with every source frame that the
+  // Bureau still exposes, not just the currently selected display window.
+  // This shortens the time needed to accumulate a full three-hour history.
+  if (
+    !automatic
+    && !recentDiscovery
+  ) {
+    warmRadarHistoryCache(
+      region,
+      discoveredTimes
+    );
+  }
 }
 
 async function runSourceLoad(loader, background = false) {

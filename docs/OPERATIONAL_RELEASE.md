@@ -292,4 +292,9 @@ Live source diagnostics on 7 October 2026 found the production WMTS endpoint
 exposing a variable recent window of roughly 40–65 minutes of scan span during
 the checks. The automatic five-minute refresh therefore probes only for the
 newest source image and adds it to the local history; full-horizon discovery is
-reserved for initial/manual/site-change loads.
+reserved for initial/manual/site-change loads. After a successful full discovery,
+StormTracker warms the browser cache with the remaining readable source frames
+while the interface is idle, rather than preserving only the currently selected
+display window. This lets a newly viewed site begin with the maximum history still
+available upstream before the rolling local archive continues accumulating toward
+three hours.

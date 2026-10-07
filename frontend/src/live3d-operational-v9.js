@@ -1,7 +1,7 @@
 import { QLD_RADAR_SITES, dopplerRadarsForRegion } from "./qld-radar-sites-v1.js";
 import {
   loadLatestBomReflectivityMosaic,
-  findRecentBomReflectivityTimes,
+  discoverBomReflectivityHistory,
   loadBomReflectivityMosaicAtTime
 } from "./bom-wmts-loop-v2.js?v=operational-v9-7";
 
@@ -66,10 +66,17 @@ import {
 } from "./track-assessment-v2.js?v=assessment-v2";
 
 import {
-  frameCountForLoopMinutes,
-  normaliseLoopMinutes,
   playbackDelayForSpeed
 } from "./operational-loop-v1.js?v=operational-v9";
+
+import {
+  ALL_AVAILABLE_LOOP_VALUE,
+  availableRadarLoopMinutes,
+  continuousRadarHistoryTimes,
+  normaliseRadarHistoryTimes,
+  radarHistorySpanMinutes,
+  selectRadarHistoryTimes
+} from "./radar-history-window-v1.js?v=9.8.2";
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
@@ -210,8 +217,9 @@ let sequenceLoading = false;
 let sharedTimeline = null;
 let preparedDopplerStates = [];
 let publishedSharedTimeline = null;
-let loadedLoopMinutes = null;
+let loadedLoopSelection = null;
 let loadedWithDoppler = null;
+let availableRadarHistoryTimes = [];
 let trackedThrough = null;
 const radarFrameCache = new Map();
 const radarResultCache = new Map();
@@ -269,12 +277,73 @@ function setStatus(message, kind = "normal") {
   $("status").dataset.kind = kind;
 }
 
+function selectedLoopSelection() {
+  return $("loopDurationMinutes")?.value || "30";
+}
+
 function selectedLoopMinutes() {
-  return normaliseLoopMinutes(
-    $("loopDurationMinutes")
-      ?.value
-    ?? 30
-  );
+  const selection = selectedLoopSelection();
+  return selection === ALL_AVAILABLE_LOOP_VALUE
+    ? radarHistorySpanMinutes(availableRadarHistoryTimes)
+    : Number(selection);
+}
+
+function availableHistorySummary(times = availableRadarHistoryTimes) {
+  const history = normaliseRadarHistoryTimes(times);
+  if (!history.length) return "Radar history unavailable";
+  const span = Math.round(radarHistorySpanMinutes(history));
+  return `Radar history available: ${span} min · ${history.length} frames · ${formatProductTimeRange(history[0], history.at(-1))}`;
+}
+
+function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
+  availableRadarHistoryTimes = continuousRadarHistoryTimes(times);
+  const selector = $("loopDurationMinutes");
+  const previous = preserveSelection ? selector.value : "30";
+  const available = availableRadarLoopMinutes(availableRadarHistoryTimes);
+  const options = available.map(minutes => {
+    const option = document.createElement("option");
+    option.value = String(minutes);
+    option.textContent = `${minutes} min`;
+    return option;
+  });
+
+  if (availableRadarHistoryTimes.length) {
+    const all = document.createElement("option");
+    const span = Math.round(radarHistorySpanMinutes(availableRadarHistoryTimes));
+    all.value = ALL_AVAILABLE_LOOP_VALUE;
+    all.textContent = `All available · ${span} min / ${availableRadarHistoryTimes.length} frames`;
+    options.push(all);
+  }
+
+  selector.replaceChildren(...options);
+
+  if (!options.length) {
+    const unavailable = document.createElement("option");
+    unavailable.value = "";
+    unavailable.textContent = "No radar history";
+    selector.append(unavailable);
+    selector.disabled = true;
+    return;
+  }
+
+  selector.disabled = sequenceLoading;
+  const values = new Set(options.map(option => option.value));
+  let desired = values.has(previous)
+    ? previous
+    : (
+        previous === "" && values.has("30")
+          ? "30"
+          : ALL_AVAILABLE_LOOP_VALUE
+      );
+
+  if (
+    $("showDopplerOverlay")?.checked
+    && values.has("30")
+  ) {
+    desired = "30";
+  }
+
+  selector.value = desired;
 }
 
 function selectedPlaybackSpeed() {
@@ -286,33 +355,55 @@ function selectedPlaybackSpeed() {
 }
 
 function updateLoopButtonLabel() {
-  const minutes =
-    selectedLoopMinutes();
+  const selection = selectedLoopSelection();
+  const minutes = selectedLoopMinutes();
+  const allAvailable = selection === ALL_AVAILABLE_LOOP_VALUE;
 
-  const button =
-    $("loadHybridButton");
-
+  const button = $("loadHybridButton");
   if (button) {
     button.textContent =
       window.matchMedia?.("(max-width:700px)").matches
-        ? `Load ${minutes}m`
-        : `Load ${minutes}-min storm loop`;
+        ? (allAvailable ? "Load all" : `Load ${minutes}m`)
+        : (allAvailable
+            ? "Load all available radar history"
+            : `Load ${minutes}-min storm loop`);
   }
 
-  const loopWindow =
-    $("operationalLoopWindow");
-
+  const loopWindow = $("operationalLoopWindow");
   if (loopWindow && !hybridFrames.length) {
-    loopWindow.textContent = `${minutes} min requested`;
+    loopWindow.textContent = availableRadarHistoryTimes.length
+      ? (allAvailable
+          ? `${Math.round(minutes)} min available`
+          : `${minutes} min selected`)
+      : "Checking history";
   }
-  $("dopplerHistoryWarning").hidden = minutes <= 30;
+
+  $("dopplerHistoryWarning").hidden =
+    !allAvailable && minutes <= 30;
 }
 
 function enforceDopplerWindow() {
-  if ($("showDopplerOverlay").checked && selectedLoopMinutes() > 30) {
-    $("loopDurationMinutes").value = "30";
-    $("autoRefreshNote").textContent = "Doppler selected: loop changed to 30 minutes.";
+  if (!$("showDopplerOverlay").checked) {
+    updateLoopButtonLabel();
+    return;
   }
+
+  const available = new Set(
+    availableRadarLoopMinutes(availableRadarHistoryTimes)
+      .map(String)
+  );
+
+  if (!available.has("30")) {
+    $("showDopplerOverlay").checked = false;
+    clearDopplerOverlay();
+    $("autoRefreshNote").textContent =
+      "Doppler unavailable: current radar history does not support the 30-minute shared loop.";
+  } else if (selectedLoopSelection() !== "30") {
+    $("loopDurationMinutes").value = "30";
+    $("autoRefreshNote").textContent =
+      "Doppler selected: loop changed to 30 minutes.";
+  }
+
   updateLoopButtonLabel();
 }
 
@@ -532,7 +623,9 @@ function configureRadarSite() {
     option.textContent = `${id} · ${QLD_RADAR_SITES[id].name}`; return option;
   }));
   selector.disabled = ids.length === 0;
-  $("showDopplerOverlay").disabled = ids.length === 0;
+  $("showDopplerOverlay").disabled =
+    ids.length === 0
+    || !availableRadarLoopMinutes(availableRadarHistoryTimes).includes(30);
   if (!ids.length) $("showDopplerOverlay").checked = false;
   $("radarSite").title = selectedRadarRegion() === "SEQ" ? "Regional mosaic: Mt Stapylton, Marburg and Gympie" :
     `${QLD_RADAR_SITES[selectedRadarRegion()].name}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
@@ -2407,14 +2500,34 @@ async function showHybridFrame(index) {
 }
 
 async function loadHybridSequence(automatic = false) {
-  const loopMinutes = selectedLoopMinutes();
-  const withDoppler = $("showDopplerOverlay").checked;
-  const requestedFrames = frameCountForLoopMinutes(loopMinutes);
-  if (!automatic) setStatus(`Loading up to ${requestedFrames} radar frames for a ${loopMinutes}-minute tracking loop…`);
-  const [times, sources] = await Promise.all([
-    findRecentBomReflectivityTimes(Date.now(), requestedFrames, selectedRadarRegion()),
+  if (!automatic) setStatus("Checking available BOM radar history…");
+
+  const [discoveredTimes, sources] = await Promise.all([
+    discoverBomReflectivityHistory(Date.now(), 180, selectedRadarRegion()),
     loadDopplerHistoriesAndPalettes()
   ]);
+
+  updateRadarHistoryOptions(discoveredTimes);
+  enforceDopplerWindow();
+
+  const loopSelection = selectedLoopSelection();
+  const loopMinutes = selectedLoopMinutes();
+  const withDoppler = $("showDopplerOverlay").checked;
+  const times = selectRadarHistoryTimes(
+    availableRadarHistoryTimes,
+    withDoppler ? 30 : loopSelection
+  );
+
+  if (!automatic) {
+    setStatus(
+      withDoppler
+        ? `Loading 30-minute shared radar / Doppler history from ${times.length} available radar frames…`
+        : (loopSelection === ALL_AVAILABLE_LOOP_VALUE
+            ? `Loading all available radar history (${Math.round(loopMinutes)} min / ${times.length} frames)…`
+            : `Loading ${loopMinutes}-minute radar history from ${times.length} source frames…`)
+    );
+  }
+
   const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords, selectedSourceRadars());
   shared.requestedRadarIds = selectedSourceRadars();
   const radarOnlySite = shared.requestedRadarIds.length === 0;
@@ -2503,7 +2616,7 @@ async function loadHybridSequence(automatic = false) {
   dopplerLatestRecords = sources.latestRecords;
   const publishedEntries = shared.entries.filter(entry => frames.some(frame => frame.observedUtc === entry.observedUtc));
   publishedSharedTimeline = { ...shared, entries: publishedEntries, endUtc: publishedEntries.at(-1)?.observedUtc ?? null };
-  loadedLoopMinutes = loopMinutes;
+  loadedLoopSelection = loopSelection;
   loadedWithDoppler = withDoppler;
   sharedTimeline = { ...timeline, startUtc: frames[0].observedUtc, endUtc: frames.at(-1).observedUtc,
     spanMinutes: (Date.parse(frames.at(-1).observedUtc) - Date.parse(frames[0].observedUtc)) / 60000, failures };
@@ -2513,10 +2626,16 @@ async function loadHybridSequence(automatic = false) {
   hybridFrameIndex = automatic ? Math.max(0, frames.findIndex(frame => frame.observedUtc === oldTime)) : 0;
   clearDopplerOverlay();
   const range = formatProductTimeRange(sharedTimeline.startUtc, sharedTimeline.endUtc);
-  $("operationalLoopWindow").textContent = `${sharedTimeline.spanMinutes} min span`;
-  $("operationalLoopWindow").title = `${loopMinutes} min requested; ${withDoppler ? "shared source" : "radar"} history`;
-  $("sharedHistoryNote").title = `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
-  $("sharedHistoryNote").textContent = `${range} · ${frames.length} ${withDoppler ? "shared" : "radar"} frames` +
+  $("operationalLoopWindow").textContent =
+    loopSelection === ALL_AVAILABLE_LOOP_VALUE
+      ? `${Math.round(sharedTimeline.spanMinutes)} min available`
+      : `${loopMinutes} min loop`;
+  $("operationalLoopWindow").title =
+    `${Math.round(sharedTimeline.spanMinutes)} min actual scan span; ${withDoppler ? "shared source" : "radar"} history`;
+  $("sharedHistoryNote").title =
+    `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
+  $("sharedHistoryNote").textContent =
+    `${availableHistorySummary()} · Loaded ${frames.length} ${withDoppler ? "shared" : "radar"} frames (${range})` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
     (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
   $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${radarOnlySite ? "radar images" : "matching products"} every 5 minutes.`;
@@ -2679,8 +2798,11 @@ async function runSourceLoad(loader, background = false) {
     else setStatus(error.message, "error");
   } finally {
     sequenceLoading = false;
-    $("loopDurationMinutes").disabled = false;
-    $("showDopplerOverlay").disabled = selectedSourceRadars().length === 0;
+    $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
+    $("showDopplerOverlay").disabled =
+      selectedSourceRadars().length === 0
+      || !availableRadarLoopMinutes(availableRadarHistoryTimes).includes(30);
+
     $("radarSite").disabled = false;
     for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
     $("hybridPlayButton").disabled = hybridFrames.length < 2;
@@ -2707,7 +2829,7 @@ async function loadLatest() {
   hybridFrameIndex = 0;
   sharedTimeline = null;
   publishedSharedTimeline = null;
-  loadedLoopMinutes = null;
+  loadedLoopSelection = null;
   loadedWithDoppler = null;
   $("hybridFrameLabel").textContent = "—";
   $("hybridRows").innerHTML = '<div class="hybrid-muted">Load a shared loop to view storm tracks.</div>';
@@ -2871,6 +2993,13 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
   if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];
+  availableRadarHistoryTimes = [];
+  const historyOption = document.createElement("option");
+  historyOption.value = "";
+  historyOption.textContent = "Checking radar history…";
+  $("loopDurationMinutes").replaceChildren(historyOption);
+  $("loopDurationMinutes").disabled = true;
+  $("operationalLoopWindow").textContent = "Checking history";
   hybridSource.entities.removeAll(); clearHybridTrackVolumeCollection();
   await loadHybridSequence();
 }));
@@ -2878,7 +3007,10 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
 $("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSequence));
 $("loopDurationMinutes").addEventListener("change", () => {
   frameCrossfade.clear();
-  if (selectedLoopMinutes() > 30 && $("showDopplerOverlay").checked) {
+  if (
+    $("showDopplerOverlay").checked
+    && selectedLoopSelection() !== "30"
+  ) {
     $("showDopplerOverlay").checked = false;
     clearDopplerOverlay();
   }
@@ -2947,7 +3079,7 @@ $("showDopplerOverlay").addEventListener(
   "change",
   () => {
     enforceDopplerWindow();
-    if (!sequenceLoading && (loadedWithDoppler !== $("showDopplerOverlay").checked || loadedLoopMinutes !== selectedLoopMinutes())) {
+    if (!sequenceLoading && (loadedWithDoppler !== $("showDopplerOverlay").checked || loadedLoopSelection !== selectedLoopSelection())) {
       runSourceLoad(loadHybridSequence);
     } else renderDopplerOverlay();
   }

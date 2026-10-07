@@ -239,6 +239,70 @@ export async function loadLatestBomReflectivityMosaic(now = Date.now(), region =
   return loadBomReflectivityMosaicAtTime(observedUtc, region);
 }
 
+export async function discoverBomReflectivityHistory(
+  now = Date.now(),
+  horizonMinutes = 180,
+  region = 'SEQ'
+) {
+  const horizon = Math.max(
+    30,
+    Math.min(180, Number(horizonMinutes) || 180)
+  );
+  const available = [];
+  let newestAvailableEpoch = null;
+  let consecutiveMisses = 0;
+
+  // Extra candidate slots absorb normal publication delay before the newest
+  // readable image. Once history begins, four consecutive missing 5-minute
+  // slots terminate discovery because older scans would no longer form the
+  // continuous operational tail exposed by the UI.
+  const candidateCount =
+    Math.ceil((horizon + 60) / 5);
+
+  for (
+    const observedUtc
+    of candidateBomReflectivityTimes(now, candidateCount)
+  ) {
+    const epoch = Date.parse(observedUtc);
+
+    if (
+      newestAvailableEpoch != null
+      && newestAvailableEpoch - epoch >= horizon * 60000
+    ) {
+      break;
+    }
+
+    let readable = false;
+
+    try {
+      readable = await probeTimestamp(observedUtc, region);
+    } catch {
+      readable = false;
+    }
+
+    if (readable) {
+      if (newestAvailableEpoch == null) {
+        newestAvailableEpoch = epoch;
+      }
+      available.push(observedUtc);
+      consecutiveMisses = 0;
+    } else if (newestAvailableEpoch != null) {
+      consecutiveMisses++;
+      if (consecutiveMisses >= 4) break;
+    }
+  }
+
+  if (!available.length) {
+    throw new Error(
+      "No recent readable BOM reflectivity frames were available."
+    );
+  }
+
+  return available.sort(
+    (a, b) => Date.parse(a) - Date.parse(b)
+  );
+}
+
 export async function findRecentBomReflectivityTimes(
   now = Date.now(),
   count = 6,

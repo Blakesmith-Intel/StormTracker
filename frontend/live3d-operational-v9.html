@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.8.1</title>
+  <title>StormTracker — Operational V9.8.2</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
   <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.8.1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
@@ -18,15 +18,15 @@
         <span>Display</span><strong id="operationalSourceMode">Latest frame</strong>
         <span>Frame (AEST / UTC)</span><strong id="operationalFrameTime">—</strong>
         <span>Source age</span><strong id="operationalSourceAge">—</strong>
-        <span>Loop window</span><strong id="operationalLoopWindow">30 min requested</strong>
+        <span>Loop window</span><strong id="operationalLoopWindow">Checking history</strong>
         <span>Frames / tracks</span><strong><span id="operationalFramesLoaded">0</span> / <span id="operationalActiveTracks">—</span></strong>
         <span>Doppler</span><strong id="operationalDoppler">not loaded</strong>
       </div>
     </section>
     <section class="card loop-controls">
       <div class="control-grid">
-        <label for="loopDurationMinutes">Requested window
-          <select id="loopDurationMinutes"><option value="30">30 min</option><option value="60">60 min</option><option value="90">90 min</option><option value="120">120 min</option><option value="150">150 min</option><option value="180">180 min</option></select>
+        <label for="loopDurationMinutes">Available window
+          <select id="loopDurationMinutes" disabled><option value="">Checking radar history…</option></select>
         </label>
         <label for="playbackSpeed">Speed
           <select id="playbackSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
@@ -64,7 +64,7 @@
       <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
     </section>
     <div class="live-notices">
-      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Doppler wind: 30-minute loop only. Selecting Doppler switches to 30 min; longer windows deselect it.</div>
+      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Doppler wind requires the currently available 30-minute shared loop. Selecting Doppler switches to 30 min; longer or all-available radar history deselects it.</div>
       <div id="autoRefreshNote" class="note" role="status">Auto update: checks matching products every 5 minutes.</div>
     </div>
     <div id="status" role="status">Loading inferred-volume model…</div>
@@ -233,6 +233,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.8.1"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.8.2"></script>
 </body>
 </html>

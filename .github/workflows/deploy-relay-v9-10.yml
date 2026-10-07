@@ -1,0 +1,38 @@
+name: Deploy StormTracker Relay V9.10
+on:
+ workflow_dispatch:
+ push:
+   branches:
+     - feature/road-closures-v9.10.0
+   paths:
+     - "relay/**"
+     - "frontend/src/context-layers/flood-road-closure-filter-v1.js"
+     - ".github/workflows/deploy-relay-v9-10.yml"
+permissions:
+ contents: read
+jobs:
+ validate-and-deploy:
+   runs-on: ubuntu-latest
+   steps:
+     - uses: actions/checkout@v6
+     - uses: actions/setup-node@v4
+       with:
+         node-version: "24"
+     - name: Validate V9.10 flood closures
+       run: |
+         node --check frontend/src/context-layers/flood-road-closure-filter-v1.js
+         node --check frontend/src/context-layers/flood-road-closures-v1.js
+         node --check frontend/src/context-layers/flood-road-closures-operational-v1.js
+         node --check relay/worker.js
+         node frontend/tests/run-flood-road-closure-filter-v1-tests.mjs
+     - name: Deploy stormtracker-bom-relay
+       uses: cloudflare/wrangler-action@v4
+       with:
+         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+         workingDirectory: relay
+         command: deploy
+         secrets: |
+           QLDTRAFFIC_API_KEY
+       env:
+         QLDTRAFFIC_API_KEY: ${{ secrets.QLDTRAFFIC_API_KEY }}

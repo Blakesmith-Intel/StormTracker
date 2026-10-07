@@ -124,11 +124,11 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.11.0-dev2";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.11.0";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.11.0-dev3";
+} from "./context-layers/power-outages-operational-v1.js?v=9.11.0";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,

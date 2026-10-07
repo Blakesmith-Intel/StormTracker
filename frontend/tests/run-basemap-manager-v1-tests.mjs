@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   BASEMAP_IDS,
   BASEMAP_STORAGE_KEY,
-  GA_BASEMAP,
+  QLD_IMAGERY_BASEMAP,
   REFERENCE_LABELS,
   basemapLabel,
   createBasemapProvider,
@@ -53,40 +53,40 @@ const Cesium = {
     FakeWebMercatorTilingScheme
 };
 
-const ga =
+const qld =
   createBasemapProvider(
     Cesium,
-    BASEMAP_IDS.GA_SATELLITE
+    BASEMAP_IDS.QLD_IMAGERY
   );
 
 assert.equal(
-  ga.options.url,
-  "https://services.ga.gov.au/gis/rest/services/World_Bathymetry_Imagery/MapServer/tile/{z}/{y}/{x}"
+  qld.options.url,
+  "https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestStateProgram_AllUsers/ImageServer/tile/{z}/{y}/{x}"
 );
 assert.equal(
-  ga.options.maximumLevel,
-  12
+  qld.options.maximumLevel,
+  20
 );
 assert.equal(
-  ga.options.tileWidth,
+  qld.options.tileWidth,
   256
 );
 assert.equal(
-  ga.options.tileHeight,
+  qld.options.tileHeight,
   256
 );
 assert.ok(
-  ga.options.tilingScheme
+  qld.options.tilingScheme
   instanceof FakeWebMercatorTilingScheme
 );
 assert.match(
-  ga.options.credit.text,
-  /Geoscience Australia/
+  qld.options.credit.text,
+  /State of Queensland/
 );
 
 assert.equal(
-  GA_BASEMAP.label,
-  "GA satellite · Landsat imagery"
+  QLD_IMAGERY_BASEMAP.label,
+  "Queensland imagery · latest public aerial / satellite"
 );
 
 const labels =
@@ -197,7 +197,7 @@ const viewer = {
 const store = new Map([
   [
     BASEMAP_STORAGE_KEY,
-    "dea-satellite"
+    "ga-satellite"
   ]
 ]);
 
@@ -236,7 +236,7 @@ const initial =
 
 assert.equal(
   initial.id,
-  BASEMAP_IDS.GA_SATELLITE
+  BASEMAP_IDS.QLD_IMAGERY
 );
 assert.equal(
   layers.length,
@@ -307,5 +307,5 @@ assert.equal(
 );
 
 console.log(
-  "Basemap manager checks passed: GA cached Landsat imagery, place-name reference overlay contract, legacy preference migration, persistence, layer replacement and camera isolation."
+  "Basemap manager checks passed: Queensland cached aerial/satellite imagery, place-name reference overlay contract, legacy preference migration, persistence, layer replacement and camera isolation."
 );

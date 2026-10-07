@@ -34,7 +34,7 @@ assert.match(html, /id="showTrackThreatCone"/);
 assert.match(html, /id="basemapSelect"/);
 assert.match(html, /QLD imagery/);
 assert.match(html, /value="qld-imagery"/);
-assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.12\.1/);
+assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.12\.3/);
 assert.doesNotMatch(js, /createReferenceLabelProvider/, "No duplicate global label overlay on Queensland imagery.");
 assert.match(js, /createQueenslandTownLabelLayer/);
 assert.doesNotMatch(js, /createQueenslandPlaceLabelProvider/);

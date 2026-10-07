@@ -104,8 +104,9 @@ import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operatio
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
   BASEMAP_IDS,
+  createReferenceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.9.0-3";
+} from "./context-layers/basemap-manager-v1.js?v=9.9.0-4";
 
 import {
   syncFrameSlider
@@ -207,6 +208,59 @@ mapCamera =
       CORE_HOME
   });
 
+let basemapReferenceLayer =
+  null;
+
+function clearBasemapReferenceLayer() {
+  if (!basemapReferenceLayer) {
+    return;
+  }
+
+  viewer.imageryLayers.remove(
+    basemapReferenceLayer,
+    true
+  );
+
+  basemapReferenceLayer =
+    null;
+}
+
+function keepBasemapReferenceLabelsVisible() {
+  if (!basemapReferenceLayer) {
+    return;
+  }
+
+  viewer.imageryLayers.raiseToTop(
+    basemapReferenceLayer
+  );
+}
+
+function syncBasemapReferenceLayer(
+  basemapId
+) {
+  clearBasemapReferenceLayer();
+
+  if (
+    basemapId
+    !== BASEMAP_IDS.GA_SATELLITE
+  ) {
+    return;
+  }
+
+  const provider =
+    createReferenceLabelProvider(
+      Cesium
+    );
+
+  basemapReferenceLayer =
+    viewer.imageryLayers
+      .addImageryProvider(
+        provider
+      );
+
+  keepBasemapReferenceLabelsVisible();
+}
+
 function setBasemapStatus(
   message,
   kind = "ok"
@@ -239,6 +293,10 @@ try {
 
   $("basemapSelect").value =
     initialBasemap.id;
+
+  syncBasemapReferenceLayer(
+    initialBasemap.id
+  );
 } catch (error) {
   console.warn(
     "Stored basemap unavailable; falling back to Street.",
@@ -253,6 +311,10 @@ try {
 
     $("basemapSelect").value =
       fallback.id;
+
+    syncBasemapReferenceLayer(
+      fallback.id
+    );
   } catch (fallbackError) {
     console.warn(
       "Street basemap unavailable",
@@ -915,6 +977,8 @@ async function renderSurface(
   viewer.imageryLayers.raiseToTop(
     surfaceLayer
   );
+
+  keepBasemapReferenceLabelsVisible();
 
   scene.requestRender();
 
@@ -2151,6 +2215,7 @@ function renderDopplerOverlay() {
     dopplerOverlayLayer.alpha = Number($("dopplerOpacity").value) / 100;
     viewer.imageryLayers.add(dopplerOverlayLayer);
     if (surfaceLayer) viewer.imageryLayers.raiseToTop(surfaceLayer);
+    keepBasemapReferenceLabelsVisible();
     scene.requestRender();
   }).catch(error => {
     if (renderToken !== dopplerOverlayRenderToken) return;
@@ -3606,6 +3671,10 @@ $("basemapSelect").addEventListener(
 
       event.target.value =
         result.id;
+
+      syncBasemapReferenceLayer(
+        result.id
+      );
     } catch (error) {
       event.target.value =
         basemapManager.currentId

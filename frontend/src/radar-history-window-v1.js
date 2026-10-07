@@ -59,11 +59,11 @@ export function radarHistoryCadenceMinutes(times) {
   }
 
   if (!gaps.length) return 5;
-  gaps.sort((a, b) => a - b);
-  const middle = Math.floor(gaps.length / 2);
-  return gaps.length % 2
-    ? gaps[middle]
-    : (gaps[middle - 1] + gaps[middle]) / 2;
+
+  // The shortest repeated source interval is the conservative cadence.
+  // Missing scans can lengthen a gap; they must not make the source appear to
+  // have a slower cadence and thereby legitimise a sparse pseudo-loop.
+  return Math.min(...gaps);
 }
 
 function selectWindowHistory(history, minutes) {

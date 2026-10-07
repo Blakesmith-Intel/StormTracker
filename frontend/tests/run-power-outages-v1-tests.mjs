@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 
 import {
+  parseEssentialEnergyKml
+} from "../src/context-layers/essential-energy-kml-v1.js";
+
+import {
+  filterFeaturesToQueensland,
+  representativePointForFeature
+} from "../src/context-layers/queensland-mainland-filter-v1.js";
+
+import {
   DEFAULT_POWER_OUTAGE_REFRESH_MS,
   ENERGEX_OUTAGE_AREA_QUERY_URL,
   ERGON_OUTAGE_AREA_QUERY_URL,
@@ -420,6 +429,62 @@ const queenslandBoundary = {
     }
   ]
 };
+
+const parsedEssentialForBoundaryTest =
+  parseEssentialEnergyKml(
+    essentialKml
+  );
+
+assert.equal(
+  parsedEssentialForBoundaryTest
+    .features
+    .length,
+  2
+);
+
+const qldEssentialForBoundaryTest =
+  parsedEssentialForBoundaryTest
+    .features
+    .find(
+      feature =>
+        feature.id
+        === "essential:INCD-ESS-QLD"
+    );
+
+assert.deepEqual(
+  representativePointForFeature(
+    qldEssentialForBoundaryTest
+  ).map(
+    value =>
+      Number(
+        value.toFixed(
+          4
+        )
+      )
+  ),
+  [
+    150.31,
+    -28.55
+  ]
+);
+
+const directlyClippedEssential =
+  filterFeaturesToQueensland(
+    parsedEssentialForBoundaryTest,
+    queenslandBoundary
+  );
+
+assert.deepEqual(
+  directlyClippedEssential
+    .features
+    .map(
+      feature =>
+        feature.id
+    ),
+  [
+    "essential:INCD-ESS-QLD"
+  ]
+);
 
 function okResponse(
   payload

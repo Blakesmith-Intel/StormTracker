@@ -2,7 +2,7 @@ import {
   filterFloodRoadClosures,
   floodRoadClosureSummary,
   floodRoadGeometryParts
-} from "./flood-road-closure-filter-v1.js?v=9.10.1";
+} from "./flood-road-closure-filter-v1.js?v=9.10.2";
 
 export const QLD_TRAFFIC_ATTRIBUTION =
   "QLDTraffic · Queensland Department of Transport and Main Roads";
@@ -412,6 +412,11 @@ export function createFloodRoadClosureLayer({
           )
     };
 
+    const sharedHeightReference =
+      CesiumRef.HeightReference
+        ?.CLAMP_TO_GROUND
+        ?? undefined;
+
     const graphics =
       badgeCanvas
         ? {
@@ -426,9 +431,22 @@ export function createFloodRoadClosureLayer({
                 CesiumRef.VerticalOrigin
                   ?.CENTER,
               heightReference:
-                CesiumRef.HeightReference
-                  ?.CLAMP_TO_GROUND
-                  ?? undefined,
+                sharedHeightReference,
+              disableDepthTestDistance:
+                Number.POSITIVE_INFINITY
+            },
+            point: {
+              pixelSize:
+                48,
+              color:
+                CesiumRef.Color.WHITE
+                  .withAlpha(
+                    0.001
+                  ),
+              outlineWidth:
+                0,
+              heightReference:
+                sharedHeightReference,
               disableDepthTestDistance:
                 Number.POSITIVE_INFINITY
             }
@@ -436,7 +454,7 @@ export function createFloodRoadClosureLayer({
         : {
             point: {
               pixelSize:
-                15,
+                18,
               color:
                 closureColour,
               outlineColor:
@@ -444,54 +462,16 @@ export function createFloodRoadClosureLayer({
               outlineWidth:
                 4,
               heightReference:
-                CesiumRef.HeightReference
-                  ?.CLAMP_TO_GROUND
-                  ?? undefined,
+                sharedHeightReference,
               disableDepthTestDistance:
                 Number.POSITIVE_INFINITY
             }
           };
 
-    const label =
-      CesiumRef.LabelStyle
-        && CesiumRef.DistanceDisplayCondition
-        && CesiumRef.Cartesian2
-          ? {
-              label: {
-                text:
-                  "FLOOD CLOSURE",
-                font:
-                  "bold 11px sans-serif",
-                fillColor:
-                  closureColour,
-                outlineColor:
-                  lineUnderlay,
-                outlineWidth:
-                  4,
-                style:
-                  CesiumRef.LabelStyle
-                    .FILL_AND_OUTLINE,
-                pixelOffset:
-                  new CesiumRef.Cartesian2(
-                    0,
-                    29
-                  ),
-                distanceDisplayCondition:
-                  new CesiumRef.DistanceDisplayCondition(
-                    0,
-                    120000
-                  ),
-                disableDepthTestDistance:
-                  Number.POSITIVE_INFINITY
-              }
-            }
-          : {};
-
     const entity =
       dataSource.entities.add({
         ...common,
-        ...graphics,
-        ...label
+        ...graphics
       });
 
     decorateClosureEntity(

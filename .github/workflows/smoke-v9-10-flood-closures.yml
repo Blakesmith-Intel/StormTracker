@@ -210,13 +210,52 @@ jobs:
             filtered?.stormtracker?.upstream ?? "unknown"
           );
 
-          if (
-            qualifying.length === 0
-            && outputFeatures.length !== 0
-          ) {
-            throw new Error(
-              "StormTracker returned closures when raw TMR feed has none qualifying."
+          const qualifyingIds =
+            qualifying
+              .map(f => String(f?.properties?.id ?? ""))
+              .sort();
+
+          const outputIds =
+            outputFeatures
+              .map(f => String(f?.properties?.id ?? ""))
+              .sort();
+
+          console.log(
+            "Qualifying event IDs:",
+            qualifyingIds.join(", ") || "(none)"
+          );
+
+          console.log(
+            "StormTracker event IDs:",
+            outputIds.join(", ") || "(none)"
+          );
+
+          const cacheStatus =
+            String(
+              filtered?.stormtracker?.cache_status
+              ?? ""
             );
+
+          if (cacheStatus === "fresh-upstream") {
+            if (
+              JSON.stringify(qualifyingIds)
+              !== JSON.stringify(outputIds)
+            ) {
+              throw new Error(
+                "Fresh StormTracker output does not match qualifying raw TMR events."
+              );
+            }
+          } else {
+            for (const feature of outputFeatures) {
+              const id =
+                String(feature?.properties?.id ?? "");
+
+              if (!id) {
+                throw new Error(
+                  "Cached StormTracker event is missing an ID."
+                );
+              }
+            }
           }
 
           console.log("Live V9.10 road-closure smoke test passed.");

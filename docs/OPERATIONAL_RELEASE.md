@@ -1,7 +1,6 @@
-# StormTracker Operational V9.8.0
+# StormTracker Operational V9.8.3
 
-Release date: 4 October 2026 (AEST). Status: Queensland expansion prepared for installation;
-relay/frontend publication and deployed acceptance remain pending.
+Release date: 7 October 2026 (AEST). Status: full production release sealed and deployed.
 
 The user confirmed V9.3 presentation controls and AEST display, and confirmed
 V9.4 automatic Doppler recovery works. Automated regression, installer and browser
@@ -298,3 +297,19 @@ while the interface is idle, rather than preserving only the currently selected
 display window. This lets a newly viewed site begin with the maximum history still
 available upstream before the rolling local archive continues accumulating toward
 three hours.
+
+
+## V9.8.3 production seal
+
+V9.8.3 is the current full production release. The production build passed the
+repository frontend validation gate and GitHub Pages deployment before sealing.
+The immutable annotated tag `v9.8.3` and restore branch `restore/v9.8.3` identify
+the release commit.
+
+This seal includes the source-aware three-hour radar-history architecture and its
+browser-local cache warm-up hardening. The Bureau WMTS source remains authoritative
+for genuine observations; browser persistence extends usable history prospectively,
+and bounded temporal interpolation remains display-only and explicitly excluded
+from measured tracking, Doppler analysis and scoring.
+
+The historical `v9.7.2` tag is retained unchanged as an earlier recovery point.

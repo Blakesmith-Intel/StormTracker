@@ -1,8 +1,15 @@
+import {
+  parseEssentialEnergyKml
+} from "./essential-energy-kml-v1.js?v=9.11.0-dev3";
+
 export const ENERGEX_ATTRIBUTION =
   "Energex | Energy Queensland";
 
 export const ERGON_ATTRIBUTION =
   "Ergon Energy | Energy Queensland";
+
+export const ESSENTIAL_ENERGY_ATTRIBUTION =
+  "Essential Energy";
 
 const OUTAGE_QUERY_SUFFIX =
   "?where=1%3D1"
@@ -18,6 +25,9 @@ export const ENERGEX_OUTAGE_AREA_QUERY_URL =
 export const ERGON_OUTAGE_AREA_QUERY_URL =
   "https://services.arcgis.com/33eHbTVqo7gtiCE8/ArcGIS/rest/services/VwErgonOutages/FeatureServer/0/query"
   + OUTAGE_QUERY_SUFFIX;
+
+export const DEFAULT_ESSENTIAL_ENERGY_RELAY_URL =
+  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/essential-energy-outages";
 
 export const DEFAULT_POWER_OUTAGE_REFRESH_MS =
   15 * 60 * 1000;
@@ -38,6 +48,14 @@ const PROVIDER_META =
           "ergon",
         attribution:
           ERGON_ATTRIBUTION
+      }),
+
+    "Essential Energy":
+      Object.freeze({
+        idPrefix:
+          "essential",
+        attribution:
+          ESSENTIAL_ENERGY_ATTRIBUTION
       })
   });
 
@@ -426,6 +444,61 @@ async function fetchJson(
   }
 }
 
+async function fetchText(
+  fetchImpl,
+  url,
+  provider,
+  timeoutMs = 12000
+) {
+  const controller =
+    typeof AbortController
+      === "function"
+      ? new AbortController()
+      : null;
+
+  const timeout =
+    controller
+      ? setTimeout(
+          () =>
+            controller.abort(),
+          timeoutMs
+        )
+      : null;
+
+  try {
+    const response =
+      await fetchImpl(
+        url,
+        {
+          method:
+            "GET",
+
+          headers: {
+            Accept:
+              "application/vnd.google-earth.kml+xml,application/xml,text/xml,text/plain"
+          },
+
+          signal:
+            controller?.signal
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        `${provider} outage feed HTTP ${response.status}`
+      );
+    }
+
+    return await response.text();
+  } finally {
+    if (timeout) {
+      clearTimeout(
+        timeout
+      );
+    }
+  }
+}
+
 async function loadProvider({
   fetchImpl,
   provider,
@@ -453,6 +526,32 @@ async function loadProvider({
   };
 }
 
+async function loadEssentialProvider({
+  fetchImpl,
+  url,
+  nowMs
+}) {
+  const kml =
+    await fetchText(
+      fetchImpl,
+      url,
+      "Essential Energy"
+    );
+
+  return {
+    provider:
+      "Essential Energy",
+
+    payload:
+      filterCurrentPowerOutages(
+        parseEssentialEnergyKml(
+          kml
+        ),
+        nowMs
+      )
+  };
+}
+
 export async function loadPowerOutages({
   fetchImpl =
     globalThis.fetch,
@@ -462,6 +561,9 @@ export async function loadPowerOutages({
 
   ergonUrl =
     ERGON_OUTAGE_AREA_QUERY_URL,
+
+  essentialUrl =
+    DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
 
   nowMs =
     Date.now()
@@ -487,7 +589,17 @@ export async function loadPowerOutages({
         provider:
           "Ergon",
         url:
-          ergonUrl
+          ergonUrl,
+        kind:
+          "geojson"
+      },
+      {
+        provider:
+          "Essential Energy",
+        url:
+          essentialUrl,
+        kind:
+          "kml"
       }
     ];
 
@@ -495,14 +607,22 @@ export async function loadPowerOutages({
     await Promise.allSettled(
       requests.map(
         request =>
-          loadProvider({
-            fetchImpl,
-            provider:
-              request.provider,
-            url:
-              request.url,
-            nowMs
-          })
+          request.kind
+          === "kml"
+            ? loadEssentialProvider({
+                fetchImpl,
+                url:
+                  request.url,
+                nowMs
+              })
+            : loadProvider({
+                fetchImpl,
+                provider:
+                  request.provider,
+                url:
+                  request.url,
+                nowMs
+              })
       )
     );
 
@@ -578,7 +698,7 @@ export async function loadPowerOutages({
       failed.length > 0,
 
     transport:
-      "Direct first-party ArcGIS GeoJSON"
+      "First-party Energex/Ergon ArcGIS GeoJSON + Essential Energy KML"
   };
 }
 
@@ -596,6 +716,9 @@ export function createPowerOutageLayer({
 
   ergonUrl =
     ERGON_OUTAGE_AREA_QUERY_URL,
+
+  essentialUrl =
+    DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
 
   refreshMs =
     DEFAULT_POWER_OUTAGE_REFRESH_MS,
@@ -780,7 +903,8 @@ export function createPowerOutageLayer({
           await loadPowerOutages({
             fetchImpl,
             energexUrl,
-            ergonUrl
+            ergonUrl,
+            essentialUrl
           });
 
         await render(

@@ -52,22 +52,126 @@ export function isRoadClosureEvent(featureOrProperties) {
   ) === "closures";
 }
 
-export function isActiveFloodRoadClosure(feature) {
+function parsedEventTime(value) {
+  const text =
+    String(value ?? "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const parsed =
+    Date.parse(text);
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+export function isRoadEventCurrent(
+  featureOrProperties,
+  nowMs = Date.now()
+) {
+  const properties =
+    propertiesOf(featureOrProperties);
+
+  const duration =
+    properties.duration
+    && typeof properties.duration === "object"
+      ? properties.duration
+      : {};
+
+  const startText =
+    duration.start
+    ?? properties.start_time
+    ?? properties.startTime
+    ?? properties.fromDate
+    ?? properties.from
+    ?? "";
+
+  const endText =
+    duration.end
+    ?? properties.end_time
+    ?? properties.endTime
+    ?? properties.toDate
+    ?? properties.to
+    ?? "";
+
+  const start =
+    parsedEventTime(startText);
+
+  const end =
+    parsedEventTime(endText);
+
+  if (
+    String(startText).trim()
+    && start === null
+  ) {
+    return true;
+  }
+
+  if (
+    String(endText).trim()
+    && end === null
+  ) {
+    return true;
+  }
+
+  if (
+    start !== null
+    && end !== null
+    && end < start
+  ) {
+    return true;
+  }
+
+  if (
+    start !== null
+    && nowMs < start
+  ) {
+    return false;
+  }
+
+  if (
+    end !== null
+    && nowMs > end
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function isActiveFloodRoadClosure(
+  feature,
+  nowMs = Date.now()
+) {
   const properties =
     propertiesOf(feature);
 
   return (
     normalise(properties.status) === "published"
+    && isRoadEventCurrent(
+      properties,
+      nowMs
+    )
     && isFloodRelatedRoadEvent(properties)
     && isRoadClosureEvent(properties)
   );
 }
 
-export function filterFloodRoadClosures(payload) {
+export function filterFloodRoadClosures(
+  payload,
+  nowMs = Date.now()
+) {
   const features =
     Array.isArray(payload?.features)
       ? payload.features.filter(
-          isActiveFloodRoadClosure
+          feature =>
+            isActiveFloodRoadClosure(
+              feature,
+              nowMs
+            )
         )
       : [];
 

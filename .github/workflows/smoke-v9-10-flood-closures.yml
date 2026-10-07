@@ -1,0 +1,43 @@
+name: Smoke test V9.10 flood closures
+
+on:
+  push:
+    branches:
+      - "feature/road-closures-v9.10.0"
+    paths:
+      - ".github/workflows/smoke-v9-10-flood-closures.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live flood-closure endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error             "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/flood-road-closures"             -o /tmp/flood-road-closures.json
+          node - <<'NODE'
+          const fs = require("fs");
+          const payload = JSON.parse(fs.readFileSync("/tmp/flood-road-closures.json","utf8"));
+          if (payload?.type !== "FeatureCollection") throw new Error("Expected FeatureCollection");
+          if (!Array.isArray(payload.features)) throw new Error("Missing features array");
+          const floodTypes = new Set(["flooding"]);
+          const floodSubtypes = new Set(["flash flooding","long-term flooding"]);
+          const floodCauses = new Set(["earlier flooding","earlier flash flooding","water over road","flooding of river"]);
+          const norm = v => String(v ?? "").trim().toLowerCase();
+          for (const feature of payload.features) {
+            const p = feature?.properties ?? {};
+            const floodRelated =
+              floodTypes.has(norm(p.event_type)) ||
+              floodSubtypes.has(norm(p.event_subtype)) ||
+              floodCauses.has(norm(p.event_due_to));
+            if (norm(p.status) !== "published") throw new Error("Non-published event returned");
+            if (!floodRelated) throw new Error("Non-flood event returned");
+            if (norm(p.impact?.impact_type) !== "closures") throw new Error("Non-closure event returned");
+          }
+          console.log("Live endpoint OK:", payload.features.length, "active flood closures");
+          NODE

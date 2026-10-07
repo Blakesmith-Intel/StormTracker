@@ -3646,10 +3646,8 @@ async function initialise() {
   terrainManager
     .initialise()
     .then(result => {
-      if (!result?.failed) {
-        terrainControl.checked =
-          Boolean(result?.enabled);
-      }
+      terrainControl.checked =
+        Boolean(result?.enabled);
     })
     .catch(error => {
       console.warn(

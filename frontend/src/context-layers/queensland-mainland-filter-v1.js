@@ -388,20 +388,34 @@ export function representativePointForGeometry(
 export function representativePointForFeature(
   feature
 ) {
-  const longitude =
-    Number(
+  const longitudeText =
+    String(
       feature?.properties
         ?.STORMTRACKER_SOURCE_LONGITUDE
+      ?? ""
+    ).trim();
+
+  const latitudeText =
+    String(
+      feature?.properties
+        ?.STORMTRACKER_SOURCE_LATITUDE
+      ?? ""
+    ).trim();
+
+  const longitude =
+    Number(
+      longitudeText
     );
 
   const latitude =
     Number(
-      feature?.properties
-        ?.STORMTRACKER_SOURCE_LATITUDE
+      latitudeText
     );
 
   if (
-    Number.isFinite(
+    longitudeText
+    && latitudeText
+    && Number.isFinite(
       longitude
     )
     && Number.isFinite(

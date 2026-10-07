@@ -1,41 +1,145 @@
 import {
   DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
-  loadRiverGaugeOperationalSnapshot
+  DEFAULT_RIVER_HEIGHT_RELAY_URL,
+  joinRiverGaugeObservations
 } from "../frontend/src/context-layers/river-gauge-observations-v1.js";
 
-const metadataResponse =
-  await fetch(
-    DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
-    {
-      headers: {
-        Origin:
-          "https://blakesmith-intel.github.io"
-      }
-    }
-  );
+async function timedJson(
+  label,
+  url,
+  {
+    origin = false,
+    timeoutMs = 40000
+  } = {}
+) {
+  const controller =
+    new AbortController();
 
-if (!metadataResponse.ok) {
-  throw new Error(
-    `River-gauge metadata relay HTTP ${metadataResponse.status}`
-  );
+  const timeout =
+    setTimeout(
+      () =>
+        controller.abort(),
+      timeoutMs
+    );
+
+  const started =
+    Date.now();
+
+  try {
+    const response =
+      await fetch(
+        url,
+        {
+          headers:
+            origin
+              ? {
+                  Origin:
+                    "https://blakesmith-intel.github.io"
+                }
+              : {
+                  Accept:
+                    "application/json"
+                },
+
+          signal:
+            controller.signal
+        }
+      );
+
+    const elapsedMs =
+      Date.now()
+      - started;
+
+    console.log(
+      `${label}_status`,
+      response.status
+    );
+
+    console.log(
+      `${label}_elapsed_ms`,
+      elapsedMs
+    );
+
+    if (origin) {
+      console.log(
+        `${label}_cors`,
+        response.headers.get(
+          "access-control-allow-origin"
+        )
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `${label} HTTP ${response.status}`
+      );
+    }
+
+    return {
+      payload:
+        await response.json(),
+      elapsedMs,
+      cors:
+        response.headers.get(
+          "access-control-allow-origin"
+        )
+    };
+  } finally {
+    clearTimeout(
+      timeout
+    );
+  }
 }
 
-const metadataCors =
-  metadataResponse.headers.get(
-    "access-control-allow-origin"
-  );
+const [
+  metadataResult,
+  bulletinResult
+] =
+  await Promise.all([
+    timedJson(
+      "metadata",
+      DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
+      {
+        origin:
+          true
+      }
+    ),
+
+    timedJson(
+      "bulletins",
+      DEFAULT_RIVER_HEIGHT_RELAY_URL,
+      {
+        origin:
+          true
+      }
+    )
+  ]);
 
 if (
-  metadataCors
+  metadataResult.cors
   !== "https://blakesmith-intel.github.io"
 ) {
   throw new Error(
-    `River-gauge metadata relay CORS unsuitable for GitHub Pages: ${metadataCors}`
+    `River-gauge metadata relay CORS unsuitable for GitHub Pages: ${metadataResult.cors}`
+  );
+}
+
+if (
+  bulletinResult.cors
+  !== "https://blakesmith-intel.github.io"
+) {
+  throw new Error(
+    `River-height relay CORS unsuitable for GitHub Pages: ${bulletinResult.cors}`
   );
 }
 
 const result =
-  await loadRiverGaugeOperationalSnapshot();
+  joinRiverGaugeObservations({
+    gauges:
+      metadataResult.payload,
+    bulletins:
+      bulletinResult.payload
+  });
 
 const features =
   result.payload?.features
@@ -81,6 +185,12 @@ const tidal =
   ).length;
 
 const summary = {
+  metadataElapsedMs:
+    metadataResult.elapsedMs,
+
+  bulletinElapsedMs:
+    bulletinResult.elapsedMs,
+
   totalGaugeLocations:
     result.totalGaugeLocations,
 

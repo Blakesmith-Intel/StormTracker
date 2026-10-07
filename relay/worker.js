@@ -24,6 +24,9 @@ const BOM_PRODUCT_BASE =
 const QLD_TRAFFIC_EVENTS =
   "https://data.qldtraffic.qld.gov.au/events_v2.geojson";
 
+const ESSENTIAL_ENERGY_OUTAGES =
+  "https://www.essentialenergy.com.au/Assets/kmz/current.kml";
+
 const ALLOWED_ORIGINS = new Set([
   "https://blakesmith-intel.github.io",
 ]);
@@ -436,6 +439,94 @@ async function relayFloodRoadClosures(
       upstreamStatus:
         upstream.status,
       storedAt
+    }
+  );
+}
+
+async function relayEssentialEnergyOutages(
+  request,
+  origin
+) {
+  let upstream;
+
+  try {
+    upstream =
+      await fetch(
+        ESSENTIAL_ENERGY_OUTAGES,
+        {
+          method:
+            request.method,
+
+          headers: {
+            Accept:
+              "application/vnd.google-earth.kml+xml,application/xml,text/xml,text/plain"
+          },
+
+          cf: {
+            cacheEverything:
+              true,
+            cacheTtl:
+              300
+          }
+        }
+      );
+  } catch (error) {
+    return errorResponse(
+      `Essential Energy outage fetch failed: ${error?.message || String(error)}`,
+      502,
+      origin
+    );
+  }
+
+  if (!upstream.ok) {
+    return errorResponse(
+      `Essential Energy outage feed HTTP ${upstream.status}`,
+      502,
+      origin
+    );
+  }
+
+  const headers =
+    new Headers(
+      upstream.headers
+    );
+
+  for (
+    const [key, value]
+    of corsHeaders(origin)
+      .entries()
+  ) {
+    headers.set(
+      key,
+      value
+    );
+  }
+
+  headers.set(
+    "Content-Type",
+    "application/vnd.google-earth.kml+xml; charset=utf-8"
+  );
+
+  headers.set(
+    "Cross-Origin-Resource-Policy",
+    "cross-origin"
+  );
+
+  headers.set(
+    "Cache-Control",
+    "public, max-age=300"
+  );
+
+  return new Response(
+    request.method === "HEAD"
+      ? null
+      : upstream.body,
+    {
+      status:
+        upstream.status,
+      statusText:
+        upstream.statusText,
+      headers
     }
   );
 }
@@ -928,6 +1019,13 @@ export default {
 
     if (incoming.pathname === "/flood-road-closures") {
       return relayFloodRoadClosures(
+        origin
+      );
+    }
+
+    if (incoming.pathname === "/essential-energy-outages") {
+      return relayEssentialEnergyOutages(
+        request,
         origin
       );
     }

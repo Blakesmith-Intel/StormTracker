@@ -14,7 +14,7 @@ assert.match(js,/buildTrackThreatCone/);
 assert.match(js,/selectedTrackDisplayId/);
 assert.match(js,/showTrackLabels/);
 assert.match(js,/showTrackThreatCone/);
-assert.match(js,/dopplerOverlayLayer/);
+assert.match(js,/dopplerOverlayTransition/);
 assert.match(js,/viewer\.imageryLayers\.raiseToTop\(\s*surfaceLayer\s*\)/);
 const d0=js.indexOf("function renderDopplerOverlay()");
 const d1=js.indexOf("function updateDopplerUiForFrame",d0);
@@ -32,4 +32,4 @@ assert.match(coneBlock,/width:\s*4/);
 assert.match(coneBlock,/pixelSize:\s*8/);
 assert.match(coneBlock,/direction_change_threshold_degrees/);
 
-console.log("Track display controls, stronger threat-cone visibility and radar-over-Doppler layering checks passed.");
+console.log("Track display controls, stronger threat-cone visibility and radar-over-Doppler transition layering checks passed.");

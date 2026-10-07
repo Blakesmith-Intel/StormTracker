@@ -187,7 +187,7 @@ assert.equal(
 
 assert.equal(
   qldPlaces.options.layers,
-  "20,10,11,12,13,16,17,18,19"
+  "20"
 );
 
 assert.match(

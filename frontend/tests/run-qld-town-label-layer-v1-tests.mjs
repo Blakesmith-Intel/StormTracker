@@ -1,7 +1,29 @@
 import assert from "node:assert/strict";
 import {
-  createQueenslandTownLabelLayer
+  createQueenslandTownLabelLayer,
+  cameraLookDownDegrees
 } from "../src/context-layers/qld-town-label-layer-v1.js";
+
+// A lookAt target may leave camera.pitch near -90 in Cesium's transformed
+// frame while the actual view direction is just 12 degrees below horizon.
+const fakeCartesian = class Cartesian3 {
+  static dot(a,b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+};
+const fakeEllipsoid = {
+  geodeticSurfaceNormal() { return {x:0,y:0,z:1}; }
+};
+const direction = {x:Math.cos(12*Math.PI/180),y:0,z:-Math.sin(12*Math.PI/180)};
+const lookAtCamera = {
+  pitch:-Math.PI/2,
+  positionWC:{x:0,y:0,z:10},
+  directionWC:direction
+};
+assert.ok(Math.abs(cameraLookDownDegrees(lookAtCamera,{
+  Cartesian3:fakeCartesian
+},fakeEllipsoid)+12)<0.01,
+"Low-angle viewing geometry must override Cesium's transformed pitch");
+assert.equal(cameraLookDownDegrees({pitch:-Math.PI/4}, {}, {}),-45,
+"Missing camera geometry must use ordinary pitch fallback");
 
 const raw=(id,name,lon,lat,pop=100)=>({
   type:"Feature",id,

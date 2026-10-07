@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.11.0-dev2</title>
+  <title>StormTracker — Operational V9.11.0-dev3</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.11.0-dev2">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.11.0-dev3">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -45,7 +45,7 @@
       <div class="layer-row flood-road-row"><label><input id="showFloodRoadClosures" type="checkbox" checked> <span class="flood-road-key" aria-hidden="true"></span> Flood road closures</label><button id="refreshFloodRoadClosuresButton" type="button">Refresh</button></div>
       <div id="floodRoadClosureStatus" class="note" role="status">QLDTraffic · flood closures only</div>
       <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox" checked> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Power outages</label><button id="refreshPowerOutagesButton" type="button">Refresh</button></div>
-      <div id="powerOutageStatus" class="note" role="status">Energex + Ergon · current outages</div>
+      <div id="powerOutageStatus" class="note" role="status">Energex + Ergon + Essential Energy · current outages</div>
       <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
       <div class="layer-row"><label><input id="showTrackVolumes" type="checkbox" checked> Track-specific 3-D</label><button id="openDetailsButton">Tracks / details</button></div>
       <div class="track-display-controls">
@@ -250,6 +250,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.11.0-dev2"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.11.0-dev3"></script>
 </body>
 </html>

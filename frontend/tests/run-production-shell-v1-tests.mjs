@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.0-5/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.1/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -71,6 +71,11 @@ assert.match(js, /createCameraPerformanceGovernor/);
 assert.match(js, /cameraPerformance\.pulse\(\)/);
 assert.match(js, /onInteraction/);
 assert.match(js, /SingleTileImageryProvider/);
+assert.match(js, /createDopplerLayerTransition/);
+assert.match(js, /dopplerOverlayFrameKey/);
+assert.match(js, /dopplerOverlayTransition\.replace/);
+assert.match(js, /DEFAULT_DOPPLER_FADE_OUT_MS/);
+assert.doesNotMatch(js, /let dopplerOverlayLayer/);
 
 assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true);
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);

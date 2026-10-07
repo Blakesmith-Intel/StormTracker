@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   ALL_AVAILABLE_LOOP_VALUE,
   availableRadarLoopMinutes,
+  continuousRadarHistoryTimes,
   normaliseRadarHistoryTimes,
   radarHistoryCadenceMinutes,
   radarHistorySpanMinutes,
@@ -42,7 +43,15 @@ const gappy = [
   stamp(0), stamp(5), stamp(10),
   stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)
 ];
+assert.deepEqual(
+  continuousRadarHistoryTimes(gappy),
+  [stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)]
+);
 assert.deepEqual(availableRadarLoopMinutes(gappy), [30]);
+assert.deepEqual(
+  selectRadarHistoryTimes(gappy, ALL_AVAILABLE_LOOP_VALUE),
+  [stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)]
+);
 assert.throws(
   () => selectRadarHistoryTimes(gappy, 60),
   /cannot currently supply/

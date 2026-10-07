@@ -1,6 +1,38 @@
 import {
+  DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
   loadRiverGaugeOperationalSnapshot
 } from "../frontend/src/context-layers/river-gauge-observations-v1.js";
+
+const metadataResponse =
+  await fetch(
+    DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
+    {
+      headers: {
+        Origin:
+          "https://blakesmith-intel.github.io"
+      }
+    }
+  );
+
+if (!metadataResponse.ok) {
+  throw new Error(
+    `River-gauge metadata relay HTTP ${metadataResponse.status}`
+  );
+}
+
+const metadataCors =
+  metadataResponse.headers.get(
+    "access-control-allow-origin"
+  );
+
+if (
+  metadataCors
+  !== "https://blakesmith-intel.github.io"
+) {
+  throw new Error(
+    `River-gauge metadata relay CORS unsuitable for GitHub Pages: ${metadataCors}`
+  );
+}
 
 const result =
   await loadRiverGaugeOperationalSnapshot();
@@ -138,10 +170,10 @@ if (
   !Number.isFinite(
     summary.matchedCount
   )
-  || summary.matchedCount <= 0
+  || summary.matchedCount < 25
 ) {
   throw new Error(
-    "Live BoM gauge/observation join produced no matched gauges."
+    `Live BoM gauge/observation join produced too few matched gauges: ${summary.matchedCount}`
   );
 }
 

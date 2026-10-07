@@ -104,4 +104,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.10.3 Queensland imagery, stable map labels, touch-safe flood closure interaction and historical regressions retained.");
+console.log("Production shell checks passed: V9.10.4 Queensland imagery, stable map labels, touch-safe flood closure interaction and historical regressions retained.");

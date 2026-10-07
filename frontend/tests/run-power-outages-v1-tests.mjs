@@ -4,6 +4,7 @@ import {
   DEFAULT_POWER_OUTAGE_REFRESH_MS,
   ENERGEX_OUTAGE_AREA_QUERY_URL,
   ERGON_OUTAGE_AREA_QUERY_URL,
+  DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
   filterCurrentPowerOutages,
   isCurrentPowerOutage,
   loadPowerOutages,
@@ -140,6 +141,11 @@ assert.match(
   /VwErgonOutages\/FeatureServer\/0\/query/
 );
 
+assert.match(
+  DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
+  /essential-energy-outages$/
+);
+
 for (
   const url
   of [
@@ -220,7 +226,7 @@ const filtered =
 
 assert.equal(
   filtered.features.length,
-  1
+  2
 );
 
 const energexSummary =
@@ -343,6 +349,30 @@ const ergonPayload = {
   ]
 };
 
+
+const essentialKml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <Placemark>
+    <name>Lismore</name>
+    <styleUrl>#unplanned-outage</styleUrl>
+    <description><![CDATA[
+      <span>Time Off:</span>08/10/2026 04:30:00
+      <span>Est. Time On:</span>08/10/2026 07:30:00
+      <span>No. of Customers affected:</span>30
+      <span>Reason:</span>We are investigating
+      <span>Last Updated:</span>08/10/2026 04:45:00
+      <span>Incident ID:</span>INCD-ESS-1
+    ]]></description>
+    <Polygon>
+      <outerBoundaryIs><LinearRing><coordinates>
+        153.20,-28.80,0 153.21,-28.80,0 153.21,-28.81,0 153.20,-28.80,0
+      </coordinates></LinearRing></outerBoundaryIs>
+    </Polygon>
+  </Placemark>
+</Document>
+</kml>`;
+
 function okResponse(
   payload
 ) {
@@ -355,6 +385,28 @@ function okResponse(
 
     async json() {
       return payload;
+    },
+
+    async text() {
+      return String(
+        payload
+      );
+    }
+  };
+}
+
+function textResponse(
+  text
+) {
+  return {
+    ok:
+      true,
+
+    status:
+      200,
+
+    async text() {
+      return text;
     }
   };
 }
@@ -366,14 +418,26 @@ const merged =
 
     fetchImpl:
       async url => {
+        const target =
+          String(url);
+
         if (
-          String(url)
-            .includes(
-              "VwErgonOutages"
-            )
+          target.includes(
+            "VwErgonOutages"
+          )
         ) {
           return okResponse(
             ergonPayload
+          );
+        }
+
+        if (
+          target.includes(
+            "essential-energy-outages"
+          )
+        ) {
+          return textResponse(
+            essentialKml
           );
         }
 
@@ -387,7 +451,8 @@ assert.deepEqual(
   merged.providers,
   [
     "Energex",
-    "Ergon"
+    "Ergon",
+    "Essential Energy"
   ]
 );
 
@@ -400,7 +465,7 @@ assert.equal(
   merged.payload
     .features
     .length,
-  2
+  3
 );
 
 assert.deepEqual(
@@ -413,7 +478,8 @@ assert.deepEqual(
     .sort(),
   [
     "energex:SAME-ID",
-    "ergon:SAME-ID"
+    "ergon:SAME-ID",
+    "essential:INCD-ESS-1"
   ]
 );
 
@@ -430,7 +496,8 @@ assert.deepEqual(
     .sort(),
   [
     "Energex",
-    "Ergon"
+    "Ergon",
+    "Essential Energy"
   ]
 );
 
@@ -441,11 +508,13 @@ const partial =
 
     fetchImpl:
       async url => {
+        const target =
+          String(url);
+
         if (
-          String(url)
-            .includes(
-              "VwErgonOutages"
-            )
+          target.includes(
+            "VwErgonOutages"
+          )
         ) {
           return {
             ok:
@@ -453,6 +522,16 @@ const partial =
             status:
               503
           };
+        }
+
+        if (
+          target.includes(
+            "essential-energy-outages"
+          )
+        ) {
+          return textResponse(
+            essentialKml
+          );
         }
 
         return okResponse(
@@ -464,7 +543,8 @@ const partial =
 assert.deepEqual(
   partial.providers,
   [
-    "Energex"
+    "Energex",
+    "Essential Energy"
   ]
 );
 
@@ -506,9 +586,9 @@ await assert.rejects(
             503
         })
     }),
-  /Energex outage feed HTTP 503.*Ergon outage feed HTTP 503/
+  /Energex outage feed HTTP 503.*Ergon outage feed HTTP 503.*Essential Energy outage feed HTTP 503/
 );
 
 console.log(
-  "Power outage checks passed: Energex + Ergon first-party GeoJSON, provider-qualified IDs, current filtering, partial-feed survival and 15-minute refresh cadence."
+  "Power outage checks passed: Energex + Ergon GeoJSON plus Essential Energy KML, provider-qualified IDs, current filtering, partial-feed survival and 15-minute refresh cadence."
 );

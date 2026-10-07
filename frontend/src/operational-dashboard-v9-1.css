@@ -324,3 +324,92 @@ dialog::backdrop { background:#0009; }
     padding:7px;
   }
 }
+
+
+/* V9.10.1 interactive flood-road closure markers */
+.flood-road-row label {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.flood-road-key {
+  position:relative;
+  display:inline-block;
+  flex:0 0 auto;
+  width:13px;
+  height:13px;
+  border:2px solid #111;
+  outline:2px solid #fff;
+  outline-offset:0;
+  background:#ffd43b;
+  transform:rotate(45deg);
+  box-sizing:border-box;
+}
+.flood-road-key::before,
+.flood-road-key::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:9px;
+  height:2px;
+  border-radius:2px;
+  background:#111;
+  transform-origin:center;
+}
+.flood-road-key::before {
+  transform:translate(-50%,-50%) rotate(45deg);
+}
+.flood-road-key::after {
+  transform:translate(-50%,-50%) rotate(-45deg);
+}
+.flood-road-key-large {
+  width:22px;
+  height:22px;
+  margin:3px;
+  border-width:3px;
+}
+.flood-road-key-large::before,
+.flood-road-key-large::after {
+  width:14px;
+  height:3px;
+}
+.flood-road-info-heading {
+  display:flex;
+  align-items:center;
+  min-width:0;
+  gap:10px;
+}
+.flood-road-info-heading > div {
+  display:grid;
+  min-width:0;
+  gap:2px;
+}
+.map-info-kicker {
+  color:#ffd43b;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.11em;
+}
+#floodRoadClosureInfoTitle {
+  display:block;
+  max-width:250px;
+  overflow-wrap:anywhere;
+}
+#floodRoadClosureInfoRows {
+  border-top:1px solid #31424d;
+  padding-top:8px;
+}
+#floodRoadClosureInfoRows > strong {
+  text-align:left;
+}
+#floodRoadClosureInfoLink {
+  padding:5px 7px;
+  border:1px solid #4a6575;
+  border-radius:5px;
+  text-decoration:none;
+  background:#203440;
+}
+#floodRoadClosureInfoLink:hover {
+  text-decoration:underline;
+}

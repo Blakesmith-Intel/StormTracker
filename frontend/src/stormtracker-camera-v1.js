@@ -540,10 +540,11 @@ export function createStormTrackerCameraController({
       pointerId: event.pointerId,
       mode,
       x: event.clientX,
-      y: event.clientY
+      y: event.clientY,
+      originX: event.clientX,
+      originY: event.clientY,
+      dragging: false
     };
-
-    onInteraction();
 
     try {
       container.setPointerCapture(
@@ -570,6 +571,21 @@ export function createStormTrackerCameraController({
     event.preventDefault();
     event.stopPropagation();
 
+    const totalDistance =
+      Math.hypot(
+        event.clientX
+          - activePointer.originX,
+        event.clientY
+          - activePointer.originY
+      );
+
+    if (
+      !activePointer.dragging
+      && totalDistance < 4
+    ) {
+      return;
+    }
+
     const dx =
       event.clientX - activePointer.x;
 
@@ -578,6 +594,10 @@ export function createStormTrackerCameraController({
 
     activePointer.x = event.clientX;
     activePointer.y = event.clientY;
+
+    if (!activePointer.dragging) {
+      activePointer.dragging = true;
+    }
 
     onInteraction();
 

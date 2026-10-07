@@ -2,7 +2,7 @@ import {
   filterFloodRoadClosures,
   floodRoadClosureSummary,
   floodRoadGeometryParts
-} from "./flood-road-closure-filter-v1.js?v=9.10.2";
+} from "./flood-road-closure-filter-v1.js?v=9.10.3";
 
 export const QLD_TRAFFIC_ATTRIBUTION =
   "QLDTraffic · Queensland Department of Transport and Main Roads";
@@ -140,98 +140,24 @@ export function floodRoadClosureMarkerCoordinate(
   );
 }
 
-function createRoadClosureBadgeCanvas() {
-  if (
-    typeof document === "undefined"
-    || typeof document.createElement
-      !== "function"
-  ) {
-    return null;
-  }
+function createRoadClosureBadgeImage() {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+      <g transform="translate(32 32) rotate(45)">
+        <rect x="-24" y="-24" width="48" height="48" fill="#ffffff"/>
+        <rect x="-21" y="-21" width="42" height="42" fill="#111111"/>
+        <rect x="-17" y="-17" width="34" height="34" fill="#ffd43b"/>
+      </g>
+      <g stroke="#111111" stroke-width="7" stroke-linecap="round">
+        <path d="M22 22 L42 42"/>
+        <path d="M42 22 L22 42"/>
+      </g>
+    </svg>`;
 
-  const canvas =
-    document.createElement("canvas");
-
-  canvas.width = 64;
-  canvas.height = 64;
-
-  const context =
-    canvas.getContext("2d");
-
-  if (!context) {
-    return null;
-  }
-
-  context.translate(
-    32,
-    32
+  return (
+    "data:image/svg+xml;charset=utf-8,"
+    + encodeURIComponent(svg)
   );
-
-  context.rotate(
-    Math.PI / 4
-  );
-
-  context.fillStyle =
-    "#ffffff";
-
-  context.fillRect(
-    -24,
-    -24,
-    48,
-    48
-  );
-
-  context.fillStyle =
-    "#111111";
-
-  context.fillRect(
-    -21,
-    -21,
-    42,
-    42
-  );
-
-  context.fillStyle =
-    "#ffd43b";
-
-  context.fillRect(
-    -17,
-    -17,
-    34,
-    34
-  );
-
-  context.rotate(
-    -Math.PI / 4
-  );
-
-  context.strokeStyle =
-    "#111111";
-
-  context.lineWidth = 7;
-  context.lineCap =
-    "round";
-
-  context.beginPath();
-  context.moveTo(
-    -10,
-    -10
-  );
-  context.lineTo(
-    10,
-    10
-  );
-  context.moveTo(
-    10,
-    -10
-  );
-  context.lineTo(
-    -10,
-    10
-  );
-  context.stroke();
-
-  return canvas;
 }
 
 async function fetchJson(
@@ -360,8 +286,8 @@ export function createFloodRoadClosureLayer({
       "#111111"
     );
 
-  const badgeCanvas =
-    createRoadClosureBadgeCanvas();
+  const badgeImage =
+    createRoadClosureBadgeImage();
 
   let currentFeatures = [];
   let loading = null;
@@ -417,56 +343,23 @@ export function createFloodRoadClosureLayer({
         ?.CLAMP_TO_GROUND
         ?? undefined;
 
-    const graphics =
-      badgeCanvas
-        ? {
-            billboard: {
-              image:
-                badgeCanvas,
-              width:
-                36,
-              height:
-                36,
-              verticalOrigin:
-                CesiumRef.VerticalOrigin
-                  ?.CENTER,
-              heightReference:
-                sharedHeightReference,
-              disableDepthTestDistance:
-                Number.POSITIVE_INFINITY
-            },
-            point: {
-              pixelSize:
-                48,
-              color:
-                CesiumRef.Color.WHITE
-                  .withAlpha(
-                    0.001
-                  ),
-              outlineWidth:
-                0,
-              heightReference:
-                sharedHeightReference,
-              disableDepthTestDistance:
-                Number.POSITIVE_INFINITY
-            }
-          }
-        : {
-            point: {
-              pixelSize:
-                18,
-              color:
-                closureColour,
-              outlineColor:
-                lineUnderlay,
-              outlineWidth:
-                4,
-              heightReference:
-                sharedHeightReference,
-              disableDepthTestDistance:
-                Number.POSITIVE_INFINITY
-            }
-          };
+    const graphics = {
+      billboard: {
+        image:
+          badgeImage,
+        width:
+          38,
+        height:
+          38,
+        verticalOrigin:
+          CesiumRef.VerticalOrigin
+            ?.CENTER,
+        heightReference:
+          sharedHeightReference,
+        disableDepthTestDistance:
+          Number.POSITIVE_INFINITY
+      }
+    };
 
     const entity =
       dataSource.entities.add({

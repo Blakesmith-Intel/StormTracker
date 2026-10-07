@@ -87,7 +87,6 @@ export function createStormTrackerTouchCameraGestures({
     });
     try { container.setPointerCapture?.(event.pointerId); } catch {}
     resetGestureBaseline();
-    onGesture();
   }
 
   function onPointerMove(event) {
@@ -110,11 +109,24 @@ export function createStormTrackerTouchCameraGestures({
     if (points.length === 1) {
       const current = points[0];
       const previous = singleLast ?? previousPoint;
+      const dx =
+        current.x - previous.x;
+
+      const dy =
+        current.y - previous.y;
+
+      if (
+        Math.hypot(dx, dy)
+        < 1.5
+      ) {
+        return;
+      }
+
       const width = Math.max(1, container.clientWidth);
       const height = Math.max(1, container.clientHeight);
       controller.panByFraction(
-        (current.x - previous.x) / width,
-        (current.y - previous.y) / height
+        dx / width,
+        dy / height
       );
       singleLast = { x: current.x, y: current.y };
       pairLast = null;
@@ -194,7 +206,6 @@ export function createStormTrackerTouchCameraGestures({
       }
     } catch {}
     resetGestureBaseline();
-    onGesture();
   }
 
   const options = { passive:false, capture:true };

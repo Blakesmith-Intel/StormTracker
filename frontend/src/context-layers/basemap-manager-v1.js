@@ -4,22 +4,27 @@ export const BASEMAP_STORAGE_KEY =
 export const BASEMAP_IDS =
   Object.freeze({
     STREET: "street",
-    GA_SATELLITE: "ga-satellite"
+    QLD_IMAGERY: "qld-imagery",
+    // Compatibility alias for older callers; stored legacy values are migrated.
+    GA_SATELLITE: "qld-imagery"
   });
 
-const LEGACY_DEA_SATELLITE_ID =
-  "dea-satellite";
+const LEGACY_SATELLITE_IDS =
+  new Set([
+    "dea-satellite",
+    "ga-satellite"
+  ]);
 
-export const GA_BASEMAP =
+export const QLD_IMAGERY_BASEMAP =
   Object.freeze({
     service:
-      "https://services.ga.gov.au/gis/rest/services/World_Bathymetry_Imagery/MapServer",
+      "https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestStateProgram_AllUsers/ImageServer",
     tileTemplate:
-      "https://services.ga.gov.au/gis/rest/services/World_Bathymetry_Imagery/MapServer/tile/{z}/{y}/{x}",
+      "https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestStateProgram_AllUsers/ImageServer/tile/{z}/{y}/{x}",
     maximumLevel:
-      12,
+      20,
     label:
-      "GA satellite · Landsat imagery"
+      "Queensland imagery · latest public aerial / satellite"
   });
 
 export const REFERENCE_LABELS =
@@ -36,10 +41,12 @@ export function normaliseBasemapId(
   value
 ) {
   return (
-    value === BASEMAP_IDS.GA_SATELLITE
-    || value === LEGACY_DEA_SATELLITE_ID
+    value === BASEMAP_IDS.QLD_IMAGERY
+    || LEGACY_SATELLITE_IDS.has(
+      value
+    )
   )
-    ? BASEMAP_IDS.GA_SATELLITE
+    ? BASEMAP_IDS.QLD_IMAGERY
     : BASEMAP_IDS.STREET;
 }
 
@@ -106,11 +113,11 @@ export function createBasemapProvider(
 
   if (
     selected
-    === BASEMAP_IDS.GA_SATELLITE
+    === BASEMAP_IDS.QLD_IMAGERY
   ) {
     return new Cesium.UrlTemplateImageryProvider({
       url:
-        GA_BASEMAP.tileTemplate,
+        QLD_IMAGERY_BASEMAP.tileTemplate,
 
       tilingScheme:
         new Cesium.WebMercatorTilingScheme(),
@@ -122,11 +129,11 @@ export function createBasemapProvider(
         256,
 
       maximumLevel:
-        GA_BASEMAP.maximumLevel,
+        QLD_IMAGERY_BASEMAP.maximumLevel,
 
       credit:
         new Cesium.Credit(
-          "Geoscience Australia · World Bathymetry, Imagery and Hillshade · CC BY 4.0"
+          "Imagery © State of Queensland; © Planet Labs Netherlands B.V., Planet and Geoplex, 2026"
         )
     });
   }
@@ -141,8 +148,8 @@ export function basemapLabel(
   id
 ) {
   return normaliseBasemapId(id)
-    === BASEMAP_IDS.GA_SATELLITE
-      ? GA_BASEMAP.label
+    === BASEMAP_IDS.QLD_IMAGERY
+      ? QLD_IMAGERY_BASEMAP.label
       : "Street · OpenStreetMap";
 }
 
@@ -195,8 +202,8 @@ export function createStormTrackerBasemapManager({
           if (currentId !== id) return;
 
           onStatus(
-            id === BASEMAP_IDS.GA_SATELLITE
-              ? "GA satellite tiles are currently unavailable. Weather layers are unaffected; switch to Street if needed."
+            id === BASEMAP_IDS.QLD_IMAGERY
+              ? "Queensland imagery tiles are currently unavailable. Weather layers are unaffected; switch to Street if needed."
               : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
             "error"
           );

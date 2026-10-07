@@ -67,7 +67,7 @@ assert.equal(
 );
 assert.equal(
   dea.options.parameters.time,
-  "2025-07-02"
+  "2025-01-01"
 );
 assert.match(
   dea.options.credit.text,

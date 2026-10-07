@@ -285,14 +285,12 @@ if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
   });
   // Development-only reproducible camera positions for mobile visual QA.
   window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {
-    viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, height),
-      orientation: {
-        heading: 0,
-        pitch: Cesium.Math.toRadians(pitch),
-        roll: 0
-      }
-    });
+    // Camera range is distance from the named town, not altitude above a
+    // potentially offset view. Keep the town at the visual centre.
+    viewer.camera.lookAt(
+      Cesium.Cartesian3.fromDegrees(longitude, latitude, 0),
+      new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(pitch), height)
+    );
     queenslandTownLabels?.draw(true);
     scene.requestRender();
   };

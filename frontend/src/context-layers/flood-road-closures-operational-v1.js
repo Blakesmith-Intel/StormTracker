@@ -1,11 +1,15 @@
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
-} from "./flood-road-closures-v1.js?v=9.10.2";
+} from "./flood-road-closures-v1.js?v=9.10.3";
 
 import {
   floodRoadClosureSummary
-} from "./flood-road-closure-filter-v1.js?v=9.10.2";
+} from "./flood-road-closure-filter-v1.js?v=9.10.3";
+
+import {
+  floodRoadClosureMarkerCoordinate
+} from "./flood-road-closures-v1.js?v=9.10.3";
 
 const $ = id =>
   document.getElementById(id);
@@ -386,6 +390,71 @@ function closureIdNearPosition({
   );
 }
 
+function nearestClosureIdByMarker({
+  viewer,
+  CesiumRef,
+  features,
+  position,
+  maximumDistance = 44
+}) {
+  let bestId = "";
+  let bestDistance =
+    Number.POSITIVE_INFINITY;
+
+  for (const feature of features ?? []) {
+    const coordinate =
+      floodRoadClosureMarkerCoordinate(
+        feature
+      );
+
+    if (!coordinate) {
+      continue;
+    }
+
+    const worldPosition =
+      CesiumRef.Cartesian3
+        .fromDegrees(
+          coordinate[0],
+          coordinate[1],
+          0
+        );
+
+    const screenPosition =
+      viewer.scene
+        .cartesianToCanvasCoordinates(
+          worldPosition
+        );
+
+    if (!screenPosition) {
+      continue;
+    }
+
+    const distance =
+      Math.hypot(
+        screenPosition.x
+          - position.x,
+        screenPosition.y
+          - position.y
+      );
+
+    if (
+      distance <= maximumDistance
+      && distance < bestDistance
+    ) {
+      bestDistance =
+        distance;
+
+      bestId =
+        String(
+          feature?.properties?.id
+          ?? ""
+        );
+    }
+  }
+
+  return bestId;
+}
+
 export function initialiseOperationalFloodRoadClosures({
   viewer,
   CesiumRef = globalThis.Cesium
@@ -407,6 +476,10 @@ export function initialiseOperationalFloodRoadClosures({
 
   const canvas =
     viewer.scene.canvas;
+
+  const mapContainer =
+    $("cesiumContainer")
+    ?? canvas.parentElement;
 
   const layer =
     createFloodRoadClosureLayer({
@@ -494,7 +567,7 @@ export function initialiseOperationalFloodRoadClosures({
       height = 30
     } = {}
   ) {
-    const closureId =
+    let closureId =
       closureIdNearPosition({
         viewer,
         CesiumRef,
@@ -502,6 +575,22 @@ export function initialiseOperationalFloodRoadClosures({
         width,
         height
       });
+
+    if (!closureId) {
+      closureId =
+        nearestClosureIdByMarker({
+          viewer,
+          CesiumRef,
+          features:
+            layer.features,
+          position,
+          maximumDistance:
+            Math.max(
+              width,
+              height
+            )
+        });
+    }
 
     return showClosureById(
       closureId
@@ -528,6 +617,25 @@ export function initialiseOperationalFloodRoadClosures({
         event.button !== undefined
         && event.button !== 0
       ) {
+        return;
+      }
+
+      if (
+        !mapContainer
+        || !mapContainer.contains(
+          event.target
+        )
+      ) {
+        return;
+      }
+
+      const blockedControl =
+        event.target
+          ?.closest?.(
+            "#nav,#floodRoadClosureInfo"
+          );
+
+      if (blockedControl) {
         return;
       }
 
@@ -623,7 +731,7 @@ export function initialiseOperationalFloodRoadClosures({
       );
     };
 
-  canvas.addEventListener(
+  window.addEventListener(
     "pointerdown",
     onPointerDown,
     {
@@ -634,7 +742,7 @@ export function initialiseOperationalFloodRoadClosures({
     }
   );
 
-  canvas.addEventListener(
+  window.addEventListener(
     "pointermove",
     onPointerMove,
     {
@@ -645,7 +753,7 @@ export function initialiseOperationalFloodRoadClosures({
     }
   );
 
-  canvas.addEventListener(
+  window.addEventListener(
     "pointerup",
     onPointerUp,
     {
@@ -656,7 +764,7 @@ export function initialiseOperationalFloodRoadClosures({
     }
   );
 
-  canvas.addEventListener(
+  window.addEventListener(
     "pointercancel",
     clearPointerTap,
     {
@@ -790,25 +898,25 @@ export function initialiseOperationalFloodRoadClosures({
     () => {
       layer.stop();
 
-      canvas.removeEventListener(
+      window.removeEventListener(
         "pointerdown",
         onPointerDown,
         true
       );
 
-      canvas.removeEventListener(
+      window.removeEventListener(
         "pointermove",
         onPointerMove,
         true
       );
 
-      canvas.removeEventListener(
+      window.removeEventListener(
         "pointerup",
         onPointerUp,
         true
       );
 
-      canvas.removeEventListener(
+      window.removeEventListener(
         "pointercancel",
         clearPointerTap,
         true

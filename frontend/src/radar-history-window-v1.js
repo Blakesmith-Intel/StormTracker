@@ -15,6 +15,27 @@ export function normaliseRadarHistoryTimes(times = []) {
   );
 }
 
+export function continuousRadarHistoryTimes(times = []) {
+  const history = normaliseRadarHistoryTimes(times);
+  if (history.length < 2) return history;
+
+  const cadence = radarHistoryCadenceMinutes(history);
+  const maximumAcceptedGap = Math.max(15, cadence * 2);
+
+  for (let index = history.length - 1; index > 0; index--) {
+    const gap = (
+      Date.parse(history[index])
+      - Date.parse(history[index - 1])
+    ) / 60000;
+
+    if (!Number.isFinite(gap) || gap <= 0 || gap > maximumAcceptedGap) {
+      return history.slice(index);
+    }
+  }
+
+  return history;
+}
+
 export function radarHistorySpanMinutes(times) {
   const history = normaliseRadarHistoryTimes(times);
   if (history.length < 2) return 0;
@@ -93,7 +114,7 @@ function hasContinuousCoverage(frames, cadence) {
 }
 
 export function availableRadarLoopMinutes(times) {
-  const history = normaliseRadarHistoryTimes(times);
+  const history = continuousRadarHistoryTimes(times);
   if (history.length < 2) return [];
 
   const availableSpan = radarHistorySpanMinutes(history);
@@ -114,7 +135,7 @@ export function selectRadarHistoryTimes(
   selection,
   { allowPartial = false } = {}
 ) {
-  const history = normaliseRadarHistoryTimes(times);
+  const history = continuousRadarHistoryTimes(times);
   if (!history.length) return [];
 
   if (selection === ALL_AVAILABLE_LOOP_VALUE) {

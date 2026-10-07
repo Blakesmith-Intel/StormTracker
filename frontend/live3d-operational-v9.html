@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.10.2</title>
+  <title>StormTracker — Operational V9.10.3</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.10.2">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.10.3">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -38,7 +38,7 @@
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card layer-controls">
-      <div class="layer-row basemap-row"><label for="basemapSelect">Basemap</label><select id="basemapSelect" aria-label="Map basemap"><option value="street">Street</option><option value="ga-satellite">GA satellite</option></select></div>
+      <div class="layer-row basemap-row"><label for="basemapSelect">Basemap</label><select id="basemapSelect" aria-label="Map basemap"><option value="street">Street</option><option value="qld-imagery">QLD imagery</option></select></div>
       <div id="basemapStatus" class="note" role="status">Street · OpenStreetMap</div>
       <div class="layer-row terrain-row"><label><input id="terrainEnabled" type="checkbox" checked> 3-D terrain</label><span>Elevation</span></div>
       <div id="terrainStatus" class="note" role="status">Loading 3-D terrain…</div>
@@ -244,6 +244,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.10.2"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.10.3"></script>
 </body>
 </html>

@@ -7,6 +7,10 @@ import {
 assert.equal(labelBudget(390, 350, 2_000_000), 0, "No planetary-scale wall of labels");
 assert.equal(labelBudget(390, 350, 50_000, "street"), 8);
 assert.ok(labelBudget(390, 350, 50_000, "qld-imagery") <= 9);
+assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -90) <= 5,
+  "Mobile imagery must never exceed five supplemental names even with a steep camera");
+assert.ok(labelBudget(390, 350, 10000, "street", -90) <= 9,
+  "Street mobile cap must remain independent of imagery");
 assert.ok(labelBudget(390, 350, 750_000) <= 5);
 assert.ok(labelBudget(390, 350, 300_000, "qld-imagery", -12) <= 4,
   "Shallow horizon views cannot create crowds even at moderate altitude");

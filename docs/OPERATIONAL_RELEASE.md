@@ -1,6 +1,6 @@
-# StormTracker Operational V9.8.4
+# StormTracker Operational V9.9.0
 
-Release date: 7 October 2026 (AEST). Status: full production release sealed and deployed.
+Release date: 8 October 2026 (AEST). Status: V9.9.0 full production release sealed and deployed; wishlist item 1 complete.
 
 The user confirmed V9.3 presentation controls and AEST display, and confirmed
 V9.4 automatic Doppler recovery works. Automated regression, installer and browser
@@ -122,7 +122,7 @@ playback, forward live updates and automatic history growth without a manual
 refresh. Five-minute checks remain unchanged. If upstream publication or a radar
 source stalls, the current loop is retained, its timestamps/source age remain
 visible, and automatic retry continues. The current production recovery reference
-is `restore/v9.8.4`; manual Refresh remains available for an immediate check.
+is `restore/v9.9.0`; manual Refresh remains available for an immediate check.
 
 ## V9.7.1 interface cleanup
 
@@ -439,3 +439,34 @@ step before rendering once.
 These changes affect rendering workload only. Radar imagery, tracking, terrain
 source, Doppler, source timing, three-hour history and inferred-volume science are
 unchanged.
+
+
+## V9.9.0 production seal
+
+V9.9.0 is the current accepted full production release and completes wishlist
+item 1.
+
+Accepted runtime commit:
+
+```text
+de724bdeb1d92d4dd4cb2e7f99492f548dd418f4
+```
+
+The normal GitHub Pages validation/deployment workflow passed for that runtime on
+8 October 2026 (AEST). The complete repository state is preserved by
+`restore/v9.9.0`.
+
+The sealed feature set adds switchable GA satellite context, transparent
+place-name/boundary reference labels and optional 3-D terrain with flat fallback.
+It also includes the live-acceptance corrections made during the V9.9.0 candidate:
+dynamic playback-slider bounds, radar-only automatic refresh independent of
+Doppler unless Doppler is enabled, and browser-safe cached GA imagery.
+
+The final interaction-performance pass temporarily relaxes terrain mesh detail
+only while the camera is actively moving, restores normal detail after 160 ms,
+batches two-finger touch transforms into one camera update and avoids repeated
+renders for high-delta mouse-wheel zoom.
+
+No V9.9.0 change alters measured-reflectivity tracking, persistent ST identity,
+Doppler science, temporal inference rules, three-hour history limits or the
+scientific contract. `restore/v9.8.4` remains an immutable historical fallback.

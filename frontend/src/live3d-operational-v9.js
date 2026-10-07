@@ -3378,7 +3378,13 @@ async function loadHybridSequence(automatic = false) {
     needsHistoricalRebuild
       ? "Auto update: historical cache expanded; loop rebuilt chronologically."
       : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${dopplerGatedRefresh ? "matching radar + Doppler products" : "radar images"} every 5 minutes.`;
-  if (selectedRadarRegion() !== "SEQ" && !["66","50","08"].includes(selectedRadarRegion()) && !radarOnlySite) {
+  if (
+    selectedRadarRegion() !== "SEQ"
+    && !["66","50","08"].includes(
+      selectedRadarRegion()
+    )
+    && shared.requestedRadarIds.length > 0
+  ) {
     $("sharedHistoryNote").textContent += " · wind display only (nominal registration)";
   }
   $("autoRefreshNote").title = "";

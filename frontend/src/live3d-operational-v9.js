@@ -325,7 +325,7 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
     return;
   }
 
-  selector.disabled = false;
+  selector.disabled = sequenceLoading;
   const values = new Set(options.map(option => option.value));
   let desired = values.has(previous)
     ? previous
@@ -2791,8 +2791,9 @@ async function runSourceLoad(loader, background = false) {
     else setStatus(error.message, "error");
   } finally {
     sequenceLoading = false;
-    $("loopDurationMinutes").disabled = false;
+    $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
     $("showDopplerOverlay").disabled = selectedSourceRadars().length === 0;
+
     $("radarSite").disabled = false;
     for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
     $("hybridPlayButton").disabled = hybridFrames.length < 2;

@@ -413,3 +413,87 @@ dialog::backdrop { background:#0009; }
 #floodRoadClosureInfoLink:hover {
   text-decoration:underline;
 }
+
+
+/* V9.11.0-dev1 current power outages */
+.power-outage-row button {
+  min-height:25px;
+  padding:3px 7px;
+}
+.power-outage-row label {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+#powerOutageStatus {
+  margin:-2px 0 5px;
+  text-align:right;
+}
+#powerOutageStatus[data-kind="error"] {
+  color:#ff9d91;
+}
+#powerOutageStatus[data-kind="ok"] {
+  color:#99e2b7;
+}
+.power-outage-key {
+  display:inline-block;
+  flex:0 0 auto;
+  width:14px;
+  height:11px;
+  border:2px solid #1b1b1b;
+  border-radius:3px;
+  background:#ff5252;
+  box-shadow:0 0 0 1px #ffffffcc;
+  box-sizing:border-box;
+}
+.power-outage-key-unplanned {
+  background:#ff5252;
+}
+.power-outage-key-large {
+  width:24px;
+  height:18px;
+  border-width:3px;
+  box-shadow:0 0 0 1px #ffffffcc;
+}
+.power-outage-info-heading {
+  display:flex;
+  align-items:center;
+  min-width:0;
+  gap:10px;
+}
+.power-outage-info-heading > div {
+  display:grid;
+  min-width:0;
+  gap:2px;
+}
+.power-outage-info .map-info-kicker {
+  color:#ff7b72;
+}
+.power-outage-info[data-outage-type="planned"] .power-outage-key {
+  background:#ffb300;
+}
+.power-outage-info[data-outage-type="planned"] .map-info-kicker {
+  color:#ffc44d;
+}
+#powerOutageInfoTitle {
+  display:block;
+  max-width:250px;
+  overflow-wrap:anywhere;
+}
+#powerOutageInfoRows {
+  border-top:1px solid #31424d;
+  padding-top:8px;
+}
+#powerOutageInfoRows > strong {
+  text-align:left;
+}
+@media (max-width:700px) {
+  .power-outage-row button {
+    min-height:25px;
+    font-size:9px;
+  }
+  #powerOutageStatus {
+    font-size:8px;
+    margin:-1px 0 3px;
+  }
+}

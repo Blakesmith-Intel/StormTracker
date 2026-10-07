@@ -63,8 +63,8 @@ protected radar/tracking core.
   frame count whenever history grows, rather than retaining its original six-frame
   startup maximum.
 
-The V9.8.4 recovery baseline remains available as `restore/v9.8.4` until V9.9.0
-is live-accepted and separately sealed.
+V9.9.0 is the current sealed production baseline. The previous
+`restore/v9.8.4` recovery point remains unchanged as a historical fallback.
 
 ## Radar history and automatic updating
 
@@ -139,15 +139,15 @@ structure, Queensland sites, playback/history, temporal interpolation, mobile UI
 and production-shell contracts. GitHub Pages runs the frontend validation gate
 before publishing; a failed gate prevents deployment.
 
-The accepted V9.8.4 runtime commit is:
+The accepted V9.9.0 runtime commit is:
 
 ```text
-acbc6aa63829d0532e32c28c2b0a49030a29b276
+de724bdeb1d92d4dd4cb2e7f99492f548dd418f4
 ```
 
-Its Pages deployment completed successfully on 7 October 2026. The complete
-sealed repository state is preserved by `restore/v9.8.4`; see
-[docs/BASELINE_RESTORE.md](docs/BASELINE_RESTORE.md).
+Its frontend validation and Pages deployment completed successfully on
+8 October 2026 (AEST). The complete sealed repository state is preserved by
+`restore/v9.9.0`; see [docs/BASELINE_RESTORE.md](docs/BASELINE_RESTORE.md).
 
 The user-facing product requires only a web browser. Node/Python are development
 and test tools, not runtime requirements. The Cloudflare worker remains a
@@ -170,7 +170,7 @@ engine.
 - `reference/python/` — historical/recovered reference material outside the live
   browser runtime.
 
-The current basemap remains OpenStreetMap. A switchable Geoscience Australia /
-Digital Earth Australia satellite basemap and other situational-awareness layers
-are planned as a separate future subsystem rather than being coupled into the
-protected radar/tracking core.
+Wishlist item 1 is complete: Street/OpenStreetMap and GA satellite context,
+place-name reference labels and optional 3-D terrain are now part of the protected
+production UI. Future situational-awareness work should remain modular and
+isolated from the radar/tracking core.

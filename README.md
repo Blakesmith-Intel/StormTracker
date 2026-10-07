@@ -172,5 +172,9 @@ engine.
 
 Wishlist item 1 is complete: Street/OpenStreetMap and GA satellite context,
 place-name reference labels and optional 3-D terrain are now part of the protected
-production UI. Future situational-awareness work should remain modular and
-isolated from the radar/tracking core.
+production UI.
+
+The next planned release is **V9.10.0 — observed lightning tracker**. It must use
+a genuine strike/event source with clear reuse rights and must remain separate
+from the existing radar/Doppler convective-lightning evidence score. Road
+closures, power outages and flood gauges now follow after lightning.

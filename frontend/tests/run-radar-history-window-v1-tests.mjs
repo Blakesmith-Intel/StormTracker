@@ -39,6 +39,19 @@ assert.deepEqual(
   [30, 60, 90]
 );
 
+const threeHourSparse =
+  Array.from({ length: 19 }, (_, index) => stamp(index * 10));
+const threeHourPlan =
+  buildRadarPlaybackPlan(threeHourSparse);
+assert.equal(threeHourPlan.length, 37);
+assert.equal(threeHourPlan[0].observedUtc, stamp(0));
+assert.equal(threeHourPlan.at(-1).observedUtc, stamp(180));
+assert.ok(availableRadarLoopMinutes(threeHourSparse).includes(180));
+assert.equal(
+  selectRadarHistoryPlan(threeHourSparse, 180).length,
+  36
+);
+
 const oneMissingScan = [
   stamp(0),
   stamp(5),

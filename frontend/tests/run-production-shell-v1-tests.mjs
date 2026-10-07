@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.1/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.2/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -50,8 +50,15 @@ const roadLayer = read("frontend/src/context-layers/flood-road-closures-v1.js");
 const roadUi = read("frontend/src/context-layers/flood-road-closures-operational-v1.js");
 assert.match(roadLayer, /createRoadClosureBadgeCanvas/);
 assert.match(roadLayer, /stormTrackerFloodClosureId/);
-assert.match(roadLayer, /FLOOD CLOSURE/);
-assert.match(roadUi, /ScreenSpaceEventType[\s\S]*LEFT_CLICK/);
+assert.doesNotMatch(
+  roadLayer,
+  /text:\s*"FLOOD CLOSURE"/,
+  "Closure markers must not render floating map labels that drift in pitched 3-D views."
+);
+assert.match(roadUi, /primitive\?\.id/);
+assert.match(roadUi, /drillPick/);
+assert.match(roadUi, /pointerdown/);
+assert.match(roadUi, /pointerup/);
 assert.match(roadUi, /showClosureInfo/);
 assert.match(roadUi, /floodRoadClosureInfoRows/);
 assert.match(js, /terrain-manager-v1\.js\?v=9\.9\.0-4/);

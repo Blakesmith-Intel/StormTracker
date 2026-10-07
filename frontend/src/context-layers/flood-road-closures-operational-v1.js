@@ -1,11 +1,11 @@
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
-} from "./flood-road-closures-v1.js?v=9.10.1";
+} from "./flood-road-closures-v1.js?v=9.10.2";
 
 import {
   floodRoadClosureSummary
-} from "./flood-road-closure-filter-v1.js?v=9.10.1";
+} from "./flood-road-closure-filter-v1.js?v=9.10.2";
 
 const $ = id =>
   document.getElementById(id);
@@ -311,6 +311,81 @@ function showClosureInfo(
     false;
 }
 
+export function floodRoadClosureEntityFromPick(
+  picked
+) {
+  return (
+    picked?.id
+    ?? picked?.primitive?.id
+    ?? null
+  );
+}
+
+export function floodRoadClosureIdFromPick(
+  picked
+) {
+  const entity =
+    floodRoadClosureEntityFromPick(
+      picked
+    );
+
+  const id =
+    entity
+      ?.stormTrackerFloodClosureId;
+
+  return id
+    ? String(id)
+    : "";
+}
+
+function closureIdNearPosition({
+  viewer,
+  CesiumRef,
+  position,
+  width = 28,
+  height = 28
+}) {
+  if (
+    !viewer
+    || !position
+  ) {
+    return "";
+  }
+
+  const picks =
+    typeof viewer.scene
+      .drillPick === "function"
+      ? viewer.scene.drillPick(
+          position,
+          24,
+          width,
+          height
+        )
+      : [];
+
+  for (const picked of picks) {
+    const closureId =
+      floodRoadClosureIdFromPick(
+        picked
+      );
+
+    if (closureId) {
+      return closureId;
+    }
+  }
+
+  const picked =
+    viewer.scene.pick(
+      position,
+      width,
+      height
+    );
+
+  return floodRoadClosureIdFromPick(
+    picked
+  );
+}
+
 export function initialiseOperationalFloodRoadClosures({
   viewer,
   CesiumRef = globalThis.Cesium
@@ -329,6 +404,9 @@ export function initialiseOperationalFloodRoadClosures({
 
   const panel =
     $("floodRoadClosureInfo");
+
+  const canvas =
+    viewer.scene.canvas;
 
   const layer =
     createFloodRoadClosureLayer({
@@ -372,46 +450,253 @@ export function initialiseOperationalFloodRoadClosures({
         }
     });
 
-  const clickHandler =
-    new CesiumRef.ScreenSpaceEventHandler(
-      viewer.scene.canvas
+  function showClosureById(
+    closureId
+  ) {
+    if (!closureId) {
+      return false;
+    }
+
+    const feature =
+      layer.featureById(
+        closureId
+      );
+
+    if (!feature) {
+      return false;
+    }
+
+    showClosureInfo(
+      feature
     );
 
-  clickHandler.setInputAction(
-    movement => {
-      const picked =
-        viewer.scene.pick(
-          movement.position
-        );
+    return true;
+  }
 
-      const closureId =
-        picked?.id
-          ?.stormTrackerFloodClosureId;
+  function canvasPositionFromPointer(
+    event
+  ) {
+    const rect =
+      canvas.getBoundingClientRect();
 
-      if (!closureId) {
+    return new CesiumRef.Cartesian2(
+      event.clientX
+        - rect.left,
+      event.clientY
+        - rect.top
+    );
+  }
+
+  function selectNearPosition(
+    position,
+    {
+      width = 30,
+      height = 30
+    } = {}
+  ) {
+    const closureId =
+      closureIdNearPosition({
+        viewer,
+        CesiumRef,
+        position,
+        width,
+        height
+      });
+
+    return showClosureById(
+      closureId
+    );
+  }
+
+  const pointerTap =
+    {
+      id:
+        null,
+      x:
+        0,
+      y:
+        0,
+      startedAt:
+        0,
+      moved:
+        false
+    };
+
+  const onPointerDown =
+    event => {
+      if (
+        event.button !== undefined
+        && event.button !== 0
+      ) {
         return;
       }
 
-      const feature =
-        layer.featureById(
-          closureId
-        );
+      pointerTap.id =
+        event.pointerId;
 
-      if (!feature) {
+      pointerTap.x =
+        event.clientX;
+
+      pointerTap.y =
+        event.clientY;
+
+      pointerTap.startedAt =
+        performance.now();
+
+      pointerTap.moved =
+        false;
+    };
+
+  const onPointerMove =
+    event => {
+      if (
+        pointerTap.id
+        !== event.pointerId
+      ) {
         return;
       }
 
-      showClosureInfo(
-        feature
+      if (
+        Math.hypot(
+          event.clientX
+            - pointerTap.x,
+          event.clientY
+            - pointerTap.y
+        ) > 12
+      ) {
+        pointerTap.moved =
+          true;
+      }
+    };
+
+  const clearPointerTap =
+    event => {
+      if (
+        pointerTap.id
+        !== event.pointerId
+      ) {
+        return;
+      }
+
+      pointerTap.id =
+        null;
+    };
+
+  const onPointerUp =
+    event => {
+      if (
+        pointerTap.id
+        !== event.pointerId
+      ) {
+        return;
+      }
+
+      const duration =
+        performance.now()
+        - pointerTap.startedAt;
+
+      const isTap =
+        !pointerTap.moved
+        && duration <= 700;
+
+      pointerTap.id =
+        null;
+
+      if (!isTap) {
+        return;
+      }
+
+      selectNearPosition(
+        canvasPositionFromPointer(
+          event
+        ),
+        {
+          width:
+            event.pointerType === "touch"
+              ? 42
+              : 28,
+          height:
+            event.pointerType === "touch"
+              ? 42
+              : 28
+        }
       );
-    },
-    CesiumRef.ScreenSpaceEventType
-      .LEFT_CLICK
+    };
+
+  canvas.addEventListener(
+    "pointerdown",
+    onPointerDown,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
   );
+
+  canvas.addEventListener(
+    "pointermove",
+    onPointerMove,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  canvas.addEventListener(
+    "pointerup",
+    onPointerUp,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  canvas.addEventListener(
+    "pointercancel",
+    clearPointerTap,
+    {
+      capture:
+        true,
+      passive:
+        true
+    }
+  );
+
+  const clickFallback =
+    typeof PointerEvent
+      === "undefined"
+      ? new CesiumRef
+          .ScreenSpaceEventHandler(
+            canvas
+          )
+      : null;
+
+  clickFallback
+    ?.setInputAction(
+      movement => {
+        selectNearPosition(
+          movement.position,
+          {
+            width:
+              32,
+            height:
+              32
+          }
+        );
+      },
+      CesiumRef
+        .ScreenSpaceEventType
+        .LEFT_CLICK
+    );
 
   const hoverHandler =
     new CesiumRef.ScreenSpaceEventHandler(
-      viewer.scene.canvas
+      canvas
     );
 
   let lastHoverPickAt =
@@ -432,17 +717,22 @@ export function initialiseOperationalFloodRoadClosures({
       lastHoverPickAt =
         now;
 
-      const picked =
-        viewer.scene.pick(
-          movement.endPosition
-        );
+      const closureId =
+        closureIdNearPosition({
+          viewer,
+          CesiumRef,
+          position:
+            movement.endPosition,
+          width:
+            18,
+          height:
+            18
+        });
 
-      viewer.scene.canvas
-        .style.cursor =
-          picked?.id
-            ?.stormTrackerFloodClosureId
-            ? "pointer"
-            : "";
+      canvas.style.cursor =
+        closureId
+          ? "pointer"
+          : "";
     },
     CesiumRef.ScreenSpaceEventType
       .MOUSE_MOVE
@@ -500,11 +790,36 @@ export function initialiseOperationalFloodRoadClosures({
     () => {
       layer.stop();
 
+      canvas.removeEventListener(
+        "pointerdown",
+        onPointerDown,
+        true
+      );
+
+      canvas.removeEventListener(
+        "pointermove",
+        onPointerMove,
+        true
+      );
+
+      canvas.removeEventListener(
+        "pointerup",
+        onPointerUp,
+        true
+      );
+
+      canvas.removeEventListener(
+        "pointercancel",
+        clearPointerTap,
+        true
+      );
+
       if (
-        !clickHandler
+        clickFallback
+        && !clickFallback
           .isDestroyed()
       ) {
-        clickHandler.destroy();
+        clickFallback.destroy();
       }
 
       if (

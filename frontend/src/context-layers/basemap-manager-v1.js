@@ -44,6 +44,16 @@ export const REFERENCE_LABELS =
       "World Boundaries and Places"
   });
 
+export const QUEENSLAND_PLACE_LABELS =
+  Object.freeze({
+    service:
+      "https://spatial-gis.information.qld.gov.au/arcgis/rest/services/Location/Places/MapServer",
+    layers:
+      "20,10,11,12,13,16,17,18,19",
+    label:
+      "Queensland Globe Places"
+  });
+
 export function normaliseBasemapId(
   value
 ) {
@@ -107,11 +117,9 @@ export function createReferenceLabelProvider(
     url:
       REFERENCE_LABELS.tileTemplate,
 
-    rectangle:
-      qldImageryRectangle(
-        Cesium
-      ),
-
+    // Deliberately do not inherit the Queensland-imagery rectangle here.
+    // This layer is cross-border context and must remain continuous over
+    // the generic fallback wherever the aerial imagery ends.
     tilingScheme:
       new Cesium.WebMercatorTilingScheme(),
 
@@ -129,6 +137,39 @@ export function createReferenceLabelProvider(
         "Reference labels: Esri, HERE, Garmin, OpenStreetMap contributors, GIS user community"
       )
   });
+}
+
+export async function createQueenslandPlaceLabelProvider(
+  Cesium
+) {
+  const factory =
+    Cesium
+      ?.ArcGisMapServerImageryProvider
+      ?.fromUrl;
+
+  if (
+    typeof factory
+      !== "function"
+  ) {
+    throw new TypeError(
+      "Cesium ArcGIS MapServer imagery support is unavailable."
+    );
+  }
+
+  return factory.call(
+    Cesium.ArcGisMapServerImageryProvider,
+    QUEENSLAND_PLACE_LABELS.service,
+    {
+      usePreCachedTilesIfAvailable:
+        false,
+
+      enablePickFeatures:
+        false,
+
+      layers:
+        QUEENSLAND_PLACE_LABELS.layers
+    }
+  );
 }
 
 export function createBasemapProvider(

@@ -1,0 +1,29 @@
+name: Smoke V9.11.3 Queensland place labels
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.11.3-rural-place-labels
+    paths:
+      - "frontend/src/context-layers/basemap-manager-v1.js"
+      - "frontend/src/live3d-operational-v9.js"
+      - "scripts/smoke-qld-place-labels.mjs"
+      - ".github/workflows/smoke-v9-11-3-qld-place-labels.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Smoke Queensland Places service
+        run: node scripts/smoke-qld-place-labels.mjs

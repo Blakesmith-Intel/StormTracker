@@ -4,9 +4,11 @@ import {
   BASEMAP_IDS,
   BASEMAP_STORAGE_KEY,
   QLD_IMAGERY_BASEMAP,
+  QUEENSLAND_PLACE_LABELS,
   REFERENCE_LABELS,
   basemapLabel,
   createBasemapProvider,
+  createQueenslandPlaceLabelProvider,
   createReferenceLabelProvider,
   createStormTrackerBasemapManager,
   normaliseBasemapId
@@ -43,6 +45,22 @@ class FakeUrlTemplateProvider {
 
 class FakeWebMercatorTilingScheme {}
 
+class FakeArcGisProvider {
+  static async fromUrl(
+    url,
+    options
+  ) {
+    return {
+      url,
+      options,
+      errorEvent: {
+        addEventListener:
+          () => () => {}
+      }
+    };
+  }
+}
+
 class FakeRectangle {
   static fromDegrees(
     west,
@@ -65,6 +83,8 @@ const Cesium = {
     FakeStreetProvider,
   UrlTemplateImageryProvider:
     FakeUrlTemplateProvider,
+  ArcGisMapServerImageryProvider:
+    FakeArcGisProvider,
   WebMercatorTilingScheme:
     FakeWebMercatorTilingScheme,
   Rectangle:
@@ -135,6 +155,44 @@ assert.ok(
 assert.match(
   labels.options.credit.text,
   /Reference labels/
+);
+
+assert.equal(
+  labels.options.rectangle,
+  undefined,
+  "Global reference labels must not inherit the Queensland imagery rectangle or they will be cut off at the imagery seam."
+);
+
+const qldPlaces =
+  await createQueenslandPlaceLabelProvider(
+    Cesium
+  );
+
+assert.equal(
+  qldPlaces.url,
+  QUEENSLAND_PLACE_LABELS.service
+);
+
+assert.equal(
+  qldPlaces.options
+    .usePreCachedTilesIfAvailable,
+  false
+);
+
+assert.equal(
+  qldPlaces.options
+    .enablePickFeatures,
+  false
+);
+
+assert.equal(
+  qldPlaces.options.layers,
+  "20,10,11,12,13,16,17,18,19"
+);
+
+assert.match(
+  QUEENSLAND_PLACE_LABELS.label,
+  /Queensland Globe Places/
 );
 assert.equal(
   normaliseBasemapId("nonsense"),
@@ -336,5 +394,5 @@ assert.equal(
 );
 
 console.log(
-  "Basemap manager checks passed: Queensland imagery is clipped to its published extent, generic fallback fills outside coverage, labels stay clipped, and layer replacement remains camera-safe."
+  "Basemap manager checks passed: Queensland imagery remains clipped to its published extent, generic fallback fills outside coverage, global labels cross the imagery seam, Queensland Globe place labels are available, and layer replacement remains camera-safe."
 );

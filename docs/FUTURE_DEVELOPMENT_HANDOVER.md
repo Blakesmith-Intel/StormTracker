@@ -1,29 +1,29 @@
 # StormTracker future development handover
 
-**Starting production baseline:** V9.8.4  
-**Accepted runtime commit:** `acbc6aa63829d0532e32c28c2b0a49030a29b276`  
-**Recovery reference:** `restore/v9.8.4`  
-**Prepared:** 7 October 2026
+**Starting production baseline:** V9.9.0  
+**Accepted runtime commit:** `de724bdeb1d92d4dd4cb2e7f99492f548dd418f4`  
+**Recovery reference:** `restore/v9.9.0`  
+**Prepared:** 8 October 2026
 
 ## 1. Executive handover
 
-StormTracker V9.8.4 is the protected production starting point for the next
-development workflow. The radar/tracking product is considered operationally
+StormTracker V9.9.0 is the protected production starting point for the next
+development workflow. Wishlist item 1 — GA satellite context, place names and
+optional 3-D terrain — is complete and sealed. The radar/tracking product is considered operationally
 complete unless a specific defect is demonstrated. Future work should add
 situational-awareness layers around it rather than casually reopening validated
 tracking, Doppler or inferred-volume science.
 
-Planned context capabilities remain:
+Remaining context capabilities are:
 
-1. Switchable Geoscience Australia / Digital Earth Australia satellite basemap.
-2. Observed lightning tracker, only from a legally reusable machine feed.
-3. Electricity outage areas from Energex, Ergon Energy and Essential Energy.
-4. Bureau of Meteorology flood/river gauges with tidal-aware abnormal-rise logic.
-5. Road closures from authoritative Queensland/NSW sources.
+1. Road closures from authoritative Queensland/NSW sources.
+2. Electricity outage areas from Energex, Ergon Energy and Essential Energy.
+3. Bureau of Meteorology flood/river gauges with tidal-aware abnormal-rise logic.
+4. Observed lightning tracker, only from a legally reusable machine feed.
 
-The preferred implementation order remains: layer framework + DEA basemap,
-road closures, power outages, flood gauges, then observed lightning unless source
-discovery materially changes the order.
+The preferred implementation order is now road closures, power outages, flood
+gauges, then observed lightning unless source discovery materially changes the
+order.
 
 ## 2. Non-negotiable production contract
 
@@ -44,7 +44,7 @@ discovery materially changes the order.
 - Five-minute live polling, Queensland radar coverage, mobile controls, track
   selection and source-recovery behaviour are protected baseline behaviour.
 
-## 3. V9.8.2–V9.8.4 changes that must be preserved
+## 3. V9.8.2–V9.9.0 changes that must be preserved
 
 ### Source-aware history
 
@@ -84,6 +84,19 @@ observations.
 Do not reintroduce the V9.8.3 behaviour where manual refresh was required for
 historical loop growth.
 
+### V9.9.0 situational context and interaction performance
+
+V9.9.0 adds the accepted GA satellite basemap, place-name/boundary overlay and
+optional 3-D terrain without changing the weather-science contract. Radar-only
+automatic refresh at Doppler-capable sites is explicitly independent of Doppler
+unless the user enables the Doppler overlay. Frame-slider bounds follow the full
+dynamic loop length.
+
+Camera interaction has a protected performance behaviour: terrain detail may be
+temporarily relaxed only while the camera is moving, then returns to normal after
+the gesture settles. Multi-touch pinch/rotate/pitch and high-delta wheel zoom are
+batched to avoid redundant camera renders.
+
 ## 4. Architecture for future situational layers
 
 Do not bolt each new feed directly into `live3d-operational-v9.js`. Create a
@@ -115,7 +128,7 @@ block radar publication, playback, tracking or Doppler.
 
 | Release | Work package | Priority |
 | --- | --- | --- |
-| V9.9.0 | GA satellite + place labels + optional 3-D terrain — candidate implemented | 1 |
+| V9.9.0 | GA satellite + place labels + optional 3-D terrain — COMPLETE / SEALED | 1 |
 | V9.10.0 | Road closures | 2 |
 | V9.11.0 | Power outages | 3 |
 | V9.12.0 | Flood gauges | 4 |
@@ -198,13 +211,13 @@ The repository currently contains 44 frontend regression suites.
 
 ```bash
 git fetch origin
-git switch -c feature/context-layers-v9.9.0 origin/restore/v9.8.4
+git switch -c feature/road-closures-v9.10.0 origin/restore/v9.9.0
 npm test
 ```
 
-Then build the context-layer manager skeleton before adding the first external
-context feed. Do not reopen tracking/science merely because a situational layer is
-being added.
+Start with authoritative road-closure source discovery and keep the provider
+inside the context-layer subsystem. Do not reopen tracking/science merely because
+a situational layer is being added.
 
 ## 10. Optional harmless easter egg
 

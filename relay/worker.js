@@ -8,6 +8,10 @@ import {
   radarTimestampToIso
 } from "./doppler-history-v1.js";
 
+import {
+  isActiveFloodRoadClosure
+} from "../frontend/src/context-layers/flood-road-closure-filter-v1.js";
+
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
 
@@ -126,57 +130,6 @@ function jsonResponse(payload, origin) {
   );
 }
 
-function normaliseRoadField(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-function isFloodRoadClosureFeature(feature) {
-  const properties =
-    feature?.properties ?? {};
-
-  const eventType =
-    normaliseRoadField(
-      properties.event_type
-    );
-
-  const eventSubtype =
-    normaliseRoadField(
-      properties.event_subtype
-    );
-
-  const eventDueTo =
-    normaliseRoadField(
-      properties.event_due_to
-    );
-
-  const impactType =
-    normaliseRoadField(
-      properties.impact?.impact_type
-    );
-
-  const status =
-    normaliseRoadField(
-      properties.status
-    );
-
-  const floodRelated =
-    eventType === "flooding"
-    || eventSubtype === "flash flooding"
-    || eventSubtype === "long-term flooding"
-    || eventDueTo === "earlier flooding"
-    || eventDueTo === "earlier flash flooding"
-    || eventDueTo === "water over road"
-    || eventDueTo === "flooding of river";
-
-  return (
-    status === "published"
-    && floodRelated
-    && impactType === "closures"
-  );
-}
-
 async function relayFloodRoadClosures(
   origin,
   env
@@ -251,7 +204,7 @@ async function relayFloodRoadClosures(
   const features =
     Array.isArray(payload?.features)
       ? payload.features.filter(
-          isFloodRoadClosureFeature
+          isActiveFloodRoadClosure
         )
       : [];
 

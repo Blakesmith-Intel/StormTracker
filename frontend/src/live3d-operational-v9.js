@@ -131,6 +131,10 @@ import {
 } from "./context-layers/power-outages-operational-v1.js?v=9.11.1";
 
 import {
+  initialiseOperationalRiverGauges
+} from "./context-layers/river-gauges-operational-v1.js?v=9.12.0-dev1";
+
+import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
@@ -456,6 +460,10 @@ initialiseOperationalFloodRoadClosures({
 });
 
 initialiseOperationalPowerOutages({
+  viewer
+});
+
+initialiseOperationalRiverGauges({
   viewer
 });
 

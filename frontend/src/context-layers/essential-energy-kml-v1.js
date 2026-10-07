@@ -595,7 +595,8 @@ function outageTypeFromStyle(
     return "PLANNED";
   }
 
-  return "UNPLANNED";
+  // Unrecognised styles are not confirmed unplanned incidents.
+  return "";
 }
 
 export function parseEssentialEnergyKml(

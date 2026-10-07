@@ -15,12 +15,10 @@ It:
 - rejects restrictions, rain-only events, crashes, roadworks, special events and free-text flood keyword matches;
 - adds CORS headers so the browser application can consume the approved data.
 
-## QLDTraffic credential
+## QLDTraffic road-closure source
 
-The Worker expects a Cloudflare secret named:
+V9.10.0 reads the public TMR GeoJSON feed at `https://data.qldtraffic.qld.gov.au/events_v2.geojson`.
 
-`QLDTRAFFIC_API_KEY`
-
-Set it in the Worker environment before deploying the V9.10.0 road-closure route. The key is never exposed to the browser bundle.
+No QLDTraffic API key is required. The relay applies the shared StormTracker fail-closed classifier and returns only current, published, explicitly flood-related road closures. A five-minute fresh cache and two-hour last-known-good fallback protect the operational layer from temporary upstream failures.
 
 The Worker does **not** perform storm segmentation, tracking, modelling, inference or 3-D processing. All weather science remains in the StormTracker browser application.

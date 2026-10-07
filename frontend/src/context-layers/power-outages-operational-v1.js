@@ -1,7 +1,7 @@
 import {
   createPowerOutageLayer,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.11.1";
+} from "./power-outages-v1.js?v=9.12.0-dev1";
 
 const $ = id =>
   document.getElementById(id);

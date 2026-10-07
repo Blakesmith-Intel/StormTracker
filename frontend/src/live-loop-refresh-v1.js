@@ -50,6 +50,16 @@ export function needsChronologicalRadarRebuild(
     });
 }
 
+export function automaticRefreshUsesDopplerGate(
+  withDoppler,
+  requestedRadarIds = []
+) {
+  return Boolean(
+    withDoppler
+    && requestedRadarIds.length
+  );
+}
+
 // Within-tolerance reuse of yesterday's tail is not a newly published pair.
 // Every previously available radar must advance independently.
 export function hasNewMatchedProducts(previous, next) {

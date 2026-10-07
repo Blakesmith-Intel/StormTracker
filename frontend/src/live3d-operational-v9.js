@@ -2635,7 +2635,7 @@ async function loadHybridSequence(automatic = false) {
         ).then(observedUtc => [observedUtc])
       : discoverBomReflectivityHistory(
           now,
-          90,
+          180,
           region
         ),
     getRadarFrames(

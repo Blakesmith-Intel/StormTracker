@@ -131,7 +131,7 @@ function jsonResponse(payload, origin) {
 }
 
 const FLOOD_ROAD_CACHE_URL =
-  "https://stormtracker.internal/flood-road-closures-cache-v2";
+  "https://stormtracker.internal/flood-road-closures-cache-v3";
 
 const FLOOD_ROAD_FRESH_MS =
   5 * 60 * 1000;
@@ -311,10 +311,6 @@ async function relayFloodRoadClosures(
         headers: {
           Accept:
             "application/geo+json,application/json"
-        },
-        cf: {
-          cacheEverything: true,
-          cacheTtl: 300
         }
       }
     );

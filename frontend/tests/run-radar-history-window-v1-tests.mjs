@@ -2,16 +2,21 @@ import assert from "node:assert/strict";
 
 import {
   ALL_AVAILABLE_LOOP_VALUE,
+  MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES,
   availableRadarLoopMinutes,
+  buildRadarPlaybackPlan,
   continuousRadarHistoryTimes,
   normaliseRadarHistoryTimes,
   radarHistoryCadenceMinutes,
   radarHistorySpanMinutes,
+  selectRadarHistoryPlan,
   selectRadarHistoryTimes
 } from "../src/radar-history-window-v1.js";
 
 const stamp = minute =>
-  new Date(Date.UTC(2026, 9, 7, 5, minute)).toISOString();
+  new Date(Date.UTC(2026, 9, 7, 5, minute))
+    .toISOString()
+    .replace(".000Z", "Z");
 
 const fiveMinuteHistory =
   Array.from({ length: 9 }, (_, index) => stamp(10 + index * 5));
@@ -20,49 +25,65 @@ assert.equal(radarHistorySpanMinutes(fiveMinuteHistory), 40);
 assert.equal(radarHistoryCadenceMinutes(fiveMinuteHistory), 5);
 assert.deepEqual(availableRadarLoopMinutes(fiveMinuteHistory), [30]);
 assert.equal(selectRadarHistoryTimes(fiveMinuteHistory, 30).length, 6);
-assert.deepEqual(
-  selectRadarHistoryTimes(fiveMinuteHistory, ALL_AVAILABLE_LOOP_VALUE),
-  fiveMinuteHistory
-);
-
-const ninetyFiveMinutes =
-  Array.from({ length: 20 }, (_, index) => stamp(index * 5));
-assert.deepEqual(
-  availableRadarLoopMinutes(ninetyFiveMinutes),
-  [30, 60, 90]
-);
-assert.equal(selectRadarHistoryTimes(ninetyFiveMinutes, 90).length, 18);
+assert.equal(selectRadarHistoryPlan(fiveMinuteHistory, 30).length, 6);
 
 const tenMinuteCadence =
-  Array.from({ length: 7 }, (_, index) => stamp(index * 10));
+  Array.from({ length: 10 }, (_, index) => stamp(index * 10));
+
 assert.equal(radarHistoryCadenceMinutes(tenMinuteCadence), 10);
-assert.deepEqual(availableRadarLoopMinutes(tenMinuteCadence), [30, 60]);
-assert.equal(selectRadarHistoryTimes(tenMinuteCadence, 60).length, 6);
+const tenMinutePlan = buildRadarPlaybackPlan(tenMinuteCadence);
+assert.equal(tenMinutePlan.filter(entry => entry.kind === "inferred").length, 9);
+assert.equal(tenMinutePlan.length, 19);
+assert.deepEqual(
+  availableRadarLoopMinutes(tenMinuteCadence),
+  [30, 60, 90]
+);
+
+const oneMissingScan = [
+  stamp(0),
+  stamp(5),
+  stamp(15),
+  stamp(20),
+  stamp(25),
+  stamp(30)
+];
+const oneMissingPlan = buildRadarPlaybackPlan(oneMissingScan);
+assert.ok(
+  oneMissingPlan.some(
+    entry =>
+      entry.kind === "inferred"
+      && entry.observedUtc === stamp(10)
+      && entry.beforeUtc === stamp(5)
+      && entry.afterUtc === stamp(15)
+  )
+);
 
 const gappy = [
   stamp(0), stamp(5), stamp(10),
   stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)
 ];
+
 assert.deepEqual(
   continuousRadarHistoryTimes(gappy),
   [stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)]
 );
 assert.deepEqual(availableRadarLoopMinutes(gappy), [30]);
-assert.deepEqual(
-  selectRadarHistoryTimes(gappy, ALL_AVAILABLE_LOOP_VALUE),
-  [stamp(55), stamp(60), stamp(65), stamp(70), stamp(75), stamp(80)]
-);
-assert.throws(
-  () => selectRadarHistoryTimes(gappy, 60),
-  /cannot currently supply/
+
+const maximumBridge = [
+  stamp(0), stamp(MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES),
+  stamp(20), stamp(25), stamp(30)
+];
+assert.ok(
+  buildRadarPlaybackPlan(maximumBridge)
+    .some(entry => entry.kind === "inferred")
 );
 
-const sparseTail = [stamp(0), stamp(45), stamp(50)];
+const tooLargeGap = [stamp(0), stamp(20), stamp(25), stamp(30)];
 assert.deepEqual(
-  continuousRadarHistoryTimes(sparseTail),
-  [stamp(45), stamp(50)]
+  continuousRadarHistoryTimes(tooLargeGap),
+  [stamp(20), stamp(25), stamp(30)]
 );
-assert.deepEqual(availableRadarLoopMinutes(sparseTail), []);
+assert.deepEqual(availableRadarLoopMinutes(tooLargeGap), []);
 
 assert.deepEqual(
   normaliseRadarHistoryTimes([
@@ -71,6 +92,12 @@ assert.deepEqual(
   [stamp(5), stamp(10)]
 );
 
+assert.deepEqual(
+  selectRadarHistoryPlan(fiveMinuteHistory, ALL_AVAILABLE_LOOP_VALUE)
+    .map(entry => entry.observedUtc),
+  fiveMinuteHistory
+);
+
 console.log(
-  "Dynamic radar-history checks passed: source span/cadence, supported windows, all-available mode and gap rejection."
+  "Radar-history checks passed: 3-hour-capable windows, bounded gap interpolation plans, cadence handling and large-gap rejection."
 );

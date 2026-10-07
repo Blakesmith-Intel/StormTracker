@@ -16,7 +16,7 @@ export const DEA_BASEMAP =
     style:
       "simple_rgb",
     date:
-      "2025-07-02",
+      "2025-01-01",
     label:
       "GA satellite · DEA GeoMAD 2025"
   });

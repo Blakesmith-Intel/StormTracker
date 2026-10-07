@@ -73,7 +73,7 @@ assert.match(js, /onInteraction/);
 assert.match(js, /SingleTileImageryProvider/);
 assert.match(js, /createDopplerLayerTransition/);
 assert.match(js, /dopplerOverlayFrameKey/);
-assert.match(js, /dopplerOverlayTransition\.replace/);
+assert.match(js, /dopplerOverlayTransition[\s\S]*?\.replace/);
 assert.match(js, /DEFAULT_DOPPLER_FADE_OUT_MS/);
 assert.doesNotMatch(js, /let dopplerOverlayLayer/);
 

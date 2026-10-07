@@ -66,8 +66,12 @@ assert.equal(
   "simple_rgb"
 );
 assert.equal(
-  dea.options.parameters.time,
-  "2025-01-01"
+  "time" in dea.options.parameters,
+  false
+);
+assert.equal(
+  dea.options.parameters.transparent,
+  true
 );
 assert.match(
   dea.options.credit.text,
@@ -76,7 +80,7 @@ assert.match(
 
 assert.equal(
   DEA_BASEMAP.label,
-  "GA satellite · DEA GeoMAD 2025"
+  "GA satellite · DEA GeoMAD latest annual"
 );
 assert.equal(
   normaliseBasemapId("nonsense"),

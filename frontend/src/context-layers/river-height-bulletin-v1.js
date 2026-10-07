@@ -422,6 +422,20 @@ export function parseRiverHeightTable(
           return null;
         }
 
+        const heightMetres =
+          parseHeight(
+            row[
+              heightIndex
+            ]
+          );
+
+        if (
+          heightMetres
+          === null
+        ) {
+          return null;
+        }
+
         const href =
           recentIndex >= 0
             ? recentDataHref(
@@ -439,12 +453,7 @@ export function parseRiverHeightTable(
               href
             ),
 
-          heightMetres:
-            parseHeight(
-              row[
-                heightIndex
-              ]
-            ),
+          heightMetres,
 
           tendency:
             normaliseTendency(

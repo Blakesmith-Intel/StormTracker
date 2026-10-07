@@ -1,0 +1,23 @@
+name: Validate V9.10 road closures
+
+on:
+  push:
+    branches:
+      - "feature/road-closures-v9.10.0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate frontend
+        run: npm test
+      - name: Validate relay worker
+        run: node --check relay/worker.js

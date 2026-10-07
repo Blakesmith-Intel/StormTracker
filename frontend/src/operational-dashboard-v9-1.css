@@ -502,7 +502,7 @@ dialog::backdrop { background:#0009; }
 }
 
 
-/* V9.12.0-dev1 BoM river gauges */
+/* V9.12.0 BoM river gauges */
 .river-gauge-row button {
   min-height:25px;
   padding:3px 7px;

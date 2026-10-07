@@ -46,24 +46,7 @@ jobs:
 
           for attempt in 1 2 3 4 5; do
             if curl --fail --silent --show-error "$url" -o /tmp/river-heights.json; then
-              if python - <<'PY'
-import json
-
-with open("/tmp/river-heights.json", "r", encoding="utf-8") as handle:
-    payload = json.load(handle)
-
-assert payload.get("format") == "StormTrackerRiverHeightBulletinsV1"
-products = payload.get("products") or []
-assert products, "No BoM river-height products were parsed."
-observations = sum(len(item.get("observations") or []) for item in products)
-assert observations > 0, "No live river-height observations were parsed."
-
-print(
-    f"River-height relay returned {len(products)} product(s), "
-    f"{observations} observation(s), partial={payload.get('partial')}."
-)
-PY
-              then
+              if python -c 'import json; p=json.load(open("/tmp/river-heights.json", encoding="utf-8")); products=p.get("products") or []; observations=sum(len(x.get("observations") or []) for x in products); assert p.get("format")=="StormTrackerRiverHeightBulletinsV1"; assert products; assert observations > 0; print(f"River-height relay returned {len(products)} product(s), {observations} observation(s), partial={p.get(chr(112)+chr(97)+chr(114)+chr(116)+chr(105)+chr(97)+chr(108))}.")'; then
                 exit 0
               fi
             fi

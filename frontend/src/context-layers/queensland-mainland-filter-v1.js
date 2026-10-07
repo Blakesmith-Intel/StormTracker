@@ -385,6 +385,40 @@ export function representativePointForGeometry(
     : null;
 }
 
+export function representativePointForFeature(
+  feature
+) {
+  const longitude =
+    Number(
+      feature?.properties
+        ?.STORMTRACKER_SOURCE_LONGITUDE
+    );
+
+  const latitude =
+    Number(
+      feature?.properties
+        ?.STORMTRACKER_SOURCE_LATITUDE
+    );
+
+  if (
+    Number.isFinite(
+      longitude
+    )
+    && Number.isFinite(
+      latitude
+    )
+  ) {
+    return [
+      longitude,
+      latitude
+    ];
+  }
+
+  return representativePointForGeometry(
+    feature?.geometry
+  );
+}
+
 export function filterFeaturesToQueensland(
   payload,
   boundaryPayload
@@ -425,8 +459,8 @@ export function filterFeaturesToQueensland(
       features.filter(
         feature => {
           const point =
-            representativePointForGeometry(
-              feature?.geometry
+            representativePointForFeature(
+              feature
             );
 
           return (

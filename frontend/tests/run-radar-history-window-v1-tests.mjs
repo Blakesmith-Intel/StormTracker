@@ -71,17 +71,17 @@ assert.deepEqual(availableRadarLoopMinutes(gappy), [30]);
 
 const maximumBridge = [
   stamp(0), stamp(MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES),
-  stamp(20), stamp(25), stamp(30)
+  stamp(35), stamp(40), stamp(45)
 ];
 assert.ok(
   buildRadarPlaybackPlan(maximumBridge)
     .some(entry => entry.kind === "inferred")
 );
 
-const tooLargeGap = [stamp(0), stamp(20), stamp(25), stamp(30)];
+const tooLargeGap = [stamp(0), stamp(35), stamp(40), stamp(45)];
 assert.deepEqual(
   continuousRadarHistoryTimes(tooLargeGap),
-  [stamp(20), stamp(25), stamp(30)]
+  [stamp(35), stamp(40), stamp(45)]
 );
 assert.deepEqual(availableRadarLoopMinutes(tooLargeGap), []);
 

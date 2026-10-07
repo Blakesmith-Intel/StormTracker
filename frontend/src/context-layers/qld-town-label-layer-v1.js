@@ -230,8 +230,9 @@ export function createQueenslandTownLabelLayer({
     get mode() { return currentMode; },
     get cameraHeight() { return scene.camera?.positionCartographic?.height ?? null; },
     get cameraPitchDegrees() {
-      return Number.isFinite(scene.camera?.pitch)
-        ? scene.camera.pitch * 180 / Math.PI : null;
+      return cameraLookDownDegrees(
+        scene.camera, CesiumRef, scene.globe?.ellipsoid ?? CesiumRef.Ellipsoid?.WGS84
+      );
     }
   };
 }

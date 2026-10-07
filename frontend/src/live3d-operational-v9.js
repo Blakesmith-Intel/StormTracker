@@ -107,8 +107,9 @@ import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1
 import {
   BASEMAP_IDS,
   createReferenceLabelProvider,
+  createQueenslandPlaceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.10.4";
+} from "./context-layers/basemap-manager-v1.js?v=9.11.3";
 
 import {
   syncFrameSlider
@@ -255,43 +256,101 @@ mapCamera =
         cameraPerformance.pulse()
   });
 
-let basemapReferenceLayer =
+let basemapGlobalReferenceLayer =
   null;
 
-let basemapReferenceErrorDisposer =
+let basemapQueenslandPlaceLayer =
   null;
 
-function clearBasemapReferenceLayer() {
-  if (!basemapReferenceLayer) {
-    return;
-  }
+let basemapGlobalReferenceErrorDisposer =
+  null;
 
-  viewer.imageryLayers.remove(
-    basemapReferenceLayer,
-    true
-  );
+let basemapQueenslandPlaceErrorDisposer =
+  null;
 
-  basemapReferenceLayer =
-    null;
+let basemapReferenceGeneration =
+  0;
 
+function disposeBasemapReferenceListener(
+  disposer
+) {
   if (
-    typeof basemapReferenceErrorDisposer
+    typeof disposer
     === "function"
   ) {
-    basemapReferenceErrorDisposer();
+    disposer();
+  }
+}
+
+function clearBasemapReferenceLayer() {
+  basemapReferenceGeneration +=
+    1;
+
+  if (
+    basemapGlobalReferenceLayer
+  ) {
+    viewer.imageryLayers.remove(
+      basemapGlobalReferenceLayer,
+      true
+    );
   }
 
-  basemapReferenceErrorDisposer =
+  if (
+    basemapQueenslandPlaceLayer
+  ) {
+    viewer.imageryLayers.remove(
+      basemapQueenslandPlaceLayer,
+      true
+    );
+  }
+
+  basemapGlobalReferenceLayer =
+    null;
+
+  basemapQueenslandPlaceLayer =
+    null;
+
+  disposeBasemapReferenceListener(
+    basemapGlobalReferenceErrorDisposer
+  );
+
+  disposeBasemapReferenceListener(
+    basemapQueenslandPlaceErrorDisposer
+  );
+
+  basemapGlobalReferenceErrorDisposer =
+    null;
+
+  basemapQueenslandPlaceErrorDisposer =
     null;
 }
 
 function keepBasemapReferenceLabelsVisible() {
-  if (!basemapReferenceLayer) {
-    return;
+  if (
+    basemapGlobalReferenceLayer
+  ) {
+    viewer.imageryLayers.raiseToTop(
+      basemapGlobalReferenceLayer
+    );
   }
 
-  viewer.imageryLayers.raiseToTop(
-    basemapReferenceLayer
+  if (
+    basemapQueenslandPlaceLayer
+  ) {
+    viewer.imageryLayers.raiseToTop(
+      basemapQueenslandPlaceLayer
+    );
+  }
+}
+
+function labelFailureStatus(
+  basemapId
+) {
+  return (
+    basemapId
+    === BASEMAP_IDS.QLD_IMAGERY
+      ? "Queensland imagery loaded · Queensland place labels are currently unavailable"
+      : "Street basemap loaded · Queensland place labels are currently unavailable"
   );
 }
 
@@ -300,46 +359,120 @@ function syncBasemapReferenceLayer(
 ) {
   clearBasemapReferenceLayer();
 
+  const generation =
+    basemapReferenceGeneration;
+
   if (
     basemapId
-    !== BASEMAP_IDS.QLD_IMAGERY
+    === BASEMAP_IDS.QLD_IMAGERY
   ) {
-    return;
-  }
+    const globalProvider =
+      createReferenceLabelProvider(
+        Cesium
+      );
 
-  const provider =
-    createReferenceLabelProvider(
-      Cesium
-    );
+    if (
+      globalProvider.errorEvent
+      ?.addEventListener
+    ) {
+      basemapGlobalReferenceErrorDisposer =
+        globalProvider.errorEvent
+          .addEventListener(
+            () => {
+              if (
+                generation
+                !== basemapReferenceGeneration
+                || basemapManager.currentId
+                !== BASEMAP_IDS.QLD_IMAGERY
+              ) {
+                return;
+              }
 
-  if (
-    provider.errorEvent
-    ?.addEventListener
-  ) {
-    basemapReferenceErrorDisposer =
-      provider.errorEvent
-        .addEventListener(
-          () => {
-            if (
-              basemapManager.currentId
-              !== BASEMAP_IDS.QLD_IMAGERY
-            ) {
-              return;
+              setBasemapStatus(
+                "Queensland imagery loaded · global reference labels are currently unavailable",
+                "normal"
+              );
             }
+          );
+    }
 
-            setBasemapStatus(
-              "Queensland imagery loaded · place-name labels are currently unavailable",
-              "error"
-            );
-          }
+    basemapGlobalReferenceLayer =
+      viewer.imageryLayers
+        .addImageryProvider(
+          globalProvider
         );
   }
 
-  basemapReferenceLayer =
-    viewer.imageryLayers
-      .addImageryProvider(
-        provider
-      );
+  createQueenslandPlaceLabelProvider(
+    Cesium
+  )
+    .then(
+      provider => {
+        if (
+          generation
+          !== basemapReferenceGeneration
+        ) {
+          return;
+        }
+
+        if (
+          provider.errorEvent
+          ?.addEventListener
+        ) {
+          basemapQueenslandPlaceErrorDisposer =
+            provider.errorEvent
+              .addEventListener(
+                () => {
+                  if (
+                    generation
+                    !== basemapReferenceGeneration
+                  ) {
+                    return;
+                  }
+
+                  setBasemapStatus(
+                    labelFailureStatus(
+                      basemapId
+                    ),
+                    "error"
+                  );
+                }
+              );
+        }
+
+        basemapQueenslandPlaceLayer =
+          viewer.imageryLayers
+            .addImageryProvider(
+              provider
+            );
+
+        keepBasemapReferenceLabelsVisible();
+
+        scene.requestRender();
+      }
+    )
+    .catch(
+      error => {
+        if (
+          generation
+          !== basemapReferenceGeneration
+        ) {
+          return;
+        }
+
+        console.warn(
+          "Queensland place labels unavailable",
+          error
+        );
+
+        setBasemapStatus(
+          labelFailureStatus(
+            basemapId
+          ),
+          "error"
+        );
+      }
+    );
 
   keepBasemapReferenceLabelsVisible();
 }

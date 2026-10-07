@@ -92,12 +92,62 @@ async function timedJson(
   }
 }
 
+async function timedJsonWithRetry(
+  label,
+  url,
+  options = {},
+  {
+    attempts = 4,
+    delayMs = 2000
+  } = {}
+) {
+  let lastError = null;
+
+  for (
+    let attempt = 1;
+    attempt <= attempts;
+    attempt += 1
+  ) {
+    try {
+      return await timedJson(
+        label,
+        url,
+        options
+      );
+    } catch (error) {
+      lastError =
+        error;
+
+      if (
+        attempt >= attempts
+      ) {
+        break;
+      }
+
+      console.log(
+        `${label}_retry`,
+        `${attempt}/${attempts - 1}`
+      );
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            delayMs
+          )
+      );
+    }
+  }
+
+  throw lastError;
+}
+
 const [
   metadataResult,
   bulletinResult
 ] =
   await Promise.all([
-    timedJson(
+    timedJsonWithRetry(
       "metadata",
       DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
       {
@@ -106,7 +156,7 @@ const [
       }
     ),
 
-    timedJson(
+    timedJsonWithRetry(
       "bulletins",
       DEFAULT_RIVER_HEIGHT_RELAY_URL,
       {

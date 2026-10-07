@@ -15,14 +15,18 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify live flood-closure endpoint
+      - name: Diagnose live flood-closure endpoint
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error             "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/flood-road-closures"             -o /tmp/flood-road-closures.json
+          status="$(curl --silent --show-error             --output /tmp/flood-road-closures.out             --write-out "%{http_code}"             "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/flood-road-closures")"
+          echo "HTTP status: $status"
+          cat /tmp/flood-road-closures.out
+          echo
+          test "$status" = "200"
           node - <<'NODE'
           const fs = require("fs");
-          const payload = JSON.parse(fs.readFileSync("/tmp/flood-road-closures.json","utf8"));
+          const payload = JSON.parse(fs.readFileSync("/tmp/flood-road-closures.out","utf8"));
           if (payload?.type !== "FeatureCollection") throw new Error("Expected FeatureCollection");
           if (!Array.isArray(payload.features)) throw new Error("Missing features array");
           const floodTypes = new Set(["flooding"]);

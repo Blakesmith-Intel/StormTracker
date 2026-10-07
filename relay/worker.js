@@ -22,7 +22,7 @@ const BOM_PRODUCT_BASE =
   "https://www.bom.gov.au/products/";
 
 const QLD_TRAFFIC_EVENTS =
-  "https://api.qldtraffic.qld.gov.au/v2/events";
+  "https://data.qldtraffic.qld.gov.au/events_v2.geojson";
 
 const ALLOWED_ORIGINS = new Set([
   "https://blakesmith-intel.github.io",
@@ -131,7 +131,7 @@ function jsonResponse(payload, origin) {
 }
 
 const FLOOD_ROAD_CACHE_URL =
-  "https://stormtracker.internal/flood-road-closures-cache";
+  "https://stormtracker.internal/flood-road-closures-cache-v2";
 
 const FLOOD_ROAD_FRESH_MS =
   5 * 60 * 1000;
@@ -274,8 +274,7 @@ async function storeFloodRoadSnapshot(
 }
 
 async function relayFloodRoadClosures(
-  origin,
-  env
+  origin
 ) {
   const cached =
     await cachedFloodRoadSnapshot();
@@ -299,43 +298,8 @@ async function relayFloodRoadClosures(
     );
   }
 
-  const apiKey =
-    env?.QLDTRAFFIC_API_KEY;
-
-  if (!apiKey) {
-    if (
-      cached
-      && cached.ageMs
-        <= FLOOD_ROAD_STALE_MS
-    ) {
-      return floodRoadResponse(
-        cached.payload,
-        origin,
-        {
-          cacheStatus:
-            "stale-no-key",
-          upstreamStatus:
-            503,
-          storedAt:
-            cached.storedAt
-        }
-      );
-    }
-
-    return errorResponse(
-      "QLDTraffic API key is not configured",
-      503,
-      origin
-    );
-  }
-
   const target =
     new URL(QLD_TRAFFIC_EVENTS);
-
-  target.searchParams.set(
-    "apikey",
-    apiKey
-  );
 
   let upstream;
 
@@ -457,7 +421,9 @@ async function relayFloodRoadClosures(
       filter:
         "published + flood-related + closures",
       source:
-        "Queensland Department of Transport and Main Roads · QLDTraffic"
+        "Queensland Department of Transport and Main Roads · QLDTraffic",
+      upstream:
+        QLD_TRAFFIC_EVENTS
     }
   };
 
@@ -967,8 +933,7 @@ export default {
 
     if (incoming.pathname === "/flood-road-closures") {
       return relayFloodRoadClosures(
-        origin,
-        env
+        origin
       );
     }
 

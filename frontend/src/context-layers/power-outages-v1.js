@@ -1,6 +1,6 @@
 import {
   parseEssentialEnergyKml
-} from "./essential-energy-kml-v1.js?v=9.11.0-dev3";
+} from "./essential-energy-kml-v1.js?v=9.11.0";
 
 export const ENERGEX_ATTRIBUTION =
   "Energex | Energy Queensland";

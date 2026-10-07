@@ -313,3 +313,25 @@ and bounded temporal interpolation remains display-only and explicitly excluded
 from measured tracking, Doppler analysis and scoring.
 
 The historical `v9.7.2` tag is retained unchanged as an earlier recovery point.
+
+
+## V9.8.4 automatic history growth
+
+V9.8.4 restores automatic expansion of the displayed radar loop as genuine
+historical frames are added to the browser-local cache. The five-minute polling
+cadence remains unchanged and still uses the cheap newest-frame source check.
+
+When cached observations appear at or before the timestamp already processed by
+the tracker, automatic refresh now recognises that the tracker must be rebuilt in
+chronological order. The current selected radar window is then rebuilt from the
+available genuine observations, bounded display-only interpolation is regenerated,
+and the displayed loop grows without requiring the user to press Refresh.
+
+The source-history cache warmer also requests one immediate normal auto-refresh
+after it successfully adds previously uncached observations. This lets newly
+recovered Bureau history appear as soon as cache warming finishes rather than
+waiting for the next five-minute scheduled check.
+
+The chronology guard remains in place for ordinary forward-only refreshes. It is
+bypassed only when a real historical backfill is detected. Doppler remains limited
+to genuine shared 30-minute history and does not use temporally inferred frames.

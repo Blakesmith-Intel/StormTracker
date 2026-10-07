@@ -60,6 +60,31 @@ export function automaticRefreshUsesDopplerGate(
   );
 }
 
+export function automaticRefreshEndUtc({
+  withDoppler,
+  radarTimes = [],
+  sharedEndUtc = null
+}) {
+  if (withDoppler) {
+    return sharedEndUtc;
+  }
+
+  return [...radarTimes]
+    .filter(
+      time =>
+        Number.isFinite(
+          Date.parse(time)
+        )
+    )
+    .sort(
+      (a, b) =>
+        Date.parse(a)
+        - Date.parse(b)
+    )
+    .at(-1)
+    ?? null;
+}
+
 // Within-tolerance reuse of yesterday's tail is not a newly published pair.
 // Every previously available radar must advance independently.
 export function hasNewMatchedProducts(previous, next) {

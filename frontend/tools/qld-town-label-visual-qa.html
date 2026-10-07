@@ -57,6 +57,7 @@ try {
   window.visualQA={
     ready:false,
     move,
+    setMode:mode=>layer.setMode(mode),
     inspect() {
       layer.draw(true);
       const labels=layer.visibleLabels;

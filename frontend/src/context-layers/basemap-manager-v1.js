@@ -23,6 +23,13 @@ export const QLD_IMAGERY_BASEMAP =
       "https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestStateProgram_AllUsers/ImageServer/tile/{z}/{y}/{x}",
     maximumLevel:
       20,
+    rectangleDegrees:
+      Object.freeze({
+        west: 137.7422089133493,
+        south: -29.510092143356154,
+        east: 153.75941606036122,
+        north: -9.00150272786486
+      }),
     label:
       "Queensland imagery · latest public aerial / satellite"
   });
@@ -78,12 +85,32 @@ function persistBasemap(
   }
 }
 
+function qldImageryRectangle(
+  Cesium
+) {
+  const bounds =
+    QLD_IMAGERY_BASEMAP
+      .rectangleDegrees;
+
+  return Cesium.Rectangle.fromDegrees(
+    bounds.west,
+    bounds.south,
+    bounds.east,
+    bounds.north
+  );
+}
+
 export function createReferenceLabelProvider(
   Cesium
 ) {
   return new Cesium.UrlTemplateImageryProvider({
     url:
       REFERENCE_LABELS.tileTemplate,
+
+    rectangle:
+      qldImageryRectangle(
+        Cesium
+      ),
 
     tilingScheme:
       new Cesium.WebMercatorTilingScheme(),
@@ -131,6 +158,11 @@ export function createBasemapProvider(
       maximumLevel:
         QLD_IMAGERY_BASEMAP.maximumLevel,
 
+      rectangle:
+        qldImageryRectangle(
+          Cesium
+        ),
+
       credit:
         new Cesium.Credit(
           "Imagery © State of Queensland; © Planet Labs Netherlands B.V., Planet and Geoplex, 2026"
@@ -167,6 +199,7 @@ export function createStormTrackerBasemapManager({
   }
 
   let currentLayer = null;
+  let fallbackLayer = null;
   let currentId = null;
   let sourceErrorDisposer = null;
 
@@ -203,9 +236,11 @@ export function createStormTrackerBasemapManager({
 
           onStatus(
             id === BASEMAP_IDS.QLD_IMAGERY
-              ? "Queensland imagery tiles are currently unavailable. Weather layers are unaffected; switch to Street if needed."
+              ? "Queensland imagery unavailable for part of this view · generic map shown underneath"
               : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
-            "error"
+            id === BASEMAP_IDS.QLD_IMAGERY
+              ? "normal"
+              : "error"
           );
         }
       );
@@ -242,15 +277,47 @@ export function createStormTrackerBasemapManager({
       );
 
     let nextLayer;
+    let nextFallbackLayer =
+      null;
 
     try {
-      nextLayer =
-        viewer.imageryLayers
-          .addImageryProvider(
-            provider,
-            0
-          );
+      if (
+        id
+        === BASEMAP_IDS.QLD_IMAGERY
+      ) {
+        nextFallbackLayer =
+          viewer.imageryLayers
+            .addImageryProvider(
+              new Cesium
+                .OpenStreetMapImageryProvider({
+                  url:
+                    "https://tile.openstreetmap.org/"
+                }),
+              0
+            );
+
+        nextLayer =
+          viewer.imageryLayers
+            .addImageryProvider(
+              provider,
+              1
+            );
+      } else {
+        nextLayer =
+          viewer.imageryLayers
+            .addImageryProvider(
+              provider,
+              0
+            );
+      }
     } catch (error) {
+      if (nextFallbackLayer) {
+        viewer.imageryLayers.remove(
+          nextFallbackLayer,
+          true
+        );
+      }
+
       onStatus(
         `Unable to switch basemap: ${error.message ?? error}`,
         "error"
@@ -261,10 +328,16 @@ export function createStormTrackerBasemapManager({
     const previousLayer =
       currentLayer;
 
+    const previousFallbackLayer =
+      fallbackLayer;
+
     detachSourceError();
 
     currentLayer =
       nextLayer;
+
+    fallbackLayer =
+      nextFallbackLayer;
 
     currentId =
       id;
@@ -281,6 +354,13 @@ export function createStormTrackerBasemapManager({
       );
     }
 
+    if (previousFallbackLayer) {
+      viewer.imageryLayers.remove(
+        previousFallbackLayer,
+        true
+      );
+    }
+
     if (persist) {
       persistBasemap(
         storage,
@@ -289,7 +369,9 @@ export function createStormTrackerBasemapManager({
     }
 
     onStatus(
-      `Basemap: ${basemapLabel(id)}`,
+      id === BASEMAP_IDS.QLD_IMAGERY
+        ? "Basemap: Queensland imagery · generic global fallback outside coverage"
+        : `Basemap: ${basemapLabel(id)}`,
       "ok"
     );
 
@@ -329,7 +411,15 @@ export function createStormTrackerBasemapManager({
       );
     }
 
+    if (fallbackLayer) {
+      viewer.imageryLayers.remove(
+        fallbackLayer,
+        true
+      );
+    }
+
     currentLayer = null;
+    fallbackLayer = null;
     currentId = null;
   }
 

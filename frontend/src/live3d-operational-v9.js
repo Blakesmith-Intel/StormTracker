@@ -2925,9 +2925,9 @@ async function loadHybridSequence(automatic = false) {
   if (!frames.length || (automatic && frames.at(-1).observedUtc !== availableEndUtc)) {
     throw new Error(newestFailure || "Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
   }
-  // Reuse observations across refreshes so the worker sees each scan once and
-  // retains storm IDs and history. A manual request for older uncached history
-  // rebuilds chronologically; automatic rolling windows never reset tracking.
+  // Reuse observations across normal forward refreshes so the worker sees each
+  // scan once and retains storm IDs/history. Manual backfill and detected
+  // browser-cache backfill rebuild chronologically before continuing forward.
   const rebuild =
     trackedThrough == null
     || needsHistoricalRebuild

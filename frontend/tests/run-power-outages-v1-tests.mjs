@@ -501,6 +501,23 @@ assert.deepEqual(
   ]
 );
 
+const essentialFeature =
+  merged.payload
+    .features
+    .find(
+      feature =>
+        feature.id
+        === "essential:INCD-ESS-1"
+    );
+
+assert.equal(
+  essentialFeature
+    ?.properties
+    ?.START,
+  "2026-10-08T04:30:00+11:00",
+  "Essential Energy October timestamps must retain the provider's AEDT clock."
+);
+
 const partial =
   await loadPowerOutages({
     nowMs:

@@ -4,26 +4,32 @@ export const BASEMAP_STORAGE_KEY =
 export const BASEMAP_IDS =
   Object.freeze({
     STREET: "street",
-    DEA_SATELLITE: "dea-satellite"
+    GA_SATELLITE: "ga-satellite"
   });
 
-export const DEA_BASEMAP =
+const LEGACY_DEA_SATELLITE_ID =
+  "dea-satellite";
+
+export const GA_BASEMAP =
   Object.freeze({
-    endpoint:
-      "https://ows.dea.ga.gov.au/",
-    layer:
-      "ga_ls8cls9c_gm_cyear_3",
-    style:
-      "simple_rgb",
+    service:
+      "https://services.ga.gov.au/gis/rest/services/World_Bathymetry_Imagery/MapServer",
+    tileTemplate:
+      "https://services.ga.gov.au/gis/rest/services/World_Bathymetry_Imagery/MapServer/tile/{z}/{y}/{x}",
+    maximumLevel:
+      12,
     label:
-      "GA satellite · DEA GeoMAD latest annual"
+      "GA satellite · Landsat imagery"
   });
 
 export function normaliseBasemapId(
   value
 ) {
-  return value === BASEMAP_IDS.DEA_SATELLITE
-    ? BASEMAP_IDS.DEA_SATELLITE
+  return (
+    value === BASEMAP_IDS.GA_SATELLITE
+    || value === LEGACY_DEA_SATELLITE_ID
+  )
+    ? BASEMAP_IDS.GA_SATELLITE
     : BASEMAP_IDS.STREET;
 }
 
@@ -64,29 +70,27 @@ export function createBasemapProvider(
 
   if (
     selected
-    === BASEMAP_IDS.DEA_SATELLITE
+    === BASEMAP_IDS.GA_SATELLITE
   ) {
-    return new Cesium.WebMapServiceImageryProvider({
+    return new Cesium.UrlTemplateImageryProvider({
       url:
-        DEA_BASEMAP.endpoint,
+        GA_BASEMAP.tileTemplate,
 
-      layers:
-        DEA_BASEMAP.layer,
+      tilingScheme:
+        new Cesium.WebMercatorTilingScheme(),
 
-      parameters: {
-        format:
-          "image/png",
+      tileWidth:
+        256,
 
-        transparent:
-          true,
+      tileHeight:
+        256,
 
-        styles:
-          DEA_BASEMAP.style
-      },
+      maximumLevel:
+        GA_BASEMAP.maximumLevel,
 
       credit:
         new Cesium.Credit(
-          "Digital Earth Australia / Geoscience Australia · CC BY 4.0"
+          "Geoscience Australia · World Bathymetry, Imagery and Hillshade · CC BY 4.0"
         )
     });
   }
@@ -101,8 +105,8 @@ export function basemapLabel(
   id
 ) {
   return normaliseBasemapId(id)
-    === BASEMAP_IDS.DEA_SATELLITE
-      ? DEA_BASEMAP.label
+    === BASEMAP_IDS.GA_SATELLITE
+      ? GA_BASEMAP.label
       : "Street · OpenStreetMap";
 }
 
@@ -155,7 +159,7 @@ export function createStormTrackerBasemapManager({
           if (currentId !== id) return;
 
           onStatus(
-            id === BASEMAP_IDS.DEA_SATELLITE
+            id === BASEMAP_IDS.GA_SATELLITE
               ? "GA satellite tiles are currently unavailable. Weather layers are unaffected; switch to Street if needed."
               : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
             "error"

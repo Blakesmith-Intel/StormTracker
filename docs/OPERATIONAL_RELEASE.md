@@ -372,12 +372,11 @@ extension. The existing OpenStreetMap basemap remains available as **Street** an
 a new **GA satellite** option uses the official Digital Earth Australia OGC WMS
 service.
 
-The satellite source is the latest available annual Landsat 8/9 GeoMAD dataset
-from `ga_ls8cls9c_gm_cyear_3`, rendered with the DEA `simple_rgb` style.
-StormTracker does not hard-code a calendar date: the WMS TIME parameter is omitted
-so the DEA OWS service selects its newest published dataset. It is a 30-metre
-annual representative cloud-reduced composite intended as stable map context; it
-is not current weather satellite imagery.
+The accepted candidate source is Geoscience Australia's public
+`World_Bathymetry_Imagery` cached MapServer. The service contains satellite
+imagery derived in part from Landsat, uses Web Mercator cached tiles, and is
+consumed directly as a browser imagery layer. It is stable geographic context,
+not current weather satellite imagery.
 
 Basemap state is isolated in `frontend/src/context-layers/basemap-manager-v1.js`.
 Switching replaces the bottom imagery provider only and must not reset or reload
@@ -394,10 +393,11 @@ desktop/mobile acceptance.
 
 Live acceptance exposed two candidate defects before V9.9.0 was sealed.
 
-1. The initial GA satellite provider pinned the annual WMS request to a guessed
-   date. DEA's OWS implementation validates TIME against actual published layer
-   dates, so an invalid guessed date produced tile failures. V9.9.0 now omits
-   TIME and intentionally uses the service's newest available annual dataset.
+1. The initial GA/DEA WMS candidate failed live browser tile acceptance. A second
+   attempt that removed the fixed TIME still failed in the production browser.
+   V9.9.0 therefore moved the basemap to Geoscience Australia's browser-safe
+   cached `World_Bathymetry_Imagery` MapServer tiles, while retaining the same
+   isolated basemap-switching architecture.
 2. The HTML playback slider inherited a six-frame startup maximum. Although the
    frame label could continue advancing as longer histories loaded, the range
    thumb could remain clamped to that original limit. Slider min/max/value are now

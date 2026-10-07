@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   BASEMAP_IDS,
   BASEMAP_STORAGE_KEY,
-  DEA_BASEMAP,
+  GA_BASEMAP,
   basemapLabel,
   createBasemapProvider,
   createStormTrackerBasemapManager,
@@ -25,7 +25,7 @@ class FakeStreetProvider {
   }
 }
 
-class FakeWmsProvider {
+class FakeUrlTemplateProvider {
   constructor(options) {
     this.options = options;
     this.errorEvent = {
@@ -39,48 +39,52 @@ class FakeWmsProvider {
   }
 }
 
+class FakeWebMercatorTilingScheme {}
+
 const Cesium = {
   Credit: FakeCredit,
   OpenStreetMapImageryProvider:
     FakeStreetProvider,
-  WebMapServiceImageryProvider:
-    FakeWmsProvider
+  UrlTemplateImageryProvider:
+    FakeUrlTemplateProvider,
+  WebMercatorTilingScheme:
+    FakeWebMercatorTilingScheme
 };
 
-const dea =
+const ga =
   createBasemapProvider(
     Cesium,
-    BASEMAP_IDS.DEA_SATELLITE
+    BASEMAP_IDS.GA_SATELLITE
   );
 
 assert.equal(
-  dea.options.url,
-  "https://ows.dea.ga.gov.au/"
+  ga.options.url,
+  "https://services.ga.gov.au/gis/rest/services/World_Bathymetry_Imagery/MapServer/tile/{z}/{y}/{x}"
 );
 assert.equal(
-  dea.options.layers,
-  "ga_ls8cls9c_gm_cyear_3"
+  ga.options.maximumLevel,
+  12
 );
 assert.equal(
-  dea.options.parameters.styles,
-  "simple_rgb"
+  ga.options.tileWidth,
+  256
 );
 assert.equal(
-  "time" in dea.options.parameters,
-  false
+  ga.options.tileHeight,
+  256
 );
-assert.equal(
-  dea.options.parameters.transparent,
-  true
+assert.ok(
+  ga.options.tilingScheme
+  instanceof FakeWebMercatorTilingScheme
 );
 assert.match(
-  dea.options.credit.text,
-  /Digital Earth Australia/
+  ga.options.credit.text,
+  /Geoscience Australia/
 );
 
 assert.equal(
-  DEA_BASEMAP.label,
-  "GA satellite · DEA GeoMAD latest annual"
+  GA_BASEMAP.label,
+  "GA satellite · Landsat imagery"
 );
 assert.equal(
   normaliseBasemapId("nonsense"),
@@ -166,7 +170,7 @@ const viewer = {
 const store = new Map([
   [
     BASEMAP_STORAGE_KEY,
-    BASEMAP_IDS.DEA_SATELLITE
+    "dea-satellite"
   ]
 ]);
 
@@ -205,7 +209,7 @@ const initial =
 
 assert.equal(
   initial.id,
-  BASEMAP_IDS.DEA_SATELLITE
+  BASEMAP_IDS.GA_SATELLITE
 );
 assert.equal(
   layers.length,
@@ -213,7 +217,7 @@ assert.equal(
 );
 assert.equal(
   layers[0].provider.constructor,
-  FakeWmsProvider
+  FakeUrlTemplateProvider
 );
 
 const street =
@@ -276,5 +280,5 @@ assert.equal(
 );
 
 console.log(
-  "Basemap manager checks passed: DEA WMS contract, persistence, layer replacement and camera isolation."
+  "Basemap manager checks passed: GA cached Landsat imagery contract, legacy preference migration, persistence, layer replacement and camera isolation."
 );

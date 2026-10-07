@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.0-2/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.0-3/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -33,6 +33,8 @@ assert.match(html, /id="trackDisplayFilter"/);
 assert.match(html, /id="showTrackThreatCone"/);
 assert.match(html, /id="basemapSelect"/);
 assert.match(html, /GA satellite/);
+assert.match(html, /value="ga-satellite"/);
+assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.9\.0-3/);
 assert.match(js, /createStormTrackerBasemapManager/);
 assert.match(js, /BASEMAP_IDS/);
 assert.match(js, /syncFrameSlider/);

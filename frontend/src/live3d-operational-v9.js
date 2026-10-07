@@ -105,7 +105,7 @@ import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.9.0-2";
+} from "./context-layers/basemap-manager-v1.js?v=9.9.0-3";
 
 import {
   syncFrameSlider

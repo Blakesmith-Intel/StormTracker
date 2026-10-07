@@ -126,11 +126,12 @@ authorised machine feed becomes available, the order can change.
 
 ## 6. Feature guardrails
 
-### GA/DEA satellite basemap
+### GA satellite basemap
 
-Use an official DEA/Geoscience Australia OGC service. Basemap switching must not
-reset radar history, camera, selected site, tracks, playback or the motion cone.
-Keep weather imagery and vector overlays above the basemap.
+Use the accepted Geoscience Australia cached imagery service unless a future
+replacement is live-tested in the browser first. Basemap switching must not reset
+radar history, camera, selected site, tracks, playback or the motion cone. Keep
+weather imagery and vector overlays above the basemap.
 
 ### Observed lightning
 

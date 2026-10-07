@@ -39,6 +39,52 @@ function firstTagText(
     : "";
 }
 
+function placemarkElements(
+  kmlText
+) {
+  const source =
+    String(
+      kmlText ?? ""
+    );
+
+  const regex =
+    /<Placemark\b([^>]*)>([\s\S]*?)<\/Placemark>/gi;
+
+  const elements = [];
+  let match;
+
+  while (
+    (
+      match =
+        regex.exec(source)
+    )
+  ) {
+    const attributes =
+      match[1]
+      ?? "";
+
+    const idMatch =
+      attributes.match(
+        /\bid\s*=\s*["']([^"']+)["']/i
+      );
+
+    elements.push({
+      id:
+        idMatch
+          ? decodeEntities(
+              idMatch[1]
+            ).trim()
+          : "",
+
+      block:
+        match[2]
+        ?? ""
+    });
+  }
+
+  return elements;
+}
+
 function tagBlocks(
   block,
   tag
@@ -409,18 +455,20 @@ export function parseEssentialEnergyKml(
   kmlText
 ) {
   const placemarks =
-    tagBlocks(
-      kmlText,
-      "Placemark"
+    placemarkElements(
+      kmlText
     );
 
   const features = [];
 
   placemarks.forEach(
     (
-      placemark,
+      placemarkElement,
       index
     ) => {
+      const placemark =
+        placemarkElement
+          .block;
       const geometry =
         placemarkGeometry(
           placemark
@@ -449,6 +497,11 @@ export function parseEssentialEnergyKml(
         field(
           fields,
           "Incident ID"
+        )
+        || placemarkElement.id
+        || firstTagText(
+          description,
+          "h2"
         )
         || `essential-${index + 1}`;
 

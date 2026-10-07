@@ -8,6 +8,11 @@ assert.equal(labelBudget(390, 350, 2_000_000), 0, "No planetary-scale wall of la
 assert.equal(labelBudget(390, 350, 50_000, "street"), 8);
 assert.ok(labelBudget(390, 350, 50_000, "qld-imagery") <= 9);
 assert.ok(labelBudget(390, 350, 750_000) <= 5);
+assert.ok(labelBudget(390, 350, 300_000, "qld-imagery", -12) <= 4,
+  "Shallow horizon views cannot create crowds even at moderate altitude");
+assert.ok(labelBudget(390, 350, 50000, "street", -30) <= 6);
+assert.ok(labelBudget(390, 350, 50000, "street", -70) >
+  labelBudget(390, 350, 50000, "street", -12));
 assert.equal(labelBudget(160, 350, 10_000), 0, "Tiny map viewport does not get clutter");
 assert.ok(labelBudget(1200, 800, 50_000) <= 28);
 assert.equal(greatCircleKm({latitude:-25,longitude:139},{latitude:-25,longitude:139}),0);
@@ -62,6 +67,8 @@ const remote=layoutTownLabels({
   width:390,height:350,cameraHeight:60000
 });
 assert.deepEqual(remote.map(x=>x.id),["birdsville"]);
+const pitched=layoutTownLabels({candidates:spread,width:390,height:350,cameraHeight:300000,mode:"qld-imagery",cameraPitchDegrees:-12});
+assert.ok(pitched.length<=4,"Shallow horizon layout must be strictly limited");
 const far=layoutTownLabels({candidates:spread,width:390,height:350,cameraHeight:2_100_000});
 assert.equal(far.length,0);
 const stay=layoutTownLabels({

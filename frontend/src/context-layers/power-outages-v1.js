@@ -896,7 +896,7 @@ export function createPowerOutageLayer({
           kind:
             "loading",
           message:
-            "Checking Queensland power outages..."
+            "Checking power outages..."
         });
 
         const result =

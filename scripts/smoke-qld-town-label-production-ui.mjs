@@ -92,12 +92,12 @@ try{
     verify(inspection, scenario.id);
     assert.ok(inspection.visible.length<=scenario.limit,
       `${scenario.id}: too many names at horizon`);
+    console.log(`Actual full app ${scenario.id}: ${inspection.visible.length} non-overlapping names [${inspection.visible.map(t=>t.name).join(", ")}]`);
+    await screenshot(`full-ui-${scenario.id}`);
     if (scenario.id === "birdsville") {
       assert.ok(inspection.visible.some(t=>t.name.toLowerCase()==="birdsville"),
-        "Actual StormTracker Birdsville view must identify Birdsville");
+        `Actual StormTracker Birdsville view must identify Birdsville. Visible: ${inspection.visible.map(t=>t.name).join(", ")}`);
     }
-    await screenshot(`full-ui-${scenario.id}`);
-    console.log(`Actual full app ${scenario.id}: ${inspection.visible.length} non-overlapping names`);
   }
   assert.ok(await page.locator("#showPowerOutages").count()===1);
   assert.ok(await page.locator("#showFloodRoadClosures").count()===1);

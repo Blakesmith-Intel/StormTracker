@@ -4,6 +4,7 @@ import {
   radarHistoryTimeline,
   needsChronologicalRadarRebuild,
   automaticRefreshUsesDopplerGate,
+  automaticRefreshEndUtc,
   hasNewMatchedProducts,
   createLiveLoopRefresh
 } from '../src/live-loop-refresh-v1.js';
@@ -92,6 +93,34 @@ assert.equal(
     []
   ),
   false
+);
+
+assert.equal(
+  automaticRefreshEndUtc({
+    withDoppler: false,
+    radarTimes: [
+      time(175),
+      time(180),
+      time(185)
+    ],
+    sharedEndUtc:
+      time(180)
+  }),
+  time(185)
+);
+
+assert.equal(
+  automaticRefreshEndUtc({
+    withDoppler: true,
+    radarTimes: [
+      time(175),
+      time(180),
+      time(185)
+    ],
+    sharedEndUtc:
+      time(180)
+  }),
+  time(180)
 );
 
 // Timer re-arms only after completion; focus checks cannot overlap a fetch.

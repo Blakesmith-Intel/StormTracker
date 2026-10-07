@@ -435,6 +435,9 @@ dialog::backdrop { background:#0009; }
 #powerOutageStatus[data-kind="ok"] {
   color:#99e2b7;
 }
+#powerOutageStatus[data-kind="warning"] {
+  color:#ffc44d;
+}
 .power-outage-key {
   display:inline-block;
   flex:0 0 auto;

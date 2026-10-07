@@ -175,7 +175,7 @@ For every accepted release:
 7. Perform live desktop/mobile acceptance.
 8. Create the next immutable recovery reference only after acceptance.
 
-The repository currently contains 42 frontend regression suites.
+The repository currently contains 43 frontend regression suites.
 
 ## 8. Current important files
 

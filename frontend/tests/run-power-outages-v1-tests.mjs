@@ -119,6 +119,24 @@ const future =
       now + 60 * 60 * 1000
   });
 
+const activePlanned =
+  outage({
+    eventId:
+      "PLAN-ACTIVE",
+    type:
+      "PLANNED",
+    status:
+      "In Progress"
+  });
+
+const unknownType =
+  outage({
+    eventId:
+      "UNKNOWN-FAULT",
+    type:
+      "UNKNOWN"
+  });
+
 const finished =
   outage({
     eventId:
@@ -205,6 +223,18 @@ assert.equal(
   false
 );
 
+assert.equal(
+  isCurrentPowerOutage(activePlanned, now),
+  false,
+  "Even currently running planned maintenance must be excluded."
+);
+
+assert.equal(
+  isCurrentPowerOutage(unknownType, now),
+  false,
+  "Unclassified incidents must not be assumed unplanned."
+);
+
 const filtered =
   filterCurrentPowerOutages(
     {
@@ -214,6 +244,8 @@ const filtered =
       features: [
         active,
         future,
+        activePlanned,
+        unknownType,
         finished,
         cancelled,
         {
@@ -338,6 +370,16 @@ const energexPayload = {
         10,
       suburbs:
         "BRISBANE"
+    }),
+    outage({
+      eventId:
+        "PLAN-PROVIDER-1",
+      type:
+        "PLANNED",
+      status:
+        "In Progress",
+      customers:
+        800
     })
   ]
 };
@@ -354,6 +396,16 @@ const ergonPayload = {
         20,
       suburbs:
         "TOOWOOMBA"
+    }),
+    outage({
+      eventId:
+        "PLAN-PROVIDER-2",
+      type:
+        "PLANNED",
+      status:
+        "In Progress",
+      customers:
+        900
     })
   ]
 };
@@ -378,6 +430,17 @@ const essentialKml = `<?xml version="1.0" encoding="UTF-8"?>
         150.30,-28.56,0 150.32,-28.56,0 150.32,-28.54,0 150.30,-28.54,0 150.30,-28.56,0
       </coordinates></LinearRing></outerBoundaryIs>
     </Polygon>
+  </Placemark>
+  <Placemark id="PLAN-ESS-QLD">
+    <styleUrl>#sw_1249554_normal_planned</styleUrl>
+    <description><![CDATA[
+      <h2>PLAN-ESS-QLD</h2>
+      <div><span>Time Off:</span>08/10/2026 04:30:00</div>
+      <div><span>Est. Time On:</span>08/10/2026 07:30:00</div>
+    ]]></description>
+    <Polygon><outerBoundaryIs><LinearRing><coordinates>
+      150.30,-28.56,0 150.32,-28.56,0 150.32,-28.54,0 150.30,-28.54,0 150.30,-28.56,0
+    </coordinates></LinearRing></outerBoundaryIs></Polygon>
   </Placemark>
   <Placemark id="INCD-ESS-NSW">
     <Snippet><![CDATA[INCD-ESS-NSW]]></Snippet>
@@ -439,7 +502,7 @@ assert.equal(
   parsedEssentialForBoundaryTest
     .features
     .length,
-  2
+  3
 );
 
 const qldEssentialForBoundaryTest =
@@ -482,7 +545,8 @@ assert.deepEqual(
         feature.id
     ),
   [
-    "essential:INCD-ESS-QLD"
+    "essential:INCD-ESS-QLD",
+    "essential:PLAN-ESS-QLD"
   ]
 );
 
@@ -835,5 +899,5 @@ await assert.rejects(
 );
 
 console.log(
-  "Power outage checks passed: Queensland-only Essential Energy filtering removes NSW incidents while retaining Goondiwindi-area outages, provider-qualified IDs, current filtering, partial-feed survival and 15-minute refresh cadence."
+  "Power outage checks passed: no planned/unknown events from Energex, Ergon or Essential Energy, Queensland-only Essential Energy keeps Goondiwindi, provider-qualified IDs, partial feeds and 15-minute refresh."
 );

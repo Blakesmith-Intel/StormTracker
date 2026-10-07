@@ -1,16 +1,45 @@
 export const ENERGEX_ATTRIBUTION =
   "Energex | Energy Queensland";
 
-export const ENERGEX_OUTAGE_AREA_QUERY_URL =
-  "https://services.arcgis.com/bfVzktoY0OhzQCDj/arcgis/rest/services/VwEnergexOutages/FeatureServer/0/query"
-  + "?where=1%3D1"
+export const ERGON_ATTRIBUTION =
+  "Ergon Energy | Energy Queensland";
+
+const OUTAGE_QUERY_SUFFIX =
+  "?where=1%3D1"
   + "&outFields=EVENT_ID%2CTYPE%2CSTATUS%2CCUSTOMERS_AFFECTED%2CSUBURBS%2CSTREETS%2CSTART%2CFINISH%2CEST_FIX_TIME%2CREASON%2CEXTRACTED"
   + "&returnGeometry=true"
   + "&outSR=4326"
   + "&f=geojson";
 
+export const ENERGEX_OUTAGE_AREA_QUERY_URL =
+  "https://services.arcgis.com/bfVzktoY0OhzQCDj/arcgis/rest/services/VwEnergexOutages/FeatureServer/0/query"
+  + OUTAGE_QUERY_SUFFIX;
+
+export const ERGON_OUTAGE_AREA_QUERY_URL =
+  "https://services.arcgis.com/33eHbTVqo7gtiCE8/ArcGIS/rest/services/VwErgonOutages/FeatureServer/0/query"
+  + OUTAGE_QUERY_SUFFIX;
+
 export const DEFAULT_POWER_OUTAGE_REFRESH_MS =
   15 * 60 * 1000;
+
+const PROVIDER_META =
+  Object.freeze({
+    Energex:
+      Object.freeze({
+        idPrefix:
+          "energex",
+        attribution:
+          ENERGEX_ATTRIBUTION
+      }),
+
+    Ergon:
+      Object.freeze({
+        idPrefix:
+          "ergon",
+        attribution:
+          ERGON_ATTRIBUTION
+      })
+  });
 
 function normalise(value) {
   return String(
@@ -70,6 +99,105 @@ function parsedTime(value) {
     : null;
 }
 
+function providerOf(
+  featureOrProperties
+) {
+  const properties =
+    propertiesOf(
+      featureOrProperties
+    );
+
+  const provider =
+    String(
+      properties
+        .STORMTRACKER_PROVIDER
+      ?? featureOrProperties
+        ?.stormTrackerProvider
+      ?? "Energex"
+    ).trim();
+
+  return PROVIDER_META[
+    provider
+  ]
+    ? provider
+    : "Energex";
+}
+
+function eventIdOf(
+  feature
+) {
+  const properties =
+    propertiesOf(
+      feature
+    );
+
+  return String(
+    properties.EVENT_ID
+    ?? feature?.id
+    ?? ""
+  );
+}
+
+function qualifiedFeatureId(
+  feature,
+  provider
+) {
+  const meta =
+    PROVIDER_META[
+      provider
+    ];
+
+  return `${meta.idPrefix}:${eventIdOf(feature)}`;
+}
+
+function annotateProvider(
+  payload,
+  provider
+) {
+  const features =
+    Array.isArray(
+      payload?.features
+    )
+      ? payload.features
+      : [];
+
+  return {
+    ...(
+      payload
+      && typeof payload
+        === "object"
+        ? payload
+        : {}
+    ),
+
+    type:
+      "FeatureCollection",
+
+    features:
+      features.map(
+        feature => ({
+          ...feature,
+
+          id:
+            qualifiedFeatureId(
+              feature,
+              provider
+            ),
+
+          properties: {
+            ...(
+              feature?.properties
+              ?? {}
+            ),
+
+            STORMTRACKER_PROVIDER:
+              provider
+          }
+        })
+      )
+  };
+}
+
 export function isCurrentPowerOutage(
   featureOrProperties,
   nowMs = Date.now()
@@ -127,6 +255,11 @@ export function powerOutageSummary(
       feature
     );
 
+  const provider =
+    providerOf(
+      feature
+    );
+
   const customers =
     Number(
       properties.CUSTOMERS_AFFECTED
@@ -135,12 +268,22 @@ export function powerOutageSummary(
 
   return {
     id:
+      feature?.id
+      ?? qualifiedFeatureId(
+        feature,
+        provider
+      ),
+
+    eventId:
       properties.EVENT_ID
-      ?? feature?.id
       ?? "",
 
-    provider:
-      "Energex",
+    provider,
+
+    attribution:
+      PROVIDER_META[
+        provider
+      ].attribution,
 
     type:
       normalise(
@@ -210,17 +353,6 @@ export function filterCurrentPowerOutages(
                 nowMs
               )
           )
-          .map(
-            feature => ({
-              ...feature,
-              id:
-                String(
-                  powerOutageSummary(
-                    feature
-                  ).id
-                )
-            })
-          )
       : [];
 
   return {
@@ -231,8 +363,10 @@ export function filterCurrentPowerOutages(
         ? payload
         : {}
     ),
+
     type:
       "FeatureCollection",
+
     features
   };
 }
@@ -240,6 +374,7 @@ export function filterCurrentPowerOutages(
 async function fetchJson(
   fetchImpl,
   url,
+  provider,
   timeoutMs = 12000
 ) {
   const controller =
@@ -264,10 +399,12 @@ async function fetchJson(
         {
           method:
             "GET",
+
           headers: {
             Accept:
               "application/geo+json,application/json"
           },
+
           signal:
             controller?.signal
         }
@@ -275,7 +412,7 @@ async function fetchJson(
 
     if (!response.ok) {
       throw new Error(
-        `Energex outage feed HTTP ${response.status}`
+        `${provider} outage feed HTTP ${response.status}`
       );
     }
 
@@ -289,11 +426,43 @@ async function fetchJson(
   }
 }
 
+async function loadProvider({
+  fetchImpl,
+  provider,
+  url,
+  nowMs
+}) {
+  const payload =
+    await fetchJson(
+      fetchImpl,
+      url,
+      provider
+    );
+
+  return {
+    provider,
+
+    payload:
+      filterCurrentPowerOutages(
+        annotateProvider(
+          payload,
+          provider
+        ),
+        nowMs
+      )
+  };
+}
+
 export async function loadPowerOutages({
   fetchImpl =
     globalThis.fetch,
+
   energexUrl =
     ENERGEX_OUTAGE_AREA_QUERY_URL,
+
+  ergonUrl =
+    ERGON_OUTAGE_AREA_QUERY_URL,
+
   nowMs =
     Date.now()
 } = {}) {
@@ -306,20 +475,108 @@ export async function loadPowerOutages({
     );
   }
 
-  const payload =
-    await fetchJson(
-      fetchImpl,
-      energexUrl
+  const requests =
+    [
+      {
+        provider:
+          "Energex",
+        url:
+          energexUrl
+      },
+      {
+        provider:
+          "Ergon",
+        url:
+          ergonUrl
+      }
+    ];
+
+  const settled =
+    await Promise.allSettled(
+      requests.map(
+        request =>
+          loadProvider({
+            fetchImpl,
+            provider:
+              request.provider,
+            url:
+              request.url,
+            nowMs
+          })
+      )
     );
 
+  const available = [];
+  const failed = [];
+  const features = [];
+
+  settled.forEach(
+    (
+      result,
+      index
+    ) => {
+      const provider =
+        requests[index]
+          .provider;
+
+      if (
+        result.status
+        === "fulfilled"
+      ) {
+        available.push(
+          provider
+        );
+
+        features.push(
+          ...(
+            result.value
+              .payload
+              .features
+            ?? []
+          )
+        );
+      } else {
+        failed.push({
+          provider,
+          message:
+            result.reason
+              ?.message
+            ?? String(
+              result.reason
+            )
+        });
+      }
+    }
+  );
+
+  if (!available.length) {
+    throw new Error(
+      failed
+        .map(
+          item =>
+            item.message
+        )
+        .join(" | ")
+      || "All power-outage feeds failed."
+    );
+  }
+
   return {
-    payload:
-      filterCurrentPowerOutages(
-        payload,
-        nowMs
-      ),
-    provider:
-      "Energex",
+    payload: {
+      type:
+        "FeatureCollection",
+      features
+    },
+
+    providers:
+      available,
+
+    failedProviders:
+      failed,
+
+    partial:
+      failed.length > 0,
+
     transport:
       "Direct first-party ArcGIS GeoJSON"
   };
@@ -327,17 +584,27 @@ export async function loadPowerOutages({
 
 export function createPowerOutageLayer({
   viewer,
+
   CesiumRef =
     globalThis.Cesium,
+
   fetchImpl =
     globalThis.fetch,
+
   energexUrl =
     ENERGEX_OUTAGE_AREA_QUERY_URL,
+
+  ergonUrl =
+    ERGON_OUTAGE_AREA_QUERY_URL,
+
   refreshMs =
     DEFAULT_POWER_OUTAGE_REFRESH_MS,
+
   visible = true,
+
   onStatus =
     () => {},
+
   onUpdate =
     () => {}
 } = {}) {
@@ -442,6 +709,10 @@ export function createPowerOutageLayer({
           summary.id
         );
 
+      entity
+        .stormTrackerPowerOutageProvider =
+        summary.provider;
+
       if (
         entity.polygon
       ) {
@@ -502,13 +773,14 @@ export function createPowerOutageLayer({
           kind:
             "loading",
           message:
-            "Checking Energex power outages..."
+            "Checking Queensland power outages..."
         });
 
         const result =
           await loadPowerOutages({
             fetchImpl,
-            energexUrl
+            energexUrl,
+            ergonUrl
           });
 
         await render(
@@ -547,18 +819,43 @@ export function createPowerOutageLayer({
             0
           );
 
+        const providerText =
+          result.providers
+            .join(" + ");
+
+        const partialText =
+          result.partial
+            ? ` | PARTIAL: ${result.failedProviders.map(item => item.provider).join(", ")} unavailable`
+            : "";
+
         onStatus({
           kind:
-            "ok",
+            result.partial
+              ? "warning"
+              : "ok",
+
           message:
-            `${summaries.length} current Energex outage${summaries.length === 1 ? "" : "s"} | ${unplanned} unplanned | ${planned} planned | ${customers.toLocaleString("en-AU")} customers`,
+            `${summaries.length} current outage${summaries.length === 1 ? "" : "s"} | ${unplanned} unplanned | ${planned} planned | ${customers.toLocaleString("en-AU")} customers | ${providerText}${partialText}`,
+
           count:
             summaries.length,
+
           customers,
-          provider:
-            result.provider,
+
+          providers:
+            result.providers
+              .slice(),
+
+          failedProviders:
+            result.failedProviders
+              .slice(),
+
+          partial:
+            result.partial,
+
           transport:
             result.transport,
+
           loadedAt:
             lastLoadedAt
         });
@@ -572,6 +869,7 @@ export function createPowerOutageLayer({
       onStatus({
         kind:
           "error",
+
         message:
           error?.message
           ?? String(error)
@@ -674,9 +972,7 @@ export function createPowerOutageLayer({
         .find(
           feature =>
             String(
-              powerOutageSummary(
-                feature
-              ).id
+              feature.id
             ) === wanted
         )
       ?? null

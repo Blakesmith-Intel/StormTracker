@@ -353,16 +353,16 @@ const ergonPayload = {
 const essentialKml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-  <Placemark>
-    <name>Lismore</name>
-    <styleUrl>#unplanned-outage</styleUrl>
+  <Placemark id="INCD-ESS-1">
+    <Snippet><![CDATA[INCD-ESS-1]]></Snippet>
+    <styleUrl>#sw_1249554_normal_unplanned</styleUrl>
     <description><![CDATA[
-      <span>Time Off:</span>08/10/2026 04:30:00
-      <span>Est. Time On:</span>08/10/2026 07:30:00
-      <span>No. of Customers affected:</span>30
-      <span>Reason:</span>We are investigating
-      <span>Last Updated:</span>08/10/2026 04:45:00
-      <span>Incident ID:</span>INCD-ESS-1
+      <h2>INCD-ESS-1</h2>
+      <div><span>Time Off:</span>08/10/2026 04:30:00</div>
+      <div><span>Est. Time On:</span>08/10/2026 07:30:00</div>
+      <div><span>No. of Customers affected:</span>30</div>
+      <div><span>Reason:</span>We are investigating</div>
+      <div><span>Last Updated:</span>08/10/2026 04:45:00</div>
     ]]></description>
     <Polygon>
       <outerBoundaryIs><LinearRing><coordinates>

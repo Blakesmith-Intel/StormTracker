@@ -267,7 +267,7 @@ export async function discoverBomReflectivityHistory(
 
     if (
       newestAvailableEpoch != null
-      && newestAvailableEpoch - epoch > horizon * 60000
+      && newestAvailableEpoch - epoch >= horizon * 60000
     ) {
       break;
     }

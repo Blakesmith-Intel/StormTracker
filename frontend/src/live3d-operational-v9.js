@@ -94,7 +94,12 @@ import {
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
-import { radarHistoryTimeline, hasNewMatchedProducts, createLiveLoopRefresh } from "./live-loop-refresh-v1.js?v=operational-v9-7";
+import {
+  radarHistoryTimeline,
+  needsChronologicalRadarRebuild,
+  hasNewMatchedProducts,
+  createLiveLoopRefresh
+} from "./live-loop-refresh-v1.js?v=9.8.4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 
@@ -2633,6 +2638,8 @@ async function warmRadarHistoryCache(
       observedTimes
     );
 
+  let warmedCount = 0;
+
   for (const observedUtc of candidates) {
     if (
       selectedRadarRegion() !== region
@@ -2661,6 +2668,8 @@ async function warmRadarHistoryCache(
         region,
         frame
       );
+
+      warmedCount++;
     } catch (error) {
       // Probe-readable timestamps can still fail if one tile in the complete
       // mosaic disappears. Cache warming is best-effort and never affects the
@@ -2683,6 +2692,15 @@ async function warmRadarHistoryCache(
       error
     )
   );
+
+  if (
+    warmedCount > 0
+    && selectedRadarRegion() === region
+  ) {
+    // Re-run the cheap automatic path immediately so newly warmed historical
+    // observations become visible without requiring a manual Refresh click.
+    void autoRefresh.check();
+  }
 }
 
 async function loadHybridSequence(automatic = false) {
@@ -2810,6 +2828,14 @@ async function loadHybridSequence(automatic = false) {
   const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords, selectedSourceRadars());
   shared.requestedRadarIds = selectedSourceRadars();
   const radarOnlySite = shared.requestedRadarIds.length === 0;
+  const needsHistoricalRebuild =
+    automatic
+    && !withDoppler
+    && needsChronologicalRadarRebuild(
+      times,
+      trackedThrough,
+      radarResultCache.keys()
+    );
   if (automatic) {
     const required = publishedSharedTimeline?.radarIds.length ? publishedSharedTimeline.radarIds : selectedSourceRadars();
     const failed = required.filter(id => sources.errors.has(id));
@@ -2819,9 +2845,22 @@ async function loadHybridSequence(automatic = false) {
     history.frames.map(frame => `${id}:${frame.filename}`)));
   for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
   const availableEndUtc = radarOnlySite ? times.at(-1) : shared.endUtc;
-  if (automatic && ((!radarOnlySite && !hasNewMatchedProducts(publishedSharedTimeline, shared)) ||
-      (hybridFrames.length && Date.parse(availableEndUtc) <= Date.parse(hybridFrames.at(-1).observedUtc)))) {
-    $("autoRefreshNote").textContent = radarOnlySite ? "Auto update: waiting for a new radar image." : "Auto update: waiting for new matching radar + Doppler images.";
+  if (
+    automatic
+    && !needsHistoricalRebuild
+    && (
+      (!radarOnlySite && !hasNewMatchedProducts(publishedSharedTimeline, shared))
+      || (
+        hybridFrames.length
+        && Date.parse(availableEndUtc)
+          <= Date.parse(hybridFrames.at(-1).observedUtc)
+      )
+    )
+  ) {
+    $("autoRefreshNote").textContent =
+      radarOnlySite
+        ? "Auto update: waiting for a new radar image."
+        : "Auto update: waiting for new matching radar + Doppler images.";
     return;
   }
   const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(availableEndUtc)) : times;
@@ -2830,8 +2869,13 @@ async function loadHybridSequence(automatic = false) {
   const frames = [], states = [], failures = [];
   let newestFailure = "";
   for (const [index, entry] of timeline.entries.entries()) {
-    if (automatic && trackedThrough && !radarResultCache.has(entry.observedUtc) &&
-        Date.parse(entry.observedUtc) <= Date.parse(trackedThrough)) {
+    if (
+      automatic
+      && !needsHistoricalRebuild
+      && trackedThrough
+      && !radarResultCache.has(entry.observedUtc)
+      && Date.parse(entry.observedUtc) <= Date.parse(trackedThrough)
+    ) {
       failures.push(entry.observedUtc);
       continue;
     }
@@ -2881,11 +2925,15 @@ async function loadHybridSequence(automatic = false) {
   if (!frames.length || (automatic && frames.at(-1).observedUtc !== availableEndUtc)) {
     throw new Error(newestFailure || "Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
   }
-  // Reuse observations across refreshes so the worker sees each scan once and
-  // retains storm IDs and history. A manual request for older uncached history
-  // rebuilds chronologically; automatic rolling windows never reset tracking.
-  const rebuild = trackedThrough == null || frames.some(frame =>
-    !radarResultCache.has(frame.observedUtc) && Date.parse(frame.observedUtc) <= Date.parse(trackedThrough));
+  // Reuse observations across normal forward refreshes so the worker sees each
+  // scan once and retains storm IDs/history. Manual backfill and detected
+  // browser-cache backfill rebuild chronologically before continuing forward.
+  const rebuild =
+    trackedThrough == null
+    || needsHistoricalRebuild
+    || frames.some(frame =>
+      !radarResultCache.has(frame.observedUtc)
+      && Date.parse(frame.observedUtc) <= Date.parse(trackedThrough));
   if (rebuild) {
     await hybridWorker.reset();
     radarResultCache.clear();
@@ -3076,7 +3124,10 @@ async function loadHybridSequence(automatic = false) {
     ` (${range})` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
     (failures.length ? ` · ${failures.length} unreadable source frames bridged/omitted where possible` : "");
-  $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${radarOnlySite ? "radar images" : "matching products"} every 5 minutes.`;
+  $("autoRefreshNote").textContent =
+    needsHistoricalRebuild
+      ? "Auto update: historical cache expanded; loop rebuilt chronologically."
+      : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${radarOnlySite ? "radar images" : "matching products"} every 5 minutes.`;
   if (selectedRadarRegion() !== "SEQ" && !["66","50","08"].includes(selectedRadarRegion()) && !radarOnlySite) {
     $("sharedHistoryNote").textContent += " · wind display only (nominal registration)";
   }

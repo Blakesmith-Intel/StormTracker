@@ -2,11 +2,11 @@ import {
   BOM_RIVER_TIDE_GAUGE_ATTRIBUTION,
   DEFAULT_RIVER_GAUGE_REFRESH_MS,
   riverGaugeSummary
-} from "./river-gauges-v1.js?v=9.12.0-dev1";
+} from "./river-gauges-v1.js?v=9.12.0";
 
 import {
   loadRiverGaugeOperationalSnapshot
-} from "./river-gauge-observations-v1.js?v=9.12.0-dev1";
+} from "./river-gauge-observations-v1.js?v=9.12.0";
 
 export function riverGaugeOperationalSummary(
   feature

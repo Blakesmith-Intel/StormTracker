@@ -34,8 +34,10 @@ assert.match(html, /id="showTrackThreatCone"/);
 assert.match(html, /id="basemapSelect"/);
 assert.match(html, /QLD imagery/);
 assert.match(html, /value="qld-imagery"/);
-assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.10\.4/);
+assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.11\.3/);
 assert.match(js, /createReferenceLabelProvider/);
+assert.match(js, /createQueenslandPlaceLabelProvider/);
+assert.match(js, /basemapQueenslandPlaceLayer/);
 assert.match(js, /keepBasemapReferenceLabelsVisible/);
 assert.match(html, /id="terrainEnabled"/);
 assert.match(html, /id="terrainStatus"/);
@@ -148,4 +150,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.12.0-dev1 adds BoM live river gauges while retaining Queensland-only outages, V9.10.4 imagery, road closures and historical regressions.");
+console.log("Production shell checks passed: V9.12.0-dev1 adds BoM live river gauges while retaining Queensland-only outages, continuous V9.11.3 place labels, road closures and historical regressions.");

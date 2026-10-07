@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.2/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.3/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -32,9 +32,9 @@ assert.match(html, /id="showTrackLabels"/);
 assert.match(html, /id="trackDisplayFilter"/);
 assert.match(html, /id="showTrackThreatCone"/);
 assert.match(html, /id="basemapSelect"/);
-assert.match(html, /GA satellite/);
-assert.match(html, /value="ga-satellite"/);
-assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.9\.0-4/);
+assert.match(html, /QLD imagery/);
+assert.match(html, /value="qld-imagery"/);
+assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.10\.3/);
 assert.match(js, /createReferenceLabelProvider/);
 assert.match(js, /keepBasemapReferenceLabelsVisible/);
 assert.match(html, /id="terrainEnabled"/);
@@ -48,7 +48,7 @@ assert.match(js, /createStormTrackerTerrainManager/);
 assert.match(js, /initialiseOperationalFloodRoadClosures/);
 const roadLayer = read("frontend/src/context-layers/flood-road-closures-v1.js");
 const roadUi = read("frontend/src/context-layers/flood-road-closures-operational-v1.js");
-assert.match(roadLayer, /createRoadClosureBadgeCanvas/);
+assert.match(roadLayer, /createRoadClosureBadgeImage/);
 assert.match(roadLayer, /stormTrackerFloodClosureId/);
 assert.doesNotMatch(
   roadLayer,
@@ -57,8 +57,10 @@ assert.doesNotMatch(
 );
 assert.match(roadUi, /primitive\?\.id/);
 assert.match(roadUi, /drillPick/);
-assert.match(roadUi, /pointerdown/);
-assert.match(roadUi, /pointerup/);
+assert.match(roadUi, /window\.addEventListener\([\s\S]*"pointerdown"/);
+assert.match(roadUi, /window\.addEventListener\([\s\S]*"pointerup"/);
+assert.match(roadUi, /cartesianToCanvasCoordinates/);
+assert.match(roadUi, /nearestClosureIdByMarker/);
 assert.match(roadUi, /showClosureInfo/);
 assert.match(roadUi, /floodRoadClosureInfoRows/);
 assert.match(js, /terrain-manager-v1\.js\?v=9\.9\.0-4/);
@@ -102,4 +104,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: live-only UI, flood road-closure control, static Cesium attribution, functional Reset, internal historical regressions retained.");
+console.log("Production shell checks passed: V9.10.3 Queensland imagery, stable map labels, touch-safe flood closure interaction and historical regressions retained.");

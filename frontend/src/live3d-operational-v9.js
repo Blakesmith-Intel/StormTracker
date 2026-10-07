@@ -233,6 +233,9 @@ let publishedSharedTimeline = null;
 let loadedLoopSelection = null;
 let loadedWithDoppler = null;
 let availableRadarHistoryTimes = [];
+let lastSourceDiscoveryRegion = null;
+let lastSourceDiscoveryAt = 0;
+let lastSourceDiscoveryTimes = [];
 let trackedThrough = null;
 const radarFrameCache = new Map();
 const radarResultCache = new Map();
@@ -2623,21 +2626,34 @@ async function loadHybridSequence(automatic = false) {
   const cacheCutoff =
     now - 4 * 60 * 60 * 1000;
 
-  const [
-    discoveredTimes,
-    cachedFrames,
-    sources
-  ] = await Promise.all([
+  const recentDiscovery =
+    !automatic
+    && lastSourceDiscoveryRegion === region
+    && now - lastSourceDiscoveryAt < 60 * 1000
+    && lastSourceDiscoveryTimes.length;
+
+  const sourceDiscovery =
     automatic
       ? findLatestBomReflectivityTime(
           now,
           region
         ).then(observedUtc => [observedUtc])
-      : discoverBomReflectivityHistory(
-          now,
-          180,
-          region
-        ),
+      : recentDiscovery
+        ? Promise.resolve(
+            [...lastSourceDiscoveryTimes]
+          )
+        : discoverBomReflectivityHistory(
+            now,
+            180,
+            region
+          );
+
+  const [
+    discoveredTimes,
+    cachedFrames,
+    sources
+  ] = await Promise.all([
+    sourceDiscovery,
     getRadarFrames(
       region,
       cacheCutoff
@@ -2650,6 +2666,13 @@ async function loadHybridSequence(automatic = false) {
     }),
     loadDopplerHistoriesAndPalettes()
   ]);
+
+  if (!automatic && !recentDiscovery) {
+    lastSourceDiscoveryRegion = region;
+    lastSourceDiscoveryAt = now;
+    lastSourceDiscoveryTimes =
+      [...discoveredTimes];
+  }
 
   for (const frame of cachedFrames) {
     radarFrameCache.set(
@@ -3350,6 +3373,9 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   configureRadarSite(); resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;
+  lastSourceDiscoveryRegion = null;
+  lastSourceDiscoveryAt = 0;
+  lastSourceDiscoveryTimes = [];
   if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
   if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];

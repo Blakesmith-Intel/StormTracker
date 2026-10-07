@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StormTracker — V9.12.3 Queensland label visual QA</title>
+<link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
+<style>
+html,body{margin:0;background:#121b21;color:white;font:14px sans-serif}
+header{padding:12px;background:#0a151a}
+#map{width:390px;max-width:100vw;height:340px;background:#26333c;position:relative}
+.controls{display:flex;gap:8px;padding:12px}
+button{padding:8px 10px;background:#263f51;border:1px solid #8acde7;border-radius:4px;color:white}
+#status{padding:8px 12px;font:12px monospace;white-space:pre-wrap}
+</style>
+<script>window.CESIUM_BASE_URL="https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
+<script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
+</head><body>
+<header>V9.12.3 — mobile label overlap and horizon check</header>
+<div id="map"></div>
+<div class="controls"><button id="birdsville">Birdsville</button><button id="brisbane">Brisbane</button><button id="qld">Queensland</button></div>
+<pre id="status">Loading Cesium...</pre>
+<script type="module">
+import { createQueenslandTownLabelLayer } from "../src/context-layers/qld-town-label-layer-v1.js?v=9.12.3";
+import { townLabelBox, boxesOverlap } from "../src/context-layers/qld-town-label-declutter-v1.js?v=9.12.3";
+const Cesium = window.Cesium;
+const status = document.getElementById("status");
+try {
+  if (!Cesium) throw new Error("Cesium CDN script unavailable");
+  const viewer = new Cesium.Viewer("map",{
+    baseLayer:false,
+    terrainProvider:new Cesium.EllipsoidTerrainProvider(),
+    animation:false,timeline:false,baseLayerPicker:false,fullscreenButton:false,
+    homeButton:false,geocoder:false,navigationHelpButton:false,sceneModePicker:false,
+    infoBox:false,selectionIndicator:false,requestRenderMode:true
+  });
+  viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#2b3b42");
+  viewer.scene.globe.enableLighting = false;
+  viewer.scene.skyAtmosphere.show = false;
+  const layer = createQueenslandTownLabelLayer({
+    viewer, CesiumRef:Cesium,
+    mode:"qld-imagery",
+    onStatus: ({message}) => status.textContent=message
+  });
+  const positions={
+    birdsville:[139.35,-25.90,110000],
+    brisbane:[153.03,-27.47,110000],
+    qld:[146.0,-23.6,1450000]
+  };
+  function move(place,pitch=-70){
+    const p=positions[place];
+    viewer.camera.setView({
+      destination:Cesium.Cartesian3.fromDegrees(p[0],p[1],p[2]),
+      orientation:{heading:0,pitch:Cesium.Math.toRadians(pitch),roll:0}
+    });
+    viewer.scene.requestRender();
+    layer.draw(true);
+    status.textContent = `${place}: ${layer.visibleCount} names`;
+  }
+  window.visualQA={
+    ready:false,
+    move,
+    inspect() {
+      layer.draw(true);
+      const labels=layer.visibleLabels;
+      const boxes=labels.map(x=>townLabelBox(x));
+      const overlaps=[];
+      for(let i=0;i<boxes.length;i++){
+        for(let j=i+1;j<boxes.length;j++){
+          if(boxesOverlap(boxes[i],boxes[j],9)) overlaps.push([labels[i].name,labels[j].name]);
+        }
+      }
+      return {
+        count:layer.count,visible:layer.visibleCount,
+        labels,overlaps,
+        canvas:{width:viewer.scene.canvas.clientWidth,height:viewer.scene.canvas.clientHeight},
+        cameraHeight:viewer.camera.positionCartographic.height
+      };
+    }
+  };
+  await layer.start();
+  move("birdsville");
+  window.visualQA.ready=true;
+}catch(error){
+  console.error(error);
+  status.textContent=error.stack||String(error);
+  window.visualQA={ready:false,error:String(error)};
+}
+</script>
+</body></html>

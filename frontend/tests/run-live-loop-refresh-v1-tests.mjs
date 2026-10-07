@@ -3,6 +3,7 @@ import { buildSharedProductTimeline } from '../src/shared-product-timeline-v1.js
 import {
   radarHistoryTimeline,
   needsChronologicalRadarRebuild,
+  automaticRefreshUsesDopplerGate,
   hasNewMatchedProducts,
   createLiveLoopRefresh
 } from '../src/live-loop-refresh-v1.js';
@@ -67,6 +68,32 @@ assert.equal(
   false
 );
 
+// A radar-capable site must never wait for Doppler unless the user has
+// explicitly selected the Doppler overlay.
+assert.equal(
+  automaticRefreshUsesDopplerGate(
+    false,
+    ["66"]
+  ),
+  false
+);
+
+assert.equal(
+  automaticRefreshUsesDopplerGate(
+    true,
+    ["66"]
+  ),
+  true
+);
+
+assert.equal(
+  automaticRefreshUsesDopplerGate(
+    true,
+    []
+  ),
+  false
+);
+
 // Timer re-arms only after completion; focus checks cannot overlap a fetch.
 let callback, calls=0, release, cancelled=0, errors=[], delays=[];
 const scheduler=createLiveLoopRefresh({schedule:(cb,delay)=>{callback=cb;delays.push(delay);return 1;},cancel:()=>cancelled++,
@@ -83,4 +110,4 @@ let retries=0;
 const failing=createLiveLoopRefresh({schedule:(cb,delay)=>{callback=cb;delays.push(delay);return 1;},cancel:()=>{},
  refresh:()=>{retries++;throw Error('fixture failure');},onError:error=>errors.push(error.message)});
 failing.start();await failing.check();assert.equal(retries,1);assert.equal(errors.at(-1),'fixture failure');assert.equal(delays.at(-1),300000);failing.stop();
-console.log('Live loop checks passed: radar history, automatic cached-history rebuild detection, source advance, outages, no overlapping refreshes and retry scheduling.');
+console.log('Live loop checks passed: radar history, automatic cached-history rebuild detection, radar-only refresh independence from Doppler, source advance, outages, no overlapping refreshes and retry scheduling.');

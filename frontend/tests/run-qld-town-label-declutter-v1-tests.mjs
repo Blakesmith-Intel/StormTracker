@@ -79,4 +79,20 @@ const stay=layoutTownLabels({
   width:390,height:350,cameraHeight:10000,previousVisible:["a"]
 });
 assert.equal(stay[0].id,"a","Previously displayed label wins near ties during gentle pan");
+const statewide = Array.from({ length: 20 }, (_, i) => ({
+  id: `statewide-${i}`, name: `Outback ${i}`, population: 120,
+  priority: 50 + i,
+  x: 35 + (i % 5) * 72,
+  y: 60 + Math.floor(i / 5) * 64,
+  longitude: 139.1 + (i % 5) * 3.1,
+  latitude: -28.4 + Math.floor(i / 5) * 5.1
+}));
+const lowAngleStatewide = layoutTownLabels({
+  candidates: statewide, width: 390, height: 350,
+  cameraHeight: 70000, cameraPitchDegrees: -55,
+  mode: "qld-imagery"
+});
+assert.ok(lowAngleStatewide.length <= 5,
+  "Statewide geographic footprint must cap labels even if camera height/pitch report a local view");
+
 console.log("Town declutter checks passed: 758 dense names, collision-free mobile/desktop budgets, horizon-scale suppression, remote settlement priority and visibility hysteresis.");

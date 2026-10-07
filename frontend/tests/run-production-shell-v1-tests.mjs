@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.11\.0-dev3/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.11\.0/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -52,7 +52,7 @@ assert.match(css, /\.power-outage-key/);
 assert.match(js, /createStormTrackerTerrainManager/);
 assert.match(js, /initialiseOperationalFloodRoadClosures/);
 assert.match(js, /initialiseOperationalPowerOutages/);
-assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=9\.11\.0-dev3/);
+assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=9\.11\.0/);
 const outageLayer = read("frontend/src/context-layers/power-outages-v1.js");
 const outageUi = read("frontend/src/context-layers/power-outages-operational-v1.js");
 assert.match(outageLayer, /VwEnergexOutages\/FeatureServer\/0\/query/);
@@ -126,4 +126,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.11.0-dev3 Energex + Ergon + Essential Energy outages added; V9.10.4 imagery, road closures and historical regressions retained.");
+console.log("Production shell checks passed: V9.11.0 Energex + Ergon + Essential Energy outages added; V9.10.4 imagery, road closures and historical regressions retained.");

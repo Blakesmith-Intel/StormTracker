@@ -1,7 +1,7 @@
 import {
   filterQueenslandRiverGauges,
   riverGaugeSummary
-} from "./river-gauges-v1.js?v=9.12.0-dev1";
+} from "./river-gauges-v1.js?v=9.12.0";
 
 export const DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-gauge-metadata";

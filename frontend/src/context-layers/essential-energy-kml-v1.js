@@ -621,6 +621,19 @@ export function parseEssentialEnergyKml(
           placemark
         );
 
+      const sourcePoint =
+        coordinates(
+          firstTagText(
+            tagBlocks(
+              placemark,
+              "Point"
+            )[0]
+            ?? "",
+            "coordinates"
+          )
+        )[0]
+        ?? null;
+
       if (!geometry) {
         return;
       }
@@ -745,7 +758,15 @@ export function parseEssentialEnergyKml(
             ),
 
           STORMTRACKER_PROVIDER:
-            "Essential Energy"
+            "Essential Energy",
+
+          STORMTRACKER_SOURCE_LONGITUDE:
+            sourcePoint?.[0]
+            ?? "",
+
+          STORMTRACKER_SOURCE_LATITUDE:
+            sourcePoint?.[1]
+            ?? ""
         },
 
         geometry

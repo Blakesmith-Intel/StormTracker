@@ -353,11 +353,11 @@ const ergonPayload = {
 const essentialKml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-  <Placemark id="INCD-ESS-1">
-    <Snippet><![CDATA[INCD-ESS-1]]></Snippet>
+  <Placemark id="INCD-ESS-QLD">
+    <Snippet><![CDATA[INCD-ESS-QLD]]></Snippet>
     <styleUrl>#sw_1249554_normal_unplanned</styleUrl>
     <description><![CDATA[
-      <h2>INCD-ESS-1</h2>
+      <h2>INCD-ESS-QLD</h2>
       <div><span>Time Off:</span>08/10/2026 04:30:00</div>
       <div><span>Est. Time On:</span>08/10/2026 07:30:00</div>
       <div><span>No. of Customers affected:</span>30</div>
@@ -366,12 +366,60 @@ const essentialKml = `<?xml version="1.0" encoding="UTF-8"?>
     ]]></description>
     <Polygon>
       <outerBoundaryIs><LinearRing><coordinates>
-        153.20,-28.80,0 153.21,-28.80,0 153.21,-28.81,0 153.20,-28.80,0
+        150.30,-28.56,0 150.32,-28.56,0 150.32,-28.54,0 150.30,-28.54,0 150.30,-28.56,0
+      </coordinates></LinearRing></outerBoundaryIs>
+    </Polygon>
+  </Placemark>
+  <Placemark id="INCD-ESS-NSW">
+    <Snippet><![CDATA[INCD-ESS-NSW]]></Snippet>
+    <styleUrl>#sw_1249554_normal_unplanned</styleUrl>
+    <description><![CDATA[
+      <h2>INCD-ESS-NSW</h2>
+      <div><span>Time Off:</span>08/10/2026 04:30:00</div>
+      <div><span>Est. Time On:</span>08/10/2026 07:30:00</div>
+      <div><span>No. of Customers affected:</span>99</div>
+      <div><span>Reason:</span>We are investigating</div>
+      <div><span>Last Updated:</span>08/10/2026 04:45:00</div>
+    ]]></description>
+    <Polygon>
+      <outerBoundaryIs><LinearRing><coordinates>
+        153.26,-28.82,0 153.28,-28.82,0 153.28,-28.80,0 153.26,-28.80,0 153.26,-28.82,0
       </coordinates></LinearRing></outerBoundaryIs>
     </Polygon>
   </Placemark>
 </Document>
 </kml>`;
+
+const queenslandBoundary = {
+  type:
+    "FeatureCollection",
+
+  features: [
+    {
+      type:
+        "Feature",
+
+      properties: {
+        OBJECTID:
+          1
+      },
+
+      geometry: {
+        type:
+          "Polygon",
+
+        coordinates: [[
+          [140.0, -29.0],
+          [151.0, -29.0],
+          [153.6, -28.1],
+          [153.6, -10.0],
+          [140.0, -10.0],
+          [140.0, -29.0]
+        ]]
+      }
+    }
+  ]
+};
 
 function okResponse(
   payload
@@ -441,6 +489,16 @@ const merged =
           );
         }
 
+        if (
+          target.includes(
+            "Locality/FeatureServer/5/query"
+          )
+        ) {
+          return okResponse(
+            queenslandBoundary
+          );
+        }
+
         return okResponse(
           energexPayload
         );
@@ -479,7 +537,7 @@ assert.deepEqual(
   [
     "energex:SAME-ID",
     "ergon:SAME-ID",
-    "essential:INCD-ESS-1"
+    "essential:INCD-ESS-QLD"
   ]
 );
 
@@ -507,7 +565,7 @@ const essentialFeature =
     .find(
       feature =>
         feature.id
-        === "essential:INCD-ESS-1"
+        === "essential:INCD-ESS-QLD"
     );
 
 assert.equal(
@@ -515,7 +573,7 @@ assert.equal(
     ?.properties
     ?.START,
   "2026-10-08T04:30:00+11:00",
-  "Essential Energy October timestamps must retain the provider's AEDT clock."
+  "Essential Energy source timestamps retain the provider clock before display conversion to Queensland time."
 );
 
 const partial =
@@ -548,6 +606,16 @@ const partial =
         ) {
           return textResponse(
             essentialKml
+          );
+        }
+
+        if (
+          target.includes(
+            "Locality/FeatureServer/5/query"
+          )
+        ) {
+          return okResponse(
+            queenslandBoundary
           );
         }
 
@@ -607,5 +675,5 @@ await assert.rejects(
 );
 
 console.log(
-  "Power outage checks passed: Energex + Ergon GeoJSON plus Essential Energy KML, provider-qualified IDs, current filtering, partial-feed survival and 15-minute refresh cadence."
+  "Power outage checks passed: Queensland-only Essential Energy filtering removes NSW incidents while retaining Goondiwindi-area outages, provider-qualified IDs, current filtering, partial-feed survival and 15-minute refresh cadence."
 );

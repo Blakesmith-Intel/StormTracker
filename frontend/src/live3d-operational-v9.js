@@ -2249,6 +2249,7 @@ function renderHybridTracks(index) {
       $("hybridPersistentCount").textContent = "0";
       $("hybridRows").innerHTML =
         '<div class="hybrid-muted">Temporally inferred radar display frame. Track identity, Doppler analysis and scoring use observed frames only.</div>';
+      scene.requestRender();
       return;
     }
     const active = new Set(result.active_track_ids ?? []);
@@ -2741,16 +2742,32 @@ async function loadHybridSequence(automatic = false) {
       ])
     );
 
-  let displayPlan =
-    withDoppler
-      ? frames.map(frame => ({
-          observedUtc: frame.observedUtc,
-          kind: "observed"
-        }))
-      : selectRadarHistoryPlan(
+  let displayPlan;
+
+  if (withDoppler) {
+    displayPlan =
+      frames.map(frame => ({
+        observedUtc: frame.observedUtc,
+        kind: "observed"
+      }));
+  } else {
+    try {
+      displayPlan =
+        selectRadarHistoryPlan(
           frames.map(frame => frame.observedUtc),
           loopSelection
         );
+    } catch {
+      // A frame can pass the lightweight timestamp probe but fail while the
+      // complete mosaic is loading. Keep the largest truthful playback run
+      // that can still be assembled from successfully decoded observations.
+      displayPlan =
+        selectRadarHistoryPlan(
+          frames.map(frame => frame.observedUtc),
+          ALL_AVAILABLE_LOOP_VALUE
+        );
+    }
+  }
 
   const displayFrames = [];
   const displayResults = [];
@@ -2848,7 +2865,14 @@ async function loadHybridSequence(automatic = false) {
   hybridHistory = new Map();
   hybridTrackVolumes = [];
   hybridDopplerFrameStates = [];
-  hybridFrameIndex = automatic ? Math.max(0, frames.findIndex(frame => frame.observedUtc === oldTime)) : 0;
+  hybridFrameIndex = automatic
+    ? Math.max(
+        0,
+        hybridFrames.findIndex(
+          frame => frame.observedUtc === oldTime
+        )
+      )
+    : 0;
   clearDopplerOverlay();
   const range = formatProductTimeRange(sharedTimeline.startUtc, sharedTimeline.endUtc);
   $("operationalLoopWindow").textContent =
@@ -2998,7 +3022,7 @@ async function loadHybridSequence(automatic = false) {
   await showHybridFrame(hybridFrameIndex);
   if (resume) playback.play();
   // Bound decoded imagery and per-frame results while retaining worker tracks.
-  const retained = new Set([...radarResultCache.keys()].sort().slice(-36));
+  const retained = new Set([...radarResultCache.keys()].sort().slice(-48));
   for (const cache of [radarFrameCache, radarResultCache]) {
     for (const key of cache.keys()) if (!retained.has(key)) cache.delete(key);
   }

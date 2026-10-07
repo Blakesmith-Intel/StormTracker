@@ -14,7 +14,8 @@ function event({
   event_subtype = "",
   event_due_to = "",
   impact_type = "Closures",
-  description = ""
+  description = "",
+  duration = null
 }) {
   return {
     type: "Feature",
@@ -29,6 +30,7 @@ function event({
       event_subtype,
       event_due_to,
       description,
+      ...(duration ? { duration } : {}),
       impact: {
         impact_type
       },
@@ -117,6 +119,52 @@ assert.equal(
   false
 );
 
+const fixedNow =
+  Date.parse("2026-10-08T00:00:00+10:00");
+
+assert.equal(
+  isActiveFloodRoadClosure(
+    event({
+      id: "future-flood-closure",
+      duration: {
+        start: "2026-10-09T00:00:00+10:00"
+      }
+    }),
+    fixedNow
+  ),
+  false,
+  "Published future flood closures must not be shown yet."
+);
+
+assert.equal(
+  isActiveFloodRoadClosure(
+    event({
+      id: "expired-flood-closure",
+      duration: {
+        end: "2026-10-07T23:00:00+10:00"
+      }
+    }),
+    fixedNow
+  ),
+  false,
+  "Published expired flood closures must not remain on the map."
+);
+
+assert.equal(
+  isActiveFloodRoadClosure(
+    event({
+      id: "current-naive-qld-time",
+      duration: {
+        start: "2026-10-07T23:30:00",
+        end: "2026-10-08T00:30:00"
+      }
+    }),
+    fixedNow
+  ),
+  true,
+  "Timezone-less QLDTraffic times must be interpreted as Queensland local time."
+);
+
 const filtered = filterFloodRoadClosures({
   type: "FeatureCollection",
   features: [
@@ -136,7 +184,7 @@ const filtered = filterFloodRoadClosures({
       event_due_to: "Other"
     })
   ]
-});
+}, fixedNow);
 
 assert.deepEqual(
   filtered.features.map(
@@ -149,5 +197,5 @@ assert.deepEqual(
 );
 
 console.log(
-  "Flood road-closure checks passed: only published TMR flood-classified closures survive; restrictions, rain-only events and free-text false positives are rejected."
+  "Flood road-closure checks passed: only current, published TMR flood-classified closures survive; future, expired, restricted, rain-only and free-text false positives are rejected."
 );

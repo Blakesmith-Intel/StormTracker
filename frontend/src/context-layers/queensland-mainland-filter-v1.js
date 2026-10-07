@@ -1,6 +1,6 @@
 export const QUEENSLAND_MAINLAND_QUERY_URL =
   "https://services1.arcgis.com/0BLakgVcDpWpuh4i/arcgis/rest/services/Locality/FeatureServer/5/query"
-  + "?where=1%3D1"
+  + "?where=STATE%3D%27QUEENSLAND%27"
   + "&outFields=OBJECTID"
   + "&returnGeometry=true"
   + "&outSR=4326"

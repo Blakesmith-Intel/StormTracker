@@ -36,4 +36,4 @@ assert.match(js,/cameraPerformance\.pulse\(\)/);
 assert.match(js,/SingleTileImageryProvider/);
 assert.match(js,/createDopplerLayerTransition/);
 assert.match(js,/Math\.max\(\s*1\.0,\s*base \* scale/);
-console.log('Mobile UI checks passed: V9.10.3 QLD imagery selector, stable touch labels and flood-road closure interaction controls.');
+console.log('Mobile UI checks passed: V9.10.4 QLD imagery selector, stable touch labels and flood-road closure interaction controls.');

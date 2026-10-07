@@ -221,7 +221,8 @@ export function createStormTrackerCameraController({
   minimumRange = 800,
   maximumRange = 5000000,
   wheelGestureQuietMs = 180,
-  onUnexpectedCorrection = null
+  onUnexpectedCorrection = null,
+  onInteraction = () => {}
 }) {
   if (!viewer || !container) {
     throw new Error("viewer and container are required.");
@@ -542,6 +543,8 @@ export function createStormTrackerCameraController({
       y: event.clientY
     };
 
+    onInteraction();
+
     try {
       container.setPointerCapture(
         event.pointerId
@@ -575,6 +578,8 @@ export function createStormTrackerCameraController({
 
     activePointer.x = event.clientX;
     activePointer.y = event.clientY;
+
+    onInteraction();
 
     if (activePointer.mode === "pan") {
       panPixels(dx, dy);
@@ -637,6 +642,8 @@ export function createStormTrackerCameraController({
           ? -1
           : 1;
 
+      onInteraction();
+
       for (
         let index = 0;
         index < Math.abs(
@@ -644,10 +651,18 @@ export function createStormTrackerCameraController({
         );
         index++
       ) {
-        zoomDirection(
-          direction
-        );
+        state =
+          zoomStateByDirection(
+            state,
+            direction,
+            {
+              minimumRange,
+              maximumRange
+            }
+          );
       }
+
+      applyState();
 
       wheelGestureOpen =
         false;
@@ -671,6 +686,8 @@ export function createStormTrackerCameraController({
     ) {
       wheelGestureOpen =
         true;
+
+      onInteraction();
 
       zoomDirection(
         wheel.steps

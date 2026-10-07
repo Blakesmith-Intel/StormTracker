@@ -54,6 +54,11 @@ protected radar/tracking core.
   cone.
 - A basemap-source failure is reported independently and does not block weather
   layers or tracking.
+- Camera movement uses an adaptive terrain-detail governor: terrain mesh detail is
+  temporarily relaxed while the map is actively moving, then restored after the
+  gesture settles. Two-finger touch pinch/rotate/pitch changes are also batched into
+  a single camera update per pointer event, and high-delta wheel zooms are applied
+  in one render instead of several sequential renders.
 - The playback frame slider is dynamically resynchronised to the complete loaded
   frame count whenever history grows, rather than retaining its original six-frame
   startup maximum.

@@ -108,7 +108,7 @@ import {
   BASEMAP_IDS,
   createReferenceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.10.3";
+} from "./context-layers/basemap-manager-v1.js?v=9.10.4";
 
 import {
   syncFrameSlider
@@ -124,7 +124,7 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.10.3";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.10.4";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,

@@ -215,6 +215,9 @@ mapCamera =
 let basemapReferenceLayer =
   null;
 
+let basemapReferenceErrorDisposer =
+  null;
+
 function clearBasemapReferenceLayer() {
   if (!basemapReferenceLayer) {
     return;
@@ -226,6 +229,16 @@ function clearBasemapReferenceLayer() {
   );
 
   basemapReferenceLayer =
+    null;
+
+  if (
+    typeof basemapReferenceErrorDisposer
+    === "function"
+  ) {
+    basemapReferenceErrorDisposer();
+  }
+
+  basemapReferenceErrorDisposer =
     null;
 }
 
@@ -255,6 +268,29 @@ function syncBasemapReferenceLayer(
     createReferenceLabelProvider(
       Cesium
     );
+
+  if (
+    provider.errorEvent
+    ?.addEventListener
+  ) {
+    basemapReferenceErrorDisposer =
+      provider.errorEvent
+        .addEventListener(
+          () => {
+            if (
+              basemapManager.currentId
+              !== BASEMAP_IDS.GA_SATELLITE
+            ) {
+              return;
+            }
+
+            setBasemapStatus(
+              "GA imagery loaded · place-name labels are currently unavailable",
+              "error"
+            );
+          }
+        );
+  }
 
   basemapReferenceLayer =
     viewer.imageryLayers

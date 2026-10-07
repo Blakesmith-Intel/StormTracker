@@ -65,7 +65,9 @@ export function createQueenslandTownLabelLayer({
     const width = canvas?.clientWidth ?? 0;
     const height = canvas?.clientHeight ?? 0;
     const cameraHeight = Math.max(0, camera?.positionCartographic?.height ?? 0);
-    const budget = labelBudget(width, height, cameraHeight, currentMode);
+    const cameraPitchDegrees = Number.isFinite(camera?.pitch)
+      ? camera.pitch * 180 / Math.PI : -90;
+    const budget = labelBudget(width, height, cameraHeight, currentMode, cameraPitchDegrees);
     const candidates = [];
 
     if (budget > 0 && camera?.positionWC) {
@@ -92,7 +94,8 @@ export function createQueenslandTownLabelLayer({
     }
     const accepted = layoutTownLabels({
       candidates, width, height, cameraHeight,
-      mode: currentMode, previousVisible: selectedIds
+      mode: currentMode, cameraPitchDegrees,
+      previousVisible: selectedIds
     });
     const acceptedIds = new Set(accepted.map(place => String(place.id)));
     for (const place of towns) {

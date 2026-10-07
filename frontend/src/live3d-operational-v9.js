@@ -73,10 +73,16 @@ import {
   ALL_AVAILABLE_LOOP_VALUE,
   availableRadarLoopMinutes,
   continuousRadarHistoryTimes,
+  buildRadarPlaybackPlan,
   normaliseRadarHistoryTimes,
   radarHistorySpanMinutes,
-  selectRadarHistoryTimes
-} from "./radar-history-window-v1.js?v=9.8.2";
+  selectRadarHistoryPlan
+} from "./radar-history-window-v1.js?v=9.8.3";
+
+import {
+  interpolateRadarFrame,
+  isTemporallyInferredRadarFrame
+} from "./radar-temporal-interpolation-v1.js?v=9.8.3";
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
@@ -291,8 +297,28 @@ function selectedLoopMinutes() {
 function availableHistorySummary(times = availableRadarHistoryTimes) {
   const history = normaliseRadarHistoryTimes(times);
   if (!history.length) return "Radar history unavailable";
-  const span = Math.round(radarHistorySpanMinutes(history));
-  return `Radar history available: ${span} min · ${history.length} frames · ${formatProductTimeRange(history[0], history.at(-1))}`;
+
+  const plan = buildRadarPlaybackPlan(history);
+  const inferred =
+    plan.filter(entry => entry.kind === "inferred").length;
+  const span =
+    plan.length > 1
+      ? Math.round(
+          (
+            Date.parse(plan.at(-1).observedUtc)
+            - Date.parse(plan[0].observedUtc)
+          ) / 60000
+        )
+      : 0;
+
+  return (
+    `Radar history available: ${span} min · ` +
+    `${history.length} observed + ${inferred} inferred display frames · ` +
+    formatProductTimeRange(
+      plan[0]?.observedUtc,
+      plan.at(-1)?.observedUtc
+    )
+  );
 }
 
 function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
@@ -309,9 +335,23 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
 
   if (availableRadarHistoryTimes.length) {
     const all = document.createElement("option");
-    const span = Math.round(radarHistorySpanMinutes(availableRadarHistoryTimes));
+    const plan =
+      buildRadarPlaybackPlan(
+        availableRadarHistoryTimes
+      );
+    const span =
+      plan.length > 1
+        ? Math.round(
+            (
+              Date.parse(plan.at(-1).observedUtc)
+              - Date.parse(plan[0].observedUtc)
+            ) / 60000
+          )
+        : 0;
+
     all.value = ALL_AVAILABLE_LOOP_VALUE;
-    all.textContent = `All available · ${span} min / ${availableRadarHistoryTimes.length} frames`;
+    all.textContent =
+      `All available · ${span} min / ${plan.length} display frames`;
     options.push(all);
   }
 
@@ -457,7 +497,9 @@ function updateOperationalOverview(
     sourceMode.textContent =
       mode === "latest"
         ? "Latest frame"
-        : (loadedWithDoppler ? "Radar / Doppler loop" : "Radar tracking loop");
+        : isTemporallyInferredRadarFrame(frame)
+          ? "Radar loop · inferred gap frame"
+          : (loadedWithDoppler ? "Radar / Doppler loop" : "Radar tracking loop");
   }
 
   const age =
@@ -518,6 +560,11 @@ function updateOperationalOverview(
     ) {
       doppler.textContent =
         "not loaded";
+    } else if (
+      isTemporallyInferredRadarFrame(frame)
+    ) {
+      doppler.textContent =
+        "not applied · inferred frame";
     } else {
       const state =
         dopplerStateForFrame(
@@ -1189,7 +1236,26 @@ function hasTrackSpecificVolume(
 function updateTrackDisplayControls(index) {
   const select = $("trackDisplayFilter");
   const result = hybridResults[index];
-  if (!select || !result) return;
+  if (!select) return;
+
+  if (!result) {
+    select.innerHTML =
+      '<option value="">Inferred display frame · no measured tracks</option>';
+    select.disabled = true;
+    const cone = $("showTrackThreatCone");
+    if (cone) {
+      cone.checked = false;
+      cone.disabled = true;
+    }
+    const status = $("trackThreatConeStatus");
+    if (status) {
+      status.textContent =
+        "Track analysis is paused on temporally inferred display frames.";
+    }
+    return;
+  }
+
+  select.disabled = false;
 
   const frameTracks = (result.tracks ?? [])
     .filter(track => trackObservationForFrame(track, index))
@@ -1257,23 +1323,35 @@ function applyHybridVolumeMode(
 ) {
   const wanted = selectedTrackId();
   const trackVolumesRequested = Boolean($("showTrackVolumes")?.checked);
-  const useTrackSpecific = trackVolumesRequested && hasTrackSpecificVolume(index);
+  const temporalInferred =
+    isTemporallyInferredRadarFrame(
+      hybridFrames[index]
+    );
+  const useTrackSpecific =
+    !temporalInferred
+    && trackVolumesRequested
+    && hasTrackSpecificVolume(index);
 
   if (inferredCollection) {
-    inferredCollection.show = wanted && trackVolumesRequested
-      ? false
-      : !useTrackSpecific;
+    inferredCollection.show =
+      temporalInferred
+        ? true
+        : wanted && trackVolumesRequested
+          ? false
+          : !useTrackSpecific;
   }
 
   const mode = $("hybridVolumeMode");
   if (mode) {
-    mode.textContent = useTrackSpecific
-      ? (wanted ? `Selected ${wanted}` : "Measured-track-specific")
-      : wanted && trackVolumesRequested
-        ? `Selected ${wanted} · no track volume in frame`
-        : trackVolumesRequested
-          ? "Frame-wide fallback (no measured track)"
-          : "Frame-wide inferred";
+    mode.textContent = temporalInferred
+      ? "Temporal gap-fill · frame-wide inferred"
+      : useTrackSpecific
+        ? (wanted ? `Selected ${wanted}` : "Measured-track-specific")
+        : wanted && trackVolumesRequested
+          ? `Selected ${wanted} · no track volume in frame`
+          : trackVolumesRequested
+            ? "Frame-wide fallback (no measured track)"
+            : "Frame-wide inferred";
   }
 
   scene.requestRender();
@@ -2166,7 +2244,13 @@ function renderHybridTracks(index) {
     hybridSource.entities.removeAll();
     const result = hybridResults[index];
     const volumeMap = hybridTrackVolumes[index];
-    if (!result) return;
+    if (!result) {
+      $("hybridTrackCount").textContent = "0";
+      $("hybridPersistentCount").textContent = "0";
+      $("hybridRows").innerHTML =
+        '<div class="hybrid-muted">Temporally inferred radar display frame. Track identity, Doppler analysis and scoring use observed frames only.</div>';
+      return;
+    }
     const active = new Set(result.active_track_ids ?? []);
     const rows = [];
     const frameTracks = (result.tracks ?? []).filter(track => trackObservationForFrame(track, index));
@@ -2384,8 +2468,14 @@ function renderHybridTracks(index) {
 }
 
 function updateHybridSourceMetrics(frame) {
+  const inference =
+    frame.sourceMetadata
+      ?.temporalInference;
+
   $("sourceTime").textContent =
-    formatProductTime(frame.observedUtc);
+    inference
+      ? `${formatProductTime(frame.observedUtc)} · INFERRED between ${formatProductTime(inference.beforeUtc, { compact: true })} and ${formatProductTime(inference.afterUtc, { compact: true })}`
+      : formatProductTime(frame.observedUtc);
 
   $("decodedPixels").textContent =
     (
@@ -2442,8 +2532,11 @@ async function showHybridFrame(index) {
       hybridFrameIndex
     );
 
+  const temporalInferred =
+    isTemporallyInferredRadarFrame(frame);
+
   $("hybridFrameLabel").textContent =
-    `${hybridFrameIndex + 1}/${hybridFrames.length}`;
+    `${hybridFrameIndex + 1}/${hybridFrames.length}${temporalInferred ? " · inferred" : ""}`;
 
   const surfaceApplied =
     await renderSurface(
@@ -2492,8 +2585,23 @@ async function showHybridFrame(index) {
       formatProductTime(frame.observedUtc);
   }
 
+  $("mapTruthLabel").textContent =
+    temporalInferred
+      ? "TEMPORALLY INFERRED 2-D · inferred vertical structure · display only"
+      : "Measured reflectivity / inferred vertical structure";
+
   setStatus(
-    `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ${formatProductTime(frame.observedUtc, { compact: true })} · ${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`,
+    temporalInferred
+      ? (
+          `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ` +
+          `${formatProductTime(frame.observedUtc, { compact: true })} · ` +
+          "INFERRED temporal gap-fill · display only · excluded from tracking/scoring"
+        )
+      : (
+          `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ` +
+          `${formatProductTime(frame.observedUtc, { compact: true })} · ` +
+          `${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`
+        ),
     "ok"
   );
   if (animateFrame) await frameCrossfade.play(Math.min(200, playbackDelayForSpeed(selectedPlaybackSpeed()) * .5));
@@ -2513,18 +2621,29 @@ async function loadHybridSequence(automatic = false) {
   const loopSelection = selectedLoopSelection();
   const loopMinutes = selectedLoopMinutes();
   const withDoppler = $("showDopplerOverlay").checked;
-  const times = selectRadarHistoryTimes(
-    availableRadarHistoryTimes,
-    withDoppler ? 30 : loopSelection
-  );
+  const requestedPlan =
+    selectRadarHistoryPlan(
+      availableRadarHistoryTimes,
+      withDoppler ? 30 : loopSelection
+    );
+  const times =
+    requestedPlan
+      .filter(entry => entry.kind === "observed")
+      .map(entry => entry.observedUtc);
+  const requestedInferred =
+    withDoppler
+      ? 0
+      : requestedPlan
+          .filter(entry => entry.kind === "inferred")
+          .length;
 
   if (!automatic) {
     setStatus(
       withDoppler
-        ? `Loading 30-minute shared radar / Doppler history from ${times.length} available radar frames…`
+        ? `Loading 30-minute shared radar / Doppler history from ${times.length} observed radar frames…`
         : (loopSelection === ALL_AVAILABLE_LOOP_VALUE
-            ? `Loading all available radar history (${Math.round(loopMinutes)} min / ${times.length} frames)…`
-            : `Loading ${loopMinutes}-minute radar history from ${times.length} source frames…`)
+            ? `Loading all available radar history (${Math.round(loopMinutes)} min · ${times.length} observed + ${requestedInferred} inferred display frames)…`
+            : `Loading ${loopMinutes}-minute radar history (${times.length} observed + ${requestedInferred} inferred display frames)…`)
     );
   }
 
@@ -2603,14 +2722,111 @@ async function loadHybridSequence(automatic = false) {
     }
     results.push(result);
   }
+  const observedFrameByTime =
+    new Map(
+      frames.map(frame => [frame.observedUtc, frame])
+    );
+  const observedResultByTime =
+    new Map(
+      frames.map((frame, index) => [
+        frame.observedUtc,
+        results[index]
+      ])
+    );
+  const observedStateByTime =
+    new Map(
+      frames.map((frame, index) => [
+        frame.observedUtc,
+        states[index]
+      ])
+    );
+
+  let displayPlan =
+    withDoppler
+      ? frames.map(frame => ({
+          observedUtc: frame.observedUtc,
+          kind: "observed"
+        }))
+      : selectRadarHistoryPlan(
+          frames.map(frame => frame.observedUtc),
+          loopSelection
+        );
+
+  const displayFrames = [];
+  const displayResults = [];
+  const displayStates = [];
+
+  for (const entry of displayPlan) {
+    if (entry.kind === "observed") {
+      const frame =
+        observedFrameByTime.get(entry.observedUtc);
+      if (!frame) continue;
+
+      displayFrames.push(frame);
+      displayResults.push(
+        observedResultByTime.get(entry.observedUtc)
+        ?? null
+      );
+      displayStates.push(
+        observedStateByTime.get(entry.observedUtc)
+        ?? {
+          reflectivityUtc: entry.observedUtc,
+          pairings: [],
+          records: [],
+          sourceFailures: 0
+        }
+      );
+      continue;
+    }
+
+    const before =
+      observedFrameByTime.get(entry.beforeUtc);
+    const after =
+      observedFrameByTime.get(entry.afterUtc);
+
+    if (!before || !after) continue;
+
+    const inferredFrame =
+      interpolateRadarFrame(
+        before,
+        after,
+        entry.observedUtc,
+        entry.weight
+      );
+
+    displayFrames.push(inferredFrame);
+    displayResults.push(null);
+    displayStates.push({
+      reflectivityUtc:
+        entry.observedUtc,
+      pairings:
+        selectedSourceRadars()
+          .map(radarId => ({
+            radarId,
+            matched: false,
+            candidate: null,
+            deltaMinutes: null
+          })),
+      records: [],
+      sourceFailures: 0,
+      inferredDisplayOnly: true
+    });
+  }
+
+  if (!displayFrames.length) {
+    throw new Error(
+      "No radar display frames could be assembled from the available history."
+    );
+  }
+
   const oldTime = hybridFrames[hybridFrameIndex]?.observedUtc;
   const resume = automatic ? playback.isPlaying() : true;
   $("hybridFrameSlider").disabled = true;
   $("hybridPlayButton").disabled = true;
   await playback.pause();
-  hybridFrames = frames;
-  hybridResults = results;
-  preparedDopplerStates = states;
+  hybridFrames = displayFrames;
+  hybridResults = displayResults;
+  preparedDopplerStates = displayStates;
   dopplerHistories = sources.histories;
   dopplerPalettes = sources.palettes;
   dopplerLatestRecords = sources.latestRecords;
@@ -2618,8 +2834,17 @@ async function loadHybridSequence(automatic = false) {
   publishedSharedTimeline = { ...shared, entries: publishedEntries, endUtc: publishedEntries.at(-1)?.observedUtc ?? null };
   loadedLoopSelection = loopSelection;
   loadedWithDoppler = withDoppler;
-  sharedTimeline = { ...timeline, startUtc: frames[0].observedUtc, endUtc: frames.at(-1).observedUtc,
-    spanMinutes: (Date.parse(frames.at(-1).observedUtc) - Date.parse(frames[0].observedUtc)) / 60000, failures };
+  sharedTimeline = {
+    ...timeline,
+    startUtc: hybridFrames[0].observedUtc,
+    endUtc: hybridFrames.at(-1).observedUtc,
+    spanMinutes:
+      (
+        Date.parse(hybridFrames.at(-1).observedUtc)
+        - Date.parse(hybridFrames[0].observedUtc)
+      ) / 60000,
+    failures
+  };
   hybridHistory = new Map();
   hybridTrackVolumes = [];
   hybridDopplerFrameStates = [];
@@ -2634,10 +2859,20 @@ async function loadHybridSequence(automatic = false) {
     `${Math.round(sharedTimeline.spanMinutes)} min actual scan span; ${withDoppler ? "shared source" : "radar"} history`;
   $("sharedHistoryNote").title =
     `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
+  const inferredLoaded =
+    hybridFrames.filter(
+      frame =>
+        isTemporallyInferredRadarFrame(frame)
+    ).length;
+  const observedLoaded =
+    hybridFrames.length - inferredLoaded;
+
   $("sharedHistoryNote").textContent =
-    `${availableHistorySummary()} · Loaded ${frames.length} ${withDoppler ? "shared" : "radar"} frames (${range})` +
+    `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
+    (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
+    ` (${range})` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
-    (failures.length ? ` · ${failures.length} unreadable frames omitted` : "");
+    (failures.length ? ` · ${failures.length} unreadable source frames bridged/omitted where possible` : "");
   $("autoRefreshNote").textContent = `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${radarOnlySite ? "radar images" : "matching products"} every 5 minutes.`;
   if (selectedRadarRegion() !== "SEQ" && !["66","50","08"].includes(selectedRadarRegion()) && !radarOnlySite) {
     $("sharedHistoryNote").textContent += " · wind display only (nominal registration)";

@@ -256,3 +256,71 @@ dialog::backdrop { background:#0009; }
   aside { gap:3px; padding:4px; }
   .card { padding:4px; }
 }
+
+
+/* V9.10.0 flood-only road closures */
+.flood-road-row button {
+  min-height:25px;
+  padding:3px 7px;
+}
+#floodRoadClosureStatus {
+  margin:-2px 0 5px;
+  text-align:right;
+}
+#floodRoadClosureStatus[data-kind="error"] {
+  color:#ff9d91;
+}
+#floodRoadClosureStatus[data-kind="ok"] {
+  color:#99e2b7;
+}
+.map-info-card {
+  position:absolute;
+  z-index:850;
+  left:10px;
+  top:10px;
+  width:min(340px,calc(100% - 20px));
+  padding:9px;
+  border:1px solid #4a6575;
+  border-radius:8px;
+  background:#0e1820f2;
+  box-shadow:0 4px 18px #0008;
+}
+.map-info-card header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+.map-info-card header button {
+  min-width:28px;
+  min-height:28px;
+  padding:2px 7px;
+  font-size:16px;
+  line-height:1;
+}
+.map-info-card .metric {
+  font-size:10px;
+}
+.map-info-card a {
+  display:inline-block;
+  margin-top:8px;
+  color:#92d3ef;
+  font-size:10px;
+}
+@media (max-width:700px) {
+  .flood-road-row button {
+    min-height:25px;
+    font-size:9px;
+  }
+  #floodRoadClosureStatus {
+    font-size:8px;
+    margin:-1px 0 3px;
+  }
+  .map-info-card {
+    top:6px;
+    left:6px;
+    width:min(300px,calc(100% - 12px));
+    padding:7px;
+  }
+}

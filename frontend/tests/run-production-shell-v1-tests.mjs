@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.9\.1/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.10\.0/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -39,7 +39,10 @@ assert.match(js, /createReferenceLabelProvider/);
 assert.match(js, /keepBasemapReferenceLabelsVisible/);
 assert.match(html, /id="terrainEnabled"/);
 assert.match(html, /id="terrainStatus"/);
+assert.match(html, /id="showFloodRoadClosures"/);
+assert.match(html, /id="floodRoadClosureStatus"/);
 assert.match(js, /createStormTrackerTerrainManager/);
+assert.match(js, /initialiseOperationalFloodRoadClosures/);
 assert.match(js, /terrain-manager-v1\.js\?v=9\.9\.0-4/);
 assert.match(js, /createStormTrackerBasemapManager/);
 assert.match(js, /BASEMAP_IDS/);
@@ -81,4 +84,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: live-only UI, static Cesium attribution, functional Reset, internal historical regressions retained.");
+console.log("Production shell checks passed: live-only UI, flood road-closure control, static Cesium attribution, functional Reset, internal historical regressions retained.");

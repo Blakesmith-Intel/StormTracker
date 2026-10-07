@@ -1,0 +1,311 @@
+name: Smoke test V9.10 flood closures
+
+on:
+  push:
+    branches:
+      - "feature/road-closures-v9.10.0"
+    paths:
+      - ".github/workflows/smoke-v9-10-flood-closures.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compare live TMR feed with StormTracker output
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error             "https://data.qldtraffic.qld.gov.au/events_v2.geojson"             -o /tmp/qldtraffic-raw.json
+
+          status="$(curl --silent --show-error             --output /tmp/stormtracker-flood.json             --write-out "%{http_code}"             "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/flood-road-closures")"
+
+          echo "StormTracker HTTP status: $status"
+          test "$status" = "200"
+
+          node --input-type=module - <<'NODE'
+          import fs from "node:fs";
+
+          import {
+            filterFloodRoadClosures
+          } from "./frontend/src/context-layers/flood-road-closure-filter-v1.js";
+
+          const raw = JSON.parse(
+            fs.readFileSync("/tmp/qldtraffic-raw.json", "utf8")
+          );
+
+          const filtered = JSON.parse(
+            fs.readFileSync("/tmp/stormtracker-flood.json", "utf8")
+          );
+
+          if (raw?.type !== "FeatureCollection") {
+            throw new Error("Raw TMR feed is not a FeatureCollection");
+          }
+
+          if (filtered?.type !== "FeatureCollection") {
+            throw new Error("StormTracker output is not a FeatureCollection");
+          }
+
+          const rawFeatures =
+            Array.isArray(raw.features)
+              ? raw.features
+              : [];
+
+          const outputFeatures =
+            Array.isArray(filtered.features)
+              ? filtered.features
+              : [];
+
+          const moduleFiltered =
+            filterFloodRoadClosures(
+              raw,
+              Date.now()
+            );
+
+          const moduleFeatures =
+            Array.isArray(moduleFiltered?.features)
+              ? moduleFiltered.features
+              : [];
+
+          const norm = value =>
+            String(value ?? "").trim().toLowerCase();
+
+          const floodTypes =
+            new Set(["flooding"]);
+
+          const floodSubtypes =
+            new Set([
+              "flash flooding",
+              "long-term flooding"
+            ]);
+
+          const floodCauses =
+            new Set([
+              "earlier flooding",
+              "earlier flash flooding",
+              "water over road",
+              "flooding of river"
+            ]);
+
+          function qldTime(value) {
+            let text =
+              String(value ?? "").trim();
+
+            if (!text) return null;
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+              text += "T00:00:00+10:00";
+            } else if (
+              /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(text)
+              && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)
+            ) {
+              text += "+10:00";
+            }
+
+            const parsed =
+              Date.parse(text);
+
+            return Number.isFinite(parsed)
+              ? parsed
+              : null;
+          }
+
+          function isCurrent(properties, nowMs) {
+            const duration =
+              properties?.duration
+              && typeof properties.duration === "object"
+                ? properties.duration
+                : {};
+
+            const startText =
+              duration.start
+              ?? properties?.start_time
+              ?? properties?.startTime
+              ?? properties?.fromDate
+              ?? properties?.from
+              ?? "";
+
+            const endText =
+              duration.end
+              ?? properties?.end_time
+              ?? properties?.endTime
+              ?? properties?.toDate
+              ?? properties?.to
+              ?? "";
+
+            const start =
+              qldTime(startText);
+
+            const end =
+              qldTime(endText);
+
+            if (String(startText).trim() && start === null) return true;
+            if (String(endText).trim() && end === null) return true;
+            if (start !== null && end !== null && end < start) return true;
+            if (start !== null && nowMs < start) return false;
+            if (end !== null && nowMs > end) return false;
+
+            return true;
+          }
+
+          function isFloodRelated(p) {
+            return (
+              floodTypes.has(norm(p?.event_type))
+              || floodSubtypes.has(norm(p?.event_subtype))
+              || floodCauses.has(norm(p?.event_due_to))
+            );
+          }
+
+          const nowMs =
+            Date.now();
+
+          const published =
+            rawFeatures.filter(
+              f => norm(f?.properties?.status) === "published"
+            );
+
+          const floodRelated =
+            rawFeatures.filter(
+              f => isFloodRelated(f?.properties ?? {})
+            );
+
+          const closures =
+            rawFeatures.filter(
+              f => norm(f?.properties?.impact?.impact_type) === "closures"
+            );
+
+          const qualifying =
+            rawFeatures.filter(f => {
+              const p = f?.properties ?? {};
+
+              return (
+                norm(p.status) === "published"
+                && isCurrent(p, nowMs)
+                && isFloodRelated(p)
+                && norm(p?.impact?.impact_type) === "closures"
+              );
+            });
+
+          for (const feature of outputFeatures) {
+            const p = feature?.properties ?? {};
+
+            if (norm(p.status) !== "published") {
+              throw new Error("Non-published event returned by StormTracker");
+            }
+
+            if (!isCurrent(p, nowMs)) {
+              throw new Error("Future/expired event returned by StormTracker");
+            }
+
+            if (!isFloodRelated(p)) {
+              throw new Error("Non-flood event returned by StormTracker");
+            }
+
+            if (norm(p?.impact?.impact_type) !== "closures") {
+              throw new Error("Non-closure event returned by StormTracker");
+            }
+          }
+
+          console.log("Raw TMR features:", rawFeatures.length);
+          console.log("Published:", published.length);
+          console.log("Flood-related:", floodRelated.length);
+          console.log("Impact type Closures:", closures.length);
+          console.log("Qualifying current flood closures:", qualifying.length);
+          console.log("StormTracker returned:", outputFeatures.length);
+          console.log("Exact module returned:", moduleFeatures.length);
+          console.log(
+            "StormTracker cache:",
+            filtered?.stormtracker?.cache_status ?? "unknown"
+          );
+          console.log(
+            "StormTracker upstream:",
+            filtered?.stormtracker?.upstream ?? "unknown"
+          );
+
+          const qualifyingIds =
+            qualifying
+              .map(f => String(f?.properties?.id ?? ""))
+              .sort();
+
+          const outputIds =
+            outputFeatures
+              .map(f => String(f?.properties?.id ?? ""))
+              .sort();
+
+          const moduleIds =
+            moduleFeatures
+              .map(f => String(f?.properties?.id ?? ""))
+              .sort();
+
+          console.log(
+            "Qualifying event IDs:",
+            qualifyingIds.join(", ") || "(none)"
+          );
+
+          console.log(
+            "Qualifying field snapshot:",
+            JSON.stringify(
+              qualifying.map(f => {
+                const p = f?.properties ?? {};
+                return {
+                  id: p.id,
+                  status: p.status,
+                  event_type: p.event_type,
+                  event_subtype: p.event_subtype,
+                  event_due_to: p.event_due_to,
+                  impact: p.impact,
+                  duration: p.duration,
+                  road_summary: p.road_summary
+                };
+              }),
+              null,
+              2
+            )
+          );
+
+          console.log(
+            "StormTracker event IDs:",
+            outputIds.join(", ") || "(none)"
+          );
+
+          console.log(
+            "Exact module event IDs:",
+            moduleIds.join(", ") || "(none)"
+          );
+
+          const cacheStatus =
+            String(
+              filtered?.stormtracker?.cache_status
+              ?? ""
+            );
+
+          if (cacheStatus === "fresh-upstream") {
+            if (
+              JSON.stringify(qualifyingIds)
+              !== JSON.stringify(outputIds)
+            ) {
+              throw new Error(
+                "Fresh StormTracker output does not match qualifying raw TMR events."
+              );
+            }
+          } else {
+            for (const feature of outputFeatures) {
+              const id =
+                String(feature?.properties?.id ?? "");
+
+              if (!id) {
+                throw new Error(
+                  "Cached StormTracker event is missing an ID."
+                );
+              }
+            }
+          }
+
+          console.log("Live V9.10 road-closure smoke test passed.");
+          NODE

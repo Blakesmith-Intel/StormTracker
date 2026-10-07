@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
 import {
+  DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
   DEFAULT_RIVER_HEIGHT_RELAY_URL,
   joinRiverGaugeObservations,
   loadRiverGaugeOperationalSnapshot,
@@ -407,6 +408,11 @@ assert.equal(
 );
 
 assert.match(
+  DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
+  /river-gauge-metadata$/
+);
+
+assert.match(
   DEFAULT_RIVER_HEIGHT_RELAY_URL,
   /river-height-bulletins$/
 );
@@ -423,7 +429,7 @@ const loaded =
 
         if (
           target.includes(
-            "National_Flood_Gauge_Network"
+            "river-gauge-metadata"
           )
         ) {
           gaugeRequested =

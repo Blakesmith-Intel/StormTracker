@@ -36,11 +36,11 @@ V9.9.0 adds the first situational-awareness extension without changing the
 protected radar/tracking core.
 
 - **Street** retains the existing OpenStreetMap basemap.
-- **GA satellite** uses Geoscience Australia / Digital Earth Australia's latest
-  available annual Landsat 8/9 GeoMAD imagery, rendered through the official DEA
-  OGC WMS service using the `ga_ls8cls9c_gm_cyear_3` layer and `simple_rgb`
-  style. StormTracker deliberately omits a fixed WMS TIME so DEA selects the
-  newest published annual dataset.
+- **GA satellite** uses Geoscience Australia's public cached
+  **World Bathymetry, Imagery and Hillshade** service. That service includes
+  Landsat-derived satellite imagery and is published as a Web Mercator tile cache.
+  StormTracker consumes the cached tiles directly rather than relying on the DEA
+  time-enabled WMS path that proved unreliable in browser acceptance testing.
 - The selected basemap is stored in localStorage and restored on the next visit.
 - Switching basemaps replaces only the bottom imagery layer. It does not reset the
   camera, selected radar, radar history, tracks, Doppler state, playback or motion

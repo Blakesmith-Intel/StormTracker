@@ -421,3 +421,21 @@ Live acceptance exposed two candidate defects before V9.9.0 was sealed.
 
 These are display/source-integration fixes only; radar tracking, Doppler science,
 three-hour history accumulation and temporal inference contracts are unchanged.
+
+
+### V9.9.0 camera performance pass
+
+Before sealing wishlist item 1, the live map received a low-risk interaction
+performance pass. While the user is actively panning, zooming, rotating or
+pitching, Cesium terrain mesh detail is temporarily relaxed by increasing globe
+screen-space error from 4 to 8. The normal detail level is restored 160 ms after
+the last interaction.
+
+Two-finger touch handling now combines pinch range, rotation and pitch into one
+camera view update per pointer event instead of up to three sequential Cesium
+camera updates. High-delta mouse-wheel input similarly computes the complete zoom
+step before rendering once.
+
+These changes affect rendering workload only. Radar imagery, tracking, terrain
+source, Doppler, source timing, three-hour history and inferred-volume science are
+unchanged.

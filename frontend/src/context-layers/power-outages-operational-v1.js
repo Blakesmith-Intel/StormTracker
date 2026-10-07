@@ -1,25 +1,17 @@
 import {
-  createFloodRoadClosureLayer,
-  QLD_TRAFFIC_ATTRIBUTION
-} from "./flood-road-closures-v1.js?v=9.10.3";
-
-import {
-  floodRoadClosureSummary
-} from "./flood-road-closure-filter-v1.js?v=9.10.3";
-
-import {
-  floodRoadClosureMarkerCoordinate
-} from "./flood-road-closures-v1.js?v=9.10.3";
+  createPowerOutageLayer,
+  powerOutageSummary
+} from "./power-outages-v1.js?v=9.11.0";
 
 const $ = id =>
   document.getElementById(id);
 
-function setRoadStatus({
+function setPowerStatus({
   kind = "normal",
   message = ""
 } = {}) {
   const target =
-    $("floodRoadClosureStatus");
+    $("powerOutageStatus");
 
   if (!target) {
     return;
@@ -27,71 +19,67 @@ function setRoadStatus({
 
   target.textContent =
     message
-    || "QLDTraffic · flood closures only";
+    || "Energex + Ergon + Essential Energy | current outages";
 
   target.dataset.kind =
     kind;
 }
 
-function formatQldTime(value) {
-  const text =
-    String(
-      value ?? ""
-    ).trim();
-
-  if (!text) {
-    return "";
-  }
+function formatQldTime(
+  value
+) {
+  const numeric =
+    Number(value);
 
   const parsed =
-    Date.parse(
-      text
-    );
+    Number.isFinite(numeric)
+    && String(
+      value ?? ""
+    ).trim() !== ""
+      ? numeric
+      : Date.parse(
+          String(
+            value ?? ""
+          )
+        );
 
   if (
     !Number.isFinite(
       parsed
     )
   ) {
-    return text;
-  }
-
-  return new Intl.DateTimeFormat(
-    "en-AU",
-    {
-      timeZone:
-        "Australia/Brisbane",
-      day:
-        "2-digit",
-      month:
-        "short",
-      year:
-        "numeric",
-      hour:
-        "2-digit",
-      minute:
-        "2-digit",
-      hour12:
-        false,
-      timeZoneName:
-        "short"
-    }
-  ).format(
-    new Date(parsed)
-  );
-}
-
-function safeWebLink(value) {
-  const text =
-    String(
+    return String(
       value ?? ""
     ).trim();
+  }
 
-  return /^https:\/\//i.test(
-    text
-  )
-    ? text
-    : "";
+  return new Intl
+    .DateTimeFormat(
+      "en-AU",
+      {
+        timeZone:
+          "Australia/Brisbane",
+        day:
+          "2-digit",
+        month:
+          "short",
+        year:
+          "numeric",
+        hour:
+          "2-digit",
+        minute:
+          "2-digit",
+        hour12:
+          false,
+        timeZoneName:
+          "short"
+      }
+    )
+    .format(
+      new Date(
+        parsed
+      )
+    );
 }
 
 function addDetailRow(
@@ -130,41 +118,20 @@ function addDetailRow(
   );
 }
 
-function detailCause(summary) {
-  if (
-    summary.eventType === "Flooding"
-    && summary.eventSubtype
-  ) {
-    return summary.eventSubtype;
-  }
-
-  if (
-    summary.eventDueTo
-  ) {
-    return summary.eventDueTo;
-  }
-
-  return (
-    summary.eventSubtype
-    || summary.eventType
-    || "Flood related"
-  );
-}
-
-function showClosureInfo(
+function showPowerOutageInfo(
   feature
 ) {
   const panel =
-    $("floodRoadClosureInfo");
+    $("powerOutageInfo");
 
   const rows =
-    $("floodRoadClosureInfoRows");
+    $("powerOutageInfoRows");
 
   const title =
-    $("floodRoadClosureInfoTitle");
+    $("powerOutageInfoTitle");
 
-  const link =
-    $("floodRoadClosureInfoLink");
+  const kicker =
+    $("powerOutageInfoKicker");
 
   if (
     !panel
@@ -178,150 +145,129 @@ function showClosureInfo(
     panel.hidden =
       true;
 
-    panel.dataset.closureId =
+    panel.dataset
+      .outageId =
       "";
 
     return;
   }
 
   const summary =
-    floodRoadClosureSummary(
+    powerOutageSummary(
       feature
     );
 
-  $("powerOutageInfo")
+  $("floodRoadClosureInfo")
     ?.setAttribute(
       "hidden",
       ""
     );
 
-  panel.dataset.closureId =
+  panel.dataset
+    .outageId =
     String(
       summary.id
       ?? ""
     );
 
+  panel.dataset
+    .outageType =
+    summary.type
+      .toLowerCase();
+
   title.textContent =
-    summary.roadName;
+    summary.suburbs
+    || `Event ${summary.eventId || summary.id}`;
+
+  if (kicker) {
+    kicker.textContent =
+      `${summary.type} POWER OUTAGE`;
+  }
 
   rows.replaceChildren();
 
   addDetailRow(
     rows,
-    "Location",
-    [
-      summary.locality,
-      summary.postcode
-    ]
-      .filter(Boolean)
-      .join(" ")
+    "Provider",
+    summary.provider
   );
 
   addDetailRow(
     rows,
-    "Council",
-    summary.localGovernmentArea
+    "Customers affected",
+    summary.customersAffected
+      .toLocaleString(
+        "en-AU"
+      )
   );
 
   addDetailRow(
     rows,
-    "Closure",
-    summary.impactSubtype
-    || summary.impactType
-    || "Road closed"
+    "Status",
+    summary.status
   );
 
   addDetailRow(
     rows,
-    "Flood cause",
-    detailCause(
-      summary
-    )
+    "Suburbs",
+    summary.suburbs
   );
 
   addDetailRow(
     rows,
-    "Direction",
-    summary.direction
+    "Streets",
+    summary.streets
   );
 
   addDetailRow(
     rows,
-    "Delay",
-    summary.delay
+    "Reason",
+    summary.reason
   );
 
   addDetailRow(
     rows,
     "Started",
     formatQldTime(
-      summary.startTime
+      summary.start
     )
   );
 
   addDetailRow(
     rows,
-    "Expected end",
+    "Estimated restoration",
     formatQldTime(
-      summary.endTime
+      summary.estimatedFix
     )
   );
 
   addDetailRow(
     rows,
-    "Last updated",
+    "Scheduled finish",
     formatQldTime(
-      summary.lastUpdated
+      summary.finish
     )
   );
 
   addDetailRow(
     rows,
-    "Next inspection",
+    "Feed updated",
     formatQldTime(
-      summary.nextInspection
+      summary.extracted
     )
-  );
-
-  addDetailRow(
-    rows,
-    "Advice",
-    summary.advice
-    || summary.information
-    || summary.description
   );
 
   addDetailRow(
     rows,
     "Source",
-    summary.source
-    || QLD_TRAFFIC_ATTRIBUTION
+    summary.attribution
   );
-
-  if (link) {
-    const webLink =
-      safeWebLink(
-        summary.webLink
-      );
-
-    link.hidden =
-      !webLink;
-
-    if (webLink) {
-      link.href =
-        webLink;
-    } else {
-      link.removeAttribute(
-        "href"
-      );
-    }
-  }
 
   panel.hidden =
     false;
 }
 
-export function floodRoadClosureEntityFromPick(
+export function powerOutageEntityFromPick(
   picked
 ) {
   return (
@@ -331,26 +277,25 @@ export function floodRoadClosureEntityFromPick(
   );
 }
 
-export function floodRoadClosureIdFromPick(
+export function powerOutageIdFromPick(
   picked
 ) {
   const entity =
-    floodRoadClosureEntityFromPick(
+    powerOutageEntityFromPick(
       picked
     );
 
   const id =
     entity
-      ?.stormTrackerFloodClosureId;
+      ?.stormTrackerPowerOutageId;
 
   return id
     ? String(id)
     : "";
 }
 
-function closureIdNearPosition({
+function outageIdNearPosition({
   viewer,
-  CesiumRef,
   position,
   width = 28,
   height = 28
@@ -373,14 +318,17 @@ function closureIdNearPosition({
         )
       : [];
 
-  for (const picked of picks) {
-    const closureId =
-      floodRoadClosureIdFromPick(
+  for (
+    const picked
+    of picks
+  ) {
+    const outageId =
+      powerOutageIdFromPick(
         picked
       );
 
-    if (closureId) {
-      return closureId;
+    if (outageId) {
+      return outageId;
     }
   }
 
@@ -391,94 +339,30 @@ function closureIdNearPosition({
       height
     );
 
-  return floodRoadClosureIdFromPick(
+  return powerOutageIdFromPick(
     picked
   );
 }
 
-function nearestClosureIdByMarker({
+export function initialiseOperationalPowerOutages({
   viewer,
-  CesiumRef,
-  features,
-  position,
-  maximumDistance = 44
-}) {
-  let bestId = "";
-  let bestDistance =
-    Number.POSITIVE_INFINITY;
-
-  for (const feature of features ?? []) {
-    const coordinate =
-      floodRoadClosureMarkerCoordinate(
-        feature
-      );
-
-    if (!coordinate) {
-      continue;
-    }
-
-    const worldPosition =
-      CesiumRef.Cartesian3
-        .fromDegrees(
-          coordinate[0],
-          coordinate[1],
-          0
-        );
-
-    const screenPosition =
-      viewer.scene
-        .cartesianToCanvasCoordinates(
-          worldPosition
-        );
-
-    if (!screenPosition) {
-      continue;
-    }
-
-    const distance =
-      Math.hypot(
-        screenPosition.x
-          - position.x,
-        screenPosition.y
-          - position.y
-      );
-
-    if (
-      distance <= maximumDistance
-      && distance < bestDistance
-    ) {
-      bestDistance =
-        distance;
-
-      bestId =
-        String(
-          feature?.properties?.id
-          ?? ""
-        );
-    }
-  }
-
-  return bestId;
-}
-
-export function initialiseOperationalFloodRoadClosures({
-  viewer,
-  CesiumRef = globalThis.Cesium
+  CesiumRef =
+    globalThis.Cesium
 } = {}) {
   if (
     !viewer
     || !CesiumRef
   ) {
     throw new Error(
-      "Operational flood-road closure UI requires Cesium and a viewer."
+      "Operational power-outage UI requires Cesium and a viewer."
     );
   }
 
   const checkbox =
-    $("showFloodRoadClosures");
+    $("showPowerOutages");
 
   const panel =
-    $("floodRoadClosureInfo");
+    $("powerOutageInfo");
 
   const canvas =
     viewer.scene.canvas;
@@ -488,15 +372,18 @@ export function initialiseOperationalFloodRoadClosures({
     ?? canvas.parentElement;
 
   const layer =
-    createFloodRoadClosureLayer({
+    createPowerOutageLayer({
       viewer,
       CesiumRef,
+
       visible:
         Boolean(
           checkbox?.checked
         ),
+
       onStatus:
-        setRoadStatus,
+        setPowerStatus,
+
       onUpdate:
         features => {
           if (
@@ -508,7 +395,7 @@ export function initialiseOperationalFloodRoadClosures({
 
           const selectedId =
             panel.dataset
-              .closureId
+              .outageId
             || "";
 
           if (
@@ -516,36 +403,35 @@ export function initialiseOperationalFloodRoadClosures({
             && !features.some(
               feature =>
                 String(
-                  feature?.properties?.id
-                  ?? ""
+                  feature.id
                 )
                 === selectedId
             )
           ) {
-            showClosureInfo(
+            showPowerOutageInfo(
               null
             );
           }
         }
     });
 
-  function showClosureById(
-    closureId
+  function showById(
+    outageId
   ) {
-    if (!closureId) {
+    if (!outageId) {
       return false;
     }
 
     const feature =
       layer.featureById(
-        closureId
+        outageId
       );
 
     if (!feature) {
       return false;
     }
 
-    showClosureInfo(
+    showPowerOutageInfo(
       feature
     );
 
@@ -556,14 +442,16 @@ export function initialiseOperationalFloodRoadClosures({
     event
   ) {
     const rect =
-      canvas.getBoundingClientRect();
+      canvas
+        .getBoundingClientRect();
 
-    return new CesiumRef.Cartesian2(
-      event.clientX
-        - rect.left,
-      event.clientY
-        - rect.top
-    );
+    return new CesiumRef
+      .Cartesian2(
+        event.clientX
+          - rect.left,
+        event.clientY
+          - rect.top
+      );
   }
 
   function selectNearPosition(
@@ -573,33 +461,13 @@ export function initialiseOperationalFloodRoadClosures({
       height = 30
     } = {}
   ) {
-    let closureId =
-      closureIdNearPosition({
+    return showById(
+      outageIdNearPosition({
         viewer,
-        CesiumRef,
         position,
         width,
         height
-      });
-
-    if (!closureId) {
-      closureId =
-        nearestClosureIdByMarker({
-          viewer,
-          CesiumRef,
-          features:
-            layer.features,
-          position,
-          maximumDistance:
-            Math.max(
-              width,
-              height
-            )
-        });
-    }
-
-    return showClosureById(
-      closureId
+      })
     );
   }
 
@@ -607,12 +475,16 @@ export function initialiseOperationalFloodRoadClosures({
     {
       id:
         null,
+
       x:
         0,
+
       y:
         0,
+
       startedAt:
         0,
+
       moved:
         false
     };
@@ -628,9 +500,10 @@ export function initialiseOperationalFloodRoadClosures({
 
       if (
         !mapContainer
-        || !mapContainer.contains(
-          event.target
-        )
+        || !mapContainer
+          .contains(
+            event.target
+          )
       ) {
         return;
       }
@@ -638,7 +511,7 @@ export function initialiseOperationalFloodRoadClosures({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#floodRoadClosureInfo"
+            "#nav,#powerOutageInfo,#floodRoadClosureInfo"
           );
 
       if (blockedControl) {
@@ -726,11 +599,14 @@ export function initialiseOperationalFloodRoadClosures({
         ),
         {
           width:
-            event.pointerType === "touch"
+            event.pointerType
+            === "touch"
               ? 42
               : 28,
+
           height:
-            event.pointerType === "touch"
+            event.pointerType
+            === "touch"
               ? 42
               : 28
         }
@@ -809,74 +685,79 @@ export function initialiseOperationalFloodRoadClosures({
     );
 
   const hoverHandler =
-    new CesiumRef.ScreenSpaceEventHandler(
-      canvas
-    );
+    new CesiumRef
+      .ScreenSpaceEventHandler(
+        canvas
+      );
 
   let lastHoverPickAt =
     0;
 
-  hoverHandler.setInputAction(
-    movement => {
-      const now =
-        performance.now();
+  hoverHandler
+    .setInputAction(
+      movement => {
+        const now =
+          performance.now();
 
-      if (
-        now - lastHoverPickAt
-        < 80
-      ) {
-        return;
-      }
+        if (
+          now - lastHoverPickAt
+          < 80
+        ) {
+          return;
+        }
 
-      lastHoverPickAt =
-        now;
+        lastHoverPickAt =
+          now;
 
-      const closureId =
-        closureIdNearPosition({
-          viewer,
-          CesiumRef,
-          position:
-            movement.endPosition,
-          width:
-            18,
-          height:
-            18
-        });
+        const outageId =
+          outageIdNearPosition({
+            viewer,
+            position:
+              movement
+                .endPosition,
+            width:
+              18,
+            height:
+              18
+          });
 
-      canvas.style.cursor =
-        closureId
-          ? "pointer"
-          : "";
-    },
-    CesiumRef.ScreenSpaceEventType
-      .MOUSE_MOVE
-  );
+        if (outageId) {
+          canvas.style.cursor =
+            "pointer";
+        }
+      },
+      CesiumRef
+        .ScreenSpaceEventType
+        .MOUSE_MOVE
+    );
 
-  checkbox?.addEventListener(
-    "change",
-    event => {
-      layer.setVisible(
-        event.target.checked
-      );
-
-      if (
-        !event.target.checked
-      ) {
-        showClosureInfo(
-          null
+  checkbox
+    ?.addEventListener(
+      "change",
+      event => {
+        layer.setVisible(
+          event.target.checked
         );
 
-        setRoadStatus({
-          kind:
-            "normal",
-          message:
-            "QLDTraffic flood closures hidden"
-        });
-      }
-    }
-  );
+        if (
+          !event.target
+            .checked
+        ) {
+          showPowerOutageInfo(
+            null
+          );
 
-  $("refreshFloodRoadClosuresButton")
+          setPowerStatus({
+            kind:
+              "normal",
+            message:
+              "Power outages hidden"
+          });
+        }
+      }
+    );
+
+  $("refreshPowerOutagesButton")
     ?.addEventListener(
       "click",
       () => {
@@ -889,11 +770,11 @@ export function initialiseOperationalFloodRoadClosures({
       }
     );
 
-  $("closeFloodRoadClosureInfo")
+  $("closePowerOutageInfo")
     ?.addEventListener(
       "click",
       () => {
-        showClosureInfo(
+        showPowerOutageInfo(
           null
         );
       }
@@ -933,14 +814,16 @@ export function initialiseOperationalFloodRoadClosures({
         && !clickFallback
           .isDestroyed()
       ) {
-        clickFallback.destroy();
+        clickFallback
+          .destroy();
       }
 
       if (
         !hoverHandler
           .isDestroyed()
       ) {
-        hoverHandler.destroy();
+        hoverHandler
+          .destroy();
       }
     },
     {

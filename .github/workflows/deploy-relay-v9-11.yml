@@ -1,0 +1,57 @@
+name: Deploy StormTracker Relay V9.11
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.11-power-outages
+    paths:
+      - "relay/**"
+      - "frontend/src/context-layers/power-outages-v1.js"
+      - "frontend/src/context-layers/essential-energy-kml-v1.js"
+      - "frontend/tests/run-power-outages-v1-tests.mjs"
+      - "frontend/tests/run-essential-energy-kml-v1-tests.mjs"
+      - ".github/workflows/deploy-relay-v9-11.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate StormTracker regression suite
+        run: |
+          npm test
+          node --check relay/worker.js
+
+      - name: Deploy stormtracker-bom-relay
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: relay
+          command: deploy
+
+      - name: Smoke-test Essential Energy relay
+        run: |
+          set -euo pipefail
+          url="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/essential-energy-outages"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error "$url" -o /tmp/essential-energy.kml; then
+              if grep -qi '<kml' /tmp/essential-energy.kml; then
+                echo "Essential Energy relay returned valid KML."
+                exit 0
+              fi
+            fi
+            sleep 3
+          done
+          echo "Essential Energy relay smoke test failed."
+          head -c 500 /tmp/essential-energy.kml 2>/dev/null || true
+          exit 1

@@ -195,6 +195,12 @@ function showClosureInfo(
       ""
     );
 
+  $("riverGaugeInfo")
+    ?.setAttribute(
+      "hidden",
+      ""
+    );
+
   panel.dataset.closureId =
     String(
       summary.id

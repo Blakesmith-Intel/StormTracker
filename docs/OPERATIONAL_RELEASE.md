@@ -17,7 +17,7 @@ new nominally registered Doppler panels remain display-only pending calibration.
 | Discovery delay | Existing ten-minute reflectivity discovery offset retained; polling can add up to five minutes, plus loading time and source-pair waiting. |
 | Publication | New chronological reflectivity and independently newer matched Doppler timestamps for previously available radars. |
 | Recovery | Twenty-second Doppler request deadline, fresh browser requests, rejected decoded-image eviction and scheduled retry. |
-| Deployment | Active-module syntax and the current 40 frontend regression suites must pass before Pages upload/deployment. |
+| Deployment | Active-module syntax and the current 43 frontend regression suites must pass before Pages upload/deployment. |
 
 ## Queensland expansion
 
@@ -89,7 +89,7 @@ The Christmas 2023 scenario/regression contracts remain internal engineering tes
 
 ## Validation evidence
 
-- Thirty-three existing/new regression suites cover tracking, source palettes,
+- Forty-three frontend regression suites cover tracking, source palettes,
   georegistration, strict analytical versus broader visual Doppler sampling,
   footprint-based assessment, camera, inferred geometry and historical regression.
 - Browser fixtures use production Cesium, worker, decoders and rendering with

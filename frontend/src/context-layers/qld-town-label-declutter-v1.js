@@ -1,6 +1,6 @@
 // Screen-space layout of Queensland town names. All functions in this file
 // are deterministic and independent of Cesium, DOM and network access.
-export function labelBudget(width, height, cameraHeight, mode = "street") {
+export function labelBudget(width, height, cameraHeight, mode = "street", cameraPitchDegrees = -90) {
   if (!Number.isFinite(width) || !Number.isFinite(height) ||
       width < 180 || height < 140) return 0;
   // Do not pepper the horizon with Queensland text at continental/planet scale.
@@ -11,6 +11,10 @@ export function labelBudget(width, height, cameraHeight, mode = "street") {
   let budget = Math.min(cap, Math.floor(area / density));
   if (cameraHeight > 700000) budget = Math.min(budget, 5);
   else if (cameraHeight > 250000) budget = Math.min(budget, 8);
+  // Oblique views compress a large geographic area into a narrow horizon.
+  // Reduce the number of labels independently of camera altitude.
+  if (cameraPitchDegrees > -20) budget = Math.min(budget, 4);
+  else if (cameraPitchDegrees > -40) budget = Math.min(budget, 6);
   return Math.max(0, budget);
 }
 
@@ -68,9 +72,10 @@ export function layoutTownLabels({
   height,
   cameraHeight = 0,
   mode = "street",
+  cameraPitchDegrees = -90,
   previousVisible = []
 }) {
-  const budget = labelBudget(width, height, cameraHeight, mode);
+  const budget = labelBudget(width, height, cameraHeight, mode, cameraPitchDegrees);
   if (!budget) return [];
   const prev = new Set(previousVisible.map(String));
   const margin = 14;

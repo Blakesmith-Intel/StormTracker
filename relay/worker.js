@@ -9,7 +9,7 @@ import {
 } from "./doppler-history-v1.js";
 
 import {
-  isActiveFloodRoadClosure
+  filterFloodRoadClosures
 } from "../frontend/src/context-layers/flood-road-closure-filter-v1.js";
 
 const BOM_WMTS =
@@ -131,7 +131,7 @@ function jsonResponse(payload, origin) {
 }
 
 const FLOOD_ROAD_CACHE_URL =
-  "https://stormtracker.internal/flood-road-closures-cache-v3";
+  "https://stormtracker.internal/flood-road-closures-cache-v4";
 
 const FLOOD_ROAD_FRESH_MS =
   5 * 60 * 1000;
@@ -402,17 +402,16 @@ async function relayFloodRoadClosures(
     );
   }
 
-  const features =
-    Array.isArray(payload?.features)
-      ? payload.features.filter(
-          isActiveFloodRoadClosure
-        )
-      : [];
+  const filtered =
+    filterFloodRoadClosures(
+      payload
+    );
 
   const filteredPayload = {
     type:
       "FeatureCollection",
-    features,
+    features:
+      filtered.features,
     stormtracker: {
       filter:
         "published + flood-related + closures",

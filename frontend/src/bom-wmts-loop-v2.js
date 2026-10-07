@@ -248,58 +248,75 @@ export async function discoverBomReflectivityHistory(
     30,
     Math.min(180, Number(horizonMinutes) || 180)
   );
-  const available = [];
-  let newestAvailableEpoch = null;
-  let consecutiveMisses = 0;
 
-  // Extra candidate slots absorb normal publication delay before the newest
-  // readable image. Once history begins, four consecutive missing 5-minute
-  // slots terminate discovery because older scans would no longer form the
-  // continuous operational tail exposed by the UI.
-  const candidateCount =
-    Math.ceil((horizon + 60) / 5);
+  // Probe beyond the target horizon to absorb normal publication delay before
+  // the newest readable WMTS image. Unlike V9.8.2, discovery does not stop at
+  // the first history gap: older readable observations can still anchor a
+  // longer display window.
+  const candidates =
+    candidateBomReflectivityTimes(
+      now,
+      Math.ceil((horizon + 60) / 5)
+    );
 
+  const readable = [];
+
+  // Small batches avoid hammering the Bureau/relay while keeping the complete
+  // three-hour scan materially faster than serial probing.
   for (
-    const observedUtc
-    of candidateBomReflectivityTimes(now, candidateCount)
+    let offset = 0;
+    offset < candidates.length;
+    offset += 6
   ) {
-    const epoch = Date.parse(observedUtc);
+    const batch =
+      candidates.slice(offset, offset + 6);
 
-    if (
-      newestAvailableEpoch != null
-      && newestAvailableEpoch - epoch >= horizon * 60000
-    ) {
-      break;
-    }
+    const results =
+      await Promise.all(
+        batch.map(
+          async observedUtc => {
+            try {
+              return await probeTimestamp(
+                observedUtc,
+                region
+              )
+                ? observedUtc
+                : null;
+            } catch {
+              return null;
+            }
+          }
+        )
+      );
 
-    let readable = false;
-
-    try {
-      readable = await probeTimestamp(observedUtc, region);
-    } catch {
-      readable = false;
-    }
-
-    if (readable) {
-      if (newestAvailableEpoch == null) {
-        newestAvailableEpoch = epoch;
-      }
-      available.push(observedUtc);
-      consecutiveMisses = 0;
-    } else if (newestAvailableEpoch != null) {
-      consecutiveMisses++;
-      if (consecutiveMisses >= 4) break;
-    }
+    readable.push(
+      ...results.filter(Boolean)
+    );
   }
 
-  if (!available.length) {
+  if (!readable.length) {
     throw new Error(
       "No recent readable BOM reflectivity frames were available."
     );
   }
 
-  return available.sort(
-    (a, b) => Date.parse(a) - Date.parse(b)
+  const ordered =
+    [...new Set(readable)]
+      .sort(
+        (a, b) =>
+          Date.parse(a) - Date.parse(b)
+      );
+
+  const newestEpoch =
+    Date.parse(ordered.at(-1));
+
+  const earliestEpoch =
+    newestEpoch - horizon * 60000;
+
+  return ordered.filter(
+    observedUtc =>
+      Date.parse(observedUtc)
+      >= earliestEpoch
   );
 }
 

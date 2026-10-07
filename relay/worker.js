@@ -17,6 +17,9 @@ const BOM_RADAR_BASE =
 const BOM_PRODUCT_BASE =
   "https://www.bom.gov.au/products/";
 
+const QLD_TRAFFIC_EVENTS =
+  "https://api.qldtraffic.qld.gov.au/v2/events";
+
 const ALLOWED_ORIGINS = new Set([
   "https://blakesmith-intel.github.io",
 ]);
@@ -120,6 +123,151 @@ function jsonResponse(payload, origin) {
       status: 200,
       headers
     }
+  );
+}
+
+function normaliseRoadField(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+function isFloodRoadClosureFeature(feature) {
+  const properties =
+    feature?.properties ?? {};
+
+  const eventType =
+    normaliseRoadField(
+      properties.event_type
+    );
+
+  const eventSubtype =
+    normaliseRoadField(
+      properties.event_subtype
+    );
+
+  const eventDueTo =
+    normaliseRoadField(
+      properties.event_due_to
+    );
+
+  const impactType =
+    normaliseRoadField(
+      properties.impact?.impact_type
+    );
+
+  const status =
+    normaliseRoadField(
+      properties.status
+    );
+
+  const floodRelated =
+    eventType === "flooding"
+    || eventSubtype === "flash flooding"
+    || eventSubtype === "long-term flooding"
+    || eventDueTo === "earlier flooding"
+    || eventDueTo === "earlier flash flooding"
+    || eventDueTo === "water over road"
+    || eventDueTo === "flooding of river";
+
+  return (
+    status === "published"
+    && floodRelated
+    && impactType === "closures"
+  );
+}
+
+async function relayFloodRoadClosures(
+  origin,
+  env
+) {
+  const apiKey =
+    env?.QLDTRAFFIC_API_KEY;
+
+  if (!apiKey) {
+    return errorResponse(
+      "QLDTraffic API key is not configured",
+      503,
+      origin
+    );
+  }
+
+  const target =
+    new URL(QLD_TRAFFIC_EVENTS);
+
+  target.searchParams.set(
+    "apikey",
+    apiKey
+  );
+
+  let upstream;
+
+  try {
+    upstream = await fetch(
+      target.toString(),
+      {
+        method: "GET",
+        headers: {
+          Accept:
+            "application/geo+json,application/json"
+        },
+        cf: {
+          cacheEverything: true,
+          cacheTtl: 120
+        }
+      }
+    );
+  } catch (error) {
+    return errorResponse(
+      `QLDTraffic fetch failed: ${
+        error?.message || String(error)
+      }`,
+      502,
+      origin
+    );
+  }
+
+  if (!upstream.ok) {
+    return errorResponse(
+      `QLDTraffic HTTP ${upstream.status}`,
+      502,
+      origin
+    );
+  }
+
+  let payload;
+
+  try {
+    payload =
+      await upstream.json();
+  } catch (error) {
+    return errorResponse(
+      "QLDTraffic response was not valid JSON",
+      502,
+      origin
+    );
+  }
+
+  const features =
+    Array.isArray(payload?.features)
+      ? payload.features.filter(
+          isFloodRoadClosureFeature
+        )
+      : [];
+
+  return jsonResponse(
+    {
+      type:
+        "FeatureCollection",
+      features,
+      stormtracker: {
+        filter:
+          "published + flood-related + closures",
+        source:
+          "Queensland Department of Transport and Main Roads · QLDTraffic"
+      }
+    },
+    origin
   );
 }
 
@@ -569,7 +717,7 @@ async function relayDopplerFrame(
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const incoming =
       new URL(request.url);
 
@@ -606,6 +754,13 @@ export default {
         "Origin not allowed",
         403,
         origin
+      );
+    }
+
+    if (incoming.pathname === "/flood-road-closures") {
+      return relayFloodRoadClosures(
+        origin,
+        env
       );
     }
 

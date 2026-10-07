@@ -25,8 +25,9 @@ function setPowerStatus({
     kind;
 }
 
-function formatQldTime(
-  value
+export function formatPowerOutageTime(
+  value,
+  provider = "Energex"
 ) {
   const numeric =
     Number(value);
@@ -58,7 +59,10 @@ function formatQldTime(
       "en-AU",
       {
         timeZone:
-          "Australia/Brisbane",
+          provider
+          === "Essential Energy"
+            ? "Australia/Sydney"
+            : "Australia/Brisbane",
         day:
           "2-digit",
         month:
@@ -228,32 +232,36 @@ function showPowerOutageInfo(
   addDetailRow(
     rows,
     "Started",
-    formatQldTime(
-      summary.start
+    formatPowerOutageTime(
+      summary.start,
+      summary.provider
     )
   );
 
   addDetailRow(
     rows,
     "Estimated restoration",
-    formatQldTime(
-      summary.estimatedFix
+    formatPowerOutageTime(
+      summary.estimatedFix,
+      summary.provider
     )
   );
 
   addDetailRow(
     rows,
     "Scheduled finish",
-    formatQldTime(
-      summary.finish
+    formatPowerOutageTime(
+      summary.finish,
+      summary.provider
     )
   );
 
   addDetailRow(
     rows,
     "Feed updated",
-    formatQldTime(
-      summary.extracted
+    formatPowerOutageTime(
+      summary.extracted,
+      summary.provider
     )
   );
 

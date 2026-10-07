@@ -28,6 +28,7 @@ export function createQueenslandTownLabelLayer({
   let started = null;
   let towns = [];
   let selectedIds = [];
+  let displayedPlaces = [];
   let currentMode = mode;
   let lastFingerprint = "";
   let lastCalculation = 0;
@@ -99,6 +100,10 @@ export function createQueenslandTownLabelLayer({
       if (place.label.show !== nextShow) place.label.show = nextShow;
     }
     selectedIds = accepted.map(place => String(place.id));
+    displayedPlaces = accepted.map(place => ({
+      id: place.id, name: place.name,
+      x: place.x, y: place.y, population: place.population
+    }));
     updated += 1;
     scene.requestRender?.();
     return selectedIds;
@@ -187,6 +192,7 @@ export function createQueenslandTownLabelLayer({
     scene.primitives.remove(collection);
     towns = [];
     selectedIds = [];
+    displayedPlaces = [];
     scene.requestRender?.();
   }
 
@@ -195,6 +201,7 @@ export function createQueenslandTownLabelLayer({
     get count() { return towns.length; },
     get visibleCount() { return selectedIds.length; },
     get visibleIds() { return [...selectedIds]; },
+    get visibleLabels() { return displayedPlaces.map(place => ({ ...place })); },
     get calculationCount() { return updated; }
   };
 }

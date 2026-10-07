@@ -127,6 +127,10 @@ import {
 } from "./context-layers/flood-road-closures-operational-v1.js?v=9.10.4";
 
 import {
+  initialiseOperationalPowerOutages
+} from "./context-layers/power-outages-operational-v1.js?v=9.11.0-dev1";
+
+import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
@@ -448,6 +452,10 @@ viewer.dataSources.add(
 );
 
 initialiseOperationalFloodRoadClosures({
+  viewer
+});
+
+initialiseOperationalPowerOutages({
   viewer
 });
 

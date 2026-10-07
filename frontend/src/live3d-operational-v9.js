@@ -112,6 +112,10 @@ import {
   syncFrameSlider
 } from "./frame-slider-v1.js?v=9.9.0-2";
 
+import {
+  createStormTrackerTerrainManager
+} from "./context-layers/terrain-manager-v1.js?v=9.9.0-4";
+
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
 
@@ -260,6 +264,32 @@ function syncBasemapReferenceLayer(
 
   keepBasemapReferenceLabelsVisible();
 }
+
+function setTerrainStatus(
+  message,
+  kind = "ok"
+) {
+  const status =
+    $("terrainStatus");
+
+  if (!status) return;
+
+  status.textContent =
+    message;
+
+  status.dataset.kind =
+    kind;
+}
+
+const terrainManager =
+  createStormTrackerTerrainManager({
+    Cesium,
+    viewer,
+    storage:
+      window.localStorage,
+    onStatus:
+      setTerrainStatus
+  });
 
 function setBasemapStatus(
   message,
@@ -3610,6 +3640,32 @@ async function initialise() {
     DEFAULT_OCCUPANCY_THRESHOLD
       .toFixed(2);
 
+  const terrainControl =
+    $("terrainEnabled");
+
+  terrainManager
+    .initialise()
+    .then(result => {
+      if (!result?.failed) {
+        terrainControl.checked =
+          Boolean(result?.enabled);
+      }
+    })
+    .catch(error => {
+      console.warn(
+        "3-D terrain initialisation failed",
+        error
+      );
+
+      terrainControl.checked =
+        false;
+
+      setTerrainStatus(
+        "3-D terrain unavailable · using flat fallback",
+        "error"
+      );
+    });
+
   resetView();
 
   updateLoopButtonLabel();
@@ -3684,6 +3740,29 @@ $("basemapSelect").addEventListener(
         `Basemap switch failed · ${error.message ?? error}`,
         "error"
       );
+    }
+  }
+);
+
+$("terrainEnabled").addEventListener(
+  "change",
+  async event => {
+    frameCrossfade.clear();
+
+    const requested =
+      event.target.checked;
+
+    const result =
+      await terrainManager.setEnabled(
+        requested
+      );
+
+    if (
+      requested
+      && result.failed
+    ) {
+      event.target.checked =
+        false;
     }
   }
 );

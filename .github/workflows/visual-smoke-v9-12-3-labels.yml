@@ -10,6 +10,8 @@ on:
       - "frontend/src/context-layers/qld-population-centres-v2.js"
       - "frontend/tools/qld-town-label-visual-qa.html"
       - "scripts/smoke-qld-town-label-visual.mjs"
+      - "scripts/smoke-qld-town-label-production-ui.mjs"
+      - "frontend/src/live3d-operational-v9.js"
       - ".github/workflows/visual-smoke-v9-12-3-labels.yml"
 
 permissions:
@@ -35,6 +37,8 @@ jobs:
           curl -fsS http://127.0.0.1:8765/tools/qld-town-label-visual-qa.html >/dev/null
       - name: Render real Cesium scene and check mobile label collisions
         run: node scripts/smoke-qld-town-label-visual.mjs
+      - name: Verify full StormTracker UI with mobile drag and imagery switching
+        run: node scripts/smoke-qld-town-label-production-ui.mjs
       - name: Upload mobile map evidence
         if: always()
         uses: actions/upload-artifact@v4

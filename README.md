@@ -1,95 +1,140 @@
-# StormTracker — Operational V9.7
+# StormTracker — Operational V9.8.4
 
-A browser-based storm tracking and radar visualisation product using public Bureau
-of Meteorology reflectivity and Doppler imagery. The existing operational core is retained. V9.4 automatic Doppler recovery was confirmed working by the user;
-V9.5 reduced scheduled polling to five minutes and added a deployment test gate.
-V9.7 extends coverage to all 19 public Queensland radar sites, with site-centred maps.
+StormTracker is a browser-native Queensland radar and storm-tracking product built
+from public Bureau of Meteorology imagery. The production application runs from
+GitHub Pages, with a small Cloudflare relay used only where browser/CORS transport
+requires it. Tracking, inference and product logic remain in the browser.
 
 [Open StormTracker](https://blakesmith-intel.github.io/StormTracker/) ·
 [Operational release record](docs/OPERATIONAL_RELEASE.md) ·
-[Scientific contract](docs/SCIENTIFIC_CONTRACT.md)
+[Scientific contract](docs/SCIENTIFIC_CONTRACT.md) ·
+[Production restore point](docs/BASELINE_RESTORE.md) ·
+[Future development handover](docs/FUTURE_DEVELOPMENT_HANDOVER.md)
 
-## Product
+## Current production product
 
-- Measured 2-D reflectivity storm footprints, persistent `STxxxx` tracks and motion.
-- Track-specific inferred 3-D structure, labelled with empirical support.
-- All 19 Queensland sites selectable, plus the original south-east Queensland mosaic.
-- Site selection centres the camera and loads the surrounding reflectivity tiles.
-- Timestamp-matched Doppler overlays at 14 sites; five sites provide radar only.
-- Existing calibrated Doppler analysis at 66/50/08; new wind overlays are display-only
-  with nominal panel registration until independently calibrated.
-- Radar history options of 30/60/90/120/150/180 minutes. Selecting Doppler switches
-  to a 30-minute shared loop; choosing a longer window deselects Doppler and loads
-  the longer radar history. Longer radar loops show the availability warning.
-- Continuous replay with short whole-scene crossfades, Play/Pause, speed, frame
-  slider and jump to latest. Camera gestures and manual controls cancel a fade;
-  reduced-motion preferences are respected.
-- Independent radar/Doppler opacity controls and AEST alongside UTC timestamps.
-- Automatic matched-product updates every five minutes while the page is visible,
-  plus a check when the page becomes visible. Manual refresh remains available.
-- A separate, frozen Christmas 2023 historical tracking validation mode.
+- All 19 public Queensland radar sites are selectable, plus the south-east
+  Queensland regional view. Selecting a site centres the map on that radar.
+- Measured 2-D reflectivity drives persistent `STxxxx` storm identities and
+  horizontal motion.
+- Track-specific 3-D structure is inferred from measured 2-D reflectivity and is
+  explicitly labelled as inferred rather than measured volumetric radar.
+- Doppler overlays are available at 14 sites. Footprint-restricted Doppler
+  analysis remains calibrated only for 08 Gympie, 50 Marburg and 66 Mt Stapylton;
+  the other wind panels are display-only until independently calibrated.
+- A selected storm track can display labels, track-specific inferred structure
+  and a +90-minute measured-motion cone. The cone is an operational extrapolation
+  aid, not a warning polygon or forecast probability.
+- Radar/Doppler opacity controls, AEST and UTC timestamps, continuous playback,
+  Play/Pause, speed control, frame scrubbing and jump-to-latest are retained.
+- Mobile uses compact controls with explicit one-finger pan, pinch zoom,
+  two-finger rotation and pitch gestures.
+
+## Radar history and automatic updating
+
+V9.8.4 uses source-aware history instead of assuming every fixed loop is always
+available.
+
+- The loop selector offers only 30/60/90/120/150/180-minute windows that the
+  currently available observations can support, plus **All available**.
+- Genuine reflectivity frames are persisted per radar view in browser IndexedDB.
+  An actively viewed radar can accumulate a rolling history of up to three hours
+  even when the Bureau WMTS endpoint exposes a shorter recent history.
+- Once three hours is reached, playback becomes a rolling window: new genuine
+  observations enter at the newest end and observations older than the
+  180-minute display cutoff fall out of the loop.
+- The browser cache keeps roughly four hours as a safety buffer before pruning.
+- Missing five-minute display slots may be filled only between genuine bounding
+  observations, for gaps no larger than 30 minutes. These frames are visibly
+  marked **INFERRED** and are excluded from storm identity, Doppler analysis,
+  convective scoring and measured-track-specific volumes.
+- The normal live check remains every five minutes while the page is visible.
+  Returning to a visible page triggers an immediate check.
+- V9.8.4 restores automatic loop growth: when cache warming or later polling adds
+  genuine historical observations behind the already-processed tracking point,
+  StormTracker performs a chronological rebuild and expands the displayed loop
+  without requiring a manual Refresh click.
+- Doppler remains a genuine-source-only 30-minute shared-history product.
+  Selecting Doppler switches to 30 minutes; selecting a longer or All available
+  radar window deselects Doppler.
+
+Manual **Refresh latest** remains available for an immediate check, but normal
+history growth should not require it.
 
 ## Timing and recovery
 
-Reflectivity discovery starts ten minutes behind wall-clock time, on a five-minute
-scan grid. This is a deliberate discovery offset, not a guarantee of upstream
-latency. Five-minute polling can add up to five minutes before a newly available
-matching pair is discovered, plus request/loading time. Source age and actual
-frame times are displayed. Publication waits for new matching radar and Doppler
-scans from previously available radars in the selected region; it can wait longer
-for a lagging source. Radar-only sites publish new reflectivity without a wind
-request. A single-site view requests only that site's wind; an outage elsewhere
-does not block it. Site changes start a new regional tracking history and clear
-image/result caches; automatic refresh within a site preserves that history.
-The camera snaps only on site selection or Reset view, and remains free otherwise.
+Reflectivity discovery follows the established five-minute timestamp grid and
+publication-delay allowance. The next scheduled check runs five minutes after the
+previous check completes, so checks do not overlap.
 
-The nominal scheduled rate drops from 60 to 12 checks per hour (80% fewer),
-before allowing for request duration. Checks do not overlap. The next scheduled
-check runs five minutes after the
-previous check finishes. Hidden pages skip scheduled source requests; returning
-to the page triggers a check. A failed Doppler request has a 20-second deadline,
-rejected images are evicted from the decoded cache, and later checks retry while
-retaining the current loop. Successful refreshes preserve tracking history,
-playback state, opacity settings and camera.
+If a source stalls or the newest frame cannot be loaded, StormTracker retains the
+current loop and retries later. Rejected Doppler images do not poison future
+retries. Site changes start a fresh tracking association for the selected
+geographic view; ordinary automatic updates within that view preserve track
+history unless newly recovered historical observations require an explicit
+chronological rebuild.
 
-## Scientific scope
+## Scientific boundaries
 
-Tracking and motion use measured 2-D reflectivity. The vertical structure is
-inferred, not measured live 3-D radar. Doppler is radial velocity, not storm
-translation speed. Convective/lightning assessments are ordinal evidence scores,
-not direct strike observations or calibrated probabilities. Historical AURA
-multi-elevation data remain a separate reference/validation pathway.
+- Tracking and motion use measured 2-D reflectivity.
+- Live 3-D is inferred, not measured live volumetric radar.
+- Doppler is radial velocity, not storm translation speed or a stand-alone
+  diagnosis of rotation.
+- Temporally interpolated radar frames are display-only.
+- Convective/lightning assessment is ordinal radar/Doppler evidence, not detected
+  lightning strikes or a calibrated probability.
+- Historical AURA multi-elevation work remains reference/validation material and
+  is not presented as the live source.
+
+See [docs/SCIENTIFIC_CONTRACT.md](docs/SCIENTIFIC_CONTRACT.md) for the full
+scientific contract.
 
 ## Validation and deployment
 
-No npm dependencies need installing. With Node.js available, run:
+No production npm package installation is required. With Node.js available:
 
 ```bash
 npm test
 ```
 
-This validates active-module syntax and runs every `run-*-tests.mjs` suite in
-`frontend/tests/` (32 at this release). GitHub Pages runs the same command on
-Node 24 before publishing. A failure prevents deployment of that push.
+The repository currently contains 40 `frontend/tests/run-*-tests.mjs` regression
+suites covering source timing, tracking, Doppler, georegistration, inferred
+structure, Queensland sites, playback/history, temporal interpolation, mobile UI
+and production-shell contracts. GitHub Pages runs the frontend validation gate
+before publishing; a failed gate prevents deployment.
 
-Push changes to `main` to publish `frontend/` through
-[the deployment workflow](.github/workflows/pages.yml). No local server or Python
-runtime is needed to use the product. Node/Python are only development/installer
-tools. The existing Cloudflare relay transports public source files and does no
-storm modelling. This release requires one relay redeployment to permit the added wind products.
-Run `bash scripts/deploy-qld-relay.sh` before publishing the frontend.
-The helper runs the full test gate, uses the existing relay configuration when
-available, and keeps its variables. Cloudflare authentication uses your existing
-Wrangler setup. [Queensland coverage and registration](docs/QUEENSLAND_RADAR_COVERAGE.md).
+The accepted V9.8.4 runtime commit is:
 
-## Repository
+```text
+acbc6aa63829d0532e32c28c2b0a49030a29b276
+```
 
-- `frontend/`: the published application, models and browser regression suites.
-- `scripts/check-frontend.mjs`: the complete frontend test entry point.
-- `relay/`: source transport worker and timestamp/history parsers.
-- `docs/`: release record, scientific constraints and recovery provenance.
-- `reference/python/`: recovered algorithm/reference material outside live runtime.
+Its Pages deployment completed successfully on 7 October 2026. The complete
+sealed repository state is preserved by `restore/v9.8.4`; see
+[docs/BASELINE_RESTORE.md](docs/BASELINE_RESTORE.md).
 
-The frontend uses CesiumJS 1.145.0, an ellipsoid globe and OpenStreetMap imagery;
-it does not require a Cesium ion token. Public imagery availability, the relay,
-and externally hosted browser assets remain operating dependencies.
+The user-facing product requires only a web browser. Node/Python are development
+and test tools, not runtime requirements. The Cloudflare worker remains a
+transport layer only and must not become the tracking or meteorological modelling
+engine.
+
+## Repository map
+
+- `frontend/` — published application, models and browser regression suites.
+- `frontend/src/live3d-operational-v9.js` — current operational controller.
+- `frontend/src/radar-history-window-v1.js` — source-aware loop planning.
+- `frontend/src/radar-temporal-interpolation-v1.js` — bounded display-only gap
+  interpolation.
+- `frontend/src/storage.js` — browser-local radar history persistence.
+- `frontend/src/live-loop-refresh-v1.js` — five-minute refresh and chronology
+  rebuild decisions.
+- `scripts/check-frontend.mjs` — frontend validation entry point.
+- `relay/` — public-source transport/CORS relay.
+- `docs/` — release record, scientific boundaries, restore notes and handover.
+- `reference/python/` — historical/recovered reference material outside the live
+  browser runtime.
+
+The current basemap remains OpenStreetMap. A switchable Geoscience Australia /
+Digital Earth Australia satellite basemap and other situational-awareness layers
+are planned as a separate future subsystem rather than being coupled into the
+protected radar/tracking core.

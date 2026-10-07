@@ -4,8 +4,10 @@ import {
   BASEMAP_IDS,
   BASEMAP_STORAGE_KEY,
   GA_BASEMAP,
+  REFERENCE_LABELS,
   basemapLabel,
   createBasemapProvider,
+  createReferenceLabelProvider,
   createStormTrackerBasemapManager,
   normaliseBasemapId
 } from "../src/context-layers/basemap-manager-v1.js";
@@ -85,6 +87,31 @@ assert.match(
 assert.equal(
   GA_BASEMAP.label,
   "GA satellite · Landsat imagery"
+);
+
+const labels =
+  createReferenceLabelProvider(
+    Cesium
+  );
+
+assert.equal(
+  labels.options.url,
+  REFERENCE_LABELS.tileTemplate
+);
+
+assert.equal(
+  labels.options.maximumLevel,
+  23
+);
+
+assert.ok(
+  labels.options.tilingScheme
+  instanceof FakeWebMercatorTilingScheme
+);
+
+assert.match(
+  labels.options.credit.text,
+  /Reference labels/
 );
 assert.equal(
   normaliseBasemapId("nonsense"),
@@ -280,5 +307,5 @@ assert.equal(
 );
 
 console.log(
-  "Basemap manager checks passed: GA cached Landsat imagery contract, legacy preference migration, persistence, layer replacement and camera isolation."
+  "Basemap manager checks passed: GA cached Landsat imagery, place-name reference overlay contract, legacy preference migration, persistence, layer replacement and camera isolation."
 );

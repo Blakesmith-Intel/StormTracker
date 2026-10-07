@@ -108,7 +108,7 @@ import {
   BASEMAP_IDS,
   createReferenceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.9.0-4";
+} from "./context-layers/basemap-manager-v1.js?v=9.10.3";
 
 import {
   syncFrameSlider
@@ -124,7 +124,7 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.10.2";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.10.3";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
@@ -294,7 +294,7 @@ function syncBasemapReferenceLayer(
 
   if (
     basemapId
-    !== BASEMAP_IDS.GA_SATELLITE
+    !== BASEMAP_IDS.QLD_IMAGERY
   ) {
     return;
   }
@@ -314,13 +314,13 @@ function syncBasemapReferenceLayer(
           () => {
             if (
               basemapManager.currentId
-              !== BASEMAP_IDS.GA_SATELLITE
+              !== BASEMAP_IDS.QLD_IMAGERY
             ) {
               return;
             }
 
             setBasemapStatus(
-              "GA imagery loaded · place-name labels are currently unavailable",
+              "Queensland imagery loaded · place-name labels are currently unavailable",
               "error"
             );
           }

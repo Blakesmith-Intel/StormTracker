@@ -227,3 +227,27 @@ warning polygon, or replacement for Bureau warnings.
 No segmentation, ST identity association, Doppler analysis, inferred-volume model,
 convective/lightning scoring, source timing, polling or radar-site logic changes
 are made in this release.
+
+
+## V9.8.2 source-aware radar history windows
+
+V9.8.2 removes the fixed assumption that every 30–180-minute radar loop is
+currently available from the Bureau WMTS history. StormTracker now discovers up
+to the existing 180-minute radar-history horizon first, measures the real
+timestamp span/cadence, and offers only standard loop windows that the currently
+readable source frames can support.
+
+The selector also exposes **All available**, labelled with the actual discovered
+minutes and frame count. This option uses the complete readable history without
+inventing scans or claiming an unsupported nominal window. The loop information
+now reports the available source span, frame count and AEST/UTC range as well as
+the loaded subset.
+
+Doppler retains its 30-minute shared-history contract. Selecting Doppler switches
+to 30 minutes only when a valid 30-minute radar window is available; otherwise
+Doppler is deselected and the source limitation is reported. Changing to a
+longer or All available radar-only window still deselects Doppler.
+
+No segmentation, ST identity association, inferred-volume science, Doppler
+decoding, motion-cone logic, polling cadence or radar-site definitions are
+changed by this source-history correction.

@@ -108,7 +108,10 @@ jobs:
           test -f frontend/preview/v9.16/src/severe-storm-alert-overlay-v1.js
           test -f frontend/preview/v9.16/tests/run-startup-radar-default-v1-tests.mjs
           grep -q 'value="66" selected>Brisbane (Mt Stapylton)' frontend/preview/v9.16/live3d-operational-v9.html
-          grep -q '9.16-doppler-window-v1' frontend/preview/v9.16/index.html
+          grep -q '9.16-window-menu-v1' frontend/preview/v9.16/index.html
+          test -f frontend/preview/v9.16/src/operational-window-choices-v1.js
+          grep -q 'Radar + Doppler — All available' frontend/preview/v9.16/src/operational-window-choices-v1.js
+          test -f frontend/preview/v9.16/tests/run-operational-window-choices-v1-tests.mjs
           test -f frontend/preview/v9.16/src/doppler-available-window-v1.js
           ! grep -q 'id="showDopplerOverlay"' frontend/preview/v9.16/live3d-operational-v9.html
           grep -q 'id="dualSourceTimes"' frontend/preview/v9.16/live3d-operational-v9.html

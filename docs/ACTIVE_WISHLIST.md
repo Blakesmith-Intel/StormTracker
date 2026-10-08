@@ -31,22 +31,26 @@ This file supersedes the older V9.9.1-era order in FUTURE_DEVELOPMENT_HANDOVER.m
    last successful source check, partial results and refresh failures. Keep
    radar and each provider independent. Do not replace real provider incidents
    with synthetic events.
-2. **QFD swift-water and vertical rescue incidents** (new wishlist items):
-   investigate whether the Queensland Fire Department officially publishes
-   legitimate, machine-readable, reusable and sufficiently current public
-   incident records for either rescue type. Keep **swift-water rescue** and
-   **vertical rescue** as separately selectable, independently classified
-   incident types, with clear incident status, official timestamps and
-   clickable source panels if a lawful public feed becomes available.
-   Use only officially released public records and permissible location
-   precision. Never scrape restricted dispatch, CAD, pager, operational
-   or internal emergency-services systems or reveal personal details.
-   Verify the true source classification rather than inferring swift-water
-   or vertical rescue from flood gauges, closures, rain, radar, terrain,
-   social posts or generic "rescue" categories. Confirm duplicate handling,
-   updates, stale/closed job removal, source links, polling limits and
-   geographic coverage independently for each rescue category.
-   **No verified public feed = that incident type remains blocked**.
+2. **V9.15.0 public QFD incidents:** display only the three
+   ArcGIS `GroupedType` values `RESCUE TECHNICAL`, `RESCUE ROAD CRASH`
+   and `ASSIST PUBLIC`, in separate categories on the interactive map.
+   No unrelated fire or other group events. The server filter and browser
+   parser must both enforce the allowlist; incident cards show the actual
+   official public classification, response time, status and source.
+   QFD's map reports general-area locations, not precise rescue sites.
+   Official QFD GroupedType symbology is confirmed in the published
+   ESCAD `drawingInfo.renderer`: all three groups have embedded PNG
+   picture-marker samples. Reuse the publicly available publisher assets
+   directly in map, legend and information panels; on temporary source
+   failure, label any fallback symbol as provisional.
+   Continue to require functioning browser CORS, expiry safeguards,
+   current-only incident lifecycle and real mobile click validation.
+3. **Future detailed QFD rescue classes (blocked):** only when a legitimately
+   public source publishes the exact job type, consider separate water,
+   vertical, mountain, RTC large-multi and extreme-weather assistance types.
+   Never use internal-only CAD data, or infer precise subtypes from
+   `GroupedType` or environment/road reports. Road crash jobs are not
+   confirmed road closures without an authoritative traffic record.
 
 ## Permanently final wishlist item — observed lightning
 

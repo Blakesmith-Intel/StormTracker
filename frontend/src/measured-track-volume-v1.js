@@ -208,6 +208,9 @@ export function buildMeasuredTrackVolume(
     altitudeSpacing(model);
 
   const points = [];
+  // Source-palette reflectivity at the tracked cell's observed 2-D footprint.
+  // This is a visual projection, not measured reflectivity at an altitude.
+  const measuredReflectivityFootprint = [];
 
   let measuredPixelCount = 0;
   let inferredColumnCount = 0;
@@ -260,34 +263,31 @@ export function buildMeasuredTrackVolume(
       continue;
     }
 
-    const inferred =
-      inferColumn(
-        model,
-        inputDbz,
-        {
-          occupancyThreshold,
-          minimumOutputDbz
-        }
-      );
+    // The observed 2-D echo belongs to the measured segmentation, whether
+    // or not the empirical vertical profile can construct a column.
+    const mercator = pixelCentreMercator(frame,column,row);
+    const geographic = webMercatorToDegrees(mercator.x,mercator.y);
+
+    const inferred = inferColumn(model,inputDbz,{
+      occupancyThreshold,minimumOutputDbz
+    });
+
+    measuredReflectivityFootprint.push({
+      longitude:geographic.longitude,
+      latitude:geographic.latitude,
+      source_category:Number(frame.categories[index]),
+      representative_dbzh:inputDbz,
+      // A display projection at the volume base; not a measured altitude.
+      projection_altitude_m_amsl: inferred.length
+        ? Math.max(0,Math.min(...inferred.map(p=>p.altitude_m_amsl))-250)
+        : 250
+    });
 
     if (!inferred.length) {
       continue;
     }
 
     inferredColumnCount++;
-
-    const mercator =
-      pixelCentreMercator(
-        frame,
-        column,
-        row
-      );
-
-    const geographic =
-      webMercatorToDegrees(
-        mercator.x,
-        mercator.y
-      );
 
     const pixelAreaM2 =
       groundPixelAreaM2(
@@ -479,7 +479,8 @@ export function buildMeasuredTrackVolume(
     altitude_spacing_m:
       dzM,
 
-    points
+    points,
+    measured_reflectivity_footprint:measuredReflectivityFootprint
   };
 }
 
@@ -535,4 +536,12 @@ export function highSupportTop40Trend(
       / elapsedMinutes
       * 10
   };
+}
+
+// Display-only alignment with the frame-wide minimum dBZ setting.
+// Do not change the underlying inferred profile, sampling, scoring,
+// measured-track volume or high-support top calculations.
+export function shouldDisplayMeasuredTrackPoint(point,minimumDisplayDbz=30){
+  const value=Number(point?.dbzh),limit=Number(minimumDisplayDbz);
+  return Number.isFinite(value) && Number.isFinite(limit) && value>=limit;
 }

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 
 import {
   buildMeasuredTrackVolume,
-  highSupportTop40Trend
+  highSupportTop40Trend,
+  shouldDisplayMeasuredTrackPoint
 } from "../src/measured-track-volume-v1.js";
 
 const model = {
@@ -106,6 +107,15 @@ assert.equal(volume.inferred_point_count, 12);
 assert.equal(volume.high_support_points, 8);
 assert.equal(volume.low_support_points, 4);
 assert.equal(volume.high_support_top_40_m_amsl, 1500);
+// Every measured segmentation pixel preserves its original radar category,
+// independent of the inferred vertical profile used for 3-D geometry.
+assert.equal(volume.measured_reflectivity_footprint.length,4);
+assert.deepEqual(volume.measured_reflectivity_footprint.map(p=>p.source_category),[7,7,7,7]);
+assert.ok(volume.measured_reflectivity_footprint.every(p=>
+  p.representative_dbzh>=40 &&
+  Number.isFinite(p.longitude) &&
+  Number.isFinite(p.latitude) &&
+  p.projection_altitude_m_amsl>=0));
 
 const later = {
   ...volume,
@@ -125,6 +135,12 @@ assert.ok(trend);
 assert.equal(trend.change_m, 1000);
 assert.equal(trend.metres_per_10_min, 2000);
 
-console.log(
-  "8 measured-track-volume tests passed."
-);
+// Parity guard: drawn track points follow the user display cutoff, but
+// the measured cell analysis and 40 dBZ top are unchanged.
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:29.9},30),false);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:30},30),true);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:33},40),false);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:50},40),true);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:NaN},30),false);
+assert.equal(volume.inferred_point_count,12); // Retains 20 dBZ science.
+console.log("18 measured-track-volume checks passed, including original measured 2-D category preservation.");

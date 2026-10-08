@@ -174,6 +174,8 @@ function showPowerOutageInfo(
       ""
     );
 
+  $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
+
   panel.dataset
     .outageId =
     String(
@@ -523,7 +525,7 @@ export function initialiseOperationalPowerOutages({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#powerOutageInfo,#floodRoadClosureInfo,#riverGaugeInfo"
+            "#nav,#powerOutageInfo,#floodRoadClosureInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo"
           );
 
       if (blockedControl) {

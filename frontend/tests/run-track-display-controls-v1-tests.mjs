@@ -13,6 +13,13 @@ assert.match(html,/id="pointSize"[\s\S]*value="3"/);
 assert.match(js,/buildTrackThreatCone/);
 assert.match(js,/selectedTrackDisplayId/);
 assert.match(js,/showTrackLabels/);
+
+assert.match(js,/function updateRenderedTrackLabels\(\)/,
+  "Storm labels must be refreshable without advancing or replaying a frame.");
+assert.match(js,/if\(entity\?\.label\) entity\.label\.show=visible/,
+  "Labels on the existing Cesium entities must change immediately.");
+assert.match(js,/\$\("showTrackLabels"\)\.addEventListener\("change",updateRenderedTrackLabels\)/);
+
 assert.match(js,/showTrackThreatCone/);
 assert.match(js,/dopplerOverlayTransition/);
 assert.match(js,/viewer\.imageryLayers\.raiseToTop\(\s*surfaceLayer\s*\)/);

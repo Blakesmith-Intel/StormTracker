@@ -2,13 +2,14 @@
 // and a validated BoM station plot path. All content stays textContent-only.
 export const OFFICIAL_SOURCE_LINKS=Object.freeze({
   road:"https://qldtraffic.qld.gov.au/",
+  qfd:"https://www.fire.qld.gov.au/Incident-Dashboard",
   bom:"https://www.bom.gov.au/qld/flood/rain_river.shtml",
   Energex:"https://www.energex.com.au/outages/outage-finder/outage-finder-map",
   Ergon:"https://www.ergon.com.au/network/outages/outage-finder/outage-finder-map",
   "Essential Energy":"https://www.essentialenergy.com.au/outages-and-faults/power-outages"
 });
 const allowedHosts=new Set([
-  "www.bom.gov.au","bom.gov.au",
+  "www.bom.gov.au","bom.gov.au","www.fire.qld.gov.au","fire.qld.gov.au",
   "qldtraffic.qld.gov.au","www.qldtraffic.qld.gov.au",
   "www.energex.com.au","www.ergon.com.au","www.essentialenergy.com.au"
 ]);

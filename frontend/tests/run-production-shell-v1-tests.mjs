@@ -11,7 +11,7 @@ const html = read("frontend/live3d-operational-v9.html");
 const js = read("frontend/src/live3d-operational-v9.js");
 const css = read("frontend/src/operational-dashboard-v9-1.css");
 
-assert.match(index, /live3d-operational-v9\.html\?v=9\.14\.0/);
+assert.match(index, /live3d-operational-v9\.html\?v=9\.15\.0-unplanned/);
 assert.doesNotMatch(index, /validationModeButton|validationFrame|Historical Validation|stormtracker-product-mode/);
 assert.equal(exists("frontend/christmas-2023-derecho-test-v1.html"), false);
 assert.equal(exists("frontend/src/christmas-2023-derecho-test-v1.js"), false);
@@ -105,7 +105,19 @@ assert.match(gaugeUi, /window\.addEventListener\([\s\S]*"pointerdown"/);
 assert.match(gaugeUi, /window\.addEventListener\([\s\S]*"pointerup"/);
 const roadLayer = read("frontend/src/context-layers/flood-road-closures-v1.js");
 const roadUi = read("frontend/src/context-layers/flood-road-closures-operational-v1.js");
-assert.match(roadLayer, /createRoadClosureBadgeImage/);
+assert.match(roadLayer, /qldTrafficRoadImpactIcon/);
+assert.match(roadUi, /floodRoadClosureLegendIcon/);
+assert.match(roadUi, /floodRoadClosureInfoIcon/);
+
+const qldTrafficIcons=read("frontend/src/context-layers/qldtraffic-official-closure-icons-v1.js");
+assert.match(qldTrafficIcons,/QLD_TRAFFIC_OFFICIAL_CLOSED_ALL/);
+assert.match(qldTrafficIcons,/QLD_TRAFFIC_OFFICIAL_CLOSED_THROUGH/);
+assert.match(roadLayer,/qldTrafficRoadImpactIcon\(summary\.impactSubtype\)/);
+assert.match(roadUi,/legendIcon\.src=QLD_TRAFFIC_OFFICIAL_CLOSED_ALL/);
+assert.match(roadUi,/panelIcon\.src=qldTrafficRoadImpactIcon\(summary\.impactSubtype\)/);
+
+assert.doesNotMatch(roadLayer, /createRoadClosureBadgeImage/,
+  "Custom road closure artwork must not return after switching to official QLDTraffic icons.");
 assert.match(roadLayer, /stormTrackerFloodClosureId/);
 assert.doesNotMatch(
   roadLayer,
@@ -161,4 +173,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.14.0 retains BoM gauges, uses only unplanned Queensland outages and de-duplicates rural town labels, road closures and historical regressions.");
+console.log("Production shell checks passed: V9.15.0 retains BoM gauges, uses only unplanned Queensland outages and de-duplicates rural town labels, road closures and historical regressions.");

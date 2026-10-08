@@ -640,3 +640,61 @@ dialog::backdrop { background:#0009; }
   outline:2px solid #ffd43b;
   outline-offset:2px;
 }
+
+/* V9.15.0 candidate: QFD public technical-rescue records. No invented subtype. */
+.qfd-rescue-row button { min-height:25px; padding:3px 7px; }
+.qfd-rescue-row label { display:flex; align-items:center; gap:6px; }
+#qfdTechnicalRescueStatus { margin:-2px 0 5px; text-align:right; }
+#qfdTechnicalRescueStatus[data-kind="error"] { color:#ff9d91; }
+#qfdTechnicalRescueStatus[data-kind="ok"] { color:#99e2b7; }
+#qfdTechnicalRescueStatus[data-kind="warning"] { color:#ffc44d; }
+.qfd-rescue-key {
+  display:inline-block; flex:0 0 auto; width:14px; height:14px;
+  background:#c78aff; border:2px solid #23132c; box-shadow:0 0 0 1px #fff;
+  border-radius:4px; transform:rotate(45deg); box-sizing:border-box;
+}
+.qfd-rescue-key-large { width:22px; height:22px; margin:3px; border-width:3px; }
+.qfd-rescue-info-heading { display:flex; align-items:center; gap:10px; min-width:0; }
+.qfd-rescue-info-heading > div { display:grid; gap:2px; min-width:0; }
+.qfd-rescue-info .map-info-kicker { color:#d8a5ff; }
+#qfdTechnicalRescueInfoTitle { overflow-wrap:anywhere; }
+#qfdTechnicalRescueInfoRows { border-top:1px solid #31424d; padding-top:8px; }
+#qfdTechnicalRescueInfoRows > strong { text-align:left; }
+#qfdTechnicalRescueInfoRows > a {
+  color:#8fd8ff; font-weight:700; text-decoration:underline;
+  overflow-wrap:anywhere; text-underline-offset:2px;
+}
+#qfdTechnicalRescueInfoRows > a:focus-visible {
+  outline:2px solid #ffd43b; outline-offset:2px;
+}
+@media (max-width:700px) {
+  .qfd-rescue-row button { min-height:25px; font-size:9px; }
+  #qfdTechnicalRescueStatus { font-size:8px; margin:-1px 0 3px; }
+}
+
+/* Public QFD GroupedType legend; provisional artwork is explicitly disclosed
+   whenever the provider does not expose its picture-marker renderer. */
+.qfd-symbol-legend {
+  display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px;
+  padding:3px 7px;margin:0 0 2px;font-size:10px;
+}
+.qfd-symbol-legend span { display:inline-flex;align-items:center;gap:4px; }
+.qfd-symbol-legend img {width:20px;height:20px;object-fit:contain;}
+.qfd-symbol-status {margin:0 0 6px;font-size:9px;text-align:right;}
+.qfd-info-icon {width:29px;height:29px;object-fit:contain;flex:0 0 auto;}
+@media (max-width:700px) {
+  .qfd-symbol-legend {font-size:9px;gap:3px 8px;padding:2px 4px;}
+  .qfd-symbol-legend img {width:17px;height:17px;}
+}
+
+/* QLDTraffic-authored closed-all-traffic PNG, shared by map, legend and
+   selected incident card. Cancel the superseded hand-drawn CSS cross. */
+img.flood-road-key {
+  display:inline-block;position:static;flex:0 0 auto;
+  width:23px;height:23px;vertical-align:middle;
+  border:0;outline:0;outline-offset:0;
+  background:transparent;transform:none;
+  object-fit:contain;
+}
+img.flood-road-key::before,img.flood-road-key::after {content:none;display:none;}
+img.flood-road-key-large {width:31px;height:31px;margin:0;}

@@ -1,16 +1,17 @@
+import {QLD_TRAFFIC_OFFICIAL_CLOSED_ALL,qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
-} from "./flood-road-closures-v1.js?v=9.10.3";
+} from "./flood-road-closures-v1.js?v=9.15.0-unplanned";
 
 import {
   floodRoadClosureSummary
-} from "./flood-road-closure-filter-v1.js?v=9.10.3";
+} from "./flood-road-closure-filter-v1.js?v=9.15.0-unplanned";
 
 import {
   floodRoadClosureMarkerCoordinate
-} from "./flood-road-closures-v1.js?v=9.10.3";
+} from "./flood-road-closures-v1.js?v=9.15.0-unplanned";
 
 const $ = id =>
   document.getElementById(id);
@@ -28,7 +29,7 @@ function setRoadStatus({
 
   target.textContent =
     message
-    || "QLDTraffic · flood closures only";
+    || "QLDTraffic · unplanned all-traffic closures";
 
   target.dataset.kind =
     kind;
@@ -148,7 +149,7 @@ function detailCause(summary) {
   return (
     summary.eventSubtype
     || summary.eventType
-    || "Flood related"
+    || "Unplanned closure"
   );
 }
 
@@ -189,6 +190,9 @@ function showClosureInfo(
     floodRoadClosureSummary(
       feature
     );
+  const panelIcon=$("floodRoadClosureInfoIcon");
+  if(panelIcon)panelIcon.src=qldTrafficRoadImpactIcon(summary.impactSubtype);
+
 
   $("powerOutageInfo")
     ?.setAttribute(
@@ -201,6 +205,8 @@ function showClosureInfo(
       "hidden",
       ""
     );
+
+  $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
 
   panel.dataset.closureId =
     String(
@@ -240,7 +246,7 @@ function showClosureInfo(
 
   addDetailRow(
     rows,
-    "Flood cause",
+    "Cause",
     detailCause(
       summary
     )
@@ -478,6 +484,10 @@ export function initialiseOperationalFloodRoadClosures({
     );
   }
 
+  // QLDTraffic's public map marker and our legend share the exact PNG.
+  const legendIcon=$("floodRoadClosureLegendIcon");
+  if(legendIcon)legendIcon.src=QLD_TRAFFIC_OFFICIAL_CLOSED_ALL;
+
   const checkbox =
     $("showFloodRoadClosures");
 
@@ -642,7 +652,7 @@ export function initialiseOperationalFloodRoadClosures({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo"
+            "#nav,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo"
           );
 
       if (blockedControl) {
@@ -874,7 +884,7 @@ export function initialiseOperationalFloodRoadClosures({
           kind:
             "normal",
           message:
-            "QLDTraffic flood closures hidden"
+            "QLDTraffic unplanned closures hidden"
         });
       }
     }

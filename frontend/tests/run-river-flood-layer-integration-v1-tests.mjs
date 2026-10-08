@@ -5,6 +5,7 @@ import {
 
 let now=Date.UTC(2026,9,8,8,30);
 let step=0;
+let failFetch=false;
 const features=[
   {id:"bom:040123",properties:{bom_stn_num:"040123",awrc_stateid:"QLD-1",name:"Upper river",state:"QLD",location_types:"water level gauge;",lat:-27.5,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.5]}},
   {id:"bom:040124",properties:{bom_stn_num:"040124",awrc_stateid:"QLD-2",name:"Coastal tide",state:"QLD",location_types:"water level gauge;tide gauge;",lat:-27.4,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.4]}},
@@ -46,6 +47,7 @@ const viewer={
 };
 const fetchImpl=async url=>{
   calls.requests++;
+  if (failFetch) throw new Error("Simulated BoM relay outage");
   let response;
   if(String(url).includes("river-gauge-metadata"))response={type:"FeatureCollection",features};
   else if(String(url).includes("river-height-bulletins"))
@@ -86,4 +88,10 @@ assert.equal(layer.dataSource.show,false);
 assert.ok(calls.status.some(item=>item.count===2 && item.rapidRise===1 && item.moderate===1));
 assert.ok(calls.observed.length>=2);
 assert.equal(calls.requests,4,"Two gauge metadata calls and two bulletin calls");
+now += 2*3600000;
+failFetch=true;
+await assert.rejects(layer.refresh({force:true}),/Simulated BoM relay outage/);
+assert.equal(layer.features.length,0,
+  "Never continue displaying old flood-like markers after feed has been stale over 90 minutes");
+assert.ok(calls.status.some(entry=>String(entry.message).includes("old flood markers cleared")));
 console.log("Flood layer integration passed: hidden/background observation storage, initial moderate-only marker, second measured rapid-rise above minor, tidal suppression, popup IDs and toggle.");

@@ -40,3 +40,23 @@ production and does not change any `main/frontend` runtime files.
 
 Production remains V9.13.4 until each newer version is explicitly
 accepted and sealed. Avoid altering the relay origin allowlist.
+
+## V9.15 preview refresh — volumetric opacity (8 October 2026)
+
+The current V9.15 development candidate adds an independent third
+**3-D volume opacity** slider to the existing radar/Doppler opacity controls,
+defaulting to **100%**. The control applies only to the inferred volume
+dots and measured-echo projection within tracked volumes. Radar surface
+imagery and Doppler overlay remain independent. The original measured
+dBZ/BoM categories, inferred vertical intensity, tracking and
+confidence model are not recalculated or changed.
+
+Tests verify 0% → 100% restores the original measured-core colour
+and original inferred confidence-based opacity without cumulative fade.
+The previously accepted QFD official-icon-on-load change is retained.
+The V9.15 candidate's startup module cache version is updated for
+this preview refresh.
+
+As before, refreshing the generated Pages preview folder does **not**
+merge the pending V9.14 or V9.15 feature PRs into production. Main
+`frontend/` remains the previously accepted V9.13.4 root build.

@@ -129,21 +129,22 @@
       </h2>
 
       <label>
-        Minimum displayed intensity:
+        Minimum 3-D volume reflectivity:
         <strong>
-          <span id="minimumDbzhValue">30</span> dBZ
+          <span id="minimumDbzhValue">40</span> dBZ
         </strong>
       </label>
 
       <input
         id="minimumDbzh"
         type="range"
-        min="20"
+        min="40"
         max="60"
-        value="30"
+        value="40"
         step="5"
       >
 
+      <p class="note">3-D points and measured footprint projections appear only at ≥40 dBZ. The original BoM 2-D radar surface is unchanged.</p>
       <label>
         Minimum profile occupancy:
         <strong>
@@ -270,6 +271,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.15.1-storm-labels"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.15.1-intensity40"></script>
 </body>
 </html>

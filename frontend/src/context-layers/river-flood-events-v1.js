@@ -11,8 +11,8 @@ import {
 
 export const FLOOD_EVENTS_STORAGE_KEY="stormtracker.qld-flood-events.v1";
 export const FLOOD_EVENT_RECOVERY_COUNT=2;
-const RECOVERY_MIN_GAP_MS=10*60000;
-const EVENT_MAX_LIFETIME_MS=6*3600000;
+const RECOVERY_MIN_GAP_MS=15*60000;
+const RECOVERY_MAX_RISE_M_PER_H=0.05;
 const eventTypes=new Set(["rapid-rise","tidal-anomaly"]);
 const fresh = (observed,now) => Number.isFinite(observed) &&
   observed<=now+5*60000 && now-observed<=FLOOD_SIGNAL_MAX_AGE_MS;
@@ -26,11 +26,12 @@ export function cleanFloodEvents(input,now=Date.now()){
       !Number.isFinite(p.activatedAt) ||
       !Number.isFinite(p.lastObservedAt) ||
       p.activatedAt>now+5*60000 ||
-      now-p.lastObservedAt>FLOOD_SIGNAL_MAX_AGE_MS ||
-      now-p.activatedAt>EVENT_MAX_LIFETIME_MS)continue;
+      now-p.lastObservedAt>FLOOD_SIGNAL_MAX_AGE_MS)continue;
     out[id]={
       type:p.type,activatedAt:p.activatedAt,lastObservedAt:p.lastObservedAt,
-      recoveryCount:Math.max(0,Math.min(1,Math.floor(Number(p.recoveryCount)||0)))
+      recoveryCount:Math.max(0,Math.min(1,Math.floor(Number(p.recoveryCount)||0))),
+      lastHeight:Number.isFinite(p.lastHeight)?p.lastHeight:null,
+      lastRecoveryAt:Number.isFinite(p.lastRecoveryAt)?p.lastRecoveryAt:null
     };
   }
   return out;
@@ -74,18 +75,39 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
     if(isFreshRate){
       event={type:decision.state,activatedAt:
         prior?.type===decision.state?prior.activatedAt:observed,
-        lastObservedAt:observed,recoveryCount:0};
+        lastObservedAt:observed,recoveryCount:0,
+        lastHeight:Number.isFinite(p.STORMTRACKER_HEIGHT_METRES)?p.STORMTRACKER_HEIGHT_METRES:null,
+        lastRecoveryAt:null};
     }else if(prior && fresh(prior.lastObservedAt,now) &&
       observed>=prior.lastObservedAt){
-      // A repeated bulletin cannot count as the next recovery observation.
-      let recoveryCount=prior.recoveryCount;
-      if(observed-prior.lastObservedAt>=RECOVERY_MIN_GAP_MS){
-        recoveryCount++;
-      }
+      // A repeated bulletin cannot count as recovery. The reading must be
+      // independently newer, falling or steady, with a measured low/non-rising
+      // rate and no further increase in height. Insufficient rate evidence
+      // keeps the event flagged as "monitoring", not falsely cleared.
+      const newer=observed>prior.lastObservedAt;
+      const currentHeight=p.STORMTRACKER_HEIGHT_METRES;
+      const trend=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
+      const recovering=newer &&
+        (trend==="steady"||trend==="falling") &&
+        rate?.observedAt===observed &&
+        rate.rateMetresPerHour<=RECOVERY_MAX_RISE_M_PER_H &&
+        Number.isFinite(currentHeight) &&
+        Number.isFinite(prior.lastHeight) &&
+        currentHeight<=prior.lastHeight+0.01;
+      const spaced=prior.lastRecoveryAt===null ||
+        observed-prior.lastRecoveryAt>=RECOVERY_MIN_GAP_MS;
+      const recoveryCount=recovering&&spaced
+        ? prior.recoveryCount+1
+        : newer&&!recovering ? 0 : prior.recoveryCount;
       if(recoveryCount<FLOOD_EVENT_RECOVERY_COUNT){
-        event={...prior,lastObservedAt:observed,recoveryCount};
+        event={...prior,
+          lastObservedAt:newer?observed:prior.lastObservedAt,
+          lastHeight:newer?currentHeight:prior.lastHeight,
+          lastRecoveryAt:recovering&&spaced?observed:
+            newer&&!recovering?null:prior.lastRecoveryAt,
+          recoveryCount};
         held=true;
-        reason=`Recent ${prior.type==="tidal-anomaly"?"unusual tidal rise":"rapid river rise"}; ${recoveryCount}/2 successive observations below alert threshold. Continue monitoring.`;
+        reason=`Earlier verified ${prior.type==="tidal-anomaly"?"unusual tidal rise":"rapid river rise"}; ${recoveryCount}/2 fresh stable or falling observations confirmed. Recovery screening only.`;
       }
     }
     if(!event)continue;

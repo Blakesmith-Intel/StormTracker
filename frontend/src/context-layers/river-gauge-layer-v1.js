@@ -8,6 +8,13 @@ import {
   loadRiverGaugeOperationalSnapshot
 } from "./river-gauge-observations-v1.js?v=9.12.0";
 
+import {
+  FLOOD_SIGNAL_STORAGE_KEY,
+  appendGaugeObservation,
+  cleanFloodSignalHistory,
+  filterOperationalFloodGauges
+} from "./river-flood-signals-v1.js?v=9.13.0";
+
 export function riverGaugeOperationalSummary(
   feature
 ) {
@@ -83,7 +90,22 @@ export function riverGaugeOperationalSummary(
         properties
           .STORMTRACKER_TIDAL_CONTEXT
         ?? ""
-      )
+      ),
+
+    alertReason:
+      String(properties.STORMTRACKER_ALERT_REASON ?? ""),
+
+    riseRateMetresPerHour:
+      typeof properties.STORMTRACKER_RISE_RATE_M_PER_H === "number"
+        ? properties.STORMTRACKER_RISE_RATE_M_PER_H : null,
+
+    rateIntervalMinutes:
+      typeof properties.STORMTRACKER_RATE_INTERVAL_MINUTES === "number"
+        ? properties.STORMTRACKER_RATE_INTERVAL_MINUTES : null,
+
+    tidalBaselineMetresPerHour:
+      typeof properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H === "number"
+        ? properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H : null
   };
 }
 
@@ -112,6 +134,9 @@ const STATE_STYLE =
         symbol:
           "flood"
       }),
+
+    "rapid-rise": Object.freeze({fill:"#ffab23",symbol:"up"}),
+    "tidal-anomaly": Object.freeze({fill:"#ffcf40",symbol:"tidal-up"}),
 
     rising:
       Object.freeze({
@@ -240,7 +265,10 @@ export function createRiverGaugeLayer({
     () => {},
 
   onUpdate =
-    () => {}
+    () => {},
+
+  storage = globalThis.localStorage,
+  now = () => Date.now()
 } = {}) {
   if (
     !viewer
@@ -270,6 +298,14 @@ export function createRiverGaugeLayer({
     new Map();
 
   let currentFeatures = [];
+  let history = {};
+  try {
+    history = cleanFloodSignalHistory(
+      JSON.parse(storage?.getItem(FLOOD_SIGNAL_STORAGE_KEY) ?? "{}"), now()
+    );
+  } catch {
+    history = {};
+  }
   let loading = null;
   let timer = null;
   let lastLoadedAt = 0;
@@ -426,12 +462,22 @@ export function createRiverGaugeLayer({
             fetchImpl
           });
 
-        diagnostics =
-          result;
+        const observedAt = now();
+        history = cleanFloodSignalHistory(history, observedAt);
+        for (const feature of result.payload.features) {
+          appendGaugeObservation(history, feature, observedAt);
+        }
+        try {
+          storage?.setItem(FLOOD_SIGNAL_STORAGE_KEY, JSON.stringify(history));
+        } catch {
+          // Browser storage may be disabled or full; fresh evidence still works.
+        }
 
-        render(
-          result.payload
+        const alerts = filterOperationalFloodGauges(
+          result.payload.features, history, observedAt
         );
+        diagnostics = {...result, floodSignalCounts:alerts.counts};
+        render({type:"FeatureCollection",features:alerts.features});
 
         lastLoadedAt =
           Date.now();
@@ -441,31 +487,7 @@ export function createRiverGaugeLayer({
             riverGaugeOperationalSummary
           );
 
-        const rising =
-          summaries.filter(
-            item =>
-              item.displayState
-              === "rising"
-          ).length;
-
-        const tidalRising =
-          summaries.filter(
-            item =>
-              item.displayState
-              === "tidal-rise"
-          ).length;
-
-        const flood =
-          summaries.filter(
-            item =>
-              [
-                "minor",
-                "moderate",
-                "major"
-              ].includes(
-                item.displayState
-              )
-          ).length;
+        const {major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
 
         const partialText =
           result.partialBulletins
@@ -479,16 +501,15 @@ export function createRiverGaugeLayer({
               : "ok",
 
           message:
-            `${summaries.length} live gauge${summaries.length === 1 ? "" : "s"} · ${rising} rising · ${tidalRising} tidal rise · ${flood} flood class${partialText}`,
+            `${summaries.length} flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}`,
 
           count:
             summaries.length,
 
-          rising,
-
-          tidalRising,
-
-          flood,
+          major,
+          moderate,
+          rapidRise,
+          tidalAnomaly,
 
           partial:
             result.partialBulletins,
@@ -639,6 +660,10 @@ export function createRiverGaugeLayer({
 
     get diagnostics() {
       return diagnostics;
+    },
+
+    get historyStationCount() {
+      return Object.keys(history).length;
     },
 
     attribution:

@@ -8,7 +8,7 @@ function brief(f){
  return {id:p.id,status:p.status,event_type:p.event_type,
   event_subtype:p.event_subtype,event_due_to:p.event_due_to,
   impact:p.impact,road_summary:p.road_summary,
-  duration:p.duration,web_link:p.web_link};
+  duration:p.duration,web_link:p.web_link,geometry:f.geometry};
 }
 for(const [label,url] of sources){
  try{
@@ -42,4 +42,13 @@ for(const [label,url] of [
     length:buf.length,mime:response.headers.get("content-type"),
     signature:buf.subarray(0,8).toString("hex"),base64:buf.toString("base64")}));
  }catch(e){console.log("ICON_ERROR",label,String(e));}
+}
+
+const {floodRoadClosureMarkerCoordinate}=await import("../frontend/src/context-layers/flood-road-closures-v1.js");
+const {isActiveFloodRoadClosure}=await import("../frontend/src/context-layers/flood-road-closure-filter-v1.js");
+const fresh=await (await fetch(upstream,{signal:AbortSignal.timeout(20000)})).json();
+for(const f of fresh.features.filter(f=>Number(f.properties?.id)===750590)){
+ console.log("MAP_ADAPTER_AUDIT",JSON.stringify({id:f.properties.id,
+  passesFilter:isActiveFloodRoadClosure(f),
+  markerCoordinate:floodRoadClosureMarkerCoordinate(f),rawGeometry:f.geometry}));
 }

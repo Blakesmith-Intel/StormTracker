@@ -90,6 +90,9 @@ assert.equal(await layer.start(),3);
 assert.equal(await layer.start(),3);
 assert.equal(feedLoads,1,"Town name service must load only once");
 assert.equal(fakeLabels.length,3);
+assert.equal(fakeLabels.find(l=>l.text==="Birdsville").font,"12px sans-serif",
+  "Mobile rural names retain existing glyph size");
+assert.equal(fakeLabels.find(l=>l.text==="Brisbane").font,"bold 13px sans-serif");
 assert.ok(fakeLabels.every(l=>l.horizontalOrigin==="center"));
 assert.equal(collection.show,false,"Initial Street mode must hide the entire Cesium label collection");
 assert.equal(layer.visibleCount,0,"Street renders no supplemental labels");
@@ -116,6 +119,22 @@ layer.setMode("qld-imagery");
 assert.equal(collection.show,true);
 assert.equal(layer.visibleIds.length,1,"Switching back to QLD imagery restores Birdsville without refetching");
 assert.equal(feedLoads,1,"Basemap changes must not refetch labels");
+viewer.scene.canvas.clientWidth=1200;
+viewer.scene.canvas.clientHeight=740;
+layer.draw(true);
+assert.equal(fakeLabels.find(l=>l.text==="Birdsville").font,"bold 15px sans-serif",
+  "Desktop rural name must be legible with enlarged bold glyph");
+assert.equal(fakeLabels.find(l=>l.text==="Brisbane").font,"bold 16px sans-serif",
+  "Desktop major city uses 16px bold font");
+assert.ok(layer.visibleCount<=28,"Desktop decluttering remains bounded");
+viewer.scene.canvas.clientWidth=390;
+viewer.scene.canvas.clientHeight=340;
+layer.draw(true);
+assert.equal(fakeLabels.find(l=>l.text==="Birdsville").font,"12px sans-serif",
+  "Shrinking to a mobile viewport must restore previous phone typography");
+assert.ok(layer.visibleCount<=5);
+assert.equal(feedLoads,1,"Font resize must not refetch town data");
+
 viewer.scene.camera.positionCartographic.height=2_000_000;
 layer.draw(true);
 assert.equal(layer.visibleCount,0,"Labels hidden at planetary horizon view");

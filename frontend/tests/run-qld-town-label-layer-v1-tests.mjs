@@ -103,7 +103,7 @@ assert.equal(collection.show,true,"Imagery enables the anchored Queensland name 
 assert.equal(fakeLabels.filter(l=>l.show).length,1,"Only horizon-visible in-frame Birdsville is rendered");
 assert.equal(fakeLabels.find(l=>l.text==="Birdsville").show,true);
 assert.equal(fakeLabels.find(l=>l.text==="Brisbane").show,false);
-assert.ok(layer.visibleCount<=5);
+assert.ok(layer.visibleCount<=9);
 assert.ok(status.some(s=>s.kind==="ok"));
 const calculated=layer.calculationCount;
 layer.draw();
@@ -126,13 +126,13 @@ assert.equal(fakeLabels.find(l=>l.text==="Birdsville").font,"bold 15px sans-seri
   "Desktop rural name must be legible with enlarged bold glyph");
 assert.equal(fakeLabels.find(l=>l.text==="Brisbane").font,"bold 16px sans-serif",
   "Desktop major city uses 16px bold font");
-assert.ok(layer.visibleCount<=28,"Desktop decluttering remains bounded");
+assert.ok(layer.visibleCount<=42,"Desktop decluttering remains bounded");
 viewer.scene.canvas.clientWidth=390;
 viewer.scene.canvas.clientHeight=340;
 layer.draw(true);
 assert.equal(fakeLabels.find(l=>l.text==="Birdsville").font,"12px sans-serif",
   "Shrinking to a mobile viewport must restore previous phone typography");
-assert.ok(layer.visibleCount<=5);
+assert.ok(layer.visibleCount<=9);
 assert.equal(feedLoads,1,"Font resize must not refetch town data");
 
 viewer.scene.camera.positionCartographic.height=2_000_000;

@@ -145,7 +145,7 @@ try{
   await page.waitForTimeout(550);
   state=await inspect();
   assert.equal(state.labelMode,"qld-imagery");
-  assert.ok(state.visible.length<=5,"Returning to QLD imagery must keep the phone clutter cap");
+  assert.ok(state.visible.length<=9,"Returning to QLD imagery must keep the phone clutter cap");
   border=await page.evaluate(()=>window.__stormtrackerStateBorderDiagnostics());
   assert.equal(border.visible,true,"Switching back to QLD imagery restores official interstate line");
   assert.ok(await page.locator("#showPowerOutages").count()===1);

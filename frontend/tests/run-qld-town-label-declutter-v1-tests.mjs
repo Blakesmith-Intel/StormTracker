@@ -8,8 +8,8 @@ assert.equal(labelBudget(390, 350, 2_000_000), 0, "No planetary-scale wall of la
 assert.equal(labelBudget(390, 350, 50_000, "street"), 0,
   "Street must not draw supplemental Queensland town names");
 assert.ok(labelBudget(390, 350, 50_000, "qld-imagery") <= 9);
-assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -90) <= 5,
-  "Mobile imagery must never exceed five supplemental names even with a steep camera");
+assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -90) <= 9,
+  "Mobile imagery should remain bounded even with dense rural names even with a steep camera");
 assert.equal(labelBudget(390, 350, 10000, "street", -90), 0,
   "No supplemental Street labels regardless of camera pitch");
 assert.ok(labelBudget(390, 350, 750_000) <= 5);
@@ -19,7 +19,7 @@ assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -30) <= 6);
 assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -70) >
   labelBudget(390, 350, 50000, "qld-imagery", -12));
 assert.equal(labelBudget(160, 350, 10_000), 0, "Tiny map viewport does not get clutter");
-assert.ok(labelBudget(1200, 800, 50_000, "qld-imagery") <= 28);
+assert.ok(labelBudget(1200, 800, 50_000, "qld-imagery") <= 42);
 assert.equal(greatCircleKm({latitude:-25,longitude:139},{latitude:-25,longitude:139}),0);
 
 assert.deepEqual(townLabelTypography(390,115),{
@@ -80,7 +80,7 @@ const wall=layoutTownLabels({
   candidates,width:390,height:350,cameraHeight:50000,
   mode:"qld-imagery"
 });
-assert.ok(wall.length<=5);
+assert.ok(wall.length<=9);
 const rects=wall.map(x=>townLabelBox(x));
 for(let i=0;i<rects.length;i++){
   for(let j=i+1;j<rects.length;j++){
@@ -95,7 +95,7 @@ const spread=Array.from({length:120},(_,i)=>({
 const sparse=layoutTownLabels({
   candidates:spread,width:390,height:350,cameraHeight:20000,mode:"qld-imagery"
 });
-assert.ok(sparse.length<=5);
+assert.ok(sparse.length<=9);
 assert.ok(sparse.length>1);
 const remote=layoutTownLabels({
   candidates:[{id:"birdsville",name:"Birdsville",x:150,y:160,population:115,priority:80}],

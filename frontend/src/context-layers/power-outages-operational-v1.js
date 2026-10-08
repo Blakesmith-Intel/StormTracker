@@ -2,7 +2,7 @@ import {addOfficialSourceRow,powerOfficialUrl} from "./official-source-links-v1.
 import {
   createPowerOutageLayer,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.12.1";
+} from "./power-outages-v1.js?v=9.13.4";
 
 const $ = id =>
   document.getElementById(id);

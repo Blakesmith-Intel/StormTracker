@@ -111,7 +111,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.13.3";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.13.4";
 
 import {
   createQueenslandStateBorderLayer
@@ -135,7 +135,7 @@ import {
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.12.1";
+} from "./context-layers/power-outages-operational-v1.js?v=9.13.4";
 
 import {
   initialiseOperationalRiverGauges

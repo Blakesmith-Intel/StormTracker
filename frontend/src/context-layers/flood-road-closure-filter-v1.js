@@ -36,6 +36,27 @@ export function isFloodRelatedRoadEvent(featureOrProperties) {
   );
 }
 
+// QLDTraffic has no independent "unplanned" boolean. Rely on its
+// structured event_type/event_subtype/event_due_to, never free-text guessing.
+// Hazards, flooding, crashes, emergency/unplanned works and other unscheduled
+// incidents are eligible. Explicitly scheduled works/events are not.
+export function isUnplannedRoadClosureEvent(featureOrProperties) {
+  const p=propertiesOf(featureOrProperties);
+  const type=normalise(p.event_type);
+  const subtype=normalise(p.event_subtype);
+  const dueTo=normalise(p.event_due_to);
+  const reasons=[type,subtype,dueTo];
+  if(reasons.some(value=>/^(planned|scheduled)\\b/.test(value)))return false;
+  // Normal planned QLDTraffic roadworks form the bulk of all-traffic closures.
+  // Missing roadwork subtype is ambiguous; include only where explicitly
+  // emergency/unplanned, rather than silently treating works as incidents.
+  if(type==="roadworks" || type==="special event" || type==="special events") {
+    return reasons.some(value=>/\\b(emergency|unplanned|unscheduled)\\b/.test(value));
+  }
+  // Lack of a structured event classification is not proof of an incident.
+  return Boolean(type||subtype||dueTo);
+}
+
 export function isRoadClosureEvent(featureOrProperties) {
   const properties =
     propertiesOf(featureOrProperties);
@@ -173,7 +194,7 @@ export function isActiveFloodRoadClosure(
       properties,
       nowMs
     )
-    && isFloodRelatedRoadEvent(properties)
+    && isUnplannedRoadClosureEvent(properties)
     && isRoadClosureEvent(properties)
   );
 }

@@ -726,7 +726,9 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   selector.replaceChildren(...options);
   const enabled = choices.filter(choice => !choice.disabled);
   selector.disabled = sequenceLoading || !enabled.length;
-  const selected = enabled.some(choice => choice.value === previous)
+  // Never silently switch a user's rain-only mode to combined Doppler just
+  // because its requested duration is temporarily unavailable.
+  const selected = choices.some(choice => choice.value === previous)
     ? previous : enabled[0]?.value ?? "";
   if (selected) selector.value = selected;
   else selector.selectedIndex = -1;
@@ -3878,7 +3880,10 @@ async function runSourceLoad(loader, background = false) {
     $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
 
     $("radarSite").disabled = false;
-    for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
+    for (const id of ["loadButton", "jumpLatestButton"]) $(id).disabled = false;
+    const selectedWindow = $("loopDurationMinutes").selectedOptions?.[0];
+    $("loadHybridButton").disabled = !selectedWindow ||
+      selectedWindow.disabled || !selectedWindow.value;
     $("hybridPlayButton").disabled = hybridFrames.length < 2;
     $("hybridFrameSlider").disabled = !hybridFrames.length;
   }

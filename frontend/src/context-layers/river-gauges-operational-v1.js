@@ -448,6 +448,8 @@ export function initialiseOperationalRiverGauges({
       matched: layer.diagnostics?.matchedCount ?? 0,
       counts: layer.diagnostics?.floodSignalCounts ?? null,
       historyStationCount: layer.historyStationCount,
+      recentHistoryRequestCount: layer.recentHistoryRequestCount,
+      recentHistory: layer.diagnostics?.recentHistory??null,
       loadedAt: layer.lastLoadedAt
     });
   }

@@ -144,7 +144,7 @@ import {
 
 import {
   initialiseOperationalQfdTechnicalRescues
-} from "./context-layers/qfd-technical-rescues-operational-v1.js?v=9.15.0";
+} from "./context-layers/qfd-technical-rescues-operational-v1.js?v=9.15.0-icons-onload";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,

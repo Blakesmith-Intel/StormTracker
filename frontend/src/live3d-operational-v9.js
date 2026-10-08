@@ -28,8 +28,9 @@ import {
 
 import {
   buildMeasuredTrackVolume,
-  highSupportTop40Trend
-} from "./measured-track-volume-v1.js?v=track-volume-v1";
+  highSupportTop40Trend,
+  shouldDisplayMeasuredTrackPoint
+} from "./measured-track-volume-v1.js?v=9.15.0-observed-core";
 
 import {
   reprojectWebMercatorRgbaToGeographic
@@ -131,7 +132,7 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.14.0";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.15.0-unplanned";
 
 import {
   initialiseOperationalPowerOutages
@@ -140,6 +141,15 @@ import {
 import {
   initialiseOperationalRiverGauges
 } from "./context-layers/river-gauges-operational-v1.js?v=9.13.2";
+
+import {
+  initialiseOperationalQfdTechnicalRescues
+} from "./context-layers/qfd-technical-rescues-operational-v1.js?v=9.15.0-icons-onload";
+
+import {
+  addVolumeDisplayPoint,
+  setVolumeDisplayOpacity
+} from "./volume-display-opacity-v1.js?v=9.15.0-volume-opacity";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
@@ -449,6 +459,10 @@ initialiseOperationalPowerOutages({
 });
 
 initialiseOperationalRiverGauges({
+  viewer
+});
+
+initialiseOperationalQfdTechnicalRescues({
   viewer
 });
 
@@ -1149,6 +1163,7 @@ function renderInferredVolume(frame) {
     Number(
       $("pointSize").value
     );
+  const volumePercent=Number($("volumeOpacity").value);
 
   const candidateColumns =
     estimateCandidateColumns(
@@ -1254,14 +1269,9 @@ function renderInferredVolume(frame) {
             }
           );
 
-        const colour =
-          colourForDbzh(
-            point.dbzh
-          ).withAlpha(
-            supportStyle.alpha
-          );
+        const colour=colourForDbzh(point.dbzh);
 
-        inferredCollection.add({
+        addVolumeDisplayPoint(inferredCollection,{
           position:
             Cesium.Cartesian3
               .fromDegrees(
@@ -1280,7 +1290,7 @@ function renderInferredVolume(frame) {
 
           disableDepthTestDistance:
             0
-        });
+        },supportStyle.alpha,volumePercent);
 
         renderedPoints++;
         confidenceSum +=
@@ -1552,33 +1562,23 @@ function resetTrackDisplaySelection() {
   }
 }
 
-function useTrackSpecificVolume(
-  index
-) {
-  return (
-    Boolean(
-      $("showTrackVolumes")
-        ?.checked
-    )
-    && hasTrackSpecificVolume(
-      index
-    )
-  );
+function useTrackSpecificVolume(index) {
+  // Measured-track volume is the permanent 3-D mode for observed frames.
+  // A missing track, or temporal gap-fill frame, cannot invent a measured volume.
+  return !isTemporallyInferredRadarFrame(hybridFrames[index])
+    && hasTrackSpecificVolume(index);
 }
 
 function applyHybridVolumeMode(
   index
 ) {
   const wanted = selectedTrackId();
-  const trackVolumesRequested = Boolean($("showTrackVolumes")?.checked);
+  const trackVolumesRequested = true; // Permanent operational mode; no toggle.
   const temporalInferred =
     isTemporallyInferredRadarFrame(
       hybridFrames[index]
     );
-  const useTrackSpecific =
-    !temporalInferred
-    && trackVolumesRequested
-    && hasTrackSpecificVolume(index);
+  const useTrackSpecific = useTrackSpecificVolume(index);
 
   if (inferredCollection) {
     inferredCollection.show =
@@ -1594,7 +1594,8 @@ function applyHybridVolumeMode(
     mode.textContent = temporalInferred
       ? "Temporal gap-fill · frame-wide inferred"
       : useTrackSpecific
-        ? (wanted ? `Selected ${wanted}` : "Measured-track-specific")
+        ? (wanted ? `Selected ${wanted} · observed 2-D echo + inferred 3-D`
+          : "Measured tracks · observed 2-D echo + inferred 3-D")
         : wanted && trackVolumesRequested
           ? `Selected ${wanted} · no track volume in frame`
           : trackVolumesRequested
@@ -2727,6 +2728,7 @@ function renderHybridTracks(index) {
   hybridSource.entities.suspendEvents();
   clearHybridTrackVolumeCollection();
   const showTrackVolumes = useTrackSpecificVolume(index);
+  const volumePercent=Number($("volumeOpacity").value);
   if (showTrackVolumes) hybridTrackVolumeCollection = scene.primitives.add(new Cesium.PointPrimitiveCollection());
   try {
     hybridSource.entities.removeAll();
@@ -2783,17 +2785,44 @@ function renderHybridTracks(index) {
       });
 
       if (showTrackVolumes && volume && hybridTrackVolumeCollection) {
+        const displayedMinimumDbz=Number($("minimumDbzh").value);
         for (const point of volume.points) {
-          hybridTrackVolumeCollection.add({
+          // The volume analysis retains the full inferred profile; only
+          // the user-visible dots follow the same dBZ cutoff as frame-wide.
+          if (!shouldDisplayMeasuredTrackPoint(point,displayedMinimumDbz)) continue;
+          addVolumeDisplayPoint(hybridTrackVolumeCollection,{
             position: Cesium.Cartesian3.fromDegrees(
               point.longitude,
               point.latitude,
               displayAltitude(point.altitude_m_amsl)
             ),
-            color: colourForDbzh(point.dbzh).withAlpha(point.alpha),
+            color: colourForDbzh(point.dbzh),
             pixelSize: trackPointSize(point.support_band),
             disableDepthTestDistance: 0
-          });
+          },point.alpha,volumePercent);
+        }
+
+        // Critical visibility contract: track segmentation decides WHERE
+        // the storm is drawn, not whether the measured 2-D core is downgraded
+        // to an inferred colour at height. Project the published BoM
+        // category/colour at the lower edge of each inferred track column.
+        // This layer is a 2-D footprint projection, NOT a 3-D observation.
+        for (const measured of volume.measured_reflectivity_footprint ?? []) {
+          if (measured.representative_dbzh < displayedMinimumDbz) continue;
+          const rgb=displayRgb(measured.source_category);
+          if (!rgb) continue;
+          addVolumeDisplayPoint(hybridTrackVolumeCollection,{
+            position: Cesium.Cartesian3.fromDegrees(
+              measured.longitude,
+              measured.latitude,
+              displayAltitude(measured.projection_altitude_m_amsl)
+            ),
+            color: Cesium.Color.fromBytes(rgb[0],rgb[1],rgb[2],255),
+            pixelSize: Math.max(3,Number($("pointSize").value)+1),
+            // This projected 2-D source intensity must not disappear
+            // behind inferred vertical points or 3-D terrain.
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
+          },1,volumePercent);
         }
       }
 
@@ -3078,7 +3107,7 @@ async function showHybridFrame(index) {
   $("mapTruthLabel").textContent =
     temporalInferred
       ? "TEMPORALLY INFERRED 2-D · inferred vertical structure · display only"
-      : "Measured reflectivity / inferred vertical structure";
+      : "BoM measured 2-D reflectivity core (projected) / inferred vertical structure";
 
   setStatus(
     temporalInferred
@@ -4204,20 +4233,17 @@ $("hybridPlayButton").addEventListener("click", () => {
   else playback.play();
 });
 
-$("showTrackVolumes").addEventListener(
-  "change",
-  () => {
-    applyHybridVolumeMode(
-      hybridFrameIndex
-    );
-
-    renderHybridTracks(
-      hybridFrameIndex
-    );
+// Toggle existing Cesium track labels immediately on the CURRENT (even paused)
+// frame. Do not rebuild volume primitives, change the timeline or require a
+// subsequent radar scan to apply the user's label preference.
+function updateRenderedTrackLabels() {
+  const visible=Boolean($("showTrackLabels")?.checked);
+  for(const entity of hybridSource.entities.values){
+    if(entity?.label) entity.label.show=visible;
   }
-);
-
-$("showTrackLabels").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
+  scene.requestRender();
+}
+$("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
@@ -4275,6 +4301,17 @@ $("dopplerOpacity").addEventListener("input", event => {
   dopplerOverlayTransition.setOpacity(
     opacity
   );
+  scene.requestRender();
+});
+
+// Display-only point transparency: retained measured source reflectivity and
+// empirical 3-D intensity calculations do not change. No radar/2-D surface
+// opacity or Doppler opacity is altered.
+$("volumeOpacity").addEventListener("input", event => {
+  const percent=Number(event.target.value);
+  $("volumeOpacityValue").textContent=`${percent}%`;
+  setVolumeDisplayOpacity(inferredCollection,percent);
+  setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
   scene.requestRender();
 });
 

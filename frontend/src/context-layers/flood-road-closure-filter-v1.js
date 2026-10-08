@@ -1,18 +1,14 @@
-const FLOOD_EVENT_TYPES = new Set([
-  "flooding"
-]);
-
-const FLOOD_EVENT_SUBTYPES = new Set([
+// Only these four official QLDTraffic classifications justify a displayed
+// road closure. Generic "Flooding", water-over-road and free-text references
+// are insufficient on their own.
+const PERMITTED_ROAD_CLOSURE_REASONS = new Set([
   "flash flooding",
-  "long-term flooding"
+  "long-term flooding",
+  "earlier flooding",
+  "heavy rain"
 ]);
 
-const FLOOD_EVENT_CAUSES = new Set([
-  "earlier flooding",
-  "earlier flash flooding",
-  "water over road",
-  "flooding of river"
-]);
+const CLOSED_TO_ALL_TRAFFIC = "road closed to all traffic";
 
 function normalise(value) {
   return String(value ?? "")
@@ -31,25 +27,44 @@ export function isFloodRelatedRoadEvent(featureOrProperties) {
     propertiesOf(featureOrProperties);
 
   return (
-    FLOOD_EVENT_TYPES.has(
-      normalise(properties.event_type)
-    )
-    || FLOOD_EVENT_SUBTYPES.has(
+    PERMITTED_ROAD_CLOSURE_REASONS.has(
       normalise(properties.event_subtype)
     )
-    || FLOOD_EVENT_CAUSES.has(
+    || PERMITTED_ROAD_CLOSURE_REASONS.has(
       normalise(properties.event_due_to)
     )
   );
+}
+
+// QLDTraffic has no independent "unplanned" boolean. Rely on its
+// structured event_type/event_subtype/event_due_to, never free-text guessing.
+// Hazards, flooding, crashes, emergency/unplanned works and other unscheduled
+// incidents are eligible. Explicitly scheduled works/events are not.
+export function isUnplannedRoadClosureEvent(featureOrProperties) {
+  const p=propertiesOf(featureOrProperties);
+  const type=normalise(p.event_type);
+  const subtype=normalise(p.event_subtype);
+  const dueTo=normalise(p.event_due_to);
+  const reasons=[type,subtype,dueTo];
+  if(reasons.some(value=>/^(planned|scheduled)\b/.test(value)))return false;
+  // Normal planned QLDTraffic roadworks form the bulk of all-traffic closures.
+  // Missing roadwork subtype is ambiguous; include only where explicitly
+  // emergency/unplanned, rather than silently treating works as incidents.
+  if(type==="roadworks" || type==="special event" || type==="special events") {
+    return reasons.some(value=>/\b(emergency|unplanned|unscheduled)\b/.test(value));
+  }
+  // Lack of a structured event classification is not proof of an incident.
+  return Boolean(type||subtype||dueTo);
 }
 
 export function isRoadClosureEvent(featureOrProperties) {
   const properties =
     propertiesOf(featureOrProperties);
 
-  return normalise(
-    properties.impact?.impact_type
-  ) === "closures";
+  return (
+    normalise(properties.impact?.impact_type) === "closures"
+    && normalise(properties.impact?.impact_subtype) === CLOSED_TO_ALL_TRAFFIC
+  );
 }
 
 function parsedEventTime(value) {
@@ -179,7 +194,7 @@ export function isActiveFloodRoadClosure(
       properties,
       nowMs
     )
-    && isFloodRelatedRoadEvent(properties)
+    && isUnplannedRoadClosureEvent(properties)
     && isRoadClosureEvent(properties)
   );
 }
@@ -205,6 +220,30 @@ export function filterFloodRoadClosures(
       : {}),
     type: "FeatureCollection",
     features
+  };
+}
+
+
+// Legacy production behaviour is deliberately retained on the original
+// /flood-road-closures Worker endpoint until V9.15 acceptance. Do not use
+// this less-specific filter in the V9.15 map or preview endpoint.
+const LEGACY_FLOOD_SUBTYPES=new Set(["flash flooding","long-term flooding"]);
+const LEGACY_FLOOD_CAUSES=new Set([
+  "earlier flooding","earlier flash flooding","water over road","flooding of river"
+]);
+export function filterLegacyFloodRoadClosures(payload,nowMs=Date.now()){
+  const features=Array.isArray(payload?.features)?payload.features.filter(feature=>{
+    const p=propertiesOf(feature);
+    return normalise(p.status)==="published"
+      && isRoadEventCurrent(p,nowMs)
+      && normalise(p.impact?.impact_type)==="closures"
+      && (normalise(p.event_type)==="flooding"
+        || LEGACY_FLOOD_SUBTYPES.has(normalise(p.event_subtype))
+        || LEGACY_FLOOD_CAUSES.has(normalise(p.event_due_to)));
+  }):[];
+  return {
+    ...(payload&&typeof payload==="object"?payload:{}),
+    type:"FeatureCollection",features
   };
 }
 

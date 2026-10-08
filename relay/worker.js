@@ -9,7 +9,8 @@ import {
 } from "./doppler-history-v1.js";
 
 import {
-  filterFloodRoadClosures
+  filterFloodRoadClosures,
+  filterLegacyFloodRoadClosures
 } from "../frontend/src/context-layers/flood-road-closure-filter-v1.js";
 
 import {
@@ -161,6 +162,8 @@ function jsonResponse(payload, origin) {
 
 const FLOOD_ROAD_CACHE_URL =
   "https://stormtracker.internal/flood-road-closures-cache-v4";
+const V915_ROAD_CACHE_URL =
+  "https://stormtracker.internal/flood-road-closures-cache-v6";
 
 const FLOOD_ROAD_FRESH_MS =
   5 * 60 * 1000;
@@ -220,14 +223,14 @@ function floodRoadResponse(
   );
 }
 
-async function cachedFloodRoadSnapshot() {
+async function cachedFloodRoadSnapshot(preview=false) {
   try {
     const cache =
       caches.default;
 
     const cached =
       await cache.match(
-        FLOOD_ROAD_CACHE_URL
+        preview ? V915_ROAD_CACHE_URL : FLOOD_ROAD_CACHE_URL
       );
 
     if (!cached) {
@@ -265,7 +268,7 @@ async function cachedFloodRoadSnapshot() {
 }
 
 async function storeFloodRoadSnapshot(
-  payload
+  payload, preview=false
 ) {
   try {
     const cache =
@@ -292,7 +295,7 @@ async function storeFloodRoadSnapshot(
       );
 
     await cache.put(
-      FLOOD_ROAD_CACHE_URL,
+      preview ? V915_ROAD_CACHE_URL : FLOOD_ROAD_CACHE_URL,
       response
     );
 
@@ -303,10 +306,10 @@ async function storeFloodRoadSnapshot(
 }
 
 async function relayFloodRoadClosures(
-  origin
+  origin, preview=false
 ) {
   const cached =
-    await cachedFloodRoadSnapshot();
+    await cachedFloodRoadSnapshot(preview);
 
   if (
     cached
@@ -432,9 +435,8 @@ async function relayFloodRoadClosures(
   }
 
   const filtered =
-    filterFloodRoadClosures(
-      payload
-    );
+    preview ? filterFloodRoadClosures(payload)
+            : filterLegacyFloodRoadClosures(payload);
 
   const filteredPayload = {
     type:
@@ -443,7 +445,9 @@ async function relayFloodRoadClosures(
       filtered.features,
     stormtracker: {
       filter:
-        "published + flood-related + closures",
+        preview
+          ? "published + current + road closed to all traffic + unplanned causes (exclude scheduled/planned works and events)"
+          : "published + flood-related + closures",
       source:
         "Queensland Department of Transport and Main Roads · QLDTraffic",
       upstream:
@@ -453,7 +457,7 @@ async function relayFloodRoadClosures(
 
   const storedAt =
     await storeFloodRoadSnapshot(
-      filteredPayload
+      filteredPayload, preview
     );
 
   return floodRoadResponse(
@@ -1385,9 +1389,11 @@ export default {
     }
 
     if (incoming.pathname === "/flood-road-closures") {
-      return relayFloodRoadClosures(
-        origin
-      );
+      return relayFloodRoadClosures(origin,false);
+    }
+
+    if (incoming.pathname === "/flood-road-closures-v9-15") {
+      return relayFloodRoadClosures(origin,true);
     }
 
     if (incoming.pathname === "/essential-energy-outages") {

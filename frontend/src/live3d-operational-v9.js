@@ -106,9 +106,12 @@ import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operatio
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
   BASEMAP_IDS,
-  createQueenslandPlaceLabelProvider,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.12.1";
+} from "./context-layers/basemap-manager-v1.js?v=9.12.3";
+
+import {
+  createQueenslandTownLabelLayer
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.12.3";
 
 import {
   syncFrameSlider
@@ -255,154 +258,46 @@ mapCamera =
         cameraPerformance.pulse()
   });
 
-let basemapQueenslandPlaceLayer =
-  null;
-
-let basemapQueenslandPlaceErrorDisposer =
-  null;
-
-let basemapReferenceGeneration =
-  0;
-
-function disposeBasemapReferenceListener(
-  disposer
-) {
-  if (
-    typeof disposer
-    === "function"
-  ) {
-    disposer();
+let queenslandTownLabels = null;
+function syncBasemapReferenceLayer(basemapId) {
+  if (queenslandTownLabels) {
+    queenslandTownLabels.setMode(basemapId);
+    return;
   }
+  queenslandTownLabels = createQueenslandTownLabelLayer({
+    viewer,
+    CesiumRef: Cesium,
+    mode: basemapId,
+    onStatus: ({ kind, message }) => {
+      if (kind === "warning") setBasemapStatus(message, "normal");
+    }
+  });
+  void queenslandTownLabels.start().catch(error => {
+    console.warn("Queensland town labels unavailable", error);
+  });
 }
 
-function clearBasemapReferenceLayer() {
-  basemapReferenceGeneration +=
-    1;
-
-  if (
-    basemapQueenslandPlaceLayer
-  ) {
-    viewer.imageryLayers.remove(
-      basemapQueenslandPlaceLayer,
-      true
+// Read-only QA instrumentation is opt-in and does not alter live controls.
+if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
+  window.__stormtrackerTownLabelDiagnostics = () => ({
+    count: queenslandTownLabels?.count ?? 0,
+    visible: queenslandTownLabels?.visibleLabels ?? [],
+    labelMode: queenslandTownLabels?.mode ?? "unloaded",
+    cameraHeight: queenslandTownLabels?.cameraHeight ?? null,
+    cameraPitchDegrees: queenslandTownLabels?.cameraPitchDegrees ?? null,
+    labelCalculations: queenslandTownLabels?.calculationCount ?? 0
+  });
+  // Development-only reproducible camera positions for mobile visual QA.
+  window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {
+    // Camera range is distance from the named town, not altitude above a
+    // potentially offset view. Keep the town at the visual centre.
+    viewer.camera.lookAt(
+      Cesium.Cartesian3.fromDegrees(longitude, latitude, 0),
+      new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(pitch), height)
     );
-  }
-
-  basemapQueenslandPlaceLayer =
-    null;
-
-  disposeBasemapReferenceListener(
-    basemapQueenslandPlaceErrorDisposer
-  );
-
-  basemapQueenslandPlaceErrorDisposer =
-    null;
-}
-
-function keepBasemapReferenceLabelsVisible() {
-  if (
-    basemapQueenslandPlaceLayer
-  ) {
-    viewer.imageryLayers.raiseToTop(
-      basemapQueenslandPlaceLayer
-    );
-  }
-}
-
-function labelFailureStatus(
-  basemapId
-) {
-  return (
-    basemapId
-    === BASEMAP_IDS.QLD_IMAGERY
-      ? "Queensland imagery loaded · Queensland place labels are currently unavailable"
-      : "Street basemap loaded · Queensland place labels are currently unavailable"
-  );
-}
-
-function syncBasemapReferenceLayer(
-  basemapId
-) {
-  clearBasemapReferenceLayer();
-
-  const generation =
-    basemapReferenceGeneration;
-
-  // Use a single authoritative Queensland population-centre overlay.
-  // The global ArcGIS reference overlay was doubling town labels on imagery.
-
-  createQueenslandPlaceLabelProvider(
-    Cesium
-  )
-    .then(
-      provider => {
-        if (
-          generation
-          !== basemapReferenceGeneration
-        ) {
-          return;
-        }
-
-        if (
-          provider.errorEvent
-          ?.addEventListener
-        ) {
-          basemapQueenslandPlaceErrorDisposer =
-            provider.errorEvent
-              .addEventListener(
-                () => {
-                  if (
-                    generation
-                    !== basemapReferenceGeneration
-                  ) {
-                    return;
-                  }
-
-                  setBasemapStatus(
-                    labelFailureStatus(
-                      basemapId
-                    ),
-                    "error"
-                  );
-                }
-              );
-        }
-
-        basemapQueenslandPlaceLayer =
-          viewer.imageryLayers
-            .addImageryProvider(
-              provider
-            );
-
-        keepBasemapReferenceLabelsVisible();
-
-        scene.requestRender();
-      }
-    )
-    .catch(
-      error => {
-        if (
-          generation
-          !== basemapReferenceGeneration
-        ) {
-          return;
-        }
-
-        console.warn(
-          "Queensland place labels unavailable",
-          error
-        );
-
-        setBasemapStatus(
-          labelFailureStatus(
-            basemapId
-          ),
-          "error"
-        );
-      }
-    );
-
-  keepBasemapReferenceLabelsVisible();
+    queenslandTownLabels?.draw(true);
+    scene.requestRender();
+  };
 }
 
 function setTerrainStatus(
@@ -1167,7 +1062,6 @@ async function renderSurface(
     surfaceLayer
   );
 
-  keepBasemapReferenceLabelsVisible();
 
   scene.requestRender();
 
@@ -2620,7 +2514,6 @@ function renderDopplerOverlay() {
                     );
                 }
 
-                keepBasemapReferenceLabelsVisible();
               }
           });
       }

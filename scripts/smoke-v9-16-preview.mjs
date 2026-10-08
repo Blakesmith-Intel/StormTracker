@@ -64,9 +64,27 @@ requireMatch(runtime, /syncSevereStormAlerts\(hybridFrameIndex\)/, "Radar frame 
 requireMatch(detection, /DAMAGING_WIND_GUST_REFERENCE_KMH = 90/, "90 km/h source guard");
 requireMatch(detection, /velocityRangeVerified === true/, "Future independently verified Doppler guard");
 requireMatch(dock, /className = "storm-severe-alert-dock"/, "Published alert dock");
+const [historicalHtml, historicalJson] = await Promise.all([
+  read("preview/v9.16/historical-gympie-v1.html"),
+  read("preview/v9.16/research-gympie/scan_meteorology.json")
+]);
+requireMatch(historicalHtml, /Gympie radar 8 — 24 November 2025/, "Genuine historical viewer");
+requireMatch(historicalHtml, /AURA Level 1/, "Historical data provenance");
+const actualScans = JSON.parse(historicalJson);
+if (!Array.isArray(actualScans) || actualScans.filter(x => x.utc_time && !x.error).length !== 28) {
+  throw new Error("Expected 28 successfully decoded real 2025 AURA radar scans");
+}
+const pngUrl = new URL("preview/v9.16/research-gympie/observed_scan_previews/8_20251124_070000.pvol.png", origin);
+pngUrl.searchParams.set("build_probe", expectedSha.slice(0, 12));
+const pngResponse = await fetch(pngUrl, { method:"HEAD", cache:"no-store", signal:AbortSignal.timeout(12000) });
+if (!pngResponse.ok || !pngResponse.headers.get("content-type")?.includes("image/png")) {
+  throw new Error("Historical measured reflectivity/Doppler preview image missing or invalid");
+}
+
 
 console.log("PASS Published V9.16 candidate at commit " + expectedSha);
 console.log("PASS Mt Stapylton selected; severe storm evidence controls published");
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
 console.log("PASS Production root still points to V9.15.1");
+console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
 console.log("Preview: " + new URL("preview/v9.16/", origin).href);

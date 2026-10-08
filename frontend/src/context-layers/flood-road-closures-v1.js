@@ -1,3 +1,4 @@
+import {qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {MAX_CONTEXT_SNAPSHOT_AGE_MS,sourceSnapshotState,sourceFailureStatus,checkedAtAest} from "./source-freshness-v1.js?v=9.14.0";
 import {
   filterFloodRoadClosures,
@@ -141,26 +142,6 @@ export function floodRoadClosureMarkerCoordinate(
   );
 }
 
-function createRoadClosureBadgeImage() {
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-      <g transform="translate(32 32) rotate(45)">
-        <rect x="-24" y="-24" width="48" height="48" fill="#ffffff"/>
-        <rect x="-21" y="-21" width="42" height="42" fill="#111111"/>
-        <rect x="-17" y="-17" width="34" height="34" fill="#ffd43b"/>
-      </g>
-      <g stroke="#111111" stroke-width="7" stroke-linecap="round">
-        <path d="M22 22 L42 42"/>
-        <path d="M42 22 L22 42"/>
-      </g>
-    </svg>`;
-
-  return (
-    "data:image/svg+xml;charset=utf-8,"
-    + encodeURIComponent(svg)
-  );
-}
-
 async function fetchJson(
   fetchImpl,
   url,
@@ -287,9 +268,6 @@ export function createFloodRoadClosureLayer({
       "#111111"
     );
 
-  const badgeImage =
-    createRoadClosureBadgeImage();
-
   let currentFeatures = [];
   let loading = null;
   let timer = null;
@@ -364,7 +342,7 @@ export function createFloodRoadClosureLayer({
     const graphics = {
       billboard: {
         image:
-          badgeImage,
+          qldTrafficRoadImpactIcon(summary.impactSubtype),
         width:
           38,
         height:

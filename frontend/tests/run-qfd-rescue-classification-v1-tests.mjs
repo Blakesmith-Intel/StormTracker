@@ -205,7 +205,7 @@ await (async()=>{
       viewer,CesiumRef,refreshMs:600000,
       fetchImpl:async url=>{
         requests++;
-        assert.match(url,/FeatureServer\\/0\\?f=json/,
+        assert.ok(url.includes("/FeatureServer/0?f=json"),
           "An OFF layer must fetch only official renderer metadata");
         if(requests===1)return {ok:false,status:503};
         return {ok:true,json:async()=>renderer};

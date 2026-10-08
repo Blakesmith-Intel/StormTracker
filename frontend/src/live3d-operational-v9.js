@@ -584,7 +584,7 @@ const independentDopplerRefresh = createLiveLoopRefresh({
   refresh: () => document.hidden || !$("showDopplerOverlay").checked
     ? undefined : refreshIndependentDopplerHistory(true),
   onError: error => {
-    $("dopplerIndependentStatus").textContent = "Doppler refresh retry: " + error.message;
+    $("dopplerOverlayStatus").textContent = "Doppler refresh retry: " + error.message;
   }
 });
 
@@ -2520,8 +2520,8 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     const previous=independentDopplerFrames;
     const previousIndex=independentDopplerIndexValue;
     const nextIndex=independentDopplerIndex(frames,previous,previousIndex);
-    const resume=independentDopplerPlayback.isPlaying() || (!automatic && !previous.length);
-    await independentDopplerPlayback.pause();
+    // The shared Play/Pause button belongs to the radar timeline.
+    // Doppler refresh must never pause, stop or gate it.
     independentDopplerFrames=frames;
     independentDopplerIndexValue=nextIndex;
     if(!frames.length){
@@ -2539,7 +2539,7 @@ async function refreshIndependentDopplerHistory(automatic=false) {
       catch(error){console.warn("Skipping unreadable wind scan",frames[candidate].observedUtc,error);}
     }
     if(!loaded)throw Error("No decoded Doppler image available in recent source history");
-    if(resume&&frames.length>1)independentDopplerPlayback.play();
+    windCycleCursor=independentDopplerIndexValue;
   }finally{
     independentDopplerLoading=false;
     updateIndependentDopplerUi();
@@ -2548,7 +2548,7 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     if($("showDopplerOverlay").checked &&
        (region!==selectedRadarRegion()||radarId!==$("dopplerOverlayRadar").value)) {
       void refreshIndependentDopplerHistory(false).catch(error=>{
-        $("dopplerIndependentStatus").textContent=error.message;
+        $("dopplerOverlayStatus").textContent=error.message;
       });
     }
   }
@@ -2585,7 +2585,7 @@ function updateDopplerUiForFrame(
 
     $("dopplerSourceRows")
       .innerHTML =
-        '<div class="hybrid-muted">Doppler sequence not loaded.</div>';
+        '<div class="hybrid-muted">Wind source not available.</div>';
 
     renderDopplerOverlay();
 
@@ -3024,6 +3024,8 @@ async function showHybridFrame(index) {
 
   $("hybridFrameLabel").textContent =
     `${hybridFrameIndex + 1}/${hybridFrames.length}${temporalInferred ? " · inferred" : ""}`;
+  const radarClock=$("radarPlaybackTime");
+  if (radarClock) radarClock.textContent=formatProductTime(frame.observedUtc);
 
   const surfaceApplied =
     await renderSurface(
@@ -3052,6 +3054,7 @@ async function showHybridFrame(index) {
   );
 
   syncSevereStormAlerts(hybridFrameIndex);
+  driveWindFromCommonPlayback(hybridFrameIndex);
 
   updateHybridSourceMetrics(
     frame
@@ -4022,7 +4025,6 @@ async function initialise() {
 $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   frameCrossfade.clear();
   ++independentDopplerRequest;
-  await independentDopplerPlayback.pause();
   independentDopplerFrames=[];
   independentDopplerIndexValue=0;
   independentDopplerRecord=null;
@@ -4055,7 +4057,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   // Both reloads run on independent source pathways and clocks.
   if($("showDopplerOverlay").checked) {
     void refreshIndependentDopplerHistory(false).catch(error=>{
-      $("dopplerIndependentStatus").textContent=error.message;
+      $("dopplerOverlayStatus").textContent=error.message;
     });
   }
   await loadHybridSequence();
@@ -4175,7 +4177,6 @@ $("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hyb
 $("showDopplerOverlay").addEventListener("change", async event => {
   if(!event.target.checked){
     ++independentDopplerRequest;
-    await independentDopplerPlayback.pause();
     independentDopplerRecord=null;
     independentDopplerSourceId=null;
     clearDopplerOverlay({smooth:true});
@@ -4183,22 +4184,8 @@ $("showDopplerOverlay").addEventListener("change", async event => {
   }else{
     updateIndependentDopplerUi();
     try { await refreshIndependentDopplerHistory(false); }
-    catch(error){$("dopplerIndependentStatus").textContent="Wind source unavailable: "+error.message;}
+    catch(error){$("dopplerOverlayStatus").textContent="Wind source unavailable: "+error.message;}
   }
-});
-$("dopplerFrameSlider").addEventListener("input", async event => {
-  await independentDopplerPlayback.pause();
-  showIndependentDopplerFrame(Number(event.target.value))
-    .catch(error=>$("dopplerIndependentStatus").textContent=error.message);
-});
-$("dopplerPlayButton").addEventListener("click",()=>{
-  if(independentDopplerPlayback.isPlaying()) independentDopplerPlayback.pause();
-  else independentDopplerPlayback.play();
-});
-$("dopplerLatestButton").addEventListener("click",async ()=>{
-  await independentDopplerPlayback.pause();
-  showIndependentDopplerFrame(independentDopplerFrames.length-1)
-    .catch(error=>$("dopplerIndependentStatus").textContent=error.message);
 });
 
 // Opacity changes only rendered colours, never decoded samples or tracking.
@@ -4232,7 +4219,6 @@ $("volumeOpacity").addEventListener("input", event => {
 
 $("dopplerOverlayRadar").addEventListener("change", async () => {
   ++independentDopplerRequest;
-  await independentDopplerPlayback.pause();
   independentDopplerFrames=[];
   independentDopplerIndexValue=0;
   independentDopplerRecord=null;
@@ -4241,7 +4227,7 @@ $("dopplerOverlayRadar").addEventListener("change", async () => {
   updateIndependentDopplerUi();
   if($("showDopplerOverlay").checked){
     refreshIndependentDopplerHistory(false).catch(error=>{
-      $("dopplerIndependentStatus").textContent=error.message;
+      $("dopplerOverlayStatus").textContent=error.message;
     });
   }
 });

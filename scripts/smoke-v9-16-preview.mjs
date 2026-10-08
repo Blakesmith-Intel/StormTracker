@@ -54,7 +54,7 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock] =
   ]);
 
 requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Production root remains V9.15.1");
-if (productionIndex.includes("9.16-shared-controls")) throw new Error("Production root accidentally points to preview");
+if (productionIndex.includes("9.16-unified-v2")) throw new Error("Production root accidentally points to preview");
 requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-independent-doppler/, "Preview own iframe");
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
@@ -73,6 +73,8 @@ requireMatch(previewHtml, /id="hybridPlayButton"/, "Single Play/Pause control");
 requireMatch(previewHtml, /id="hybridFrameSlider"/, "Single playback scrubber");
 requireMatch(previewHtml, /id="radarPlaybackTime"/, "Radar real source timestamp");
 requireMatch(previewHtml, /id="dopplerPlaybackTime"/, "Doppler real source timestamp");
+requireMatch(previewHtml, /id="sourceTimeGap"/, "Relative observation time difference");
+requireMatch(runtime, /function updateDualSourceTimes\(\)/, "Original source AEST clocks and UTC source attribution");
 if (/id="dopplerPlayButton"|id="dopplerFrameSlider"/.test(previewHtml) ||
     /independentDopplerPlayback/.test(runtime)) {
   throw new Error("Old second wind playback controls or clock remain");

@@ -38,10 +38,11 @@ This file supersedes the older V9.9.1-era order in FUTURE_DEVELOPMENT_HANDOVER.m
    parser must both enforce the allowlist; incident cards show the actual
    official public classification, response time, status and source.
    QFD's map reports general-area locations, not precise rescue sites.
-   QFD-authored icon symbology is preferred; do not falsely label
-   provisional symbols as official. The public ESCAD layer does not
-   presently expose its dashboard renderer or picture-marker files,
-   so provider-artwork verification is an outstanding acceptance gate.
+   Official QFD GroupedType symbology is confirmed in the published
+   ESCAD `drawingInfo.renderer`: all three groups have embedded PNG
+   picture-marker samples. Reuse the publicly available publisher assets
+   directly in map, legend and information panels; on temporary source
+   failure, label any fallback symbol as provisional.
    Continue to require functioning browser CORS, expiry safeguards,
    current-only incident lifecycle and real mobile click validation.
 3. **Future detailed QFD rescue classes (blocked):** only when a legitimately

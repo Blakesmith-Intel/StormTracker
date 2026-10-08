@@ -8,9 +8,14 @@ on:
       - feature/v9.12.4-imagery-only-town-labels
       - feature/v9.12.5-official-state-border
       - feature/v9.13.3-desktop-town-label-readability
+      - feature/v9.13.4-rural-place-label-density
     paths:
       - "frontend/src/context-layers/qld-town-label-*"
       - "frontend/src/context-layers/qld-population-centres-v2.js"
+      - "frontend/src/context-layers/qld-nearby-localities-v1.js"
+      - "frontend/src/context-layers/power-outages-v1.js"
+      - "frontend/tests/run-power-outage-points-v1-tests.mjs"
+      - "scripts/smoke-qld-localities-and-outage-points.mjs"
       - "frontend/tools/qld-town-label-visual-qa.html"
       - "scripts/smoke-qld-town-label-visual.mjs"
       - "scripts/smoke-qld-town-label-production-ui.mjs"
@@ -37,6 +42,8 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: Verify official locality and electricity feeds with GitHub Pages CORS
+        run: node scripts/smoke-qld-localities-and-outage-points.mjs
       - name: Start isolated branch preview HTTP server
         run: |
           python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-label-preview.log 2>&1 &

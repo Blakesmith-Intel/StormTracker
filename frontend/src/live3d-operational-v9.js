@@ -2531,6 +2531,14 @@ async function refreshIndependentDopplerHistory(automatic=false) {
   }finally{
     independentDopplerLoading=false;
     updateIndependentDopplerUi();
+    // A radar-site switch can invalidate an in-flight wind request.
+    // Immediately fetch the newly selected source after it finishes.
+    if($("showDopplerOverlay").checked &&
+       (region!==selectedRadarRegion()||radarId!==$("dopplerOverlayRadar").value)) {
+      void refreshIndependentDopplerHistory(false).catch(error=>{
+        $("dopplerIndependentStatus").textContent=error.message;
+      });
+    }
   }
 }
 

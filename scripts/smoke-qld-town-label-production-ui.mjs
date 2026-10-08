@@ -6,6 +6,7 @@ import {
 } from "../frontend/src/context-layers/qld-town-label-declutter-v1.js";
 
 mkdirSync("qa-screenshots",{recursive:true});
+const runningInCI = Boolean(process.env.CI);
 const browser=await chromium.launch({
   headless:true,
   args:["--no-sandbox","--disable-gpu-sandbox","--use-gl=angle",
@@ -52,6 +53,9 @@ try{
   assert.equal(state.labelMode,"street");
   assert.equal(state.visible.length,0,"Initial Street mode must have NO StormTracker town labels");
   const screenshot = async (fileName) => {
+    // GitHub runners use software WebGL: capturing a constantly rendered
+    // Cesium canvas can block the renderer even if map logic is healthy.
+    if (runningInCI) return;
     try {
       await page.screenshot({
         path:`qa-screenshots/${fileName}.png`,
@@ -153,13 +157,20 @@ try{
   assert.ok(await page.locator("#showRiverGauges").count()===1);
   console.log(`Full StormTracker UI browser smoke passed: surveyed QLD state border restored on imagery, hidden in Street, reappears on satellite return; existing town labels, road/outage/gauge controls intact.`);
 
+  // Software WebGL in CI cannot reliably run two animated Cesium scenes at
+  // once. Finish and release the mobile canvas before creating desktop.
+  await page.close();
+  console.log("Mobile Cesium viewer closed; beginning isolated desktop QA.");
+
   // Desktop acceptance specifically targets the user's Birdsville screenshot:
   // the same real StormTracker viewer must render larger bold rural names on
   // QLD imagery and retain the legacy Street/no-labels contract.
   const desktop=await browser.newPage({
     viewport:{width:1440,height:900},deviceScaleFactor:1
   });
+  desktop.setDefaultTimeout(20000);
   try{
+    console.log("Desktop page startup: loading StormTracker map…");
     await desktop.goto(
       "http://127.0.0.1:8765/live3d-operational-v9.html?qaTownLabels=1",
       {waitUntil:"domcontentloaded",timeout:70000}
@@ -168,7 +179,9 @@ try{
       ()=>window.__stormtrackerTownLabelDiagnostics?.().count>=700,
       null,{timeout:70000}
     );
-    await desktop.locator("#basemapSelect").selectOption("qld-imagery");
+    console.log("Desktop labels available; switching to Queensland imagery…");
+    await desktop.locator("#basemapSelect").selectOption("qld-imagery",{timeout:20000});
+    console.log("Desktop imagery option selected.");
     await desktop.waitForTimeout(800);
     await desktop.evaluate(()=>{
       window.__stormtrackerTownLabelTestCamera(139.35,-25.9,110000,-70);
@@ -192,7 +205,8 @@ try{
     assert.equal(birdsville.font,"bold 15px sans-serif",
       "Desktop Birdsville must use 15px bold glyphs");
     verify(desktopInfo,"Desktop Birdsville 15px");
-    await desktop.locator("#basemapSelect").selectOption("street");
+    console.log("Returning desktop viewer to Street basemap…");
+    await desktop.locator("#basemapSelect").selectOption("street",{timeout:20000});
     await desktop.waitForTimeout(450);
     desktopInfo=await desktop.evaluate(()=>{
       const labels=window.__stormtrackerTownLabelDiagnostics();

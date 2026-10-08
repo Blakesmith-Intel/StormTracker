@@ -213,7 +213,10 @@ export function filterOperationalFloodGauges(features,history={},nowMs=Date.now(
       STORMTRACKER_ALERT_SOURCE:result.source,
       STORMTRACKER_RISE_RATE_M_PER_H:result.rise?.rateMetresPerHour??null,
       STORMTRACKER_RATE_INTERVAL_MINUTES:result.rise?.intervalMinutes??null,
-      STORMTRACKER_TIDAL_BASELINE_M_PER_H:result.tidalBaselineMetresPerHour??null
+      STORMTRACKER_TIDAL_BASELINE_M_PER_H:result.tidalBaselineMetresPerHour??null,
+      STORMTRACKER_TIDAL_CONTEXT: name==="tidal-anomaly"
+        ? "Tidal station · rise faster than its recent observed tidal pattern; not a confirmed flood"
+        : feature.properties?.STORMTRACKER_TIDAL_CONTEXT??""
     }});
   }
   return {features:selected,counts,total:features?.length??0};

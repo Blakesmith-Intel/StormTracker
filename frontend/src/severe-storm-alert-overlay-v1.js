@@ -53,6 +53,11 @@ export function createSevereStormAlertOverlay({
       (alert.source_utc ? " · Doppler " + alert.source_utc : "");
     const warning = documentRef.createElement("p");
     warning.textContent = alert.caveat;
+    const sourceLink = documentRef.createElement("a");
+    sourceLink.textContent = "Open official BoM radar imagery";
+    sourceLink.href = "https://www.bom.gov.au/australia/radar/";
+    sourceLink.target = "_blank";
+    sourceLink.rel = "noopener noreferrer";
     const close = documentRef.createElement("button");
     close.type = "button";
     close.textContent = "Close";
@@ -60,7 +65,7 @@ export function createSevereStormAlertOverlay({
       detail.hidden = true;
       selectedId = "";
     });
-    detail.append(title, measured, source, warning, close);
+    detail.append(title, measured, source, warning, sourceLink, close);
     detail.hidden = false;
     onFocus?.(alert);
   }

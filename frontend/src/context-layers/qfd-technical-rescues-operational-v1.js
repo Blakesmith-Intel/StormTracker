@@ -1,5 +1,6 @@
 import {
-  fetchQfdTechnicalRescues,QFD_REFRESH_MS,QFD_MAX_SNAPSHOT_MS
+  fetchQfdPublicIncidents,QFD_REFRESH_MS,QFD_MAX_SNAPSHOT_MS,
+  QFD_PUBLIC_GROUPS,QFD_PUBLIC_GROUP_NAMES,qfdPublicGroupCounts
 } from "./qfd-technical-rescues-v1.js?v=9.15.0";
 import {sourceSnapshotState,checkedAtAest} from "./source-freshness-v1.js?v=9.14.0";
 import {addOfficialSourceRow,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.15.0";
@@ -7,7 +8,7 @@ import {addOfficialSourceRow,OFFICIAL_SOURCE_LINKS} from "./official-source-link
 const $=id=>document.getElementById(id);
 const statusNode=()=>$("qfdTechnicalRescueStatus");
 const infoNode=()=>$("qfdTechnicalRescueInfo");
-const RESCUE_SOURCE_NOTE="QFD publishes general incident areas, not exact rescue locations. Swift-water and vertical subtypes are not available in the public feed.";
+const RESCUE_SOURCE_NOTE="QFD public GroupedType is a broad incident classification. Location is approximate; rescue subtypes, road closures and SES involvement are not independently confirmed.";
 
 function setStatus({kind="normal",message=""}={}) {
   const el=statusNode();
@@ -36,13 +37,15 @@ export function initialiseOperationalQfdTechnicalRescues({
   viewer,CesiumRef=globalThis.Cesium,fetchImpl=globalThis.fetch,
   refreshMs=QFD_REFRESH_MS,now=()=>Date.now()
 }={}) {
-  if(!viewer || !CesiumRef)throw new Error("QFD technical rescue layer needs Cesium viewer");
+  if(!viewer || !CesiumRef)throw new Error("QFD incidents layer needs Cesium viewer");
   const checkbox=$("showQfdTechnicalRescues");
   const info=infoNode();
-  const dataSource=new CesiumRef.CustomDataSource("qfd-technical-rescues");
+  const dataSource=new CesiumRef.CustomDataSource("qfd-public-incidents");
   dataSource.show=Boolean(checkbox?.checked);
   viewer.dataSources.add(dataSource);
-  const pinColor=CesiumRef.Color.fromCssColorString("#c78aff");
+  const categoryColors=Object.fromEntries(QFD_PUBLIC_GROUP_NAMES.map(g=>[
+    g,CesiumRef.Color.fromCssColorString(QFD_PUBLIC_GROUPS[g].color)
+  ]));
   const edgeColor=CesiumRef.Color.fromCssColorString("#1d1426");
   const canvas=viewer.scene.canvas;
   let records=[],lastLoadedAt=0,lastStatus=null,loading=null,timer=null,selectedId="";
@@ -58,8 +61,12 @@ export function initialiseOperationalQfdTechnicalRescues({
     const rows=$("qfdTechnicalRescueInfoRows");
     if(!rows)return;
     rows.replaceChildren();
-    detailRow(rows,"Classification","TECHNICAL RESCUE · subtype unspecified");
+    detailRow(rows,"QFD grouped type",item.groupedType);
+    if(item.groupedType==="RESCUE TECHNICAL")
+      detailRow(rows,"Detailed rescue type","Not specified by QFD public data");
     detailRow(rows,"Status",item.status);
+    detailRow(rows,"Public area",item.location);
+    detailRow(rows,"Jurisdiction",item.jurisdiction);
     detailRow(rows,"Response",fmtDate(item.responseAt));
     detailRow(rows,"Last source update",fmtDate(item.lastUpdatedAt));
     detailRow(rows,"QFD incident",item.id);
@@ -77,11 +84,11 @@ export function initialiseOperationalQfdTechnicalRescues({
     dataSource.entities.removeAll();
     for(const item of records){
       const entity=dataSource.entities.add({
-        id:"qfd-rescue:"+item.id,
-        name:"QFD technical rescue — subtype unspecified",
+        id:"qfd-incident:"+item.id,
+        name:"QFD "+item.groupLabel,
         position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude),
         point:{
-          pixelSize:15,color:pinColor,outlineColor:edgeColor,outlineWidth:3,
+          pixelSize:15,color:categoryColors[item.groupedType],outlineColor:edgeColor,outlineWidth:3,
           heightReference:CesiumRef.HeightReference?.CLAMP_TO_GROUND,
           disableDepthTestDistance:Number.POSITIVE_INFINITY
         }
@@ -94,24 +101,27 @@ export function initialiseOperationalQfdTechnicalRescues({
   function expire() {
     if(!sourceSnapshotState({lastLoadedAt,maxAgeMs:QFD_MAX_SNAPSHOT_MS,nowMs:now()}).expired)return false;
     if(records.length){render([]);}
-    report({kind:"error",message:"QFD public feed expired · rescue markers cleared · last checked "+checkedAtAest(lastLoadedAt)});
+    report({kind:"error",message:"QFD public feed expired · incident markers cleared · last checked "+checkedAtAest(lastLoadedAt)});
     return true;
   }
   async function refresh({force=false}={}){
     if(!dataSource.show&&!force)return records.slice();
     if(loading)return loading;
     loading=(async()=>{
-      report({kind:"loading",message:"Checking QFD public technical-rescue incidents…"});
-      const next=await fetchQfdTechnicalRescues({fetchImpl});
+      report({kind:"loading",message:"Checking QFD grouped incidents…"});
+      const next=await fetchQfdPublicIncidents({fetchImpl});
       render(next);
       lastLoadedAt=now();
-      report({kind:"ok",message:next.length+" public technical rescue incident(s) · subtype unspecified · checked "+checkedAtAest(lastLoadedAt)});
+      const counts=qfdPublicGroupCounts(next);
+      report({kind:"ok",message:"QFD "+next.length+" · Technical "+counts["RESCUE TECHNICAL"]+
+        " · Road crash "+counts["RESCUE ROAD CRASH"]+" · Assist public "+counts["ASSIST PUBLIC"]+
+        " · checked "+checkedAtAest(lastLoadedAt)});
       return records.slice();
     })();
     try{return await loading;}
     catch(error){
       if(!expire()){
-        report({kind:"warning",message:"QFD feed unavailable · cached rescues UNVERIFIED · "+String(error?.message??error).slice(0,140)});
+        report({kind:"warning",message:"QFD feed unavailable · cached incidents UNVERIFIED · "+String(error?.message??error).slice(0,140)});
       }
       throw error;
     }finally{loading=null;}
@@ -122,7 +132,7 @@ export function initialiseOperationalQfdTechnicalRescues({
     viewer.scene.requestRender();
     if(!dataSource.show){
       showInfo(null);
-      setStatus({message:"QFD technical-rescue markers hidden"});
+      setStatus({message:"QFD grouped incidents hidden"});
     }else if(!lastLoadedAt || now()-lastLoadedAt>=refreshMs) {
       refresh().catch(()=>{});
     }else if(lastStatus)setStatus(lastStatus);
@@ -176,7 +186,7 @@ export function initialiseOperationalQfdTechnicalRescues({
     window.addEventListener("pointercancel",onCancel,{capture:true,passive:true});
     document.addEventListener("visibilitychange",onVisibility);
     if(dataSource.show)refresh().catch(()=>{});
-    else setStatus({kind:"normal",message:"QFD technical rescue available · subtype unspecified · off by default"});
+    else setStatus({kind:"normal",message:"QFD technical rescue / road crash / assist public · off by default"});
     timer=setInterval(()=>{
       if(!document.hidden){expire();if(dataSource.show)refresh().catch(()=>{});}
     },refreshMs);

@@ -38,7 +38,10 @@ export function townLabelTypography(width, population = 0) {
 }
 
 export function townLabelBox({ name, x, y, fontSize = 12 }) {
-  const textWidth = Math.min(220, Math.max(24, name.length * fontSize * 0.60));
+  // Allow additional width for the heavier desktop glyphs; conservative
+  // estimate avoids overlapping rural names at oblique camera angles.
+  const textWidth = Math.min(280, Math.max(24, name.length * fontSize *
+    (fontSize >= 15 ? 0.66 : 0.60)));
   const halfWidth = textWidth / 2 + 7;
   const halfHeight = fontSize * 0.65 + 4;
   return {

@@ -1,7 +1,7 @@
 import {
   createRiverGaugeLayer,
   riverGaugeOperationalSummary
-} from "./river-gauge-layer-v1.js?v=9.12.0";
+} from "./river-gauge-layer-v1.js?v=9.13.0";
 
 import {
   BOM_RIVER_TIDE_GAUGE_ATTRIBUTION
@@ -175,9 +175,11 @@ function showRiverGaugeInfo(
 
   if (kicker) {
     kicker.textContent =
-      summary.tidal
-        ? "RIVER / TIDE GAUGE"
-        : "RIVER GAUGE";
+      summary.displayState === "tidal-anomaly"
+        ? "UNUSUAL TIDAL RISE · SCREENING"
+        : summary.displayState === "rapid-rise"
+          ? "RAPID RIVER RISE · SCREENING"
+          : "BOM RIVER FLOOD CLASSIFICATION";
   }
 
   rows.replaceChildren();
@@ -191,9 +193,21 @@ function showRiverGaugeInfo(
       : `${summary.heightMetres.toFixed(2)} m`
   );
 
-  addDetailRow(
-    rows,
-    "Tendency",
+  addDetailRow(rows, "Signal", summary.alertReason);
+
+  addDetailRow(rows, "Measured rise",
+    summary.riseRateMetresPerHour === null ? "" :
+      `${summary.riseRateMetresPerHour.toFixed(2)} m/hour`);
+
+  addDetailRow(rows, "Rise interval",
+    summary.rateIntervalMinutes === null ? "" :
+      `${Math.round(summary.rateIntervalMinutes)} min`);
+
+  addDetailRow(rows, "Historic tidal rise P90",
+    summary.tidalBaselineMetresPerHour === null ? "" :
+      `${summary.tidalBaselineMetresPerHour.toFixed(2)} m/hour`);
+
+  addDetailRow(rows, "Tendency",
     labelTendency(
       summary.tendency
     )
@@ -261,6 +275,11 @@ function showRiverGaugeInfo(
     "Source",
     BOM_RIVER_TIDE_GAUGE_ATTRIBUTION
   );
+
+  addDetailRow(rows, "Interpretation",
+    summary.displayState === "rapid-rise" || summary.displayState === "tidal-anomaly"
+      ? "Screening indicator only; check BoM warnings and local conditions. Not a confirmed flash flood."
+      : "Observed BoM flood classification; follow current official warnings and emergency advice.");
 
   panel.hidden =
     false;
@@ -749,7 +768,7 @@ export function initialiseOperationalRiverGauges({
 
           setRiverGaugeStatus({
             message:
-              "BoM river gauges hidden"
+              "Flood-signal markers hidden · observations continue while this page is open"
           });
         }
       }

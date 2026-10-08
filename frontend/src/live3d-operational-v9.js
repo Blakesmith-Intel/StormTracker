@@ -3301,9 +3301,7 @@ async function loadHybridSequence(automatic = false) {
       );
     }
   }
-  const discoveredImages = new Set([...sources.histories].flatMap(([id, history]) =>
-    history.frames.map(frame => `${id}:${frame.filename}`)));
-  for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
+  // Doppler frame cache cannot be pruned by a reflectivity source refresh.
   const availableEndUtc =
     automaticRefreshEndUtc({
       withDoppler: false,
@@ -4003,7 +4001,14 @@ async function initialise() {
 
 $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   frameCrossfade.clear();
+  ++independentDopplerRequest;
+  await independentDopplerPlayback.pause();
+  independentDopplerFrames=[];
+  independentDopplerIndexValue=0;
+  independentDopplerRecord=null;
+  independentDopplerSourceId=null;
   configureRadarSite(); resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();
+  updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;
   lastSourceDiscoveryRegion = null;
@@ -4027,6 +4032,12 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   $("loopDurationMinutes").disabled = true;
   $("operationalLoopWindow").textContent = "Checking history";
   hybridSource.entities.removeAll(); clearHybridTrackVolumeCollection();
+  // Both reloads run on independent source pathways and clocks.
+  if($("showDopplerOverlay").checked) {
+    void refreshIndependentDopplerHistory(false).catch(error=>{
+      $("dopplerIndependentStatus").textContent=error.message;
+    });
+  }
   await loadHybridSequence();
 }));
 

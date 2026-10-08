@@ -161,13 +161,13 @@ export function createSevereStormAlertOverlay({
     setEnabled(value) { enabled = Boolean(value); draw(); scene.requestRender(); },
     setFrame({ alerts: next = [], observedFrame = false,
       windSupported = false, experimentalHook = false,
-      displayedUtc: utc = null, atNewestFrame = false } = {}) {
+      displayedUtc: utc = null, atNewestFrame: isNewestFrame = false } = {}) {
       alerts = next;
       hasObservedFrame = observedFrame;
       windSourceSupported = windSupported;
       hookExperimental = experimentalHook;
       displayedUtc = utc;
-      atNewestFrame = Boolean(atNewestFrame);
+      atNewestFrame = Boolean(isNewestFrame);
       selectedId = "";
       detail.hidden = true;
       draw();

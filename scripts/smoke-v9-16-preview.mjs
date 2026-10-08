@@ -55,8 +55,8 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock, men
   ]);
 
 requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Production root remains V9.15.1");
-if (productionIndex.includes("9.16-window-menu-v1")) throw new Error("Production root accidentally points to preview");
-requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-window-menu-v1/, "Preview own iframe");
+if (productionIndex.includes("9.16-window-menu-v2")) throw new Error("Production root accidentally points to preview");
+requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-window-menu-v2/, "Preview own iframe");
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");
@@ -82,6 +82,8 @@ requireMatch(menuChoices, /RAIN_ONLY_LOOP_MINUTES = Object.freeze\(\[60,120,180\
 requireMatch(menuChoices, /Rain radar only/, "Rain-only window wording");
 requireMatch(runtime, /function shouldDisplayDopplerForSelectedWindow\(\)/, "Doppler visibility follows combined mode");
 requireMatch(runtime, /return isDopplerSourceActive\(\) && isCombinedDopplerWindowSelected\(\)/, "Rain-only Doppler suppression");
+requireMatch(runtime, /const selected = choices.some\(choice => choice.value === previous\)/, "Never silently switch rain-only to combined playback");
+requireMatch(runtime, /\$\("loadHybridButton"\).disabled = !selectedWindow/, "Disable unavailable playback load");
 requireMatch(runtime, /renderDopplerOverlay\(\);\s*updateIndependentDopplerUi\(\);\s*updateLoopButtonLabel\(\)/, "Changing window clears lingering wind imagery");
 
 requireMatch(runtime, /hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/, "Combined timeline playback assembly");

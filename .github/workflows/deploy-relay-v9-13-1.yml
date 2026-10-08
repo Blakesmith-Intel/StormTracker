@@ -1,0 +1,38 @@
+name: Deploy existing BoM relay V9.13.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.13.1-bom-historical-bootstrap
+    paths:
+      - "relay/worker.js"
+      - "frontend/src/context-layers/bom-recent-river-history-v1.js"
+      - "frontend/tests/run-bom-recent-river-relay-v1-tests.mjs"
+      - ".github/workflows/deploy-relay-v9-13-1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify existing browser relay remains backward compatible
+        run: |
+          npm test
+          node --check relay/worker.js
+      - name: Deploy existing CORS relay, no new hosting or service
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: relay
+          command: deploy
+      - name: Verify deployed recent-history endpoint
+        run: node scripts/smoke-bom-recent-relay-v1.mjs

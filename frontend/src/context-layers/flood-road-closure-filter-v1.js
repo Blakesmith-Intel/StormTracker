@@ -46,12 +46,12 @@ export function isUnplannedRoadClosureEvent(featureOrProperties) {
   const subtype=normalise(p.event_subtype);
   const dueTo=normalise(p.event_due_to);
   const reasons=[type,subtype,dueTo];
-  if(reasons.some(value=>/^(planned|scheduled)\\b/.test(value)))return false;
+  if(reasons.some(value=>/^(planned|scheduled)\b/.test(value)))return false;
   // Normal planned QLDTraffic roadworks form the bulk of all-traffic closures.
   // Missing roadwork subtype is ambiguous; include only where explicitly
   // emergency/unplanned, rather than silently treating works as incidents.
   if(type==="roadworks" || type==="special event" || type==="special events") {
-    return reasons.some(value=>/\\b(emergency|unplanned|unscheduled)\\b/.test(value));
+    return reasons.some(value=>/\b(emergency|unplanned|unscheduled)\b/.test(value));
   }
   // Lack of a structured event classification is not proof of an incident.
   return Boolean(type||subtype||dueTo);

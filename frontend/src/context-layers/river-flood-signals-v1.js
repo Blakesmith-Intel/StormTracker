@@ -91,6 +91,26 @@ export function cleanFloodSignalHistory(data,nowMs=Date.now()) {
   return history;
 }
 
+// Only the tidal rate screen needs two days of measurements. Retain four
+// hours for other river gauges so 1,000+ monitored sites fit mobile storage.
+// Missing stations preserve their recent history through a partial bulletin.
+export function compactFloodHistory(history, features=[], nowMs=Date.now()) {
+  const types=new Map((features??[]).map(f=>[
+    String(f?.id??""),
+    String(f?.properties?.location_types??"").toLowerCase().includes("tide gauge")
+  ]));
+  const stored={};
+  for(const [id,samples] of Object.entries(history??{})) {
+    const age=types.get(id)===false ? 4*3600000 : FLOOD_SIGNAL_HISTORY_MS;
+    const current=Array.isArray(samples) ? samples.filter(p=>
+      finite(p?.time) && finite(p?.height) &&
+      p.time >= nowMs-age && p.time <= nowMs+5*60000
+    ).slice(-225):[];
+    if(current.length)stored[id]=current;
+  }
+  return stored;
+}
+
 export function latestRiseRate(samples, nowMs=Date.now()) {
   const sorted=(Array.isArray(samples)?samples:[]).filter(p=>
     finite(p?.time) && finite(p?.height)).sort((a,b)=>a.time-b.time);

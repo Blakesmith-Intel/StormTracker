@@ -1,0 +1,36 @@
+name: Visual QA V9.13 flood signals
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.13.0-bom-flood-signal-filter
+    paths:
+      - "scripts/smoke-bom-flood-signal-browser.mjs"
+      - ".github/workflows/visual-smoke-v9-13-flood-signals.yml"
+      - "frontend/src/context-layers/river-gauge-layer-v1.js"
+      - "frontend/src/context-layers/river-gauges-operational-v1.js"
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install mobile browser for visual integration checks
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start preview
+        run: |
+          python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-flood-preview.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/live3d-operational-v9.html >/dev/null
+      - name: Test real BoM feed and exception-only gauge markers on mobile map
+        run: node scripts/smoke-bom-flood-signal-browser.mjs

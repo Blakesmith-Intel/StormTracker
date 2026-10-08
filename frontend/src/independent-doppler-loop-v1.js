@@ -54,3 +54,8 @@ export function nearestIndependentDopplerFrameIndex(frames, displayedRadarUtc) {
   }
   return selected;
 }
+
+export function nextNativeDopplerIndex(current, frameCount) {
+  if (!Number.isInteger(frameCount) || frameCount < 1) return -1;
+  return (Math.max(-1, Number(current)) + 1) % frameCount;
+}

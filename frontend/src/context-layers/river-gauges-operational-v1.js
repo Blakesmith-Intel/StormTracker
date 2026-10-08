@@ -139,9 +139,7 @@ function showRiverGaugeInfo(
     panel.hidden =
       true;
 
-    $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
-
-  panel.dataset
+    panel.dataset
       .gaugeId =
       "";
 
@@ -164,6 +162,8 @@ function showRiverGaugeInfo(
       "hidden",
       ""
     );
+
+  $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
 
   panel.dataset
     .gaugeId =

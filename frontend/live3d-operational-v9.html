@@ -35,7 +35,7 @@
       <div class="button-grid"><button id="loadHybridButton" disabled>Load 30-min storm loop</button><button id="loadButton" disabled>Refresh latest</button></div>
       <div class="playback-row"><button id="hybridPlayButton" disabled aria-pressed="false">Play</button><button id="jumpLatestButton" disabled>Latest</button><label for="hybridFrameSlider">Frame <strong id="hybridFrameLabel">—</strong></label></div>
       <input id="hybridFrameSlider" aria-label="Sequence frame" type="range" min="0" max="0" step="1" value="0" disabled>
-      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span>Radar <strong id="radarPlaybackTime">—</strong></span><span>Doppler <strong id="dopplerPlaybackTime">Off</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Actual time separation between these independent radar products" hidden></span></div>
+      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span>Radar <strong id="radarPlaybackTime">—</strong></span><span>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Actual time separation between these independent radar products" hidden></span></div>
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card layer-controls">
@@ -82,7 +82,7 @@
         <span><i style="background:#6ab6ff"></i>20–29</span><span><i style="background:#1e78ff"></i>30–39</span><span><i style="background:#00b96b"></i>40–49</span><span><i style="background:#ffd21a"></i>50–54</span><span><i style="background:#ff5a22"></i>55–59</span><span><i style="background:#bd2fff"></i>60+</span>
       </div></div>
       <strong class="velocity-title">Doppler radial velocity · km/h</strong>
-      <div id="dopplerVelocityLegend"><span class="note">BoM Doppler legend appears when the layer is enabled.</span></div>
+      <div id="dopplerVelocityLegend"><span class="note">BoM Doppler legend appears when a valid wind source is available.</span></div>
       <div class="support-scale"><span><i class="support-dot support-high"></i>High support</span><span><i class="support-dot support-medium"></i>Medium</span><span><i class="support-dot support-low"></i>Low</span></div>
       <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
     </section>
@@ -269,7 +269,7 @@
     </section><p class="note">High / medium / low support describe empirical occupancy and P25–P75 spread, not calibrated probabilities.</p></div>
   <div data-detail-panel="sources" hidden>
     <section class="card"><h2>Reflectivity</h2><div class="metric"><span>Source time</span><strong id="sourceTime">—</strong><span>Decoded pixels</span><strong id="decodedPixels">—</strong><span>Observed maximum</span><strong id="sourceMaximum">—</strong></div></section>
-    <section class="card"><h2>Independent Doppler history</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Active Doppler source</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
+    <section class="card"><h2>Doppler source history</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Active Doppler source</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
     <div id="dopplerSourceRows"><span class="hybrid-muted">The wind history runs independently of radar tracking.</span></div>
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>

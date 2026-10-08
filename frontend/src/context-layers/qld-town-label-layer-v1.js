@@ -44,6 +44,9 @@ export function createQueenslandTownLabelLayer({
     scene,
     blendOption: CesiumRef.BlendOption?.TRANSLUCENT
   }));
+  // Cesium-level visibility gate: OSM Street already draws its own names.
+  // Keep a single collection for imagery, never show it on Street.
+  collection.show = mode === "qld-imagery";
   let destroyed = false;
   let started = null;
   let towns = [];
@@ -97,9 +100,6 @@ export function createQueenslandTownLabelLayer({
         ellipsoid, camera.positionWC
       );
       for (const place of towns) {
-        // The Street tiles already contain major-city names; add only the
-        // smaller communities that are frequently sparse in rural coverage.
-        if (currentMode === "street" && place.population >= 15000) continue;
         // The opposite side of the globe must never become a floating
         // label projected above the horizon.
         if (!occluder.isPointVisible(place.position)) continue;
@@ -136,6 +136,9 @@ export function createQueenslandTownLabelLayer({
   function setMode(nextMode) {
     if (destroyed) return;
     const modeValue = nextMode === "qld-imagery" ? "qld-imagery" : "street";
+    // Hide the entire collection synchronously before basemap tile swaps.
+    // Mode changes are a hard visibility boundary, not a population filter.
+    collection.show = modeValue === "qld-imagery";
     if (currentMode !== modeValue) {
       currentMode = modeValue;
       draw(true);

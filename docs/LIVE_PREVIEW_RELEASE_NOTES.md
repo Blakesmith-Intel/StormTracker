@@ -60,3 +60,27 @@ this preview refresh.
 As before, refreshing the generated Pages preview folder does **not**
 merge the pending V9.14 or V9.15 feature PRs into production. Main
 `frontend/` remains the previously accepted V9.13.4 root build.
+
+## V9.15 authorised preview refresh — strict QLDTraffic + source icons
+
+This update **does not change production frontend code** and does not merge
+the V9.14 or V9.15 candidate PRs. The existing GitHub Pages workflow
+independently tests and copies the latest candidate files into
+`/StormTracker/preview/v9.15.0/` under the allowed Cloudflare CORS origin.
+
+V9.15 now uses the isolated Worker `/flood-road-closures-v9-15` route.
+The original `/flood-road-closures` endpoint and its v4 cache are
+preserved for production. The V9.15 route uses its own v5 cache and
+requires official QLDTraffic to say **Road closed to all traffic** due
+to Flash flooding, Long-term flooding, Earlier flooding or Heavy rain.
+
+[Live deployed relay validation](https://github.com/Blakesmith-Intel/StormTracker/actions/runs/37796359282)
+passed against the official upstream GeoJSON, including Laidley Creek
+West Road (event 750590), and verified browser-origin CORS. The
+original public QLDTraffic road-closed PNG is shared by Cesium map
+pins and the legend. Storm-track labels now change immediately on
+paused frames without waiting for a new radar update.
+
+After this Pages deployment completes, verify the icon/closure
+presentation and paused label switch in the actual V9.15 browser preview.
+No full release/seal until operational visual acceptance.

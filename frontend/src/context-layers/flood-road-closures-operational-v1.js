@@ -179,7 +179,9 @@ function showClosureInfo(
     panel.hidden =
       true;
 
-    panel.dataset.closureId =
+    $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
+
+  panel.dataset.closureId =
       "";
 
     return;
@@ -642,7 +644,7 @@ export function initialiseOperationalFloodRoadClosures({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo"
+            "#nav,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo"
           );
 
       if (blockedControl) {

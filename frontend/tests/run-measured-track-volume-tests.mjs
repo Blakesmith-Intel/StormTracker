@@ -107,6 +107,15 @@ assert.equal(volume.inferred_point_count, 12);
 assert.equal(volume.high_support_points, 8);
 assert.equal(volume.low_support_points, 4);
 assert.equal(volume.high_support_top_40_m_amsl, 1500);
+// Every measured segmentation pixel preserves its original radar category,
+// independent of the inferred vertical profile used for 3-D geometry.
+assert.equal(volume.measured_reflectivity_footprint.length,4);
+assert.deepEqual(volume.measured_reflectivity_footprint.map(p=>p.source_category),[7,7,7,7]);
+assert.ok(volume.measured_reflectivity_footprint.every(p=>
+  p.representative_dbzh>=40 &&
+  Number.isFinite(p.longitude) &&
+  Number.isFinite(p.latitude) &&
+  p.projection_altitude_m_amsl>=0));
 
 const later = {
   ...volume,
@@ -134,4 +143,4 @@ assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:33},40),false);
 assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:50},40),true);
 assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:NaN},30),false);
 assert.equal(volume.inferred_point_count,12); // Retains 20 dBZ science.
-console.log("14 measured-track-volume checks passed, including rendered dBZ parity.");
+console.log("18 measured-track-volume checks passed, including original measured 2-D category preservation.");

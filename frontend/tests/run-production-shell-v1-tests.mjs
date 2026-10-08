@@ -161,4 +161,4 @@ assert.equal(exists("frontend/src/christmas-2023-derecho-scenario-v1.js"), true)
 assert.equal(exists("frontend/src/christmas-2023-regression-v1.js"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-derecho-scenario-v1-tests.mjs"), true);
 assert.equal(exists("frontend/tests/run-christmas-2023-regression-v1-tests.mjs"), true);
-console.log("Production shell checks passed: V9.13.0 retains BoM gauges, uses only unplanned Queensland outages and de-duplicates rural town labels, road closures and historical regressions.");
+console.log("Production shell checks passed: V9.13.1 retains BoM gauges, uses only unplanned Queensland outages and de-duplicates rural town labels, road closures and historical regressions.");

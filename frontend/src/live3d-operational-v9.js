@@ -578,7 +578,7 @@ function chooseWindCursorForRadar(radarIndex) {
   return Math.round(fraction * (windFrames.length - 1));
 }
 function driveWindFromCommonPlayback(radarIndex) {
-  if (!isDopplerSourceActive() || !independentDopplerFrames.length) return;
+  if (!shouldDisplayDopplerForSelectedWindow() || !independentDopplerFrames.length) return;
   const key=String(radarIndex)+":"+String(hybridFrames[radarIndex]?.observedUtc);
   if(!playback.isPlaying() && key===windLastRadarDriveKey && !hybridCombinedSchedule.length)return;
   windLastRadarDriveKey=key;
@@ -700,6 +700,11 @@ function availableHistorySummary(times = availableRadarHistoryTimes) {
 const RAIN_ONLY_LOOP_MINUTES = Object.freeze([60, 120, 180]);
 function isCombinedDopplerWindowSelected() {
   return selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE;
+}
+function shouldDisplayDopplerForSelectedWindow() {
+  // Source history keeps updating in the background for menu availability,
+  // but 60/120/180-minute rain-only playback must never hold wind images.
+  return isDopplerSourceActive() && isCombinedDopplerWindowSelected();
 }
 
 function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
@@ -2407,7 +2412,7 @@ function renderDopplerOverlay() {
   renderDopplerVelocityLegend(radarId);
   const token=++dopplerOverlayRenderToken;
   const status=$("dopplerOverlayStatus");
-  if(!isDopplerSourceActive()){
+  if(!shouldDisplayDopplerForSelectedWindow()){
     dopplerOverlayTransition.clear();
     $("dopplerOverlayCount").textContent="0";
     if(status)status.textContent="hidden";
@@ -2433,7 +2438,7 @@ function renderDopplerOverlay() {
   Cesium.SingleTileImageryProvider.fromUrl(raster.canvas.toDataURL("image/png"),{
     rectangle:raster.rectangle
   }).then(provider=>{
-    if(token!==dopplerOverlayRenderToken||!isDopplerSourceActive()||
+    if(token!==dopplerOverlayRenderToken||!shouldDisplayDopplerForSelectedWindow()||
        independentDopplerSourceId!==radarId)return;
     dopplerOverlayTransition.replace({
       layer:new Cesium.ImageryLayer(provider),key,alpha:opacity,
@@ -2453,14 +2458,14 @@ function formatDualClock(utc) {
 }
 function updateDualSourceTimes() {
   const radarUtc=hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
-  const windUtc=isDopplerSourceActive() ? independentDopplerRecord?.observedUtc : null;
+  const windUtc=shouldDisplayDopplerForSelectedWindow() ? independentDopplerRecord?.observedUtc : null;
   const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
   if(radar){
     radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
     radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
   }
   if(wind){
-    wind.textContent=!isDopplerSourceActive() ? "Off" :
+    wind.textContent=!shouldDisplayDopplerForSelectedWindow() ? "Rain only" :
       windUtc ? formatDualClock(windUtc) : "Loading";
     wind.title=windUtc ? formatProductTime(windUtc) : "No measured Doppler frame displayed";
   }
@@ -2475,7 +2480,7 @@ function updateDualSourceTimes() {
   }
 }
 function updateIndependentDopplerUi() {
-  const active=isDopplerSourceActive();
+  const active=shouldDisplayDopplerForSelectedWindow();
   const total=independentDopplerFrames.length;
   const item=independentDopplerFrames[independentDopplerIndexValue];
   const label=total ? (independentDopplerIndexValue+1)+"/"+total : "—";
@@ -4194,6 +4199,10 @@ $("terrainEnabled").addEventListener(
 
 $("loopDurationMinutes").addEventListener("change", () => {
   frameCrossfade.clear();
+  // Apply the visible-mode boundary immediately, before the new radar
+  // history finishes loading. Doppler's source cache remains untouched.
+  renderDopplerOverlay();
+  updateIndependentDopplerUi();
   updateLoopButtonLabel();
   if (!sequenceLoading) runSourceLoad(loadHybridSequence);
 });

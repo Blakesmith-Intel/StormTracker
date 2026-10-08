@@ -5,7 +5,7 @@ import {
   rankQueenslandTowns,
   layoutTownLabels,
   labelBudget
-} from "./qld-town-label-declutter-v1.js?v=9.12.3";
+} from "./qld-town-label-declutter-v1.js?v=9.12.4";
 
 // Cesium camera.pitch may describe the camera's current reference frame
 // (for example after lookAt transforms). Use the actual world-space line of

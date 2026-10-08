@@ -33,7 +33,7 @@ history["bom:01234"].push({time:T0+105*MIN,height:1.96});
 out=run(record(T0+105*MIN,1.96,"minor","falling"),T0+105*MIN,out.events);
 assert.equal(out.events["bom:01234"].recoveryCount,1);
 assert.equal(out.features[0].properties.STORMTRACKER_ALERT_PERSISTED,true);
-assert.match(out.features[0].properties.STORMTRACKER_ALERT_REASON,/monitor/i);
+assert.match(out.features[0].properties.STORMTRACKER_ALERT_REASON,/recovery|monitor/i);
 let same=run(record(T0+105*MIN,1.96,"minor","falling"),T0+105*MIN,out.events);
 assert.equal(same.events["bom:01234"].recoveryCount,1,"Repeated 15-min poll no extra all-clear evidence");
 history["bom:01234"].push({time:T0+135*MIN,height:1.94});

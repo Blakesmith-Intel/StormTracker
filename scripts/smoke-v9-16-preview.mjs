@@ -43,19 +43,20 @@ for (let attempt = 1; attempt <= 18; attempt++) {
 }
 if (!deployed) throw new Error("Expected preview was not published");
 
-const [productionIndex, previewIndex, previewHtml, runtime, detection, dock] =
+const [productionIndex, previewIndex, previewHtml, runtime, detection, dock, menuChoices] =
   await Promise.all([
     read("index.html"),
     read("preview/v9.16/index.html"),
     read("preview/v9.16/live3d-operational-v9.html"),
     read("preview/v9.16/src/live3d-operational-v9.js"),
     read("preview/v9.16/src/severe-storm-alerts-v1.js"),
-    read("preview/v9.16/src/severe-storm-alert-overlay-v1.js")
+    read("preview/v9.16/src/severe-storm-alert-overlay-v1.js"),
+    read("preview/v9.16/src/operational-window-choices-v1.js")
   ]);
 
 requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Production root remains V9.15.1");
-if (productionIndex.includes("9.16-doppler-window-v1")) throw new Error("Production root accidentally points to preview");
-requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-doppler-window-v1/, "Preview own iframe");
+if (productionIndex.includes("9.16-window-menu-v1")) throw new Error("Production root accidentally points to preview");
+requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-window-menu-v1/, "Preview own iframe");
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");
@@ -75,7 +76,14 @@ requireMatch(previewHtml, /id="radarPlaybackTime"/, "Radar real source timestamp
 requireMatch(previewHtml, /id="dopplerPlaybackTime"/, "Doppler real source timestamp");
 requireMatch(previewHtml, /id="sourceTimeGap"/, "Relative observation time difference");
 requireMatch(runtime, /function updateDualSourceTimes\(\)/, "Original source AEST clocks and UTC source attribution");
-requireMatch(runtime, /option.value = DOPPLER_AVAILABLE_LOOP_VALUE/, "New Radar + Doppler available window option");
+requireMatch(runtime, /buildOperationalWindowChoices\(\{/, "Four-option window selector");
+requireMatch(menuChoices, /Radar \+ Doppler — All available/, "Preserved combined Doppler window");
+requireMatch(menuChoices, /RAIN_ONLY_LOOP_MINUTES = Object.freeze\(\[60,120,180\]\)/, "Only 60, 120 and 180 minute rain-only windows");
+requireMatch(menuChoices, /Rain radar only/, "Rain-only window wording");
+requireMatch(runtime, /function shouldDisplayDopplerForSelectedWindow\(\)/, "Doppler visibility follows combined mode");
+requireMatch(runtime, /return isDopplerSourceActive\(\) && isCombinedDopplerWindowSelected\(\)/, "Rain-only Doppler suppression");
+requireMatch(runtime, /renderDopplerOverlay\(\);\s*updateIndependentDopplerUi\(\);\s*updateLoopButtonLabel\(\)/, "Changing window clears lingering wind imagery");
+
 requireMatch(runtime, /hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/, "Combined timeline playback assembly");
 requireMatch(runtime, /hasNewDopplerWindow\(\) && hybridCombinedSchedule.length/, "Rebuild on newly observed wind frame");
 requireMatch(runtime, /Doppler source frame · synchronising radar and wind loop/, "New Doppler source announcement");
@@ -128,7 +136,7 @@ if (!pngResponse.ok || !pngResponse.headers.get("content-type")?.includes("image
 console.log("PASS Published V9.16 candidate at commit " + expectedSha);
 console.log("PASS Mt Stapylton selected; severe storm evidence controls published");
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
-console.log("PASS One control bar advances both full native loops with distinct original timestamps and isolated wind failures");
+console.log("PASS Four window choices; rain-only removes Doppler imagery and preserves the verified Doppler-defined combined timeline");
 console.log("PASS Production root still points to V9.15.1");
 console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
 console.log("PASS Two original-scan hook-shape indicators accessible in historical viewer; classification remains experimental");

@@ -98,7 +98,7 @@ import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
-import { buildIndependentDopplerFrames, independentDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-independent";
+import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex } from "./independent-doppler-loop-v1.js?v=9.16-independent";
 import { dopplerMapCoordinateToLonLat } from "./bom-doppler-georef-v1.js?v=9.16-independent";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
@@ -550,19 +550,36 @@ let independentDopplerRecord = null;
 let independentDopplerSourceId = null;
 let independentDopplerLoading = false;
 let independentDopplerRequest = 0;
-const independentDopplerPlayback = createContinuousPlayback({
-  count: () => independentDopplerFrames.length,
-  currentIndex: () => independentDopplerIndexValue,
-  showFrame: showIndependentDopplerFrame,
-  delay: () => playbackDelayForSpeed(Number($("dopplerPlaybackSpeed").value)),
-  onPlayingChange: playing => {
-    $("dopplerPlayButton").textContent = playing ? "Pause wind" : "Play wind";
-    $("dopplerPlayButton").setAttribute("aria-pressed", String(playing));
-  },
-  onError: error => {
-    $("dopplerIndependentStatus").textContent = "Doppler frame unavailable: " + error.message;
+// Existing radar player is the sole user-facing clock; both source histories
+// retain their own real observations and are never required to match.
+let windCycleCursor = -1;
+let windSourceFailCount = 0;
+function chooseWindCursorForRadar(radarIndex) {
+  const windFrames = independentDopplerFrames;
+  if (!windFrames.length) return -1;
+  const atTime = Date.parse(hybridFrames[radarIndex]?.observedUtc);
+  const start = Date.parse(windFrames[0].observedUtc);
+  const end = Date.parse(windFrames[windFrames.length - 1].observedUtc);
+  if (Number.isFinite(atTime) && atTime >= start && atTime <= end) {
+    return nearestIndependentDopplerFrameIndex(windFrames, hybridFrames[radarIndex].observedUtc);
   }
-});
+  const fraction = Math.max(0, Math.min(1, radarIndex / Math.max(1, hybridFrames.length - 1)));
+  return Math.round(fraction * (windFrames.length - 1));
+}
+function driveWindFromCommonPlayback(radarIndex) {
+  if (!$("showDopplerOverlay").checked || !independentDopplerFrames.length) return;
+  const next = playback.isPlaying()
+    ? (windCycleCursor + 1 + independentDopplerFrames.length) % independentDopplerFrames.length
+    : chooseWindCursorForRadar(radarIndex);
+  if (next < 0) return;
+  windCycleCursor = next;
+  void showIndependentDopplerFrame(next).catch(error => {
+    windSourceFailCount++;
+    const status = $("dopplerOverlayStatus");
+    if (status) status.textContent="Wind frame unavailable · "+error.message;
+  });
+}
+
 const independentDopplerRefresh = createLiveLoopRefresh({
   refresh: () => document.hidden || !$("showDopplerOverlay").checked
     ? undefined : refreshIndependentDopplerHistory(true),
@@ -2440,28 +2457,23 @@ function updateIndependentDopplerUi() {
   const active=$("showDopplerOverlay").checked;
   const total=independentDopplerFrames.length;
   const item=independentDopplerFrames[independentDopplerIndexValue];
-  syncFrameSlider($("dopplerFrameSlider"),total,independentDopplerIndexValue);
-  $("dopplerFrameSlider").disabled=!active||total<2;
-  $("dopplerPlayButton").disabled=!active||total<2;
-  $("dopplerLatestButton").disabled=!active||!total;
   const label=total ? (independentDopplerIndexValue+1)+"/"+total : "—";
-  $("dopplerFrameLabel").textContent=label;
   const timestamp=item ? formatDopplerUtc(item.observedUtc) : "No source frames";
-  $("dopplerCompactLabel").textContent=active ? label+" · "+timestamp : "Off";
-  $("dopplerIndependentStatus").textContent=active
-    ? (total ? "Actual BoM Doppler observations · "+timestamp+" · "+label+" frames" : "Retrieving Doppler source history…")
-    : "Wind layer off; reflectivity loop runs independently.";
   $("operationalDoppler").textContent=active
-    ? (total ? label+" · "+timestamp : "loading independent wind history")
-    : "hidden";
-  $("dopplerFrameTime").textContent=active&&item?formatDopplerUtc(item.observedUtc):"—";
+    ? (total ? label+" · "+timestamp : "loading wind history") : "hidden";
+  const windClock = $("dopplerPlaybackTime");
+  if (windClock) windClock.textContent = active
+    ? (independentDopplerRecord
+        ? formatDopplerUtc(independentDopplerRecord.observedUtc)
+        : "loading") : "Off";
+  $("dopplerFrameTime").textContent=active&&independentDopplerRecord?formatDopplerUtc(independentDopplerRecord.observedUtc):"—";
   $("dopplerRadarsLoaded").textContent=active&&independentDopplerRecord?"1":"0";
-  $("dopplerRadarsMatched").textContent=active&&independentDopplerRecord?"1":"0";
+  $("dopplerRadarsMatched").textContent="—";
   $("dopplerTracksMatched").textContent="—";
-  $("dopplerFailures").textContent="0";
+  $("dopplerFailures").textContent=String(windSourceFailCount);
   $("dopplerSourceRows").textContent=active&&item
-    ? "Radar "+independentDopplerSourceId+" · native Doppler "+timestamp+
-      " · "+item.filename+" · no radar frame matching" : "Wind source idle";
+    ? "Radar "+independentDopplerSourceId+" · "+timestamp+
+      " · "+item.filename+" · independent original UTC" : "Wind source idle";
 }
 
 async function showIndependentDopplerFrame(nextIndex) {
@@ -2478,7 +2490,7 @@ async function showIndependentDopplerFrame(nextIndex) {
     if(!record||!Array.isArray(record.displaySamples))throw Error("Decoded Doppler pixels unavailable");
   } catch(error) {
     if(generation===independentDopplerRequest){
-      $("dopplerIndependentStatus").textContent="Doppler "+frame.observedUtc+" unreadable: "+error.message;
+      $("dopplerOverlayStatus").textContent="Doppler "+frame.observedUtc+" unreadable: "+error.message;
     }
     throw error;
   }

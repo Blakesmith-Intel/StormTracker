@@ -2,6 +2,7 @@ import {
   fetchQfdPublicIncidents,QFD_REFRESH_MS,QFD_MAX_SNAPSHOT_MS,
   QFD_PUBLIC_GROUPS,QFD_PUBLIC_GROUP_NAMES,qfdPublicGroupCounts
 } from "./qfd-technical-rescues-v1.js?v=9.15.0";
+import {fetchQfdPublicSymbolCatalog,qfdSymbolFor} from "./qfd-public-symbols-v1.js?v=9.15.1";
 import {sourceSnapshotState,checkedAtAest} from "./source-freshness-v1.js?v=9.14.0";
 import {addOfficialSourceRow,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.15.0";
 
@@ -43,12 +44,31 @@ export function initialiseOperationalQfdTechnicalRescues({
   const dataSource=new CesiumRef.CustomDataSource("qfd-public-incidents");
   dataSource.show=Boolean(checkbox?.checked);
   viewer.dataSources.add(dataSource);
-  const categoryColors=Object.fromEntries(QFD_PUBLIC_GROUP_NAMES.map(g=>[
-    g,CesiumRef.Color.fromCssColorString(QFD_PUBLIC_GROUPS[g].color)
-  ]));
-  const edgeColor=CesiumRef.Color.fromCssColorString("#1d1426");
   const canvas=viewer.scene.canvas;
   let records=[],lastLoadedAt=0,lastStatus=null,loading=null,timer=null,selectedId="";
+  let officialSymbols={},symbolLookup=null;
+  function symbolsAreOfficial(){return Object.keys(officialSymbols).length===QFD_PUBLIC_GROUP_NAMES.length;}
+  function updateSymbolLegend(){
+    for(const group of QFD_PUBLIC_GROUP_NAMES){
+      const img=document.querySelector('[data-qfd-group-icon="'+group+'"]');
+      if(!img)continue;
+      img.src=qfdSymbolFor(group,officialSymbols);
+      img.alt=QFD_PUBLIC_GROUPS[group].label;
+      img.title=officialSymbols[group]?"QFD public ArcGIS symbol":"Provisional symbol — QFD icon unavailable";
+    }
+    const note=$("qfdSymbolStatus");
+    if(note)note.textContent=symbolsAreOfficial()?"Official QFD ArcGIS icons":"Provisional icons · official QFD artwork not available from public layer";
+  }
+  async function loadOfficialSymbols(){
+    if(symbolLookup)return symbolLookup;
+    symbolLookup=fetchQfdPublicSymbolCatalog({fetchImpl}).then(catalog=>{
+      officialSymbols=catalog;
+      updateSymbolLegend();
+      if(records.length)render(records);
+      return catalog;
+    });
+    return symbolLookup;
+  }
   let started=false;
 
   function report(state){lastStatus=state;setStatus(state);}
@@ -87,8 +107,9 @@ export function initialiseOperationalQfdTechnicalRescues({
         id:"qfd-incident:"+item.id,
         name:"QFD "+item.groupLabel,
         position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude),
-        point:{
-          pixelSize:15,color:categoryColors[item.groupedType],outlineColor:edgeColor,outlineWidth:3,
+        billboard:{
+          image:qfdSymbolFor(item.groupedType,officialSymbols),
+          width:28,height:28,verticalOrigin:CesiumRef.VerticalOrigin?.BOTTOM,
           heightReference:CesiumRef.HeightReference?.CLAMP_TO_GROUND,
           disableDepthTestDistance:Number.POSITIVE_INFINITY
         }
@@ -134,8 +155,12 @@ export function initialiseOperationalQfdTechnicalRescues({
       showInfo(null);
       setStatus({message:"QFD grouped incidents hidden"});
     }else if(!lastLoadedAt || now()-lastLoadedAt>=refreshMs) {
+      loadOfficialSymbols().catch(()=>{});
       refresh().catch(()=>{});
-    }else if(lastStatus)setStatus(lastStatus);
+    }else if(lastStatus){
+      loadOfficialSymbols().catch(()=>{});
+      setStatus(lastStatus);
+    }
   }
   // Pick only records explicitly tagged by this layer. Never convert
   // unrelated map imagery, tracks or other incidents into rescue markers.
@@ -185,7 +210,8 @@ export function initialiseOperationalQfdTechnicalRescues({
     window.addEventListener("pointerup",onUp,{capture:true,passive:true});
     window.addEventListener("pointercancel",onCancel,{capture:true,passive:true});
     document.addEventListener("visibilitychange",onVisibility);
-    if(dataSource.show)refresh().catch(()=>{});
+    updateSymbolLegend();
+    if(dataSource.show){loadOfficialSymbols().catch(()=>{});refresh().catch(()=>{});}
     else setStatus({kind:"normal",message:"QFD technical rescue / road crash / assist public · off by default"});
     timer=setInterval(()=>{
       if(!document.hidden){expire();if(dataSource.show)refresh().catch(()=>{});}

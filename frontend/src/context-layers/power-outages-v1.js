@@ -895,6 +895,11 @@ export function createPowerOutageLayer({
   let timer = null;
   let lastLoadedAt = 0;
   let snapshotExpired = false;
+  let lastPresentedStatus = null;
+  function reportStatus(status) {
+    lastPresentedStatus = status;
+    onStatus(status);
+  }
   function expireStaleSnapshot() {
     if (snapshotExpired || !sourceSnapshotState({lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.powerOutages}).expired) return false;
     snapshotExpired = true;
@@ -902,7 +907,7 @@ export function createPowerOutageLayer({
     dataSource.entities.removeAll();
     viewer.scene.requestRender();
     onUpdate([]);
-    onStatus({kind:"error",message:"Source expired · old outage markers removed · last checked "+checkedAtAest(lastLoadedAt)});
+    reportStatus({kind:"error",message:"Source expired · old outage markers removed · last checked "+checkedAtAest(lastLoadedAt)});
     return true;
   }
 
@@ -1025,7 +1030,7 @@ export function createPowerOutageLayer({
 
     loading =
       (async () => {
-        onStatus({
+        reportStatus({
           kind:
             "loading",
           message:
@@ -1078,7 +1083,7 @@ export function createPowerOutageLayer({
             ? ` | PARTIAL: ${result.failedProviders.map(item => item.provider).join(", ")} unavailable`
             : "";
 
-        onStatus({
+        reportStatus({
           kind:
             result.partial
               ? "warning"
@@ -1117,7 +1122,7 @@ export function createPowerOutageLayer({
       return await loading;
     } catch (error) {
       expireStaleSnapshot();
-      onStatus(sourceFailureStatus({error,lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.powerOutages}));
+      reportStatus(sourceFailureStatus({error,lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.powerOutages}));
 
       throw error;
     } finally {
@@ -1153,6 +1158,9 @@ export function createPowerOutageLayer({
           .catch(
             () => {}
           );
+      }
+      else if (lastPresentedStatus) {
+        reportStatus(lastPresentedStatus);
       }
     }
   }

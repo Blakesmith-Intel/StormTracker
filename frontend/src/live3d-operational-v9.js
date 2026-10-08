@@ -301,6 +301,11 @@ function syncBasemapReferenceLayer(basemapId) {
 
 // Read-only QA instrumentation is opt-in and does not alter live controls.
 if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
+  window.__stormtrackerStateBorderDiagnostics = () => ({
+    count: queenslandStateBorder?.count ?? 0,
+    visible: queenslandStateBorder?.visible ?? false,
+    mode: queenslandStateBorder?.mode ?? "unloaded"
+  });
   window.__stormtrackerTownLabelDiagnostics = () => ({
     count: queenslandTownLabels?.count ?? 0,
     visible: queenslandTownLabels?.visibleLabels ?? [],

@@ -31,16 +31,22 @@ This file supersedes the older V9.9.1-era order in FUTURE_DEVELOPMENT_HANDOVER.m
    last successful source check, partial results and refresh failures. Keep
    radar and each provider independent. Do not replace real provider incidents
    with synthetic events.
-2. **QFD swift-water rescue jobs** (new wishlist feature): explore whether
-   Queensland Fire Department publishes a legitimate, machine-readable,
-   reusable, sufficiently current public feed of *swift-water rescue jobs*.
-   Scope only officially released public incident records and permissible
-   location precision. Never scrape restricted dispatch, CAD or emergency
-   operations systems or reveal private callers/rescued people's details.
-   Validate job classification, duplicate events, completed-job removal,
-   update cadence and official source links before any display. No verified
-   public feed = feature remains blocked; do not infer rescue jobs from gauges,
-   rainfall, closures, social posts or radar.
+2. **QFD swift-water and vertical rescue incidents** (new wishlist items):
+   investigate whether the Queensland Fire Department officially publishes
+   legitimate, machine-readable, reusable and sufficiently current public
+   incident records for either rescue type. Keep **swift-water rescue** and
+   **vertical rescue** as separately selectable, independently classified
+   incident types, with clear incident status, official timestamps and
+   clickable source panels if a lawful public feed becomes available.
+   Use only officially released public records and permissible location
+   precision. Never scrape restricted dispatch, CAD, pager, operational
+   or internal emergency-services systems or reveal personal details.
+   Verify the true source classification rather than inferring swift-water
+   or vertical rescue from flood gauges, closures, rain, radar, terrain,
+   social posts or generic "rescue" categories. Confirm duplicate handling,
+   updates, stale/closed job removal, source links, polling limits and
+   geographic coverage independently for each rescue category.
+   **No verified public feed = that incident type remains blocked**.
 
 ## Permanently final wishlist item — observed lightning
 

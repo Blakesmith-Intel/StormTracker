@@ -1,0 +1,25 @@
+name: QFD public symbology source verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.15.0-qfd-technical-rescue
+    paths:
+      - scripts/probe-qfd-public-legend.mjs
+      - .github/workflows/probe-qfd-public-legend.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-public-legend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Probe public QFD incident viewer and published ArcGIS symbol renderers
+        run: timeout --kill-after=10s 220s node scripts/probe-qfd-public-legend.mjs

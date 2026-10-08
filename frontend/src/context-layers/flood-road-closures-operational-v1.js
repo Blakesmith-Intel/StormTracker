@@ -1,3 +1,4 @@
+import {QLD_TRAFFIC_OFFICIAL_CLOSED_ALL,qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {
   createFloodRoadClosureLayer,
@@ -189,6 +190,9 @@ function showClosureInfo(
     floodRoadClosureSummary(
       feature
     );
+  const panelIcon=$("floodRoadClosureInfoIcon");
+  if(panelIcon)panelIcon.src=qldTrafficRoadImpactIcon(summary.impactSubtype);
+
 
   $("powerOutageInfo")
     ?.setAttribute(
@@ -479,6 +483,10 @@ export function initialiseOperationalFloodRoadClosures({
       "Operational flood-road closure UI requires Cesium and a viewer."
     );
   }
+
+  // QLDTraffic's public map marker and our legend share the exact PNG.
+  const legendIcon=$("floodRoadClosureLegendIcon");
+  if(legendIcon)legendIcon.src=QLD_TRAFFIC_OFFICIAL_CLOSED_ALL;
 
   const checkbox =
     $("showFloodRoadClosures");

@@ -84,3 +84,29 @@ paused frames without waiting for a new radar update.
 After this Pages deployment completes, verify the icon/closure
 presentation and paused label switch in the actual V9.15 browser preview.
 No full release/seal until operational visual acceptance.
+
+## V9.15 updated closure scope — all unplanned reasons
+
+The V9.15 candidate has expanded from weather-only closures to **any
+officially published, currently active closure to ALL traffic for an
+unplanned cause**. Explicit planned roadworks/scheduled events and
+through-traffic-only closures remain excluded. Emergency works and
+other unplanned hazards qualify regardless of weather cause.
+
+The original production `/flood-road-closures` route retains its legacy
+v4 policy/cache. V9.15 uses its isolated
+`/flood-road-closures-v9-15` route with a new v6 cache and
+authorised Pages CORS. The QLDTraffic map and legend continue to use
+the matching official road-closed-to-all-traffic PNG.
+
+**Live release evidence:** GitHub Actions
+[deployment and QLDTraffic reconciliation](https://github.com/Blakesmith-Intel/StormTracker/actions/runs/37799107199)
+passed. During that snapshot, QLDTraffic's official GeoJSON contained
+**nine eligible unplanned all-traffic closures** (seven Hazard and
+two Flooding), and V9.15's live relay returned the same nine IDs
+including Laidley Creek West Road 750590. The original production
+route continued to return its four legacy records.
+
+This documentation-only PR refreshes the browser preview from the
+candidate branch and does **not** merge V9.14 or V9.15 into production.
+Verify the current live map presentation before release acceptance.

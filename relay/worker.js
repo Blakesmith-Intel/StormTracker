@@ -446,7 +446,7 @@ async function relayFloodRoadClosures(
     stormtracker: {
       filter:
         preview
-          ? "published + current + all-traffic closures + unplanned causes (exclude scheduled/planned works and events)"
+          ? "published + current + road closed to all traffic + unplanned causes (exclude scheduled/planned works and events)"
           : "published + flood-related + closures",
       source:
         "Queensland Department of Transport and Main Roads · QLDTraffic",

@@ -46,6 +46,7 @@ assert.equal(parseBomRecentWaterLevels(table([["06/10/2026 16:15","1.3"]]),{nowM
 const feature=(tidal=true,flood="")=>({id:"bom:540384",properties:{
  location_types:tidal?"water level gauge;tide gauge;":"water level gauge;",
  STORMTRACKER_FLOOD_CLASS:flood,STORMTRACKER_TENDENCY:"rising",
+ STORMTRACKER_OBSERVED_TEXT:"6:15 pm Thu 08/10/2026",
  STORMTRACKER_RECENT_DATA_HREF:"/fwo/IDQ65388/IDQ65388.540384.plt.shtml"
 }});
 assert.ok(recentFloodHistoryCandidate(feature(),{},now));

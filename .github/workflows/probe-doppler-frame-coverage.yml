@@ -1,0 +1,20 @@
+name: Investigate three-frame Mt Stapylton Doppler loop
+on:
+  push:
+    branches: [feature/severe-storm-radar-alerts-v1]
+    paths:
+      - .github/workflows/probe-doppler-frame-coverage.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Probe actual Radar 66 source coverage and diagnostic frame matching
+        run: node scripts/probe-doppler-frame-coverage-v1.mjs

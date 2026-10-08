@@ -1,0 +1,26 @@
+name: Validate severe radar alert candidate
+on:
+  push:
+    branches:
+      - feature/severe-storm-radar-alerts-v1
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate all browser JS and radar feature tests
+        run: npm test
+      - name: Validate new alert modules explicitly
+        run: |
+          node --check frontend/src/severe-storm-alerts-v1.js
+          node --check frontend/src/severe-storm-alert-overlay-v1.js
+          node frontend/tests/run-severe-storm-alerts-v1-tests.mjs

@@ -1,0 +1,43 @@
+name: Inspect 2025 Gympie radar volume availability
+on:
+  push:
+    branches: [feature/severe-storm-radar-alerts-v1]
+    paths:
+      - .github/workflows/inspect-gympie-radar-archive.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Test archive byte-range and daily summary availability
+        shell: bash
+        run: |
+          set -u
+          BASE="https://dapds00.nci.org.au/thredds/fileServer/rq0/8/2025"
+          for url in "$BASE/img/8_20251124_dailymaxrefl.png" "$BASE/list/8_20251124_tarlist.txt"; do
+            echo "Probing $url"
+            curl -sSIL --connect-timeout 10 --max-time 25 -o /dev/null -w "HTTP %{http_code}, bytes %{size_download}, MIME %{content_type}\n" "$url"
+          done
+          echo "Testing random-access ZIP range; cap file size to prevent downloading 1.19 GB"
+          curl -sSL --connect-timeout 12 --max-time 45 --max-filesize 4000000 \
+            -H "Range: bytes=-262144" -D /tmp/range-headers -o /tmp/range-bytes \
+            -w 'RANGE_HTTP %{http_code}, size %{size_download}\n' \
+            "$BASE/vol/8_20251124.pvol.zip"
+          result=$?
+          echo "Curl result $result"
+          cat /tmp/range-headers | grep -iE '^HTTP/|^content-range:|^content-length:|^accept-ranges:' | tail -15 || :
+          test -e /tmp/range-bytes && wc -c /tmp/range-bytes || :
+          if [ "$result" -eq 0 ]; then
+            python - <<'PY'
+          from pathlib import Path
+          data=Path("/tmp/range-bytes").read_bytes()
+          p=data.rfind(b"PK\\x05\\x06")
+          print("ZIP end signature at relative offset",p,"in",len(data),"bytes")
+          if p >= 0 and p+22 <= len(data):
+              import struct
+              print("Central directory offset and length",struct.unpack_from("<II",data,p+12))
+          PY
+          fi

@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — Operational V9.15.1 development</title>
+  <title>StormTracker — Operational V9.15.1 + radar alerts preview</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.15.1-storm-labels">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16-window-menu-v2">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -32,9 +32,10 @@
           <select id="playbackSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
         </label>
       </div>
-      <div class="button-grid"><button id="loadHybridButton" disabled>Load 30-min storm loop</button><button id="loadButton" disabled>Refresh latest</button></div>
+      <div class="button-grid"><button id="loadHybridButton" disabled>Load selected window</button><button id="loadButton" disabled>Refresh latest</button></div>
       <div class="playback-row"><button id="hybridPlayButton" disabled aria-pressed="false">Play</button><button id="jumpLatestButton" disabled>Latest</button><label for="hybridFrameSlider">Frame <strong id="hybridFrameLabel">—</strong></label></div>
       <input id="hybridFrameSlider" aria-label="Sequence frame" type="range" min="0" max="0" step="1" value="0" disabled>
+      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span>Radar <strong id="radarPlaybackTime">—</strong></span><span>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Actual time separation between these independent radar products" hidden></span></div>
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card layer-controls">
@@ -56,8 +57,10 @@
       </div>
       <div id="qfdSymbolStatus" class="note qfd-symbol-status" role="status">Checking QFD published incident symbols…</div>
       <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · displaying only three public QFD grouped types</div>
-      <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
+      <div class="layer-row"><label for="dopplerOverlayRadar">Doppler radar</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
       <div class="layer-row"><span id="trackVolumeModeLabel" title="Measured storm-cell tracking remains enabled; 2-D radar reflectivity is preserved at the base of each displayed volume.">Track-specific 3-D · always on</span><button id="openDetailsButton">Tracks / details</button></div>
+      <div class="layer-row storm-severe-layer-row"><label><input id="showSevereRadarAlerts" type="checkbox" checked> Radar alerts ≥90 km/h</label></div>
+      <div class="layer-row storm-severe-layer-row"><label title="Research-stage; not a validated tornado detector"><input id="showExperimentalHookAlerts" type="checkbox"> Hook-shape candidates (experimental)</label></div>
       <div class="track-display-controls">
         <label title="Show or hide both storm-track points and labels"><input id="showTrackLabels" type="checkbox" checked> Labels</label>
         <select id="trackDisplayFilter" aria-label="Displayed storm track"><option value="">All tracks</option></select>
@@ -79,20 +82,20 @@
         <span><i style="background:#6ab6ff"></i>20–29</span><span><i style="background:#1e78ff"></i>30–39</span><span><i style="background:#00b96b"></i>40–49</span><span><i style="background:#ffd21a"></i>50–54</span><span><i style="background:#ff5a22"></i>55–59</span><span><i style="background:#bd2fff"></i>60+</span>
       </div></div>
       <strong class="velocity-title">Doppler radial velocity · km/h</strong>
-      <div id="dopplerVelocityLegend"><span class="note">Bureau palette appears when a loop is loaded.</span></div>
+      <div id="dopplerVelocityLegend"><span class="note">BoM Doppler legend appears when a valid wind source is available.</span></div>
       <div class="support-scale"><span><i class="support-dot support-high"></i>High support</span><span><i class="support-dot support-medium"></i>Medium</span><span><i class="support-dot support-low"></i>Low</span></div>
       <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
     </section>
     <div class="live-notices">
-      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Doppler wind requires the currently available 30-minute shared loop. Selecting Doppler switches to 30 min; longer or all-available radar history deselects it.</div>
-      <div id="autoRefreshNote" class="note" role="status">Auto update: checks matching products every 5 minutes.</div>
+      <div id="dopplerHistoryWarning" class="note" role="status" hidden>One playback control advances independent radar and Doppler frames; source times may differ.</div>
+      <div id="autoRefreshNote" class="note" role="status">Radar and Doppler sources refresh independently every 5 minutes.</div>
     </div>
     <div id="status" role="status">Loading inferred-volume model…</div>
   </aside>
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
     <div id="cesiumCredits" class="cesium-widget-credits" aria-label="Map attribution"></div>
-    <div id="nav"><select id="radarSite" aria-label="Queensland radar site"><option value="SEQ">South-east Queensland</option></select><button id="resetButton">Reset view</button></div>
+    <div id="nav"><select id="radarSite" aria-label="Queensland radar site"><option value="66" selected>Brisbane (Mt Stapylton)</option><option value="SEQ">South-east Queensland (regional)</option></select><button id="resetButton">Reset view</button></div>
     <section id="floodRoadClosureInfo" class="map-info-card" aria-live="polite" hidden>
       <header><div class="flood-road-info-heading"><img id="floodRoadClosureInfoIcon" class="flood-road-key flood-road-key-large" alt="" aria-hidden="true"><div><span class="map-info-kicker">UNPLANNED ROAD CLOSURE</span><strong id="floodRoadClosureInfoTitle">Road closure</strong></div></div><button id="closeFloodRoadClosureInfo" type="button" aria-label="Close road closure details">×</button></header>
       <div id="floodRoadClosureInfoRows" class="metric"></div>
@@ -266,11 +269,11 @@
     </section><p class="note">High / medium / low support describe empirical occupancy and P25–P75 spread, not calibrated probabilities.</p></div>
   <div data-detail-panel="sources" hidden>
     <section class="card"><h2>Reflectivity</h2><div class="metric"><span>Source time</span><strong id="sourceTime">—</strong><span>Decoded pixels</span><strong id="decodedPixels">—</strong><span>Observed maximum</span><strong id="sourceMaximum">—</strong></div></section>
-    <section class="card"><h2>Time-matched Doppler</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Time-matched radars</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
-    <div id="dopplerSourceRows"><span class="hybrid-muted">Load a loop to retrieve timestamped history for the selected Doppler site.</span></div>
+    <section class="card"><h2>Doppler source history</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Active Doppler source</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
+    <div id="dopplerSourceRows"><span class="hybrid-muted">The wind history runs independently of radar tracking.</span></div>
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.15.1-intensity40"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.16-window-menu-v2"></script>
 </body>
 </html>

@@ -1,0 +1,48 @@
+name: Replay Gympie 2025 hook detection
+on:
+  push:
+    branches: [feature/severe-storm-radar-alerts-v1]
+    paths:
+      - .github/workflows/replay-gympie-2025-hook.yml
+      - scripts/replay-archived-gympie-hook-v1.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch real 24 November 2025 AURA HDF5 volumes
+        uses: actions/download-artifact@v4
+        with:
+          repository: Blakesmith-Intel/StormTracker
+          run-id: 37816134728
+          github-token: ${{ github.token }}
+          name: AURA-Gympie-08-2025-11-24-real-scans
+          path: ${{ runner.temp }}/aura-historical
+      - name: Install HDF5 and spatial resampling dependencies
+        run: python -m pip install --quiet h5py numpy pillow
+      - name: Regrid genuine lowest-elevation radar data without interpolating in time
+        run: |
+          python scripts/measured-aura-to-stormtracker-2d.py \
+            "$RUNNER_TEMP/aura-historical" "$RUNNER_TEMP/aura-gridded"
+      - name: Replay existing browser hook candidate detector on original scan timestamps
+        run: |
+          node scripts/replay-archived-gympie-hook-v1.mjs \
+            "$RUNNER_TEMP/aura-gridded" "$RUNNER_TEMP/gympie-hook-replay.json"
+      - name: Retain reproducible measured grids and algorithm report
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURA-Gympie-2025-experimental-hook-replay
+          path: |
+            ${{ runner.temp }}/aura-gridded/
+            ${{ runner.temp }}/gympie-hook-replay.json
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7

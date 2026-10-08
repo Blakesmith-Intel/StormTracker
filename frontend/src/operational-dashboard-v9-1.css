@@ -732,3 +732,39 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   text-shadow:0 1px 2px #000;
   pointer-events:none;
 }
+
+/* V9.16 radar-evidence alerts — separate from track labels and map-info cards */
+.storm-severe-alert-dock {
+  position:absolute; z-index:865; right:10px; top:59px;
+  width:min(292px,calc(100% - 20px)); max-height:44%;
+  overflow:auto; padding:8px; border:1px solid #5f707a;
+  border-radius:8px; background:#0e1820ed; box-shadow:0 4px 15px #0008;
+  font-size:10px; pointer-events:auto;
+}
+.storm-severe-alert-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; letter-spacing:.04em; font-size:10px; }
+.storm-severe-alert-count { padding:2px 6px; border-radius:6px; background:#344653; font-variant-numeric:tabular-nums; }
+.storm-severe-alert-status { color:#a9bac4; margin:4px 0 0; line-height:1.35; font-size:9px; }
+.storm-severe-alert-status small { color:#f7be77; font-size:9px; }
+.storm-severe-alert-rows { display:grid; gap:4px; margin-top:5px; }
+.storm-severe-alert-row { text-align:left; font-weight:600; min-height:29px; font-size:10px; }
+.storm-severe-alert-row.wind { border-color:#f26c66; color:#ffe1df; background:#512927; }
+.storm-severe-alert-row.hook { border-color:#f7ba63; color:#ffe8c4; background:#584028; }
+.storm-severe-alert-detail { margin-top:7px; padding-top:6px; border-top:1px solid #4a6575; line-height:1.45; }
+.storm-severe-alert-detail p { margin:4px 0; color:#c1d3dd; font-size:10px; }
+.storm-severe-alert-detail button { margin-top:4px; min-height:24px; }
+.storm-severe-alert-pins { position:absolute; inset:0; pointer-events:none; z-index:840; }
+.storm-severe-alert-pin {
+  position:absolute; pointer-events:auto; transform:translate(-50%,-50%);
+  height:23px; width:23px; min-height:23px; padding:0;
+  border:2px solid white; border-radius:50%;
+  font-size:12px; font-weight:800; line-height:18px;
+  box-shadow:0 2px 8px #000e;
+}
+.storm-severe-alert-pin.wind { background:#b82e2a; color:white; }
+.storm-severe-alert-pin.hook { background:#f7b34b; color:#161616; }
+@media(max-width:700px) {
+  .storm-severe-alert-dock { top:49px; right:5px; width:min(230px,calc(100% - 10px)); max-height:40%; padding:5px; font-size:9px; }
+  .storm-severe-alert-row { font-size:9px; min-height:26px; }
+  .storm-severe-layer-row label { font-size:8px; }
+  .storm-severe-alert-pin { height:25px; width:25px; }
+}

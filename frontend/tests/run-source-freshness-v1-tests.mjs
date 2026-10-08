@@ -95,6 +95,12 @@ test("Browser release entrypoints bust old module and stylesheet caches", () => 
   assert.match(controller,/flood-road-closures-operational-v1\.js\?v=9\.14\.0/);
   assert.match(controller,/power-outages-operational-v1\.js\?v=9\.14\.0/);
 });
+test("Incident cards do not tunnel clicks to other contextual layers", () => {
+  const road=src("../src/context-layers/flood-road-closures-operational-v1.js");
+  const power=src("../src/context-layers/power-outages-operational-v1.js");
+  assert.match(road,/#nav,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo/);
+  assert.match(power,/#nav,#powerOutageInfo,#floodRoadClosureInfo,#riverGaugeInfo/);
+});
 test("Unverified road closures get a visible amber status", () => {
   assert.match(src("../src/operational-dashboard-v9-1.css"),
     /#floodRoadClosureStatus\[data-kind="warning"\]/);

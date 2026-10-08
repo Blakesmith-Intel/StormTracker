@@ -5,6 +5,22 @@ const data=await response.json();
 const observations=(data.products??[]).flatMap(p=>(p.observations??[]).map(o=>({...o,product:p.product})));
 const links=observations.filter(x=>typeof x.recentDataHref==="string"&&x.recentDataHref.includes(".plt")).slice(0,8);
 const unique=[...new Map(links.map(x=>[x.recentDataHref,x])).values()];
+const allHref=observations.filter(x=>x.recentDataHref).map(x=>x.recentDataHref);
+const candidate=observations.filter(x=>
+  String(x.tendency).toLowerCase()==="rising" &&
+  (x.floodClass==="minor" || x.recentDataHref)
+);
+const groups={};
+for(const href of allHref){
+  const m=href.match(/\/fwo\/(IDQ\d{5})\/\1\.(\d{5,7})\.plt\.shtml/i);
+  const k=m?m[1]:"not matched";
+  groups[k]=(groups[k]??0)+1;
+}
+console.log("All station plot link groups",JSON.stringify({groupCount:groups,
+ validLinks:allHref.length, rising:observations.filter(x=>x.tendency==="rising").length,
+ minorRising:observations.filter(x=>x.tendency==="rising"&&x.floodClass==="minor").length,
+ candidateCount:candidate.length}));
+
 console.log("River-height bulletin href formats",JSON.stringify({
  count:observations.length,recentCount:observations.filter(x=>x.recentDataHref).length,
  samples:unique.map(x=>({id:x.stationId,href:x.recentDataHref,product:x.product}))

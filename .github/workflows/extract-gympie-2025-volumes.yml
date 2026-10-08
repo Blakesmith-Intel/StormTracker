@@ -1,0 +1,50 @@
+name: Extract Gympie 2025 genuine radar volumes
+on:
+  push:
+    branches: [feature/severe-storm-radar-alerts-v1]
+    paths:
+      - .github/workflows/extract-gympie-2025-volumes.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Retrieve AURA Level 1 daily radar archive directly from NCI
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://dapds00.nci.org.au/thredds/fileServer/rq0/8/2025/vol/8_20251124.pvol.zip"
+          echo "Downloading actual archival Gympie radar 8 measurements, 24 Nov 2025"
+          curl -fLsS --retry 2 --retry-delay 4 --connect-timeout 20 --max-time 1000 \
+            -o "$RUNNER_TEMP/8_20251124.pvol.zip" \
+            -w 'DOWNLOAD HTTP %{http_code}, bytes %{size_download}, time %{time_total}s\n' \
+            "$url"
+          test "$(stat -c%s "$RUNNER_TEMP/8_20251124.pvol.zip")" -eq 1185706872
+          echo "AURA archive size verified."
+      - name: Extract selected true 05-11 UTC Gympie volumes, no synthetic data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/gympie-volumes"
+          python scripts/extract-aura-gympie-2025.py \
+            "$RUNNER_TEMP/8_20251124.pvol.zip" "$RUNNER_TEMP/gympie-volumes"
+          curl -fLsS --retry 2 --connect-timeout 10 --max-time 40 \
+            'https://dapds00.nci.org.au/thredds/fileServer/rq0/8/2025/list/8_20251124_tarlist.txt' \
+            -o "$RUNNER_TEMP/gympie-volumes/nci_daily_volume_statistics.txt"
+          ls -lh "$RUNNER_TEMP/gympie-volumes" | tail -35
+          echo "The full 1.19 GB archive remains runner-local and is not uploaded."
+      - name: Upload reduced authentic event research fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURA-Gympie-08-2025-11-24-real-scans
+          path: ${{ runner.temp }}/gympie-volumes/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

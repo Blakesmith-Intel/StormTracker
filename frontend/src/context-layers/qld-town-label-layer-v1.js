@@ -133,7 +133,8 @@ export function createQueenslandTownLabelLayer({
     selectedIds = accepted.map(place => String(place.id));
     displayedPlaces = accepted.map(place => ({
       id: place.id, name: place.name,
-      x: place.x, y: place.y, population: place.population
+      x: place.x, y: place.y, population: place.population,
+      font: place.label.font
     }));
     updated += 1;
     scene.requestRender?.();

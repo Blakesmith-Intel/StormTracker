@@ -63,7 +63,7 @@ for(const id of [...itemIDs].slice(0,30)){
 }
 
 const catalog=await fetchQfdPublicSymbolCatalog();
-const metadataResponse=await request(QFD_ESCAD_ENDPOINT.replace(/\\/query$/,"")+"?f=json");
+const metadataResponse=await request(QFD_ESCAD_ENDPOINT.slice(0,-"/query".length)+"?f=json");
 const metadata=JSON.parse(metadataResponse.text);
 console.log("PUBLIC_RENDERER_CONFIRMATION",JSON.stringify({
   field1:metadata?.drawingInfo?.renderer?.field1,

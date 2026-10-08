@@ -620,3 +620,20 @@ dialog::backdrop { background:#0009; }
     margin:-1px 0 3px;
   }
 }
+
+/* V9.13.2: official source links in all map information panels */
+#riverGaugeInfoRows > a,
+#powerOutageInfoRows > a,
+#floodRoadClosureInfoRows > a {
+  color:#8fd8ff;
+  font-weight:700;
+  text-decoration:underline;
+  overflow-wrap:anywhere;
+  text-underline-offset:2px;
+}
+#riverGaugeInfoRows > a:focus-visible,
+#powerOutageInfoRows > a:focus-visible,
+#floodRoadClosureInfoRows > a:focus-visible {
+  outline:2px solid #ffd43b;
+  outline-offset:2px;
+}

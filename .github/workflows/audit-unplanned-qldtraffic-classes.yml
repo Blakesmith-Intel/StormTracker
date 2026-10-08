@@ -1,0 +1,20 @@
+name: Audit current QLDTraffic unplanned closure classes
+on:
+  push:
+    branches: [feature/v9.15.0-qfd-technical-rescue]
+    paths:
+      - scripts/audit-unplanned-qldtraffic-classes-v1.mjs
+      - .github/workflows/audit-unplanned-qldtraffic-classes.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node scripts/audit-unplanned-qldtraffic-classes-v1.mjs

@@ -23,6 +23,18 @@
     .card{padding:12px;border:1px solid #304c5b;border-radius:9px;background:#13222c}
     .card strong{font-size:15px;font-variant-numeric:tabular-nums} .card span{display:block;color:#adc2cf;font-size:11px}
     .warning{border-left:3px solid #e7ab63;padding:8px 12px;background:#342719;color:#f2d6aa;font-size:12px}
+    .research-map-frame{position:relative;width:100%;line-height:0}
+    .research-hook-markers{position:absolute;inset:0;pointer-events:none}
+    .research-hook-marker{position:absolute;border:3px solid #ffca56;outline:2px solid #101a20;border-radius:50%;
+      width:24px;height:24px;transform:translate(-50%,-50%);box-shadow:0 0 0 5px #f9ba4a77}
+    .research-hook-marker::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;
+      transform:translate(-50%,-50%);background:#ffcf68}
+    .research-hook-marker span{position:absolute;top:23px;left:0;line-height:1.2;white-space:nowrap;
+      color:#141c22;background:#ffcc6c;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:700}
+    .research-hook-summary{border:1px solid #705635;background:#382b1d;color:#ffd89a;border-radius:8px;padding:10px;margin:10px 0;font-size:12px}
+    .research-hook-summary strong{color:#ffe4bb}
+    #nextCandidate:enabled{border-color:#f3b04b;color:#ffe0aa;background:#503821}
+
     @media(max-width:600px){main{padding:9px}.controls{padding:8px;gap:6px}button{padding:7px 9px}}
   </style>
 </head>
@@ -43,14 +55,18 @@
     <button id="back" aria-label="Previous measured scan" disabled>◀ Previous</button>
     <button id="play" disabled>▶ Play</button>
     <button id="next" aria-label="Next measured scan" disabled>Next ▶</button>
+    <button id="nextCandidate" aria-label="Jump to next experimental two-scan hook candidate" disabled>Next candidate ⌖</button>
     <input id="frameRange" type="range" min="0" max="0" value="0" aria-label="Select archived radar scan">
     <strong id="frameCount">0 / 0</strong>
     <strong id="clock">—</strong>
   </div>
   <div class="image-panel">
-    <img id="frameImage" alt="Paired measured reflectivity and Doppler radial velocity, radar-centred research display" hidden>
+    <div class="research-map-frame"><img id="frameImage" alt="Paired measured reflectivity and Doppler radial velocity, radar-centred research display" hidden>
+      <div id="researchHookMarkers" class="research-hook-markers" aria-label="Experimental hook-shape radar locations"></div>
+    </div>
     <p id="status" role="status">Reading archived scan metadata…</p>
   </div>
+  <div id="researchHookSummary" class="research-hook-summary" role="status">Experimental hook replay evidence loading. The algorithm is not validated for tornado identification.</div>
   <section class="cards" aria-label="Radar measurement details">
     <div class="card"><span>Maximum sampled lowest-elevation reflectivity</span><strong id="dbz">—</strong></div>
     <div class="card"><span>Maximum absolute raw radial speed (not gust)</span><strong id="velocity">—</strong></div>
@@ -69,8 +85,50 @@
 (() => {
   "use strict";
   const $=id=>document.getElementById(id);
-  let scans=[],at=0,timer=null;
+  let scans=[],at=0,timer=null,experimentalReport=null;
   function stop(){if(timer!==null){clearInterval(timer);timer=null;} $("play").textContent="▶ Play";}
+  function renderExperimentalEvidence(entry){
+    const summary=$("researchHookSummary"),layer=$("researchHookMarkers");
+    layer.replaceChildren();
+    const atUtc="2025-11-24T"+entry.utc_time+"Z";
+    const record=experimentalReport?.rows?.find(row=>row.observed_utc===atUtc);
+    if(!experimentalReport){
+      summary.textContent="Historical experimental hook-shape report unavailable or loading. Radar observations remain genuine.";
+      $("nextCandidate").disabled=true;
+      return;
+    }
+    const rows=experimentalReport.rows.filter(row=>row.two_scan_experimental_hook_candidates>0);
+    $("nextCandidate").disabled=!rows.length;
+    if(!record || !record.hook_candidates?.length){
+      summary.textContent="No two-scan experimental hook-shape candidates for "+entry.utc_time.slice(0,5)+
+        " UTC. This is not evidence of no rotation or tornado.";
+      return;
+    }
+    for(const candidate of record.hook_candidates){
+      const lat=Number(candidate.latitude),lon=Number(candidate.longitude);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+      // Paired image: 430px reflectivity + 430px Doppler, 40px title band;
+      // north-up radar-centred research plotting radius 128km.
+      const east=(lon-152.57692)*Math.cos(-25.95733*Math.PI/180)*111320;
+      const north=(lat+25.95733)*111320;
+      const px=215+east/128000*215,py=255-north/128000*215;
+      if(px<4||px>426||py<42||py>468)continue;
+      const ring=document.createElement("div");
+      ring.className="research-hook-marker";
+      ring.style.left=(px/860*100)+"%";
+      ring.style.top=(py/476*100)+"%";
+      const label=document.createElement("span");
+      label.textContent=candidate.track_id+" · shape?";
+      ring.appendChild(label);
+      layer.appendChild(ring);
+    }
+    const candidate=record.hook_candidates[0];
+    summary.textContent=record.hook_candidates.length+
+      " unverified two-scan curved-echo shape flag(s): "+candidate.track_id+
+      " · "+Number(candidate.arc_degrees).toFixed(0)+"° detected arc · "+
+      Math.abs(Number(candidate.latitude)).toFixed(3)+"°S, "+
+      Number(candidate.longitude).toFixed(3)+"°E. Amber ring marks approximate location on the left reflectivity image. This is NOT a tornado confirmation.";
+  }
   function render(){
     if(!scans.length)return;
     const entry=scans[at];
@@ -87,6 +145,7 @@
     $("velocity").textContent=entry.maximum_abs_raw_radial_kmh===null?"Unavailable":entry.maximum_abs_raw_radial_kmh.toFixed(1)+" km/h (uncorrected)";
     $("elevation").textContent=entry.lowest_elangle_deg.toFixed(2)+"°";
     $("variables").textContent=entry.fields.join(", ");
+    renderExperimentalEvidence(entry);
     $("back").disabled=at===0;
     $("next").disabled=at===scans.length-1;
   }
@@ -94,12 +153,32 @@
   $("back").addEventListener("click",()=>{stop();step(-1)});
   $("next").addEventListener("click",()=>{stop();step(1)});
   $("frameRange").addEventListener("input",event=>{stop();at=Number(event.target.value);render()});
+  $("nextCandidate").addEventListener("click",()=>{
+    if(!experimentalReport?.rows?.length)return;
+    const flagged=experimentalReport.rows.filter(row=>row.two_scan_experimental_hook_candidates>0);
+    const current="2025-11-24T"+scans[at].utc_time+"Z";
+    const next=flagged.find(row=>row.observed_utc>current)??flagged[0];
+    const target=scans.findIndex(row=>"2025-11-24T"+row.utc_time+"Z"===next.observed_utc);
+    if(target>=0){stop();at=target;render();}
+  });
   $("play").addEventListener("click",()=>{
     if(timer!==null){stop();return;}
     $("play").textContent="Ⅱ Pause";
     timer=setInterval(()=>step(1),950);
   });
   document.addEventListener("visibilitychange",()=>{if(document.hidden)stop()});
+  fetch("./research-gympie/gympie-hook-replay.json",{cache:"no-store"})
+    .then(response=>{if(!response.ok)throw Error("Experimental replay HTTP "+response.status);return response.json()})
+    .then(report=>{
+      if(report.format!=="StormTrackerExperimentalAURAHookReplayV1"||report.observed_scans_processed!==28)
+        throw Error("Unexpected research replay format");
+      experimentalReport=report;
+      if(scans.length)render();
+    })
+    .catch(error=>{
+      $("researchHookSummary").textContent="Experimental hook flags unavailable: "+error.message+
+        ". Measured reflectivity/Doppler replay remains available.";
+    });
   fetch("./research-gympie/scan_meteorology.json",{cache:"no-store"})
     .then(response=>{if(!response.ok)throw Error("Archive report HTTP "+response.status);return response.json()})
     .then(records=>{

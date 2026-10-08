@@ -108,7 +108,9 @@ jobs:
           test -f frontend/preview/v9.16/src/severe-storm-alert-overlay-v1.js
           test -f frontend/preview/v9.16/tests/run-startup-radar-default-v1-tests.mjs
           grep -q 'value="66" selected>Brisbane (Mt Stapylton)' frontend/preview/v9.16/live3d-operational-v9.html
-          grep -q '9.16-alerts-preview' frontend/preview/v9.16/index.html
+          grep -q '9.16-independent-doppler' frontend/preview/v9.16/index.html
+          grep -q 'id="dopplerControls"' frontend/preview/v9.16/live3d-operational-v9.html
+          test -f frontend/preview/v9.16/src/independent-doppler-loop-v1.js
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 

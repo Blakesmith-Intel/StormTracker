@@ -9,8 +9,14 @@ assert.ok(start>=0&&end>start,'renderHybridTracks block missing');
 const block=source.slice(start,end);
 assert.match(block,/const altitude =\s*1200;/);
 assert.doesNotMatch(block,/const altitude =\s*volume/);
-assert.ok((block.match(/disableDepthTestDistance:\s*Number\.POSITIVE_INFINITY/g)??[]).length>=2,
-  'track point and label must remain visible above 3-D primitives');
+assert.match(source,/createStormTrackLabelOverlay/,
+  'track identifier dots and text must use the foreground overlay above 3-D primitives');
+assert.match(block,/stormTrackMarkers\.push\(\{/,
+  'observed storm ID must produce one paired dot-and-label marker');
+assert.match(block,/stormTrackLabelOverlay\.setMarkers\(stormTrackMarkers\)/,
+  'rendered markers must update with observed frame');
+assert.doesNotMatch(block,/id:\s*`hybrid-\$\{index\}-\$\{track\.track_id\}`/,
+  'do not leave an obscured or independently visible Cesium track dot');
 assert.match(block,/depthFailMaterial:\s*colour\.withAlpha/);
 assert.match(block,/history\.push\(\{[\s\S]*altitude/);
 assert.match(block,/hybrid-trail-/);
@@ -20,4 +26,4 @@ assert.ok((source.match(/sameObservedInstant\(/g)??[]).length>=3,
 assert.doesNotMatch(source,/item\.observed_utc\s*===\s*hybridFrames\[index\]\.observedUtc/);
 assert.doesNotMatch(source,/item\.observed_utc\s*===\s*frame\.observedUtc/);
 assert.equal(Date.parse('2026-10-05T19:45:00Z'),Date.parse('2026-10-05T19:45:00.000Z'));
-console.log('Track overlay visibility checks passed: timestamp-normalised observations, fixed 1.2 km tracking plane, always-visible markers/labels and depth-fail trails.');
+console.log('Track overlay visibility checks passed: timestamp-normalised observations, fixed 1.2 km tracking plane, foreground paired markers/labels and depth-fail trails.');

@@ -35,6 +35,7 @@
       <div class="button-grid"><button id="loadHybridButton" disabled>Load 30-min storm loop</button><button id="loadButton" disabled>Refresh latest</button></div>
       <div class="playback-row"><button id="hybridPlayButton" disabled aria-pressed="false">Play</button><button id="jumpLatestButton" disabled>Latest</button><label for="hybridFrameSlider">Frame <strong id="hybridFrameLabel">—</strong></label></div>
       <input id="hybridFrameSlider" aria-label="Sequence frame" type="range" min="0" max="0" step="1" value="0" disabled>
+      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span>Radar <strong id="radarPlaybackTime">—</strong></span><span>Doppler <strong id="dopplerPlaybackTime">Off</strong></span></div>
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card layer-controls">
@@ -57,18 +58,6 @@
       <div id="qfdSymbolStatus" class="note qfd-symbol-status" role="status">Checking QFD published incident symbols…</div>
       <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · displaying only three public QFD grouped types</div>
       <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
-      <details class="independent-doppler-controls" id="dopplerControls">
-        <summary>Doppler controls <span id="dopplerCompactLabel">Loading source history…</span></summary>
-        <div class="playback-row">
-          <button id="dopplerPlayButton" type="button" aria-pressed="false" disabled>Pause wind</button>
-          <button id="dopplerLatestButton" type="button" disabled>Latest wind</button>
-          <label for="dopplerFrameSlider">Frame <strong id="dopplerFrameLabel">—</strong></label>
-        </div>
-        <input id="dopplerFrameSlider" aria-label="Independent Doppler frame" type="range" min="0" max="0" value="0" step="1" disabled>
-        <div class="control-grid"><label for="dopplerPlaybackSpeed">Doppler speed
-          <select id="dopplerPlaybackSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label></div>
-        <div id="dopplerIndependentStatus" class="note" role="status">Independent BoM Doppler history, updating every 5 minutes.</div>
-      </details>
       <div class="layer-row"><span id="trackVolumeModeLabel" title="Measured storm-cell tracking remains enabled; 2-D radar reflectivity is preserved at the base of each displayed volume.">Track-specific 3-D · always on</span><button id="openDetailsButton">Tracks / details</button></div>
       <div class="layer-row storm-severe-layer-row"><label><input id="showSevereRadarAlerts" type="checkbox" checked> Radar alerts ≥90 km/h</label></div>
       <div class="layer-row storm-severe-layer-row"><label title="Research-stage; not a validated tornado detector"><input id="showExperimentalHookAlerts" type="checkbox"> Hook-shape candidates (experimental)</label></div>
@@ -93,12 +82,12 @@
         <span><i style="background:#6ab6ff"></i>20–29</span><span><i style="background:#1e78ff"></i>30–39</span><span><i style="background:#00b96b"></i>40–49</span><span><i style="background:#ffd21a"></i>50–54</span><span><i style="background:#ff5a22"></i>55–59</span><span><i style="background:#bd2fff"></i>60+</span>
       </div></div>
       <strong class="velocity-title">Doppler radial velocity · km/h</strong>
-      <div id="dopplerVelocityLegend"><span class="note">Bureau palette appears when a loop is loaded.</span></div>
+      <div id="dopplerVelocityLegend"><span class="note">BoM Doppler legend appears when the layer is enabled.</span></div>
       <div class="support-scale"><span><i class="support-dot support-high"></i>High support</span><span><i class="support-dot support-medium"></i>Medium</span><span><i class="support-dot support-low"></i>Low</span></div>
       <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
     </section>
     <div class="live-notices">
-      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Radar reflectivity and Doppler animate on completely separate clocks.</div>
+      <div id="dopplerHistoryWarning" class="note" role="status" hidden>One playback control advances independent radar and Doppler frames; source times may differ.</div>
       <div id="autoRefreshNote" class="note" role="status">Radar and Doppler sources refresh independently every 5 minutes.</div>
     </div>
     <div id="status" role="status">Loading inferred-volume model…</div>

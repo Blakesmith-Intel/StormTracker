@@ -3313,12 +3313,18 @@ async function loadHybridSequence(automatic = false) {
 
   const loopSelection = selectedLoopSelection();
   const loopMinutes = selectedLoopMinutes();
-  const withDoppler = false; // Reflectivity always uses its own selected history.
-  const requestedPlan =
-    selectRadarHistoryPlan(
-      availableRadarHistoryTimes,
-      loopSelection
-    );
+  const isCombined = loopSelection === DOPPLER_AVAILABLE_LOOP_VALUE;
+  const combinedRequested = isCombined
+    ? buildDopplerAvailableSchedule(availableRadarHistoryTimes, independentDopplerFrames)
+    : [];
+  if (isCombined && !combinedRequested.length) {
+    throw new Error("Radar + Doppler window requires published wind history and at least one readable radar observation in the window.");
+  }
+  const withDoppler = false; // Never gate measurements on identical timestamps.
+  const requestedPlan = isCombined
+    ? [...new Set(combinedRequested.map(entry=>entry.radarObservedUtc))]
+        .map(observedUtc=>({kind:"observed",observedUtc}))
+    : selectRadarHistoryPlan(availableRadarHistoryTimes,loopSelection);
   const times =
     requestedPlan
       .filter(entry => entry.kind === "observed")
@@ -3386,8 +3392,14 @@ async function loadHybridSequence(automatic = false) {
         shared.endUtc
     });
 
+  if (automatic && isCombined && !hasNewDopplerWindow()) {
+    $("autoRefreshNote").textContent =
+      "Auto update: waiting for the next actual Doppler observation (checking every 5 minutes).";
+    return;
+  }
   if (
     automatic
+    && !isCombined
     && !needsHistoricalRebuild
     && (
       (
@@ -3479,7 +3491,7 @@ async function loadHybridSequence(automatic = false) {
     frames.push(radarLoad.value);
     states.push(availability.state);
   }
-  if (!frames.length || (automatic && frames.at(-1).observedUtc !== availableEndUtc)) {
+  if (!frames.length || (automatic && !isCombined && frames.at(-1).observedUtc !== availableEndUtc)) {
     throw new Error(newestFailure || "Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
   }
   // Reuse observations across normal forward refreshes so the worker sees each
@@ -3528,10 +3540,22 @@ async function loadHybridSequence(automatic = false) {
 
   let displayPlan;
 
-  try {
-    displayPlan = selectRadarHistoryPlan(frames.map(frame => frame.observedUtc),loopSelection);
-  } catch {
-    displayPlan = selectRadarHistoryPlan(frames.map(frame => frame.observedUtc),ALL_AVAILABLE_LOOP_VALUE);
+  const combinedSchedule = isCombined
+    ? buildDopplerAvailableSchedule(frames.map(frame=>frame.observedUtc),independentDopplerFrames)
+    : [];
+  if(isCombined && !combinedSchedule.length) {
+    throw Error("No measured reflectivity survived inside the current Doppler source window.");
+  }
+  if(isCombined) {
+    displayPlan = combinedSchedule.map(entry=>({
+      kind:"observed",observedUtc:entry.radarObservedUtc
+    }));
+  } else {
+    try {
+      displayPlan = selectRadarHistoryPlan(frames.map(frame=>frame.observedUtc),loopSelection);
+    } catch {
+      displayPlan = selectRadarHistoryPlan(frames.map(frame=>frame.observedUtc),ALL_AVAILABLE_LOOP_VALUE);
+    }
   }
 
   const displayFrames = [];
@@ -3609,6 +3633,9 @@ async function loadHybridSequence(automatic = false) {
   hybridFrames = displayFrames;
   hybridResults = displayResults;
   preparedDopplerStates = displayStates;
+  hybridCombinedSchedule = isCombined ? combinedSchedule : [];
+  lastCombinedDopplerLatestUtc = isCombined ? independentDopplerFrames.at(-1)?.observedUtc : null;
+  windLastRadarDriveKey = null;
   const publishedEntries = shared.entries.filter(entry => frames.some(frame => frame.observedUtc === entry.observedUtc));
   publishedSharedTimeline = { ...shared, entries: publishedEntries, endUtc: publishedEntries.at(-1)?.observedUtc ?? null };
   loadedLoopSelection = loopSelection;
@@ -3628,22 +3655,22 @@ async function loadHybridSequence(automatic = false) {
   hybridTrackVolumes = [];
   hybridDopplerFrameStates = [];
   hybridFrameIndex = automatic
-    ? Math.max(
-        0,
-        hybridFrames.findIndex(
-          frame => frame.observedUtc === oldTime
-        )
-      )
+    ? Math.max(0,hybridFrames.findIndex(frame=>frame.observedUtc===oldTime))
     : 0;
+  if(isCombined && automatic) hybridFrameIndex=0; // New Doppler cycle starts both streams together.
   // Keep the current Doppler layer visible while the replacement frame is
   // prepared. showHybridFrame() will reuse, crossfade or fade it out as required.
   const range = formatProductTimeRange(sharedTimeline.startUtc, sharedTimeline.endUtc);
   $("operationalLoopWindow").textContent =
-    loopSelection === ALL_AVAILABLE_LOOP_VALUE
-      ? `${Math.round(sharedTimeline.spanMinutes)} min available`
-      : `${loopMinutes} min loop`;
+    isCombined
+      ? `Radar + Doppler · ${Math.round(loopMinutes)} min / ${hybridCombinedSchedule.length} steps`
+      : loopSelection === ALL_AVAILABLE_LOOP_VALUE
+        ? `${Math.round(sharedTimeline.spanMinutes)} min available`
+        : `${loopMinutes} min loop`;
   $("operationalLoopWindow").title =
-    `${Math.round(sharedTimeline.spanMinutes)} min actual reflectivity span`;
+    isCombined
+      ? `${Math.round(loopMinutes)} min actual Doppler source window; both streams restart together`
+      : `${Math.round(sharedTimeline.spanMinutes)} min actual reflectivity span`;
   $("sharedHistoryNote").title =
     `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
   const inferredLoaded =

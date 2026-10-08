@@ -21,6 +21,12 @@ jobs:
             for path in \
               "/thredds/fileServer/rq0/08/2025/vol/08_20251124.pvol.zip" \
               "/thredds/catalog/rq0/08/2025/vol/catalog.html" \
+              "/thredds/catalog/rq0/8/catalog.html" \
+              "/thredds/catalog/rq0/8/2025/catalog.html" \
+              "/thredds/catalog/rq0/8/2025/vol/catalog.html" \
+              "/thredds/catalog/rq0/8/2025/img/catalog.html" \
+              "/thredds/fileServer/rq0/8/2025/vol/8_20251124.pvol.zip" \
+              "/thredds/fileServer/rq0/8/2025/vol/08_20251124.pvol.zip" \
               "/thredds/catalog/rq0/catalog.html" \
               "/thredds/catalog/rq0/odim_pvol/catalog.html" \
               "/thredds/catalog/rq0/odim_pvol/08/catalog.html" \

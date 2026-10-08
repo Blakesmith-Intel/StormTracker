@@ -89,7 +89,12 @@ try{
     }, scenario.coords);
     await page.waitForTimeout(900);
     const inspection = await inspect();
-    console.log(`Full app QA ${scenario.id}: basemap=${inspection.mode}, labels=${inspection.labelMode}, height=${inspection.cameraHeight}, pitch=${inspection.cameraPitchDegrees}, visible=${inspection.visible.map(t=>t.name).join(", ")}`);
+    console.log(`Full app QA ${scenario.id}: basemap=${inspection.mode}, labels=${inspection.labelMode}, centre=${inspection.centreLatitude},${inspection.centreLongitude}, height=${inspection.cameraHeight}, pitch=${inspection.cameraPitchDegrees}, visible=${inspection.visible.map(t=>t.name).join(", ")}`);
+    assert.ok(Number.isFinite(inspection.centreLongitude) && Number.isFinite(inspection.centreLatitude),
+      `${scenario.id}: camera must face the globe at its requested focus point`);
+    assert.ok(Math.abs(inspection.centreLongitude-scenario.coords[0]) < 1.5 &&
+      Math.abs(inspection.centreLatitude-scenario.coords[1]) < 1.5,
+      `${scenario.id}: stale/misdirected view: expected ${scenario.coords[1]},${scenario.coords[0]}, got ${inspection.centreLatitude},${inspection.centreLongitude}`);
     assert.equal(inspection.labelMode, scenario.mode,
       "Label layer basemap mode must match the actual basemap selector");
     verify(inspection, scenario.id);

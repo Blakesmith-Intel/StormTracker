@@ -1,7 +1,7 @@
 import {
   createRiverGaugeLayer,
   riverGaugeOperationalSummary
-} from "./river-gauge-layer-v1.js?v=9.13.0";
+} from "./river-gauge-layer-v1.js?v=9.13.1";
 
 import {
   BOM_RIVER_TIDE_GAUGE_ATTRIBUTION

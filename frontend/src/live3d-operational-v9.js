@@ -1595,7 +1595,8 @@ function applyHybridVolumeMode(
     mode.textContent = temporalInferred
       ? "Temporal gap-fill · frame-wide inferred"
       : useTrackSpecific
-        ? (wanted ? `Selected ${wanted}` : "Measured-track-specific")
+        ? (wanted ? `Selected ${wanted} · observed 2-D echo + inferred 3-D`
+          : "Measured tracks · observed 2-D echo + inferred 3-D")
         : wanted && trackVolumesRequested
           ? `Selected ${wanted} · no track volume in frame`
           : trackVolumesRequested
@@ -2800,6 +2801,29 @@ function renderHybridTracks(index) {
             disableDepthTestDistance: 0
           });
         }
+
+        // Critical visibility contract: track segmentation decides WHERE
+        // the storm is drawn, not whether the measured 2-D core is downgraded
+        // to an inferred colour at height. Project the published BoM
+        // category/colour at the lower edge of each inferred track column.
+        // This layer is a 2-D footprint projection, NOT a 3-D observation.
+        for (const measured of volume.measured_reflectivity_footprint ?? []) {
+          if (measured.representative_dbzh < displayedMinimumDbz) continue;
+          const rgb=displayRgb(measured.source_category);
+          if (!rgb) continue;
+          hybridTrackVolumeCollection.add({
+            position: Cesium.Cartesian3.fromDegrees(
+              measured.longitude,
+              measured.latitude,
+              displayAltitude(measured.projection_altitude_m_amsl)
+            ),
+            color: Cesium.Color.fromBytes(rgb[0],rgb[1],rgb[2],255),
+            pixelSize: Math.max(3,Number($("pointSize").value)+1),
+            // This projected 2-D source intensity must not disappear
+            // behind inferred vertical points or 3-D terrain.
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
+          });
+        }
       }
 
       if (!hybridHistory.has(track.track_id)) hybridHistory.set(track.track_id, []);
@@ -3083,7 +3107,7 @@ async function showHybridFrame(index) {
   $("mapTruthLabel").textContent =
     temporalInferred
       ? "TEMPORALLY INFERRED 2-D · inferred vertical structure · display only"
-      : "Measured reflectivity / inferred vertical structure";
+      : "BoM measured 2-D reflectivity core (projected) / inferred vertical structure";
 
   setStatus(
     temporalInferred

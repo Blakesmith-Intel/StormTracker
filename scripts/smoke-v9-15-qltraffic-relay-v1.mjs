@@ -40,7 +40,7 @@ const [oldRoute,newRoute,official]=await Promise.all([
 assert.equal(oldRoute.stormtracker?.filter,"published + flood-related + closures",
   "Production route classification must not be silently changed");
 assert.match(newRoute.stormtracker?.filter??"",/all traffic/i);
-assert.match(newRoute.stormtracker?.filter??"",/Heavy rain/i);
+assert.match(newRoute.stormtracker?.filter??"",/unplanned causes/i);
 assert.ok(Number.isFinite(Date.parse(newRoute.stormtracker?.stored_at)),
   "V9.15 source snapshot must have a valid freshness timestamp");
 const ageMs=Date.now()-Date.parse(newRoute.stormtracker.stored_at);
@@ -52,6 +52,12 @@ for(const feature of newRoute.features){
 }
 const officialMatches=filterFloodRoadClosures(official).features;
 const officialIds=new Set(officialMatches.map(x=>String(x.properties?.id)));
+const includedTypes=Object.fromEntries([...new Set(officialMatches.map(f=>f.properties?.event_type??""))]
+  .map(t=>[t,officialMatches.filter(f=>(f.properties?.event_type??"")===t).length]));
+console.log("LIVE QLDTraffic included unplanned cause groups:",JSON.stringify(includedTypes));
+assert.ok(!officialMatches.some(x=>String(x.properties?.event_subtype??"").toLowerCase()==="planned roadworks"),
+  "Planned roadworks are never accepted");
+
 const previewIds=new Set(newRoute.features.map(x=>String(x.properties?.id)));
 for(const id of officialIds)assert.ok(previewIds.has(id),
   "QLDTraffic currently publishes valid all-traffic closure omitted by V9.15 relay: "+id);
@@ -63,6 +69,6 @@ if(officialLaidley&&isActiveFloodRoadClosure(officialLaidley)){
   console.log("PASS Laidley Creek West Road 750590 preserved from official source");
 }else console.log("NOTE Laidley event 750590 not currently eligible in published live source");
 console.log("PASS Production route preserved:",oldRoute.features.length,"legacy incidents");
-console.log("PASS V9.15 strict route:",newRoute.features.length,"current all-traffic incidents");
-console.log("PASS Exact match with official live QLDTraffic classifications:",officialMatches.length,
+console.log("PASS V9.15 unplanned all-traffic route:",newRoute.features.length,"current unplanned all-traffic incidents");
+console.log("PASS Exact match with official live QLDTraffic unplanned classifications:",officialMatches.length,
  "and authorised Pages CORS; no expired or excluded incidents");

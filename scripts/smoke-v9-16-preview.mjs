@@ -55,7 +55,7 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock] =
 
 requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Production root remains V9.15.1");
 if (productionIndex.includes("9.16-independent-doppler")) throw new Error("Production root accidentally points to preview");
-requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-alerts-preview/, "Preview own iframe");
+requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-independent-doppler/, "Preview own iframe");
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");

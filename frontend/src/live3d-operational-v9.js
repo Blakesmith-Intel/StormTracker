@@ -28,8 +28,9 @@ import {
 
 import {
   buildMeasuredTrackVolume,
-  highSupportTop40Trend
-} from "./measured-track-volume-v1.js?v=track-volume-v1";
+  highSupportTop40Trend,
+  shouldDisplayMeasuredTrackPoint
+} from "./measured-track-volume-v1.js?v=9.15-display-cutoff";
 
 import {
   reprojectWebMercatorRgbaToGeographic
@@ -2791,7 +2792,11 @@ function renderHybridTracks(index) {
       });
 
       if (showTrackVolumes && volume && hybridTrackVolumeCollection) {
+        const displayedMinimumDbz=Number($("minimumDbzh").value);
         for (const point of volume.points) {
+          // The volume analysis retains the full inferred profile; only
+          // the user-visible dots follow the same dBZ cutoff as frame-wide.
+          if (!shouldDisplayMeasuredTrackPoint(point,displayedMinimumDbz)) continue;
           hybridTrackVolumeCollection.add({
             position: Cesium.Cartesian3.fromDegrees(
               point.longitude,

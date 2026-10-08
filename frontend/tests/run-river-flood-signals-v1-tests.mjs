@@ -6,6 +6,7 @@ import {
   parseQueenslandObservationTime,
   appendGaugeObservation,
   cleanFloodSignalHistory,
+  compactFloodHistory,
   latestRiseRate,
   tidalRiseBaseline,
   evaluateFloodSignal,
@@ -89,6 +90,17 @@ const cleaned=cleanFloodSignalHistory({
 },now);
 assert.equal(cleaned[tidalId].length,1);
 assert.equal(cleaned[tidalId][0].height,0.7);
+const histories = compactFloodHistory({
+  "bom:tidal":[sample(now-40*hour,0.4),sample(now-2*hour,1.4)],
+  "bom:river":[sample(now-40*hour,0.4),sample(now-2*hour,1.4)],
+  "bom:missing":[sample(now-10*hour,0.9)]
+},[station("bom:tidal","","rising",true),station("bom:river","minor")],now);
+assert.equal(histories["bom:tidal"].length,2,
+  "Tidal stations retain 48h baseline");
+assert.equal(histories["bom:river"].length,1,
+  "Non-tidal stations retain only rates necessary for recent rise");
+assert.equal(histories["bom:missing"].length,1,
+  "Partial bulletin must not erase another gauge's prior tidal baseline");
 assert.ok(FLOOD_SIGNAL_MAX_AGE_MS<2*hour);
 const result=filterOperationalFloodGauges([
   station("bom:moderate","moderate"),station("bom:major","major","falling"),

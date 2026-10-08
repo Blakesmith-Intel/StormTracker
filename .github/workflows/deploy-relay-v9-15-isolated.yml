@@ -7,7 +7,6 @@ on:
       - feature/v9.15.0-qfd-technical-rescue
     paths:
       - .github/workflows/deploy-relay-v9-15-isolated.yml
-      - scripts/smoke-v9-15-qltraffic-relay-v1.mjs
 
 permissions:
   contents: read

@@ -132,7 +132,7 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.14.0";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.15.0-closures";
 
 import {
   initialiseOperationalPowerOutages

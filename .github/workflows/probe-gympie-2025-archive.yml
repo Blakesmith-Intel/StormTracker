@@ -20,7 +20,12 @@ jobs:
           for host in dapds00.nci.org.au thredds.nci.org.au; do
             for path in \
               "/thredds/fileServer/rq0/08/2025/vol/08_20251124.pvol.zip" \
-              "/thredds/catalog/rq0/08/2025/vol/catalog.html"; do
+              "/thredds/catalog/rq0/08/2025/vol/catalog.html" \
+              "/thredds/catalog/rq0/catalog.html" \
+              "/thredds/catalog/rq0/odim_pvol/catalog.html" \
+              "/thredds/catalog/rq0/odim_pvol/08/catalog.html" \
+              "/thredds/catalog/rq0/odim_pvol/08/2025/vol/catalog.html" \
+              "/thredds/fileServer/rq0/odim_pvol/08/2025/vol/08_20251124.pvol.zip"; do
               url="https://${host}${path}"
               echo "::group::HEAD ${url}"
               curl -IL --max-time 20 --connect-timeout 9 -sS \

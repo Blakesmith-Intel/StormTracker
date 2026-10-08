@@ -94,6 +94,7 @@ import {
 
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
+import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
   radarHistoryTimeline,
@@ -193,6 +194,11 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
+const stormTrackLabelOverlay = createStormTrackLabelOverlay({
+  scene,
+  CesiumRef: Cesium,
+  container: $("mapPanel")
+});
 const frameCrossfade = createSceneCrossfade({ scene, container: $("mapPanel") });
 // Keep every camera gesture and manual control immediate during a visual fade.
 for (const event of ["pointerdown", "pointermove", "wheel", "keydown"]) {
@@ -2725,6 +2731,7 @@ function formatSignedKmh(
 }
 
 function renderHybridTracks(index) {
+  const stormTrackMarkers = [];
   hybridSource.entities.suspendEvents();
   clearHybridTrackVolumeCollection();
   const showTrackVolumes = useTrackSpecificVolume(index);
@@ -2762,26 +2769,14 @@ function renderHybridTracks(index) {
         displayAltitude(altitude)
       );
 
-      hybridSource.entities.add({
-        id: `hybrid-${index}-${track.track_id}`,
+      // Present track ID and centroid as one paired overlay above the 3-D
+      // volume. The Labels checkbox controls the complete marker, not just
+      // the text, and does not rebuild or change any measured/inferred data.
+      stormTrackMarkers.push({
         position,
-        point: {
-          pixelSize: active.has(track.track_id) ? 12 : 8,
-          color: colour,
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 1,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        },
-        label: {
-          show: Boolean($("showTrackLabels")?.checked),
-          text: `${track.track_id}  ≥${Number(observation.maximum_dbzh_lower_bound).toFixed(0)} dBZ`,
-          font: "12px sans-serif",
-          pixelOffset: new Cesium.Cartesian2(0, -18),
-          fillColor: Cesium.Color.WHITE,
-          showBackground: true,
-          backgroundColor: Cesium.Color.BLACK.withAlpha(0.62),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        }
+        text: `${track.track_id}  ≥${Number(observation.maximum_dbzh_lower_bound).toFixed(0)} dBZ`,
+        colour: colour.toCssColorString(),
+        size: active.has(track.track_id) ? 12 : 8
       });
 
       if (showTrackVolumes && volume && hybridTrackVolumeCollection) {
@@ -2981,6 +2976,7 @@ function renderHybridTracks(index) {
       : '<div class="hybrid-muted">No measured ≥40 dBZ 2-D storm tracks in this frame.</div>';
   } finally {
     hybridSource.entities.resumeEvents();
+    stormTrackLabelOverlay.setMarkers(stormTrackMarkers);
   }
   scene.requestRender();
 }
@@ -4233,15 +4229,10 @@ $("hybridPlayButton").addEventListener("click", () => {
   else playback.play();
 });
 
-// Toggle existing Cesium track labels immediately on the CURRENT (even paused)
-// frame. Do not rebuild volume primitives, change the timeline or require a
-// subsequent radar scan to apply the user's label preference.
+// Toggle BOTH tracking points and their labels on the CURRENT (even paused)
+// frame, without updating radar, volume primitives or the playback position.
 function updateRenderedTrackLabels() {
-  const visible=Boolean($("showTrackLabels")?.checked);
-  for(const entity of hybridSource.entities.values){
-    if(entity?.label) entity.label.show=visible;
-  }
-  scene.requestRender();
+  stormTrackLabelOverlay.setVisible(Boolean($("showTrackLabels")?.checked));
 }
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("trackDisplayFilter").addEventListener("change", event => {

@@ -1,0 +1,37 @@
+name: Validate Gympie ST0027 higher radar elevations
+on:
+  push:
+    branches: [feature/severe-storm-radar-alerts-v1]
+    paths: [.github/workflows/multi-elevation-gympie-st0027.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          repository: Blakesmith-Intel/StormTracker
+          run-id: 37816134728
+          github-token: ${{ github.token }}
+          name: AURA-Gympie-08-2025-11-24-real-scans
+          path: ${{ runner.temp }}/h5-scans
+      - name: Install scientific tools
+        run: python -m pip install --quiet h5py numpy pillow
+      - name: Inspect all real elevation sweeps around candidate location
+        run: |
+          python scripts/multi-elevation-gympie-st0027.py \
+            "$RUNNER_TEMP/h5-scans" "$RUNNER_TEMP/multi-elevation-evidence"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AURA-Gympie-ST0027-MultiElevation-Research
+          path: ${{ runner.temp }}/multi-elevation-evidence/
+          if-no-files-found: error
+          retention-days: 7

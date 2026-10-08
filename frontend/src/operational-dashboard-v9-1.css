@@ -671,3 +671,18 @@ dialog::backdrop { background:#0009; }
   .qfd-rescue-row button { min-height:25px; font-size:9px; }
   #qfdTechnicalRescueStatus { font-size:8px; margin:-1px 0 3px; }
 }
+
+/* Public QFD GroupedType legend; provisional artwork is explicitly disclosed
+   whenever the provider does not expose its picture-marker renderer. */
+.qfd-symbol-legend {
+  display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px;
+  padding:3px 7px;margin:0 0 2px;font-size:10px;
+}
+.qfd-symbol-legend span { display:inline-flex;align-items:center;gap:4px; }
+.qfd-symbol-legend img {width:20px;height:20px;object-fit:contain;}
+.qfd-symbol-status {margin:0 0 6px;font-size:9px;text-align:right;}
+.qfd-info-icon {width:29px;height:29px;object-fit:contain;flex:0 0 auto;}
+@media (max-width:700px) {
+  .qfd-symbol-legend {font-size:9px;gap:3px 8px;padding:2px 4px;}
+  .qfd-symbol-legend img {width:17px;height:17px;}
+}

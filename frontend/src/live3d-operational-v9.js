@@ -30,7 +30,7 @@ import {
   buildMeasuredTrackVolume,
   highSupportTop40Trend,
   shouldDisplayMeasuredTrackPoint
-} from "./measured-track-volume-v1.js?v=9.15-display-cutoff";
+} from "./measured-track-volume-v1.js?v=9.15.0-observed-core";
 
 import {
   reprojectWebMercatorRgbaToGeographic
@@ -1564,7 +1564,8 @@ function resetTrackDisplaySelection() {
 function useTrackSpecificVolume(index) {
   // Measured-track volume is the permanent 3-D mode for observed frames.
   // A missing track, or temporal gap-fill frame, cannot invent a measured volume.
-  return hasTrackSpecificVolume(index);
+  return !isTemporallyInferredRadarFrame(hybridFrames[index])
+    && hasTrackSpecificVolume(index);
 }
 
 function applyHybridVolumeMode(
@@ -1576,10 +1577,7 @@ function applyHybridVolumeMode(
     isTemporallyInferredRadarFrame(
       hybridFrames[index]
     );
-  const useTrackSpecific =
-    !temporalInferred
-    && trackVolumesRequested
-    && hasTrackSpecificVolume(index);
+  const useTrackSpecific = useTrackSpecificVolume(index);
 
   if (inferredCollection) {
     inferredCollection.show =

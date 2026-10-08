@@ -257,6 +257,14 @@ const CORE_HOME =
       )
   });
 
+// The legacy SEQ regional mosaic remains selectable and keeps its previous
+// regional camera framing; only the initial/home radar is now Stapylton.
+const REGIONAL_HOME = Object.freeze({
+  ...CORE_HOME,
+  longitude: 153.05,
+  latitude: -27.25
+});
+
 let mapCamera = null;
 
 const touchCameraGestures =
@@ -958,7 +966,7 @@ function selectedSourceRadars() { return dopplerRadarsForRegion(selectedRadarReg
 function resetView() {
   const site = QLD_RADAR_SITES[selectedRadarRegion()];
   if (site) mapCamera.setView({...CORE_HOME, longitude:site.longitude, latitude:site.latitude});
-  else mapCamera.reset();
+  else mapCamera.setView(REGIONAL_HOME);
 }
 function configureRadarSite() {
   const ids = selectedSourceRadars();

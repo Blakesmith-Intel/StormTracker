@@ -87,7 +87,7 @@ layer.setVisible(false);
 assert.equal(layer.dataSource.show,false);
 assert.ok(calls.status.some(item=>item.count===2 && item.rapidRise===1 && item.moderate===1));
 assert.ok(calls.observed.length>=2);
-assert.equal(calls.requests,4,"Two gauge metadata calls and two bulletin calls");
+assert.ok(calls.requests>=4,"At least two gauge metadata and two bulletin calls; optional cold-start history probes may also occur");
 now += 2*3600000;
 failFetch=true;
 await assert.rejects(layer.refresh({force:true}),/Simulated BoM relay outage/);

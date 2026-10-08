@@ -4233,7 +4233,17 @@ $("hybridPlayButton").addEventListener("click", () => {
   else playback.play();
 });
 
-$("showTrackLabels").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
+// Toggle existing Cesium track labels immediately on the CURRENT (even paused)
+// frame. Do not rebuild volume primitives, change the timeline or require a
+// subsequent radar scan to apply the user's label preference.
+function updateRenderedTrackLabels() {
+  const visible=Boolean($("showTrackLabels")?.checked);
+  for(const entity of hybridSource.entities.values){
+    if(entity?.label) entity.label.show=visible;
+  }
+  scene.requestRender();
+}
+$("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;

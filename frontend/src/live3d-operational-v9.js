@@ -2273,7 +2273,9 @@ function syncSevereStormAlerts(index) {
     alerts: detection.alerts,
     observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
     windSupported: detection.windSourceSupported,
-    experimentalHook: Boolean($("showExperimentalHookAlerts")?.checked)
+    experimentalHook: Boolean($("showExperimentalHookAlerts")?.checked),
+    displayedUtc: frame?.observedUtc ?? null,
+    atNewestFrame: index === hybridFrames.length - 1
   });
 }
 

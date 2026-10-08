@@ -151,6 +151,10 @@ import {
   addVolumeDisplayPoint,
   setVolumeDisplayOpacity
 } from "./volume-display-opacity-v1.js?v=9.15.0-volume-opacity";
+import {
+  volumeDisplayThresholdDbz,
+  shouldRenderVolumePoint
+} from "./volume-display-threshold-v1.js?v=9.15.1-intensity40";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
@@ -1161,9 +1165,7 @@ function renderInferredVolume(frame) {
     );
 
   const minimumDbzh =
-    Number(
-      $("minimumDbzh").value
-    );
+    volumeDisplayThresholdDbz($("minimumDbzh").value);
 
   const pointSize =
     Number(
@@ -1238,12 +1240,15 @@ function renderInferredVolume(frame) {
           inputDbzh,
           {
             occupancyThreshold,
-            minimumOutputDbz:
-              minimumDbzh
+            // Maintain existing model sampling. Filtering is presentation-only.
+            minimumOutputDbz: 30
           }
         );
 
-      if (!inferred.length) {
+      const displayedInferred = inferred.filter(
+        point => shouldRenderVolumePoint(point.dbzh, minimumDbzh)
+      );
+      if (!displayedInferred.length) {
         continue;
       }
 
@@ -1262,13 +1267,13 @@ function renderInferredVolume(frame) {
 
       renderedColumns++;
 
-      for (const point of inferred) {
+      for (const point of displayedInferred) {
         const supportStyle =
           styleForInferredPoint(
             point,
             {
-              displayThresholdDbz:
-                minimumDbzh,
+              // Keep confidence styling on its previously accepted baseline.
+              displayThresholdDbz: 30,
 
               basePointSize:
                 pointSize
@@ -2780,7 +2785,7 @@ function renderHybridTracks(index) {
       });
 
       if (showTrackVolumes && volume && hybridTrackVolumeCollection) {
-        const displayedMinimumDbz=Number($("minimumDbzh").value);
+        const displayedMinimumDbz=volumeDisplayThresholdDbz($("minimumDbzh").value);
         for (const point of volume.points) {
           // The volume analysis retains the full inferred profile; only
           // the user-visible dots follow the same dBZ cutoff as frame-wide.
@@ -3761,10 +3766,8 @@ async function loadHybridSequence(automatic = false) {
             minimumOutputDbz:
               20,
 
-            displayThresholdDbz:
-              Number(
-                $("minimumDbzh").value
-              ),
+            // Display threshold no longer changes measured-cell inference styles.
+            displayThresholdDbz: 30,
 
             basePointSize:
               Number(

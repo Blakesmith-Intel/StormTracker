@@ -29,7 +29,7 @@ function setRoadStatus({
 
   target.textContent =
     message
-    || "QLDTraffic · flood closures only";
+    || "QLDTraffic · unplanned all-traffic closures";
 
   target.dataset.kind =
     kind;
@@ -149,7 +149,7 @@ function detailCause(summary) {
   return (
     summary.eventSubtype
     || summary.eventType
-    || "Flood related"
+    || "Unplanned closure"
   );
 }
 
@@ -246,7 +246,7 @@ function showClosureInfo(
 
   addDetailRow(
     rows,
-    "Flood cause",
+    "Cause",
     detailCause(
       summary
     )
@@ -884,7 +884,7 @@ export function initialiseOperationalFloodRoadClosures({
           kind:
             "normal",
           message:
-            "QLDTraffic flood closures hidden"
+            "QLDTraffic unplanned closures hidden"
         });
       }
     }

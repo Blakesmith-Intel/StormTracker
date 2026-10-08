@@ -144,7 +144,10 @@ export function initialiseOperationalQfdTechnicalRescues({
     try{return await loading;}
     catch(error){
       if(!expire()){
-        report({kind:"warning",message:"QFD feed unavailable · cached incidents UNVERIFIED · "+String(error?.message??error).slice(0,140)});
+        const cause=String(error?.message??error).slice(0,140);
+        report(lastLoadedAt
+          ? {kind:"warning",message:"QFD feed unavailable · cached incidents UNVERIFIED · "+cause}
+          : {kind:"error",message:"QFD feed unavailable · no verified incidents · "+cause});
       }
       throw error;
     }finally{loading=null;}

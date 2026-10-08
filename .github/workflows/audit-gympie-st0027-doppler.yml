@@ -1,0 +1,47 @@
+name: Audit historical ST0027 Doppler evidence
+on:
+  push:
+    branches: [feature/severe-storm-radar-alerts-v1]
+    paths:
+      - .github/workflows/audit-gympie-st0027-doppler.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Retrieve authentic original Gympie Level 1 radar volumes
+        uses: actions/download-artifact@v4
+        with:
+          repository: Blakesmith-Intel/StormTracker
+          run-id: 37816134728
+          github-token: ${{ github.token }}
+          name: AURA-Gympie-08-2025-11-24-real-scans
+          path: ${{ runner.temp }}/gympie-real
+      - name: Install research-only HDF5 dependencies
+        run: python -m pip install --quiet numpy h5py pillow
+      - name: Examine raw radar gate radial velocities around ST0027
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/st0027-doppler-audit"
+          python scripts/audit-aura-gympie-st0027-doppler.py \
+            "$RUNNER_TEMP/gympie-real" "$RUNNER_TEMP/st0027-doppler-audit"
+          test -s "$RUNNER_TEMP/st0027-doppler-audit/st0027_doppler_evidence.json"
+          test -s "$RUNNER_TEMP/st0027-doppler-audit/20251124_060000_radial_velocity.png"
+          test -s "$RUNNER_TEMP/st0027-doppler-audit/20251124_060500_radial_velocity.png"
+      - name: Publish reproducible research gate-level report and imagery
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURA-Gympie-ST0027-Doppler-audit
+          path: ${{ runner.temp }}/st0027-doppler-audit/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7

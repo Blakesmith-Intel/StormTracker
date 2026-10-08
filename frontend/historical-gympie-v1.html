@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StormTracker Research — Gympie, 24 November 2025</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#e8f4f8;background:#09141c;color-scheme:dark}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1200px;margin:0 auto;padding:16px}
+    header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:start}
+    h1{font-size:clamp(18px,3vw,26px);margin:0}p{color:#bed1db;line-height:1.45}
+    .mini{font-size:12px;color:#aac0cc}.pill{border:1px solid #748998;border-radius:18px;padding:5px 10px;font-size:12px}
+    a{color:#9cddff}.controls{background:#14232e;border:1px solid #304b5d;border-radius:10px;
+      padding:12px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0}
+    button{border:1px solid #4d819c;color:#e8f7ff;background:#21455b;border-radius:7px;
+      padding:9px 12px;font:inherit;cursor:pointer}
+    button:focus-visible,input:focus-visible{outline:2px solid #ffdf8c}
+    button:disabled{opacity:.45}#frameRange{flex:1;min-width:180px;accent-color:#ffca7b}
+    #frameCount,#clock{font-variant-numeric:tabular-nums}
+    .image-panel{border:1px solid #3b586b;border-radius:12px;overflow:hidden;background:#0d1820}
+    img{display:block;width:100%;height:auto;object-fit:contain}#status{margin:0;padding:12px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px}
+    .card{padding:12px;border:1px solid #304c5b;border-radius:9px;background:#13222c}
+    .card strong{font-size:15px;font-variant-numeric:tabular-nums} .card span{display:block;color:#adc2cf;font-size:11px}
+    .warning{border-left:3px solid #e7ab63;padding:8px 12px;background:#342719;color:#f2d6aa;font-size:12px}
+    @media(max-width:600px){main{padding:9px}.controls{padding:8px;gap:6px}button{padding:7px 9px}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><p class="mini">STORMTRACKER · SCIENTIFIC RESEARCH PREVIEW · NOT LIVE</p>
+      <h1>Gympie radar 8 — 24 November 2025</h1>
+      <p>Authentic Australian Unified Radar Archive Level 1 volumes · Mt Kanigan · Queensland</p>
+    </div>
+    <a class="pill" href="./">Return to live V9.16 preview</a>
+  </header>
+  <div class="warning"><strong>Unverified tornadic-storm candidate.</strong>
+    Images show uncorrected, lowest-elevation radar observations; they are not a confirmed
+    tornado, hook echo, rotational signature, BoM severe-weather warning or measured surface wind gust.
+    The right panel shows raw Doppler radial velocity, which can be aliased or cluttered.</div>
+  <div class="controls">
+    <button id="back" aria-label="Previous measured scan" disabled>◀ Previous</button>
+    <button id="play" disabled>▶ Play</button>
+    <button id="next" aria-label="Next measured scan" disabled>Next ▶</button>
+    <input id="frameRange" type="range" min="0" max="0" value="0" aria-label="Select archived radar scan">
+    <strong id="frameCount">0 / 0</strong>
+    <strong id="clock">—</strong>
+  </div>
+  <div class="image-panel">
+    <img id="frameImage" alt="Paired measured reflectivity and Doppler radial velocity, radar-centred research display" hidden>
+    <p id="status" role="status">Reading archived scan metadata…</p>
+  </div>
+  <section class="cards" aria-label="Radar measurement details">
+    <div class="card"><span>Maximum sampled lowest-elevation reflectivity</span><strong id="dbz">—</strong></div>
+    <div class="card"><span>Maximum absolute raw radial speed (not gust)</span><strong id="velocity">—</strong></div>
+    <div class="card"><span>Measured beam elevation</span><strong id="elevation">—</strong></div>
+    <div class="card"><span>Available measured variables</span><strong id="variables">—</strong></div>
+  </section>
+  <p class="mini">These research previews are an approximate radar-centred reprojection for visual assessment,
+    not a substitute for properly georeferenced or Doppler-dealiased meteorological analysis.
+    The scans are only a selected subset of the 288-volume daily archive; gaps on the time slider
+    represent actual time gaps between the extracted samples.</p>
+  <p class="mini">Source: <a href="https://dapds00.nci.org.au/thredds/catalog/rq0/8/2025/vol/catalog.html" target="_blank" rel="noopener noreferrer">NCI AURA Level 1 radar archive</a>.
+    CC BY 4.0 · Soderholm et al. (2019), DOI: 10.25914/508X-9A12.
+    <a href="https://www.openradar.io/operational-radars/radar-products" target="_blank" rel="noopener noreferrer">AURA dataset documentation</a>.</p>
+</main>
+<script>
+(() => {
+  "use strict";
+  const $=id=>document.getElementById(id);
+  let scans=[],at=0,timer=null;
+  function stop(){if(timer!==null){clearInterval(timer);timer=null;} $("play").textContent="▶ Play";}
+  function render(){
+    if(!scans.length)return;
+    const entry=scans[at];
+    $("frameRange").value=String(at);
+    $("frameCount").textContent=(at+1)+" / "+scans.length;
+    const time=new Date("2025-11-24T"+entry.utc_time+"Z");
+    const aest=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Brisbane",hour:"2-digit",minute:"2-digit",hour12:false}).format(time);
+    $("clock").textContent=aest+" AEST · "+entry.utc_time.slice(0,5)+" UTC";
+    const image=$("frameImage");
+    image.src="./research-gympie/observed_scan_previews/"+encodeURIComponent(entry.file.replace(/\.h5$/,".png"));
+    image.hidden=false;
+    $("status").hidden=true;
+    $("dbz").textContent=entry.maximum_raw_dbz===null?"Unavailable":entry.maximum_raw_dbz.toFixed(1)+" dBZ";
+    $("velocity").textContent=entry.maximum_abs_raw_radial_kmh===null?"Unavailable":entry.maximum_abs_raw_radial_kmh.toFixed(1)+" km/h (uncorrected)";
+    $("elevation").textContent=entry.lowest_elangle_deg.toFixed(2)+"°";
+    $("variables").textContent=entry.fields.join(", ");
+    $("back").disabled=at===0;
+    $("next").disabled=at===scans.length-1;
+  }
+  function step(delta){at=(at+delta+scans.length)%scans.length;render();}
+  $("back").addEventListener("click",()=>{stop();step(-1)});
+  $("next").addEventListener("click",()=>{stop();step(1)});
+  $("frameRange").addEventListener("input",event=>{stop();at=Number(event.target.value);render()});
+  $("play").addEventListener("click",()=>{
+    if(timer!==null){stop();return;}
+    $("play").textContent="Ⅱ Pause";
+    timer=setInterval(()=>step(1),950);
+  });
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)stop()});
+  fetch("./research-gympie/scan_meteorology.json",{cache:"no-store"})
+    .then(response=>{if(!response.ok)throw Error("Archive report HTTP "+response.status);return response.json()})
+    .then(records=>{
+      scans=records.filter(item=>!item.error&&item.utc_time).sort((a,b)=>a.utc_time.localeCompare(b.utc_time));
+      if(!scans.length)throw Error("No measured scan previews available");
+      $("frameRange").max=String(scans.length-1);
+      $("frameRange").disabled=false;
+      $("play").disabled=false;
+      render();
+    })
+    .catch(error=>{$("status").textContent="Archived radar preview unavailable: "+error.message;});
+})();
+</script>
+</body>
+</html>

@@ -49,26 +49,40 @@ jobs:
           ref: feature/v9.15.1-storm-label-foreground
           path: preview-builds/v9.15.1
           persist-credentials: false
-      - name: Validate all three candidates independently
+      - name: Checkout V9.16 severe radar alerts candidate
+        uses: actions/checkout@v4
+        with:
+          ref: feature/severe-storm-radar-alerts-v1
+          path: preview-builds/v9.16
+          persist-credentials: false
+      - name: Validate all four candidates independently
         run: |
           (cd preview-builds/v9.14.0 && npm test)
           (cd preview-builds/v9.15.0 && npm test)
           (cd preview-builds/v9.15.1 && npm test)
+          (cd preview-builds/v9.16 && npm test)
 
       - name: Stage isolated live previews without changing production
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1
+          mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1 frontend/preview/v9.16
           cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
           cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
           cp -a preview-builds/v9.15.1/frontend/. frontend/preview/v9.15.1/
+          cp -a preview-builds/v9.16/frontend/. frontend/preview/v9.16/
           printf 'V9.14.0 candidate %s\n' "$(git -C preview-builds/v9.14.0 rev-parse HEAD)" > frontend/preview/v9.14.0/BUILD.txt
           printf 'V9.15.0 candidate %s\n' "$(git -C preview-builds/v9.15.0 rev-parse HEAD)" > frontend/preview/v9.15.0/BUILD.txt
           printf 'V9.15.1 candidate %s\n' "$(git -C preview-builds/v9.15.1 rev-parse HEAD)" > frontend/preview/v9.15.1/BUILD.txt
+          printf 'V9.16 radar alerts candidate %s\n' "$(git -C preview-builds/v9.16 rev-parse HEAD)" > frontend/preview/v9.16/BUILD.txt
           test -f frontend/preview/v9.14.0/src/live3d-operational-v9.js
           test -f frontend/preview/v9.15.0/src/live3d-operational-v9.js
           test -f frontend/preview/v9.15.1/src/storm-track-label-overlay-v1.js
+          test -f frontend/preview/v9.16/src/severe-storm-alerts-v1.js
+          test -f frontend/preview/v9.16/src/severe-storm-alert-overlay-v1.js
+          test -f frontend/preview/v9.16/tests/run-startup-radar-default-v1-tests.mjs
+          grep -q 'value="66" selected>Brisbane (Mt Stapylton)' frontend/preview/v9.16/live3d-operational-v9.html
+          grep -q '9.16-alerts-preview' frontend/preview/v9.16/index.html
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 

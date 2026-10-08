@@ -54,8 +54,8 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock] =
   ]);
 
 requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Production root remains V9.15.1");
-if (productionIndex.includes("9.16-unified-v2")) throw new Error("Production root accidentally points to preview");
-requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-unified-v2/, "Preview own iframe");
+if (productionIndex.includes("9.16-doppler-window-v1")) throw new Error("Production root accidentally points to preview");
+requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-doppler-window-v1/, "Preview own iframe");
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");
@@ -75,6 +75,15 @@ requireMatch(previewHtml, /id="radarPlaybackTime"/, "Radar real source timestamp
 requireMatch(previewHtml, /id="dopplerPlaybackTime"/, "Doppler real source timestamp");
 requireMatch(previewHtml, /id="sourceTimeGap"/, "Relative observation time difference");
 requireMatch(runtime, /function updateDualSourceTimes\(\)/, "Original source AEST clocks and UTC source attribution");
+requireMatch(runtime, /option.value = DOPPLER_AVAILABLE_LOOP_VALUE/, "New Radar + Doppler available window option");
+requireMatch(runtime, /hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/, "Combined timeline playback assembly");
+requireMatch(runtime, /hasNewDopplerWindow\(\) && hybridCombinedSchedule.length/, "Rebuild on newly observed wind frame");
+requireMatch(runtime, /Doppler source frame · synchronising radar and wind loop/, "New Doppler source announcement");
+requireMatch(previewHtml, /id="dopplerOpacity"/, "Doppler controlled by opacity");
+if (/id="showDopplerOverlay"/.test(previewHtml) || /showDopplerOverlay/.test(runtime)) {
+  throw new Error("Obsolete Doppler toggle present in V9.16");
+}
+
 if (/id="dopplerPlayButton"|id="dopplerFrameSlider"/.test(previewHtml) ||
     /independentDopplerPlayback/.test(runtime)) {
   throw new Error("Old second wind playback controls or clock remain");

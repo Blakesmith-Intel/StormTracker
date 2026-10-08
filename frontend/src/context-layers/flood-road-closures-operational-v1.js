@@ -1,3 +1,4 @@
+import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
@@ -297,18 +298,15 @@ function showClosureInfo(
     || summary.description
   );
 
-  addDetailRow(
-    rows,
-    "Source",
-    summary.source
-    || QLD_TRAFFIC_ATTRIBUTION
+  addOfficialSourceRow(
+    rows,"Source",
+    summary.source||QLD_TRAFFIC_ATTRIBUTION,
+    roadOfficialUrl(summary.webLink)
   );
 
   if (link) {
     const webLink =
-      safeWebLink(
-        summary.webLink
-      );
+      roadOfficialUrl(summary.webLink);
 
     link.hidden =
       !webLink;

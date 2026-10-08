@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 
 import {
   buildMeasuredTrackVolume,
-  highSupportTop40Trend
+  highSupportTop40Trend,
+  shouldDisplayMeasuredTrackPoint
 } from "../src/measured-track-volume-v1.js";
 
 const model = {
@@ -125,6 +126,12 @@ assert.ok(trend);
 assert.equal(trend.change_m, 1000);
 assert.equal(trend.metres_per_10_min, 2000);
 
-console.log(
-  "8 measured-track-volume tests passed."
-);
+// Parity guard: drawn track points follow the user display cutoff, but
+// the measured cell analysis and 40 dBZ top are unchanged.
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:29.9},30),false);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:30},30),true);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:33},40),false);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:50},40),true);
+assert.equal(shouldDisplayMeasuredTrackPoint({dbzh:NaN},30),false);
+assert.equal(volume.inferred_point_count,12); // Retains 20 dBZ science.
+console.log("14 measured-track-volume checks passed, including rendered dBZ parity.");

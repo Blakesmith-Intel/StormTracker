@@ -32,7 +32,7 @@
           <select id="playbackSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
         </label>
       </div>
-      <div class="button-grid"><button id="loadHybridButton" disabled>Load 30-min storm loop</button><button id="loadButton" disabled>Refresh latest</button></div>
+      <div class="button-grid"><button id="loadHybridButton" disabled>Load selected window</button><button id="loadButton" disabled>Refresh latest</button></div>
       <div class="playback-row"><button id="hybridPlayButton" disabled aria-pressed="false">Play</button><button id="jumpLatestButton" disabled>Latest</button><label for="hybridFrameSlider">Frame <strong id="hybridFrameLabel">—</strong></label></div>
       <input id="hybridFrameSlider" aria-label="Sequence frame" type="range" min="0" max="0" step="1" value="0" disabled>
       <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span>Radar <strong id="radarPlaybackTime">—</strong></span><span>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Actual time separation between these independent radar products" hidden></span></div>

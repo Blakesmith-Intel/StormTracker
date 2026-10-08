@@ -139,7 +139,7 @@ import {
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.12.0";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.13.0";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,

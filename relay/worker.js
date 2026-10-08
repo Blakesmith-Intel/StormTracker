@@ -163,7 +163,7 @@ function jsonResponse(payload, origin) {
 const FLOOD_ROAD_CACHE_URL =
   "https://stormtracker.internal/flood-road-closures-cache-v4";
 const V915_ROAD_CACHE_URL =
-  "https://stormtracker.internal/flood-road-closures-cache-v5";
+  "https://stormtracker.internal/flood-road-closures-cache-v6";
 
 const FLOOD_ROAD_FRESH_MS =
   5 * 60 * 1000;
@@ -446,7 +446,7 @@ async function relayFloodRoadClosures(
     stormtracker: {
       filter:
         preview
-          ? "published + current + closed to all traffic + Flash flooding/Long-term flooding/Earlier flooding/Heavy rain"
+          ? "published + current + all-traffic closures + unplanned causes (exclude scheduled/planned works and events)"
           : "published + flood-related + closures",
       source:
         "Queensland Department of Transport and Main Roads · QLDTraffic",

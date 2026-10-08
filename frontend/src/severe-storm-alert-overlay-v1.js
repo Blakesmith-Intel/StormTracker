@@ -32,6 +32,8 @@ export function createSevereStormAlertOverlay({
   let hasObservedFrame = false;
   let windSourceSupported = false;
   let hookExperimental = false;
+  let displayedUtc = null;
+  let atNewestFrame = false;
   let selectedId = "";
   let markers = [];
   let destroyed = false;
@@ -87,6 +89,20 @@ export function createSevereStormAlertOverlay({
       status.textContent = alerts.length ? "Radar-derived indicators · not official warnings" :
         "No qualifying radar indicators in this frame.";
     }
+    if (hasObservedFrame) {
+      const epoch = Date.parse(displayedUtc);
+      const ageMs = Date.now() - epoch;
+      const isFresh = Number.isFinite(ageMs) && ageMs >= -300000 &&
+        ageMs <= 30 * 60000;
+      const label = !atNewestFrame ? "HISTORICAL" : (isFresh ? "LATEST" : "STALE");
+      const stamp = Number.isFinite(epoch)
+        ? new Date(epoch).toLocaleTimeString("en-AU", {
+            timeZone: "Australia/Brisbane", hour: "2-digit", minute: "2-digit"
+          }) + " AEST"
+        : "unknown source time";
+      status.dataset.frameState = label.toLowerCase();
+      status.textContent = label + " · " + stamp + ". " + status.textContent;
+    }
     if (hookExperimental) {
       const note = documentRef.createElement("small");
       note.textContent = "Hook-shape model is experimental / unvalidated.";
@@ -139,15 +155,19 @@ export function createSevereStormAlertOverlay({
   }
 
   const removeListener = scene.postRender.addEventListener(project);
+  const ageRefresh = setInterval(() => { if (!destroyed && enabled) draw(); }, 60000);
   draw();
   return {
     setEnabled(value) { enabled = Boolean(value); draw(); scene.requestRender(); },
     setFrame({ alerts: next = [], observedFrame = false,
-      windSupported = false, experimentalHook = false } = {}) {
+      windSupported = false, experimentalHook = false,
+      displayedUtc: utc = null, atNewestFrame = false } = {}) {
       alerts = next;
       hasObservedFrame = observedFrame;
       windSourceSupported = windSupported;
       hookExperimental = experimentalHook;
+      displayedUtc = utc;
+      atNewestFrame = Boolean(atNewestFrame);
       selectedId = "";
       detail.hidden = true;
       draw();
@@ -157,6 +177,7 @@ export function createSevereStormAlertOverlay({
     get selectedAlertId() { return selectedId; },
     destroy() {
       destroyed = true;
+      clearInterval(ageRefresh);
       removeListener?.();
       root.remove();
       pinsRoot.remove();

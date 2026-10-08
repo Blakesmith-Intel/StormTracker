@@ -4,6 +4,7 @@ on:
     branches: [feature/severe-storm-radar-alerts-v1]
     paths:
       - .github/workflows/replay-gympie-2025-hook.yml
+      - scripts/replay-archived-gympie-hook-v1.mjs
   workflow_dispatch:
 permissions:
   contents: read

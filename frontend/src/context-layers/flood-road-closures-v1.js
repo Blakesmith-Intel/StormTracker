@@ -285,7 +285,7 @@ export function createFloodRoadClosureLayer({
     dataSource.entities.removeAll();
     viewer.scene.requestRender();
     onUpdate([]);
-    reportStatus({kind:"error",message:"Source expired · old flood-closure markers removed · last checked "+checkedAtAest(lastLoadedAt)});
+    reportStatus({kind:"error",message:"Source expired · old closure markers removed · last checked "+checkedAtAest(lastLoadedAt)});
     return true;
   }
 
@@ -547,7 +547,7 @@ export function createFloodRoadClosureLayer({
           kind:
             "loading",
           message:
-            "Checking QLDTraffic flood closures…"
+            "Checking QLDTraffic unplanned closures…"
         });
 
         const result =
@@ -568,7 +568,7 @@ export function createFloodRoadClosureLayer({
           kind:
             "ok",
           message:
-            `${currentFeatures.length} active flood closure${
+            `${currentFeatures.length} active unplanned all-traffic closure${
               currentFeatures.length === 1
                 ? ""
                 : "s"

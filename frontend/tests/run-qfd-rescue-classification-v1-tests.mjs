@@ -178,8 +178,8 @@ await (async()=>{
     hidden:false,
     getElementById:id=>originals.get(id)??null,
     querySelector:selector=>{
-      const found=/^\\[data-qfd-group-icon="(.+)"\\]$/.exec(selector);
-      return found?images.get(found[1])??null:null;
+      for(const [group,img] of images)if(selector==='[data-qfd-group-icon="'+group+'"]')return img;
+      return null;
     },
     addEventListener:(name,handler)=>handlers.set(name,handler),
     removeEventListener:name=>handlers.delete(name)

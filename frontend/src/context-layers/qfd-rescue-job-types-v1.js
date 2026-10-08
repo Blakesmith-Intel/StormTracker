@@ -44,10 +44,19 @@ export function qfdPublicClassificationAvailability(schemaFields) {
   // Currently QFD publishes GroupedType only, which is insufficient.
   const subtypeFields=["jobtype","job_type","problemtype","problem_type",
     "incidenttype","incident_type","calldescription","call_type"];
+  const publicTitleFields=["title","incidenttitle","incident_title",
+    "jobtitle","job_title"];
+  const subtypeField=subtypeFields.find(field=>fields.has(field))??null;
+  const publicTitleField=publicTitleFields.find(field=>fields.has(field))??null;
   return {
     groupedTypeAvailable:fields.has("groupedtype"),
-    detailedSubtypeField:subtypeFields.find(field=>fields.has(field))??null,
-    waterRescueDistinguishable:subtypeFields.some(field=>fields.has(field)),
-    verticalRescueDistinguishable:subtypeFields.some(field=>fields.has(field))
+    detailedSubtypeField:subtypeField,
+    publicTitleField,
+    // Schema compatibility is not proof that the feed actually contains
+    // any of the six labels. A sample must be verified before enabling
+    // operational map classifications.
+    waterRescueDistinguishable:Boolean(subtypeField),
+    verticalRescueDistinguishable:Boolean(subtypeField),
+    needsPublicValueVerification:Boolean(subtypeField||publicTitleField)
   };
 }

@@ -301,12 +301,17 @@ if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
   };
   // Development-only reproducible camera positions for mobile visual QA.
   window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {
-    // Camera range is distance from the named town, not altitude above a
-    // potentially offset view. Keep the town at the visual centre.
-    viewer.camera.lookAt(
-      Cesium.Cartesian3.fromDegrees(longitude, latitude, 0),
-      new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(pitch), height)
-    );
+    // Use the operational camera controller, which tracks authorised views
+    // and otherwise restores external Cesium lookAt changes after a gesture.
+    // The QA camera must obey that same contract or stale frames can pass.
+    mapCamera.setView({
+      longitude,
+      latitude,
+      targetHeight: 0,
+      range: height,
+      heading: 0,
+      pitch: Cesium.Math.toRadians(pitch)
+    });
     queenslandTownLabels?.draw(true);
     scene.requestRender();
   };

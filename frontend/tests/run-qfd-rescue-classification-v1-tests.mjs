@@ -61,6 +61,17 @@ test("Future verified job-type field can be recognised without guessing current 
   const available=qfdPublicClassificationAvailability(["GroupedType","JobType"]);
   assert.equal(available.detailedSubtypeField,"jobtype");
 });
+test("A public title field is discoverable, but not assumed to contain exact job labels",()=>{
+  const publicSchema=qfdPublicClassificationAvailability(["GroupedType","Locality"]);
+  assert.equal(publicSchema.publicTitleField,null);
+  assert.equal(publicSchema.needsPublicValueVerification,false);
+  const futureSchema=qfdPublicClassificationAvailability(["GroupedType","Incident_Title"]);
+  assert.equal(futureSchema.publicTitleField,"incident_title");
+  assert.equal(futureSchema.waterRescueDistinguishable,false);
+  assert.equal(futureSchema.verticalRescueDistinguishable,false);
+  assert.equal(futureSchema.needsPublicValueVerification,true);
+  assert.equal(classifyQfdRescueJobType("Technical rescue near river").requested,false);
+});
 test("Query contains published grouped rescue type, not unverified specific labels",()=>{
   const url=new URL(qfdTechnicalRescueUrl());
   assert.equal(url.searchParams.get("where"),"GroupedType = 'RESCUE TECHNICAL'");

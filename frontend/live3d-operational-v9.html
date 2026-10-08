@@ -57,6 +57,17 @@
       <div id="qfdSymbolStatus" class="note qfd-symbol-status" role="status">Checking QFD published incident symbols…</div>
       <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · displaying only three public QFD grouped types</div>
       <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
+      <div class="independent-doppler-controls" aria-label="Independent Doppler playback controls">
+        <div class="playback-row">
+          <button id="dopplerPlayButton" type="button" aria-pressed="false" disabled>Play Doppler</button>
+          <button id="dopplerLatestButton" type="button" disabled>Latest wind</button>
+          <label for="dopplerFrameSlider">Doppler <strong id="dopplerFrameLabel">—</strong></label>
+        </div>
+        <input id="dopplerFrameSlider" aria-label="Independent Doppler frame" type="range" min="0" max="0" value="0" step="1" disabled>
+        <div class="control-grid"><label for="dopplerPlaybackSpeed">Doppler speed
+          <select id="dopplerPlaybackSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label></div>
+        <div id="dopplerIndependentStatus" class="note" role="status">Doppler has its own source history, timestamps and playback. Loading…</div>
+      </div>
       <div class="layer-row"><span id="trackVolumeModeLabel" title="Measured storm-cell tracking remains enabled; 2-D radar reflectivity is preserved at the base of each displayed volume.">Track-specific 3-D · always on</span><button id="openDetailsButton">Tracks / details</button></div>
       <div class="layer-row storm-severe-layer-row"><label><input id="showSevereRadarAlerts" type="checkbox" checked> Radar alerts ≥90 km/h</label></div>
       <div class="layer-row storm-severe-layer-row"><label title="Research-stage; not a validated tornado detector"><input id="showExperimentalHookAlerts" type="checkbox"> Hook-shape candidates (experimental)</label></div>
@@ -86,8 +97,8 @@
       <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
     </section>
     <div class="live-notices">
-      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Doppler wind requires the currently available 30-minute shared loop. Selecting Doppler switches to 30 min; longer or all-available radar history deselects it.</div>
-      <div id="autoRefreshNote" class="note" role="status">Auto update: checks matching products every 5 minutes.</div>
+      <div id="dopplerHistoryWarning" class="note" role="status" hidden>Radar reflectivity and Doppler animate on completely separate clocks.</div>
+      <div id="autoRefreshNote" class="note" role="status">Radar and Doppler sources refresh independently every 5 minutes.</div>
     </div>
     <div id="status" role="status">Loading inferred-volume model…</div>
   </aside>
@@ -268,8 +279,8 @@
     </section><p class="note">High / medium / low support describe empirical occupancy and P25–P75 spread, not calibrated probabilities.</p></div>
   <div data-detail-panel="sources" hidden>
     <section class="card"><h2>Reflectivity</h2><div class="metric"><span>Source time</span><strong id="sourceTime">—</strong><span>Decoded pixels</span><strong id="decodedPixels">—</strong><span>Observed maximum</span><strong id="sourceMaximum">—</strong></div></section>
-    <section class="card"><h2>Time-matched Doppler</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Time-matched radars</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
-    <div id="dopplerSourceRows"><span class="hybrid-muted">Load a loop to retrieve timestamped history for the selected Doppler site.</span></div>
+    <section class="card"><h2>Independent Doppler history</h2><div class="metric"><span>Radars decoded</span><strong id="dopplerRadarsLoaded">0</strong><span>Active Doppler source</span><strong id="dopplerRadarsMatched">0</strong><span>Tracks with Doppler</span><strong id="dopplerTracksMatched">0</strong><span>Source failures</span><strong id="dopplerFailures">0</strong><span>Reflectivity time</span><strong id="dopplerFrameTime">—</strong><span>Overlay</span><strong id="dopplerOverlayStatus">hidden</strong><span>Overlay pixels</span><strong id="dopplerOverlayCount">0</strong></div></section>
+    <div id="dopplerSourceRows"><span class="hybrid-muted">The wind history runs independently of radar tracking.</span></div>
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>

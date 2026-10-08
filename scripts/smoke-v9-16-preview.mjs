@@ -70,6 +70,15 @@ const [historicalHtml, historicalJson] = await Promise.all([
 ]);
 requireMatch(historicalHtml, /Gympie radar 8 — 24 November 2025/, "Genuine historical viewer");
 requireMatch(historicalHtml, /AURA Level 1/, "Historical data provenance");
+requireMatch(historicalHtml, /researchHookMarkers/, "Experimental hook markers on observed reflectivity");
+requireMatch(historicalHtml, /nextCandidate/, "Jump between measured experimental candidates");
+const auditedReport = JSON.parse(await read("preview/v9.16/research-gympie/gympie-hook-replay.json"));
+if (auditedReport.format !== "StormTrackerExperimentalAURAHookReplayV1" ||
+    auditedReport.observed_scans_processed !== 28 ||
+    auditedReport.experimental_two_scan_hook_candidates !== 2 ||
+    !auditedReport.rows.some(row => row.hook_candidates?.some(item => item.track_id === "ST0027"))) {
+  throw new Error("Historical candidate report missing expected two measured ST0027 flags");
+}
 const actualScans = JSON.parse(historicalJson);
 if (!Array.isArray(actualScans) || actualScans.filter(x => x.utc_time && !x.error).length !== 28) {
   throw new Error("Expected 28 successfully decoded real 2025 AURA radar scans");
@@ -87,4 +96,5 @@ console.log("PASS Mt Stapylton selected; severe storm evidence controls publishe
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
 console.log("PASS Production root still points to V9.15.1");
 console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
+console.log("PASS Two original-scan hook-shape indicators accessible in historical viewer; classification remains experimental");
 console.log("Preview: " + new URL("preview/v9.16/", origin).href);

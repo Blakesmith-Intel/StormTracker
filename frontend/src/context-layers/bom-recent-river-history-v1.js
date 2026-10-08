@@ -1,3 +1,5 @@
+import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS} from "./river-flood-signals-v1.js?v=9.13.0";
+
 // BoM publishes recent tabular readings alongside each public .plt.shtml
 // gauge plot. Parse only the first date/water-level table; never infer data
 // from chart pixels or use undocumented alternative hosts.
@@ -58,7 +60,9 @@ export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now())
   const p=feature?.properties??{};
   const tidal=String(p.location_types??"").toLowerCase().includes("tide gauge");
   const flood=String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase();
-  if(String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising" ||
+  const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
+  if(observed===null || nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS ||
+     String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising" ||
      (!tidal&&flood!=="minor"))return null;
   const target=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
   if(!target)return null;
@@ -74,4 +78,34 @@ export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now())
        sorted.at(-1).time-x.time<=120*60000))return null;
   }
   return {id:String(feature.id),...target,tidal};
+}
+
+export const RECENT_HISTORY_RELAY_URL =
+  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-recent-history";
+
+export async function fetchBoMRecentHistory(target,{
+  fetchImpl=globalThis.fetch,endpoint=RECENT_HISTORY_RELAY_URL,timeoutMs=15000
+}={}) {
+  if(!target?.station||!target?.product||!officialRecentTableTarget(
+    "/fwo/"+target.product+"/"+target.product+"."+target.station+".plt.shtml"
+  ))throw new Error("Invalid station in requested BoM history");
+  const url=new URL(endpoint);
+  url.searchParams.set("product",target.product);
+  url.searchParams.set("station",target.station);
+  const abort=new AbortController();
+  const timer=setTimeout(()=>abort.abort(),timeoutMs);
+  try {
+    const response=await fetchImpl(url.toString(),{
+      headers:{Accept:"application/json"},signal:abort.signal
+    });
+    if(!response.ok)throw new Error("BoM recent data HTTP "+response.status);
+    const payload=await response.json();
+    if(payload.format!=="StormTrackerBomRecentRiverHistoryV1"||
+      payload.station!==target.station||payload.product!==target.product||
+      !Array.isArray(payload.samples))throw new Error("BoM station history response mismatch");
+    return payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
+      .slice(-225);
+  }finally {
+    clearTimeout(timer);
+  }
 }

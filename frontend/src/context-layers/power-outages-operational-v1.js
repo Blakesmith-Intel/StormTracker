@@ -150,9 +150,7 @@ function showPowerOutageInfo(
     panel.hidden =
       true;
 
-    $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
-
-  panel.dataset
+    panel.dataset
       .outageId =
       "";
 
@@ -175,6 +173,8 @@ function showPowerOutageInfo(
       "hidden",
       ""
     );
+
+  $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
 
   panel.dataset
     .outageId =

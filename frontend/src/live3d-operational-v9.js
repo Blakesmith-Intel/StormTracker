@@ -2456,6 +2456,32 @@ function renderDopplerOverlay() {
   });
 }
 
+function formatDualClock(utc) {
+  return formatProductTime(utc,{compact:true}).split(" / ")[0];
+}
+function updateDualSourceTimes() {
+  const radarUtc=hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
+  const windUtc=$("showDopplerOverlay").checked ? independentDopplerRecord?.observedUtc : null;
+  const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
+  if(radar){
+    radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
+    radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
+  }
+  if(wind){
+    wind.textContent=!$("showDopplerOverlay").checked ? "Off" :
+      windUtc ? formatDualClock(windUtc) : "Loading";
+    wind.title=windUtc ? formatProductTime(windUtc) : "No measured Doppler frame displayed";
+  }
+  if(gap){
+    const delta=Math.abs(Date.parse(radarUtc)-Date.parse(windUtc))/60000;
+    gap.hidden=!Number.isFinite(delta);
+    if(!gap.hidden){
+      gap.textContent="Δ"+delta.toFixed(delta<10?1:0)+" min";
+      gap.title="These are independent observations "+delta.toFixed(1)+" minutes apart, not one measured radar scan";
+      gap.dataset.ageWarning=String(delta>15);
+    }
+  }
+}
 function updateIndependentDopplerUi() {
   const active=$("showDopplerOverlay").checked;
   const total=independentDopplerFrames.length;
@@ -2464,11 +2490,7 @@ function updateIndependentDopplerUi() {
   const timestamp=item ? formatDopplerUtc(item.observedUtc) : "No source frames";
   $("operationalDoppler").textContent=active
     ? (total ? label+" · "+timestamp : "loading wind history") : "hidden";
-  const windClock = $("dopplerPlaybackTime");
-  if (windClock) windClock.textContent = active
-    ? (independentDopplerRecord
-        ? formatDopplerUtc(independentDopplerRecord.observedUtc)
-        : "loading") : "Off";
+  updateDualSourceTimes();
   $("dopplerFrameTime").textContent=active&&independentDopplerRecord?formatDopplerUtc(independentDopplerRecord.observedUtc):"—";
   $("dopplerRadarsLoaded").textContent=active&&independentDopplerRecord?"1":"0";
   $("dopplerRadarsMatched").textContent="—";
@@ -3027,8 +3049,7 @@ async function showHybridFrame(index) {
 
   $("hybridFrameLabel").textContent =
     `${hybridFrameIndex + 1}/${hybridFrames.length}${temporalInferred ? " · inferred" : ""}`;
-  const radarClock=$("radarPlaybackTime");
-  if (radarClock) radarClock.textContent=formatProductTime(frame.observedUtc);
+  updateDualSourceTimes();
 
   const surfaceApplied =
     await renderSurface(

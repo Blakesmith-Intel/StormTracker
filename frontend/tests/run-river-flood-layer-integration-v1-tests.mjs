@@ -85,6 +85,7 @@ layer.setVisible(true);
 assert.equal(layer.dataSource.show,true);
 layer.setVisible(false);
 assert.equal(layer.dataSource.show,false);
+await layer.refresh({force:true}); // Finish the refresh initiated by the earlier visibility toggle.
 assert.ok(calls.status.some(item=>item.count===2 && item.rapidRise===1 && item.moderate===1));
 assert.ok(calls.observed.length>=2);
 assert.ok(calls.requests>=4,"At least two gauge metadata and two bulletin calls; optional cold-start history probes may also occur");

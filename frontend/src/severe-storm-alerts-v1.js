@@ -4,6 +4,7 @@ export const VERIFIED_DOPPLER_RADARS = Object.freeze(["08", "50", "66"]);
 const MAX_PAIRING_MINUTES = 8;
 const HOOK_MAX_GAP_MINUTES = 15;
 const HOOK_BINS = 24;
+const hookBoundsCache = new WeakMap();
 
 function observed(frame) {
   return Boolean(
@@ -75,19 +76,35 @@ export function findExperimentalHookArc(frame, result, trackId) {
   const obs = observationForTrack(track, frame.observedUtc);
   const id = sourceCellId(obs, seg);
   if (!id || seg?.labels?.length !== frame.categories.length) return null;
-  let sumX = 0, sumY = 0, count = 0;
-  let left = frame.width, right = 0, top = frame.height, bottom = 0;
-  const labels = seg.labels;
-  // A single sweep; candidate analysis is bounded below to a local 65px window.
-  for (let i = 0; i < labels.length; i++) {
-    if (labels[i] !== id) continue;
-    const row = Math.floor(i / frame.width), col = i % frame.width;
-    sumX += col; sumY += row; count++;
-    left = Math.min(left, col); right = Math.max(right, col);
-    top = Math.min(top, row); bottom = Math.max(bottom, row);
+  // Cache one whole-raster scan per segmented frame; rendering many tracked
+  // cells must not rescan Queensland-sized imagery for every individual cell.
+  let boundsByCell = hookBoundsCache.get(seg);
+  if (!boundsByCell) {
+    boundsByCell = new Map();
+    for (let i = 0; i < seg.labels.length; i++) {
+      const label = seg.labels[i];
+      if (!label) continue;
+      const row = Math.floor(i / frame.width), col = i % frame.width;
+      if (!boundsByCell.has(label)) {
+        boundsByCell.set(label, {
+          sumX:0, sumY:0, count:0,
+          left:frame.width, right:0, top:frame.height, bottom:0
+        });
+      }
+      const bounds = boundsByCell.get(label);
+      bounds.sumX += col; bounds.sumY += row; bounds.count++;
+      bounds.left = Math.min(bounds.left, col);
+      bounds.right = Math.max(bounds.right, col);
+      bounds.top = Math.min(bounds.top, row);
+      bounds.bottom = Math.max(bounds.bottom, row);
+    }
+    hookBoundsCache.set(seg, boundsByCell);
   }
-  if (count < 24) return null;
-  const cx = sumX / count, cy = sumY / count;
+  const bounds = boundsByCell.get(id);
+  if (!bounds || bounds.count < 24) return null;
+  const { count, left, right, top, bottom } = bounds;
+  const cx = bounds.sumX / count, cy = bounds.sumY / count;
+  const labels = seg.labels;
   const halfSize = 31;
   const xmin = Math.max(0, Math.floor(cx - halfSize));
   const xmax = Math.min(frame.width - 1, Math.ceil(cx + halfSize));
@@ -180,11 +197,19 @@ function windAlerts(frame, result, dopplerState) {
   }
   const alerts = [];
   for (const points of grouped.values()) {
-    // Isolated decoded specks are insufficient evidence.
+    // Require a local cluster, not three disconnected extreme pixels.
     if (points.length < 3) continue;
     const strongest = points.reduce((a, b) => (
       Math.abs(a.velocity) >= Math.abs(b.velocity) ? a : b
     ));
+    const nearStrongest = points.filter(item => {
+      const dx = (Number(item.sample.longitude) - Number(strongest.sample.longitude)) *
+        Math.cos(Number(strongest.sample.latitude) * Math.PI / 180) * 111.32;
+      const dy = (Number(item.sample.latitude) - Number(strongest.sample.latitude)) * 111.32;
+      return Number.isFinite(dx) && Number.isFinite(dy) &&
+        dx * dx + dy * dy <= 25; // 5 km radius
+    });
+    if (nearStrongest.length < 3) continue;
     alerts.push({
       id: "wind:" + strongest.radarId + ":" + strongest.trackId,
       type: "wind",
@@ -195,7 +220,7 @@ function windAlerts(frame, result, dopplerState) {
       longitude: Number(strongest.sample.longitude),
       latitude: Number(strongest.sample.latitude),
       velocity_kmh: strongest.velocity,
-      sample_count: points.length,
+      sample_count: nearStrongest.length,
       title: "High Doppler radial velocity",
       caveat: "Radar radial velocity, NOT a measured surface gust or an official BoM warning."
     });

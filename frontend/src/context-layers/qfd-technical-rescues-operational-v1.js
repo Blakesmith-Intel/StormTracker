@@ -62,12 +62,19 @@ export function initialiseOperationalQfdTechnicalRescues({
       :"Provisional icons · QFD symbology temporarily unavailable";
   }
   async function loadOfficialSymbols(){
+    // Legend metadata is independent of whether current incidents are visible.
+    // A transient request failure must not permanently lock in fallback icons.
+    if(symbolsAreOfficial())return officialSymbols;
     if(symbolLookup)return symbolLookup;
     symbolLookup=fetchQfdPublicSymbolCatalog({fetchImpl}).then(catalog=>{
       officialSymbols=catalog;
       updateSymbolLegend();
       if(records.length)render(records);
       return catalog;
+    }).finally(()=>{
+      // A partial/failed public renderer lookup is retryable on tab resume or
+      // the next regular refresh, even when the incident layer stays off.
+      symbolLookup=null;
     });
     return symbolLookup;
   }
@@ -210,6 +217,7 @@ export function initialiseOperationalQfdTechnicalRescues({
   const onVisibility=()=>{
     if(document.hidden)return;
     expire();
+    if(!symbolsAreOfficial())loadOfficialSymbols().catch(()=>{});
     if(dataSource.show)refresh().catch(()=>{});
   };
   function start(){
@@ -220,11 +228,18 @@ export function initialiseOperationalQfdTechnicalRescues({
     window.addEventListener("pointerup",onUp,{capture:true,passive:true});
     window.addEventListener("pointercancel",onCancel,{capture:true,passive:true});
     document.addEventListener("visibilitychange",onVisibility);
-    updateSymbolLegend();
-    if(dataSource.show){loadOfficialSymbols().catch(()=>{});refresh().catch(()=>{});}
+    // Fetch official QFD icon samples immediately, irrespective of checkbox.
+    // This request changes only the legend; no incident feed is started while
+    // the layer remains off. Leave the other map layers entirely unaffected.
+    loadOfficialSymbols().catch(()=>{});
+    if(dataSource.show)refresh().catch(()=>{});
     else setStatus({kind:"normal",message:"QFD technical rescue / road crash / assist public · off by default"});
     timer=setInterval(()=>{
-      if(!document.hidden){expire();if(dataSource.show)refresh().catch(()=>{});}
+      if(!document.hidden){
+        expire();
+        if(!symbolsAreOfficial())loadOfficialSymbols().catch(()=>{});
+        if(dataSource.show)refresh().catch(()=>{});
+      }
     },refreshMs);
   }
   function stop(){

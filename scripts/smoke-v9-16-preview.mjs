@@ -61,6 +61,13 @@ requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");
 requireMatch(runtime, /const DEFAULT_RADAR_SITE_ID = "66"/, "Startup selected radar");
 requireMatch(runtime, /syncSevereStormAlerts\(hybridFrameIndex\)/, "Radar frame synchronisation");
+requireMatch(runtime, /buildRadarPrimaryProductTimeline\(/, "Radar-primary nearest Doppler pairing");
+requireMatch(runtime, /requiresDoppler: false/, "Radar-only fallback without discarding real observations");
+requireMatch(runtime, /RADAR ONLY — Doppler unavailable/, "Unmatched source is truthfully labelled");
+if (/const timeline = withDoppler \? shared : radarHistoryTimeline/.test(runtime)) {
+  throw new Error("V9.16 still discards valid radar frames through strict shared Doppler timeline");
+}
+
 requireMatch(detection, /DAMAGING_WIND_GUST_REFERENCE_KMH = 90/, "90 km/h source guard");
 requireMatch(detection, /velocityRangeVerified === true/, "Future independently verified Doppler guard");
 requireMatch(dock, /className = "storm-severe-alert-dock"/, "Published alert dock");
@@ -94,6 +101,7 @@ if (!pngResponse.ok || !pngResponse.headers.get("content-type")?.includes("image
 console.log("PASS Published V9.16 candidate at commit " + expectedSha);
 console.log("PASS Mt Stapylton selected; severe storm evidence controls published");
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
+console.log("PASS Nearest-source Doppler within 8 min; unmatched reflectivity explicitly radar-only");
 console.log("PASS Production root still points to V9.15.1");
 console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
 console.log("PASS Two original-scan hook-shape indicators accessible in historical viewer; classification remains experimental");

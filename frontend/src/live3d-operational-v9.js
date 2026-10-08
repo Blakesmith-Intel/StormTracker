@@ -107,11 +107,15 @@ import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.12.4";
+} from "./context-layers/basemap-manager-v1.js?v=9.12.5";
 
 import {
   createQueenslandTownLabelLayer
 } from "./context-layers/qld-town-label-layer-v1.js?v=9.12.4";
+
+import {
+  createQueenslandStateBorderLayer
+} from "./context-layers/qld-state-border-v1.js?v=9.12.5";
 
 import {
   syncFrameSlider
@@ -259,7 +263,25 @@ mapCamera =
   });
 
 let queenslandTownLabels = null;
+let queenslandStateBorder = null;
 function syncBasemapReferenceLayer(basemapId) {
+  if (!queenslandStateBorder) {
+    queenslandStateBorder = createQueenslandStateBorderLayer({
+      viewer,
+      CesiumRef: Cesium,
+      mode: basemapId,
+      onStatus: ({ kind, message }) => {
+        if (kind === "warning") console.warn(message);
+      }
+    });
+    if (basemapId === BASEMAP_IDS.QLD_IMAGERY) {
+      void queenslandStateBorder.start().catch(error => {
+        console.warn("Queensland state boundary unavailable:", error);
+      });
+    }
+  } else {
+    queenslandStateBorder.setMode(basemapId);
+  }
   if (queenslandTownLabels) {
     queenslandTownLabels.setMode(basemapId);
     return;

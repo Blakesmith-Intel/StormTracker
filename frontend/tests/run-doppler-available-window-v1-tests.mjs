@@ -46,7 +46,7 @@ assert.equal(dopplerAvailableWindow([iso(1,0)],[{observedUtc:iso(3,18)},{observe
 assert.equal(buildDopplerAvailableSchedule([],d).length,0);
 const source=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
 const html=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",import.meta.url)),"utf8");
-assert.match(source,/option.value = DOPPLER_AVAILABLE_LOOP_VALUE/);
+assert.match(source,/buildOperationalWindowChoices\(\{/);
 assert.match(source,/buildDopplerAvailableSchedule\(availableRadarHistoryTimes, independentDopplerFrames\)/);
 assert.match(source,/buildDopplerAvailableSchedule\(frames.map\(frame=>frame.observedUtc\),independentDopplerFrames\)/);
 assert.match(source,/hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/);

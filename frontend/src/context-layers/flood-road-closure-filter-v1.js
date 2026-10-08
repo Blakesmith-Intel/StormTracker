@@ -202,6 +202,30 @@ export function filterFloodRoadClosures(
   };
 }
 
+
+// Legacy production behaviour is deliberately retained on the original
+// /flood-road-closures Worker endpoint until V9.15 acceptance. Do not use
+// this less-specific filter in the V9.15 map or preview endpoint.
+const LEGACY_FLOOD_SUBTYPES=new Set(["flash flooding","long-term flooding"]);
+const LEGACY_FLOOD_CAUSES=new Set([
+  "earlier flooding","earlier flash flooding","water over road","flooding of river"
+]);
+export function filterLegacyFloodRoadClosures(payload,nowMs=Date.now()){
+  const features=Array.isArray(payload?.features)?payload.features.filter(feature=>{
+    const p=propertiesOf(feature);
+    return normalise(p.status)==="published"
+      && isRoadEventCurrent(p,nowMs)
+      && normalise(p.impact?.impact_type)==="closures"
+      && (normalise(p.event_type)==="flooding"
+        || LEGACY_FLOOD_SUBTYPES.has(normalise(p.event_subtype))
+        || LEGACY_FLOOD_CAUSES.has(normalise(p.event_due_to)));
+  }):[];
+  return {
+    ...(payload&&typeof payload==="object"?payload:{}),
+    type:"FeatureCollection",features
+  };
+}
+
 export function floodRoadGeometryParts(feature) {
   const geometry =
     feature?.geometry;

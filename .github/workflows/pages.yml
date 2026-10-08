@@ -64,6 +64,14 @@ jobs:
           github-token: ${{ github.token }}
           name: AURA-Gympie-2025-measured-reflectivity-doppler
           path: preview-builds/gympie-observations
+      - name: Download audited real-event two-scan hook candidate report
+        uses: actions/download-artifact@v4
+        with:
+          repository: Blakesmith-Intel/StormTracker
+          run-id: 37817144956
+          github-token: ${{ github.token }}
+          name: AURA-Gympie-2025-experimental-hook-replay
+          path: preview-builds/gympie-hook-audit
       - name: Validate all four candidates independently
         run: |
           (cd preview-builds/v9.14.0 && npm test)
@@ -82,6 +90,8 @@ jobs:
           cp -a preview-builds/v9.16/frontend/. frontend/preview/v9.16/
           mkdir -p frontend/preview/v9.16/research-gympie
           cp -a preview-builds/gympie-observations/. frontend/preview/v9.16/research-gympie/
+          test -f preview-builds/gympie-hook-audit/gympie-hook-replay.json
+          cp preview-builds/gympie-hook-audit/gympie-hook-replay.json frontend/preview/v9.16/research-gympie/gympie-hook-replay.json
           printf 'V9.14.0 candidate %s\n' "$(git -C preview-builds/v9.14.0 rev-parse HEAD)" > frontend/preview/v9.14.0/BUILD.txt
           printf 'V9.15.0 candidate %s\n' "$(git -C preview-builds/v9.15.0 rev-parse HEAD)" > frontend/preview/v9.15.0/BUILD.txt
           printf 'V9.15.1 candidate %s\n' "$(git -C preview-builds/v9.15.1 rev-parse HEAD)" > frontend/preview/v9.15.1/BUILD.txt
@@ -91,6 +101,8 @@ jobs:
           test -f frontend/preview/v9.15.1/src/storm-track-label-overlay-v1.js
           test -f frontend/preview/v9.16/historical-gympie-v1.html
           test -f frontend/preview/v9.16/research-gympie/scan_meteorology.json
+          test -f frontend/preview/v9.16/research-gympie/gympie-hook-replay.json
+          grep -q 'StormTrackerExperimentalAURAHookReplayV1' frontend/preview/v9.16/research-gympie/gympie-hook-replay.json
           test -f frontend/preview/v9.16/research-gympie/observed_scan_previews/8_20251124_070000.pvol.png
           test -f frontend/preview/v9.16/src/severe-storm-alerts-v1.js
           test -f frontend/preview/v9.16/src/severe-storm-alert-overlay-v1.js

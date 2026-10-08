@@ -280,9 +280,9 @@ function showRiverGaugeInfo(
     OFFICIAL_SOURCE_LINKS.bom
   );
   const directPlot=bomGaugePlotUrl(summary.recentDataHref);
-  if(directPlot){
-    addOfficialSourceRow(rows,"BoM gauge","View recent observations and river-height plot",directPlot);
-  }
+  addOfficialSourceRow(rows,"BoM gauge",
+    directPlot?"View recent observations and river-height plot":"View BoM river-height station data",
+    directPlot||OFFICIAL_SOURCE_LINKS.bom);
 
   addDetailRow(rows, "Interpretation",
     summary.displayState === "rapid-rise" || summary.displayState === "tidal-anomaly"

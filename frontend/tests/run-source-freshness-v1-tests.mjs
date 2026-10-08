@@ -83,6 +83,8 @@ test("Both operational data sources invalidate expired map entities", () => {
     assert.match(code,/sourceFailureStatus\(/);
     assert.match(code,/visibilitychange/);
     assert.match(code,/checkedAtAest\(lastLoadedAt\)/);
+    assert.match(code,/lastPresentedStatus/);
+    assert.match(code,/reportStatus\(lastPresentedStatus\)/);
   }
 });
 test("Browser release entrypoints bust old module and stylesheet caches", () => {

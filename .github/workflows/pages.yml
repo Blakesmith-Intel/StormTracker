@@ -93,3 +93,8 @@ jobs:
       - name: Deploy production root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify published V9.16 and stable V9.15.1 URLs
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs

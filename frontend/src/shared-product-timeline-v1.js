@@ -56,3 +56,68 @@ export function buildSharedProductTimeline(reflectivityTimes, histories, latestR
       ? (Date.parse(entries.at(-1).observedUtc) - Date.parse(entries[0].observedUtc)) / 60000 : 0
   };
 }
+
+
+// The operational display must not be clipped to the Doppler FTP history,
+// which can arrive late, be incomplete, or temporarily fail. This is a
+// *left join*: every genuine reflectivity time remains available, with null
+// Doppler where no source reading is confirmed. The historical strict shared
+// timeline above is retained for independent comparison/diagnostic contracts.
+export function buildRadarPrimaryProductTimeline(
+  reflectivityTimes,
+  histories,
+  latestRecords = new Map(),
+  radarIds = ACTIVE_DOPPLER_RADARS,
+  maxDeltaMinutes = 3
+) {
+  const times = [...new Set(reflectivityTimes ?? [])]
+    .filter(time => Number.isFinite(Date.parse(time)))
+    .sort((a, b) => Date.parse(a) - Date.parse(b));
+  const endUtc = times.at(-1) ?? null;
+  const ids = [...new Set(radarIds.map(String))];
+  const unavailableRadarIds = ids.filter(id =>
+    !(histories.get(id)?.frames ?? []).some(record =>
+      record.filename && Number.isFinite(Date.parse(record.observedUtc))
+    )
+  );
+  const sources = ids.map(id => {
+    const history = (histories.get(id)?.frames ?? [])
+      .filter(record => record.filename && Number.isFinite(Date.parse(record.observedUtc)))
+      .map(record => ({ ...record, source_kind: "history" }));
+    const newest = latestRecords.get(id);
+    return {
+      id, history,
+      latest: newest?.observedUtc && Number.isFinite(Date.parse(newest.observedUtc))
+        ? { ...newest, source_kind: "latest" }
+        : null
+    };
+  });
+  const entries = times.map(observedUtc => ({
+    observedUtc,
+    pairings: sources.map(source => {
+      const candidates = [...source.history];
+      // Do not put a current unversioned GIF into past frame playback.
+      if (source.latest && observedUtc === endUtc)
+        candidates.push(source.latest);
+      const pairing = nearestDopplerFrameForTime(
+        candidates, observedUtc, maxDeltaMinutes
+      );
+      // Candidates outside the valid time window are diagnostics, not data.
+      return { radarId: source.id, ...pairing };
+    })
+  }));
+  const observedPairCount = entries.reduce((sum, entry) =>
+    sum + entry.pairings.filter(pair => pair.matched).length, 0
+  );
+  return {
+    entries, unavailableRadarIds, radarIds: ids,
+    requestedRadarIds: ids,
+    startUtc: times[0] ?? null,
+    endUtc,
+    spanMinutes: times.length > 1
+      ? (Date.parse(endUtc) - Date.parse(times[0])) / 60000 : 0,
+    matchedPairCount: observedPairCount,
+    possiblePairCount: entries.length * ids.length,
+    mode: "reflectivity-primary"
+  };
+}

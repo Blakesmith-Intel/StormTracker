@@ -686,3 +686,15 @@ dialog::backdrop { background:#0009; }
   .qfd-symbol-legend {font-size:9px;gap:3px 8px;padding:2px 4px;}
   .qfd-symbol-legend img {width:17px;height:17px;}
 }
+
+/* QLDTraffic-authored closed-all-traffic PNG, shared by map, legend and
+   selected incident card. Cancel the superseded hand-drawn CSS cross. */
+img.flood-road-key {
+  display:inline-block;position:static;flex:0 0 auto;
+  width:23px;height:23px;vertical-align:middle;
+  border:0;outline:0;outline-offset:0;
+  background:transparent;transform:none;
+  object-fit:contain;
+}
+img.flood-road-key::before,img.flood-road-key::after {content:none;display:none;}
+img.flood-road-key-large {width:31px;height:31px;margin:0;}

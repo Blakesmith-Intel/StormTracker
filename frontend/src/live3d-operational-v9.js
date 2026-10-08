@@ -99,6 +99,7 @@ import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
+import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule } from "./doppler-available-window-v1.js?v=9.16-doppler-window";
 import { dopplerMapCoordinateToLonLat } from "./bom-doppler-georef-v1.js?v=9.16-independent";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
@@ -556,6 +557,14 @@ let windCycleCursor = -1;
 let windSourceFailCount = 0;
 let windRenderPending = false;
 let windLastRadarDriveKey = null;
+let hybridCombinedSchedule = [];
+let lastCombinedDopplerLatestUtc = null;
+function isDopplerSourceActive() { return Boolean($("dopplerOverlayRadar")?.value); }
+function hasNewDopplerWindow() {
+  return selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE &&
+    Date.parse(independentDopplerFrames.at(-1)?.observedUtc) >
+    Date.parse(lastCombinedDopplerLatestUtc);
+}
 function chooseWindCursorForRadar(radarIndex) {
   const windFrames = independentDopplerFrames;
   if (!windFrames.length) return -1;
@@ -569,14 +578,19 @@ function chooseWindCursorForRadar(radarIndex) {
   return Math.round(fraction * (windFrames.length - 1));
 }
 function driveWindFromCommonPlayback(radarIndex) {
-  if (!$("showDopplerOverlay").checked || !independentDopplerFrames.length) return;
+  if (!isDopplerSourceActive() || !independentDopplerFrames.length) return;
   const key=String(radarIndex)+":"+String(hybridFrames[radarIndex]?.observedUtc);
-  if(!playback.isPlaying() && key===windLastRadarDriveKey)return;
+  if(!playback.isPlaying() && key===windLastRadarDriveKey && !hybridCombinedSchedule.length)return;
   windLastRadarDriveKey=key;
-  if (playback.isPlaying() && windRenderPending) return;
-  const next = playback.isPlaying()
-    ? nextNativeDopplerIndex(windCycleCursor, independentDopplerFrames.length)
-    : chooseWindCursorForRadar(radarIndex);
+  if (playback.isPlaying() && windRenderPending && !hybridCombinedSchedule.length) return;
+  const scheduled = hybridCombinedSchedule[radarIndex];
+  const next = scheduled
+    ? independentDopplerFrames.findIndex(frame => frame.observedUtc === scheduled.dopplerObservedUtc)
+    : playback.isPlaying()
+      ? nextNativeDopplerIndex(windCycleCursor, independentDopplerFrames.length)
+      : chooseWindCursorForRadar(radarIndex);
+  if (scheduled && next === independentDopplerIndexValue &&
+      independentDopplerRecord?.observedUtc === scheduled.dopplerObservedUtc) return;
   if (next < 0) return;
   windCycleCursor = next;
   windRenderPending = true;
@@ -588,7 +602,7 @@ function driveWindFromCommonPlayback(radarIndex) {
 }
 
 const independentDopplerRefresh = createLiveLoopRefresh({
-  refresh: () => document.hidden || !$("showDopplerOverlay").checked
+  refresh: () => document.hidden || !isDopplerSourceActive()
     ? undefined : refreshIndependentDopplerHistory(true),
   onError: error => {
     $("dopplerOverlayStatus").textContent = "Doppler refresh retry: " + error.message;
@@ -650,9 +664,11 @@ function selectedLoopSelection() {
 
 function selectedLoopMinutes() {
   const selection = selectedLoopSelection();
-  return selection === ALL_AVAILABLE_LOOP_VALUE
-    ? radarHistorySpanMinutes(availableRadarHistoryTimes)
-    : Number(selection);
+  return selection === DOPPLER_AVAILABLE_LOOP_VALUE
+    ? (dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames)?.spanMinutes ?? 0)
+    : selection === ALL_AVAILABLE_LOOP_VALUE
+      ? radarHistorySpanMinutes(availableRadarHistoryTimes)
+      : Number(selection);
 }
 
 function availableHistorySummary(times = availableRadarHistoryTimes) {
@@ -693,6 +709,15 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
     option.textContent = `${minutes} min`;
     return option;
   });
+
+  const combined = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
+  if (combined && isDopplerSourceActive()) {
+    const option = document.createElement("option");
+    option.value = DOPPLER_AVAILABLE_LOOP_VALUE;
+    option.textContent = "Radar + Doppler · available (" +
+      combined.dopplerCount + " wind / " + combined.radarCount + " rain)";
+    options.push(option);
+  }
 
   if (availableRadarHistoryTimes.length) {
     const all = document.createElement("option");
@@ -752,23 +777,24 @@ function updateLoopButtonLabel() {
   const selection = selectedLoopSelection();
   const minutes = selectedLoopMinutes();
   const allAvailable = selection === ALL_AVAILABLE_LOOP_VALUE;
+  const dopplerAvailable = selection === DOPPLER_AVAILABLE_LOOP_VALUE;
 
   const button = $("loadHybridButton");
   if (button) {
     button.textContent =
       window.matchMedia?.("(max-width:700px)").matches
-        ? (allAvailable ? "Load all" : `Load ${minutes}m`)
-        : (allAvailable
-            ? "Load all available radar history"
-            : `Load ${minutes}-min storm loop`);
+        ? (dopplerAvailable ? "Load R+D" : allAvailable ? "Load all" : `Load ${minutes}m`)
+        : (dopplerAvailable ? "Load Radar + Doppler available window" :
+            allAvailable ? "Load all available radar history" :
+            `Load ${minutes}-min storm loop`);
   }
 
   const loopWindow = $("operationalLoopWindow");
   if (loopWindow && !hybridFrames.length) {
     loopWindow.textContent = availableRadarHistoryTimes.length
-      ? (allAvailable
-          ? `${Math.round(minutes)} min available`
-          : `${minutes} min selected`)
+      ? (dopplerAvailable ? `Doppler window · ${Math.round(minutes)} min` :
+          allAvailable ? `${Math.round(minutes)} min available` :
+          `${minutes} min selected`)
       : "Checking history";
   }
 
@@ -969,8 +995,6 @@ function configureRadarSite() {
     option.textContent = `${id} · ${QLD_RADAR_SITES[id].name}`; return option;
   }));
   selector.disabled = ids.length === 0;
-  $("showDopplerOverlay").disabled = ids.length === 0;
-  if (!ids.length) $("showDopplerOverlay").checked = false;
   $("radarSite").title = selectedRadarRegion() === "SEQ" ? "Regional mosaic: Mt Stapylton, Marburg and Gympie" :
     `${QLD_RADAR_SITES[selectedRadarRegion()].name}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
 }

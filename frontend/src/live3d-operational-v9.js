@@ -659,16 +659,14 @@ function setStatus(message, kind = "normal") {
 }
 
 function selectedLoopSelection() {
-  return $("loopDurationMinutes")?.value || "30";
+  return $("loopDurationMinutes")?.value || "60";
 }
 
 function selectedLoopMinutes() {
   const selection = selectedLoopSelection();
   return selection === DOPPLER_AVAILABLE_LOOP_VALUE
     ? (dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames)?.spanMinutes ?? 0)
-    : selection === ALL_AVAILABLE_LOOP_VALUE
-      ? radarHistorySpanMinutes(availableRadarHistoryTimes)
-      : Number(selection);
+    : Number(selection);
 }
 
 function availableHistorySummary(times = availableRadarHistoryTimes) {
@@ -698,71 +696,40 @@ function availableHistorySummary(times = availableRadarHistoryTimes) {
   );
 }
 
+// Four user-facing windows; never alter the existing combined Doppler schedule.
+const RAIN_ONLY_LOOP_MINUTES = Object.freeze([60, 120, 180]);
+function isCombinedDopplerWindowSelected() {
+  return selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE;
+}
+
 function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   availableRadarHistoryTimes = continuousRadarHistoryTimes(times);
   const selector = $("loopDurationMinutes");
-  const previous = preserveSelection ? selector.value : "30";
-  const available = availableRadarLoopMinutes(availableRadarHistoryTimes);
-  const options = available.map(minutes => {
+  const previous = preserveSelection ? selector.value : "";
+  const available = new Set(availableRadarLoopMinutes(availableRadarHistoryTimes));
+  const combined = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
+
+  const both = document.createElement("option");
+  both.value = DOPPLER_AVAILABLE_LOOP_VALUE;
+  both.textContent = "Radar + Doppler — All available";
+  both.disabled = !combined || !isDopplerSourceActive();
+
+  const rain = RAIN_ONLY_LOOP_MINUTES.map(minutes => {
     const option = document.createElement("option");
     option.value = String(minutes);
-    option.textContent = `${minutes} min`;
+    option.textContent = minutes + " min — Rain radar only";
+    option.disabled = !available.has(minutes);
     return option;
   });
-
-  const combined = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
-  if (combined && isDopplerSourceActive()) {
-    const option = document.createElement("option");
-    option.value = DOPPLER_AVAILABLE_LOOP_VALUE;
-    option.textContent = "Radar + Doppler · available (" +
-      combined.dopplerCount + " wind / " + combined.radarCount + " rain)";
-    options.push(option);
-  }
-
-  if (availableRadarHistoryTimes.length) {
-    const all = document.createElement("option");
-    const plan =
-      buildRadarPlaybackPlan(
-        availableRadarHistoryTimes
-      );
-    const span =
-      plan.length > 1
-        ? Math.round(
-            (
-              Date.parse(plan.at(-1).observedUtc)
-              - Date.parse(plan[0].observedUtc)
-            ) / 60000
-          )
-        : 0;
-
-    all.value = ALL_AVAILABLE_LOOP_VALUE;
-    all.textContent =
-      `All available · ${span} min / ${plan.length} display frames`;
-    options.push(all);
-  }
-
+  const options = [both, ...rain];
   selector.replaceChildren(...options);
-
-  if (!options.length) {
-    const unavailable = document.createElement("option");
-    unavailable.value = "";
-    unavailable.textContent = "No radar history";
-    selector.append(unavailable);
-    selector.disabled = true;
-    return;
-  }
-
-  selector.disabled = sequenceLoading;
-  const values = new Set(options.map(option => option.value));
-  let desired = values.has(previous)
-    ? previous
-    : (
-        previous === "" && values.has("30")
-          ? "30"
-          : ALL_AVAILABLE_LOOP_VALUE
-      );
-
-  selector.value = desired;
+  const enabled = options.filter(option => !option.disabled);
+  selector.disabled = sequenceLoading || !enabled.length;
+  const selected = enabled.some(option => option.value === previous)
+    ? previous : enabled[0]?.value ?? "";
+  if (selected) selector.value = selected;
+  else selector.selectedIndex = -1;
+  updateLoopButtonLabel();
 }
 
 function selectedPlaybackSpeed() {
@@ -776,25 +743,22 @@ function selectedPlaybackSpeed() {
 function updateLoopButtonLabel() {
   const selection = selectedLoopSelection();
   const minutes = selectedLoopMinutes();
-  const allAvailable = selection === ALL_AVAILABLE_LOOP_VALUE;
   const dopplerAvailable = selection === DOPPLER_AVAILABLE_LOOP_VALUE;
 
   const button = $("loadHybridButton");
   if (button) {
     button.textContent =
       window.matchMedia?.("(max-width:700px)").matches
-        ? (dopplerAvailable ? "Load R+D" : allAvailable ? "Load all" : `Load ${minutes}m`)
-        : (dopplerAvailable ? "Load Radar + Doppler available window" :
-            allAvailable ? "Load all available radar history" :
-            `Load ${minutes}-min storm loop`);
+        ? (dopplerAvailable ? "Load R+D" : `Load ${minutes}m rain`)
+        : (dopplerAvailable ? "Load Radar + Doppler — All available" :
+            `Load ${minutes}-min rain radar`);
   }
 
   const loopWindow = $("operationalLoopWindow");
   if (loopWindow && !hybridFrames.length) {
     loopWindow.textContent = availableRadarHistoryTimes.length
       ? (dopplerAvailable ? `Doppler window · ${Math.round(minutes)} min` :
-          allAvailable ? `${Math.round(minutes)} min available` :
-          `${minutes} min selected`)
+          `${minutes} min rain-only`)
       : "Checking history";
   }
 

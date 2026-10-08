@@ -54,16 +54,24 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock] =
   ]);
 
 requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Production root remains V9.15.1");
-if (productionIndex.includes("9.16-alerts-preview")) throw new Error("Production root accidentally points to preview");
+if (productionIndex.includes("9.16-independent-doppler")) throw new Error("Production root accidentally points to preview");
 requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-alerts-preview/, "Preview own iframe");
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");
 requireMatch(runtime, /const DEFAULT_RADAR_SITE_ID = "66"/, "Startup selected radar");
 requireMatch(runtime, /syncSevereStormAlerts\(hybridFrameIndex\)/, "Radar frame synchronisation");
-requireMatch(runtime, /buildRadarPrimaryProductTimeline\(/, "Radar-primary nearest Doppler pairing");
-requireMatch(runtime, /requiresDoppler: false/, "Radar-only fallback without discarding real observations");
-requireMatch(runtime, /RADAR ONLY — Doppler unavailable/, "Unmatched source is truthfully labelled");
+requireMatch(runtime, /buildIndependentDopplerFrames\(/, "Source-native Doppler history");
+requireMatch(runtime, /independentDopplerPlayback = createContinuousPlayback\(/, "Independent Doppler animation clock");
+requireMatch(runtime, /independentDopplerRefresh = createLiveLoopRefresh\(/, "Independent Doppler source polling");
+requireMatch(runtime, /const withDoppler = false/, "Uncoupled reflectivity playback");
+requireMatch(runtime, /independentDopplerCanvas\(/, "Doppler raster independent of reflectivity frame");
+requireMatch(previewHtml, /<details class="independent-doppler-controls" id="dopplerControls">/, "Compact collapsed wind drawer");
+requireMatch(previewHtml, /id="dopplerFrameSlider"/, "Optional wind-only scrubbing control");
+requireMatch(previewHtml, /id="dopplerPlayButton"/, "Optional wind-only pause control");
+if (/RADAR ONLY — Doppler unavailable/.test(runtime)) {
+  throw new Error("Legacy shared-timeframe status still present");
+}
 if (/const timeline = withDoppler \? shared : radarHistoryTimeline/.test(runtime)) {
   throw new Error("V9.16 still discards valid radar frames through strict shared Doppler timeline");
 }
@@ -101,7 +109,7 @@ if (!pngResponse.ok || !pngResponse.headers.get("content-type")?.includes("image
 console.log("PASS Published V9.16 candidate at commit " + expectedSha);
 console.log("PASS Mt Stapylton selected; severe storm evidence controls published");
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
-console.log("PASS Nearest-source Doppler within 8 min; unmatched reflectivity explicitly radar-only");
+console.log("PASS Native independent reflectivity and Doppler loops with compact collapsed optional wind controls");
 console.log("PASS Production root still points to V9.15.1");
 console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
 console.log("PASS Two original-scan hook-shape indicators accessible in historical viewer; classification remains experimental");

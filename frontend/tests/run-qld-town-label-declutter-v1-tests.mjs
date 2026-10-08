@@ -5,20 +5,21 @@ import {
 } from "../src/context-layers/qld-town-label-declutter-v1.js";
 
 assert.equal(labelBudget(390, 350, 2_000_000), 0, "No planetary-scale wall of labels");
-assert.equal(labelBudget(390, 350, 50_000, "street"), 8);
+assert.equal(labelBudget(390, 350, 50_000, "street"), 0,
+  "Street must not draw supplemental Queensland town names");
 assert.ok(labelBudget(390, 350, 50_000, "qld-imagery") <= 9);
 assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -90) <= 5,
   "Mobile imagery must never exceed five supplemental names even with a steep camera");
-assert.ok(labelBudget(390, 350, 10000, "street", -90) <= 9,
-  "Street mobile cap must remain independent of imagery");
+assert.equal(labelBudget(390, 350, 10000, "street", -90), 0,
+  "No supplemental Street labels regardless of camera pitch");
 assert.ok(labelBudget(390, 350, 750_000) <= 5);
 assert.ok(labelBudget(390, 350, 300_000, "qld-imagery", -12) <= 4,
   "Shallow horizon views cannot create crowds even at moderate altitude");
-assert.ok(labelBudget(390, 350, 50000, "street", -30) <= 6);
-assert.ok(labelBudget(390, 350, 50000, "street", -70) >
-  labelBudget(390, 350, 50000, "street", -12));
+assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -30) <= 6);
+assert.ok(labelBudget(390, 350, 50000, "qld-imagery", -70) >
+  labelBudget(390, 350, 50000, "qld-imagery", -12));
 assert.equal(labelBudget(160, 350, 10_000), 0, "Tiny map viewport does not get clutter");
-assert.ok(labelBudget(1200, 800, 50_000) <= 28);
+assert.ok(labelBudget(1200, 800, 50_000, "qld-imagery") <= 28);
 assert.equal(greatCircleKm({latitude:-25,longitude:139},{latitude:-25,longitude:139}),0);
 
 const b = townLabelBox({name:"Birdsville",x:100,y:100});
@@ -45,11 +46,17 @@ for(let i=0;i<758;i++){
     y:170+Math.floor(i/12)%12*2
   });
 }
+assert.deepEqual(layoutTownLabels({
+  candidates, width:390,height:350,cameraHeight:50000,mode:"street",
+  previousVisible:["birdsville"]
+}), [], "No Street town labels even when previously selected");
+assert.equal(labelBudget(1200, 800, 50000, "street"),0,
+  "No supplemental Street labels on desktop either");
 const wall=layoutTownLabels({
   candidates,width:390,height:350,cameraHeight:50000,
-  mode:"street"
+  mode:"qld-imagery"
 });
-assert.ok(wall.length<=8);
+assert.ok(wall.length<=5);
 const rects=wall.map(x=>townLabelBox(x));
 for(let i=0;i<rects.length;i++){
   for(let j=i+1;j<rects.length;j++){
@@ -62,25 +69,25 @@ const spread=Array.from({length:120},(_,i)=>({
   priority:10+i/2,population:250
 }));
 const sparse=layoutTownLabels({
-  candidates:spread,width:390,height:350,cameraHeight:20000,mode:"street"
+  candidates:spread,width:390,height:350,cameraHeight:20000,mode:"qld-imagery"
 });
-assert.ok(sparse.length<=8);
+assert.ok(sparse.length<=5);
 assert.ok(sparse.length>1);
 const remote=layoutTownLabels({
   candidates:[{id:"birdsville",name:"Birdsville",x:150,y:160,population:115,priority:80}],
-  width:390,height:350,cameraHeight:60000
+  width:390,height:350,cameraHeight:60000,mode:"qld-imagery"
 });
 assert.deepEqual(remote.map(x=>x.id),["birdsville"]);
 const pitched=layoutTownLabels({candidates:spread,width:390,height:350,cameraHeight:300000,mode:"qld-imagery",cameraPitchDegrees:-12});
 assert.ok(pitched.length<=4,"Shallow horizon layout must be strictly limited");
-const far=layoutTownLabels({candidates:spread,width:390,height:350,cameraHeight:2_100_000});
+const far=layoutTownLabels({candidates:spread,width:390,height:350,cameraHeight:2_100_000,mode:"qld-imagery"});
 assert.equal(far.length,0);
 const stay=layoutTownLabels({
   candidates:[
     {id:"a",name:"A",priority:20,x:100,y:100,population:50},
     {id:"b",name:"B",priority:25,x:100,y:100,population:50}
   ],
-  width:390,height:350,cameraHeight:10000,previousVisible:["a"]
+  width:390,height:350,cameraHeight:10000,mode:"qld-imagery",previousVisible:["a"]
 });
 assert.equal(stay[0].id,"a","Previously displayed label wins near ties during gentle pan");
 const statewide = Array.from({ length: 20 }, (_, i) => ({
@@ -99,4 +106,4 @@ const lowAngleStatewide = layoutTownLabels({
 assert.ok(lowAngleStatewide.length <= 5,
   "Statewide geographic footprint must cap labels even if camera height/pitch report a local view");
 
-console.log("Town declutter checks passed: 758 dense names, collision-free mobile/desktop budgets, horizon-scale suppression, remote settlement priority and visibility hysteresis.");
+console.log("Town declutter checks passed: Street always returns zero supplemental names; QLD imagery remains collision-free with mobile/desktop budgets, rural priorities and horizon culling.");

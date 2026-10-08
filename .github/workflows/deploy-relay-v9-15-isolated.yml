@@ -1,0 +1,36 @@
+name: Deploy isolated V9.15 QLDTraffic relay endpoint
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.15.0-qfd-technical-rescue
+    paths:
+      - .github/workflows/deploy-relay-v9-15-isolated.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run complete frontend and relay regression tests
+        run: |
+          npm test
+          node --check relay/worker.js
+          node --check scripts/smoke-v9-15-qltraffic-relay-v1.mjs
+      - name: Deploy compatible Worker with separate V9.15 road endpoint
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: relay
+          command: deploy
+      - name: Verify both live Worker endpoints and exact official QLDTraffic events
+        run: node scripts/smoke-v9-15-qltraffic-relay-v1.mjs

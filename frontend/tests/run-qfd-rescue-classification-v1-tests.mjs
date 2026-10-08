@@ -1,130 +1,160 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
 import {
-  classifyQfdRescueJobType,qfdPublicClassificationAvailability,
-  QFD_JOB_TYPE_LABELS
+  classifyQfdRescueJobType,qfdPublicClassificationAvailability,QFD_JOB_TYPE_LABELS
 } from "../src/context-layers/qfd-rescue-job-types-v1.js";
 import {
-  normaliseQfdTechnicalRescues,fetchQfdTechnicalRescues,
-  qfdTechnicalRescueUrl,qfdRescueSubtypeAvailability
+  normaliseQfdPublicIncidents,fetchQfdPublicIncidents,
+  qfdPublicIncidentUrl,QFD_PUBLIC_GROUPS,QFD_PUBLIC_GROUP_NAMES,
+  qfdPublicGroupCounts,qfdRescueSubtypeAvailability
 } from "../src/context-layers/qfd-technical-rescues-v1.js";
+import {
+  safeQfdSymbolImage,qfdOfficialSymbolCatalog,provisionalQfdSymbol,
+  qfdSymbolFor,fetchQfdPublicSymbolCatalog,QFD_GROUP_ICON_COUNT
+} from "../src/context-layers/qfd-public-symbols-v1.js";
 let checks=0;
-function test(name,fn) {
-  checks++;
-  fn();
-  console.log("PASS "+name);
-}
-test("QFD water rescue types are recognised but not inferred",()=>{
-  for(const type of ["Rescue water all types","XE Rescue Water"," rescue  water  all types "]) {
-    const result=classifyQfdRescueJobType(type);
-    assert.deepEqual(result,{category:"water",rescue:true,requested:true});
-  }
-  assert.equal(classifyQfdRescueJobType("RESCUE TECHNICAL").requested,false);
-  assert.equal(classifyQfdRescueJobType("flooded road").requested,false);
+function test(name,fn) {fn();checks++;console.log("PASS "+name);}
+function source(rel){return readFileSync(fileURLToPath(new URL(rel,import.meta.url)),"utf8");}
+const accepted=["RESCUE TECHNICAL","RESCUE ROAD CRASH","ASSIST PUBLIC"];
+test("Only three official GroupedType categories are permitted",()=>{
+  assert.deepEqual(QFD_PUBLIC_GROUP_NAMES,accepted);
+  assert.equal(Object.keys(QFD_PUBLIC_GROUPS).length,3);
+  assert.deepEqual(QFD_PUBLIC_GROUP_NAMES.map(g=>QFD_PUBLIC_GROUPS[g].label),
+    ["Technical rescue","Road crash rescue","Public assistance"]);
 });
-test("Vertical and mountain rescue are both included, but remain distinct",()=>{
-  const vertical=classifyQfdRescueJobType("Rescue Vertical");
-  const mountain=classifyQfdRescueJobType("Rescue Mountain Rescue");
-  assert.deepEqual(vertical,{category:"vertical",rescue:true,requested:true});
-  assert.deepEqual(mountain,{category:"mountain",rescue:true,requested:true});
-  assert.notEqual(vertical.category,mountain.category);
+test("The ArcGIS query filters only the exact published groups",()=>{
+  const u=new URL(qfdPublicIncidentUrl());
+  assert.equal(u.searchParams.get("where"),
+    "GroupedType IN ('RESCUE TECHNICAL','RESCUE ROAD CRASH','ASSIST PUBLIC')");
+  assert.equal(u.searchParams.get("f"),"geojson");
+  assert.equal(u.searchParams.get("outSR"),"4326");
+  assert.equal(u.searchParams.get("resultRecordCount"),"500");
+  assert.match(u.searchParams.get("outFields"),/GroupedType/);
+  assert.match(u.searchParams.get("outFields"),/Jurisdiction/);
+  assert.throws(()=>qfdPublicIncidentUrl(-1),RangeError);
+  assert.throws(()=>qfdPublicIncidentUrl(25),RangeError);
 });
-test("Extreme-weather assistance is in scope without falsely claiming a rescue",()=>{
-  assert.deepEqual(classifyQfdRescueJobType("Assist Extreme Weather"),
-    {category:"weather-assistance",rescue:false,requested:true});
+const make=(id,groupedType,coordinates=[153.12,-27.5],overrides={})=>({
+  type:"Feature",geometry:{type:"Point",coordinates},
+  properties:{Master_Incident_Number:id,GroupedType:groupedType,
+    Locality:"Test locality",Location:"General locality",Jurisdiction:"QFD",
+    CurrentStatus:"RESPONDING",Response_Date:1728320000000,
+    VehiclesAssigned:2,VehiclesOnRoute:1,VehiclesOnScene:1,...overrides}
 });
-test("Large multi RTC is included but must remain distinct from road closures",()=>{
-  const rtc=classifyQfdRescueJobType("Rescue RTC Large Multi");
-  assert.deepEqual(rtc,{category:"road-crash",rescue:true,requested:true});
-  assert.notEqual(rtc.category,"road-closure");
-  assert.notEqual(rtc.category,"water");
+const sample={type:"FeatureCollection",features:[
+  make("Q1","RESCUE TECHNICAL"),
+  make("Q2","RESCUE ROAD CRASH"),
+  make("Q3","ASSIST PUBLIC"),
+  make("F1","FIRE VEGETATION"),
+  make("E1","EVENTS PLANNED"),
+  make("X1","OTHER ALL"),
+  make("N1","RESCUE TECHNICAL",[151,-31]),
+  make("C1","RESCUE TECHNICAL",[153.2,-27.6],{CurrentStatus:"CLOSED"})
+]};
+test("Normalization retains exactly the three QFD groups and no unrelated incidents",()=>{
+  const v=normaliseQfdPublicIncidents(sample);
+  assert.equal(v.length,3);
+  assert.deepEqual(v.map(x=>x.id),["Q1","Q2","Q3"]);
+  assert.deepEqual(v.map(x=>x.category),
+    ["technical-rescue","road-crash-rescue","public-assistance"]);
+  assert.ok(v.every(x=>x.subtypeVerified===false));
+  assert.equal(v[0].longitude,153.12);
+  assert.equal(v[0].vehiclesAssigned,2);
 });
-test("All six requested official job labels are eligible; unknown and grouped types are not",()=>{
-  for(const label of Object.values(QFD_JOB_TYPE_LABELS)){
-    assert.equal(classifyQfdRescueJobType(label).requested,true,label);
-  }
-  for(const label of ["RESCUE TECHNICAL","flooded road","flood rescue","road closure",
-    "ASSIST WEATHER","SES mountain operation"]){
-    assert.equal(classifyQfdRescueJobType(label).requested,false,label);
-  }
-});
-test("Public QFD ESCAD grouped type is insufficient for requested subtypes",()=>{
-  const fields=["OBJECTID","Master_Incident_Number","GroupedType","Locality","CurrentStatus"];
-  const available=qfdPublicClassificationAvailability(fields);
-  assert.equal(available.groupedTypeAvailable,true);
-  assert.equal(available.waterRescueDistinguishable,false);
-  assert.equal(available.verticalRescueDistinguishable,false);
-  assert.equal(available.detailedSubtypeField,null);
+test("GroupedType never falsely implies SES tasking, swift water or road closure",()=>{
+  const v=normaliseQfdPublicIncidents(sample);
+  assert.equal(v[1].groupedType,"RESCUE ROAD CRASH");
+  assert.equal(v[2].groupedType,"ASSIST PUBLIC");
   assert.equal(qfdRescueSubtypeAvailability().swiftWater,false);
   assert.equal(qfdRescueSubtypeAvailability().vertical,false);
+  assert.ok(v.every(x=>!("roadClosure" in x)&&!("sesAttendance" in x)));
 });
-test("Future verified job-type field can be recognised without guessing current classification",()=>{
-  const available=qfdPublicClassificationAvailability(["GroupedType","JobType"]);
-  assert.equal(available.detailedSubtypeField,"jobtype");
+test("Counts are by actual published group and ignore unrelated features",()=>{
+  assert.deepEqual(qfdPublicGroupCounts(normaliseQfdPublicIncidents(sample)),{
+    "RESCUE TECHNICAL":1,"RESCUE ROAD CRASH":1,"ASSIST PUBLIC":1
+  });
+  assert.deepEqual(qfdPublicGroupCounts([]),{
+    "RESCUE TECHNICAL":0,"RESCUE ROAD CRASH":0,"ASSIST PUBLIC":0
+  });
 });
-test("A public title field is discoverable, but not assumed to contain exact job labels",()=>{
-  const publicSchema=qfdPublicClassificationAvailability(["GroupedType","Locality"]);
-  assert.equal(publicSchema.publicTitleField,null);
-  assert.equal(publicSchema.needsPublicValueVerification,false);
-  const futureSchema=qfdPublicClassificationAvailability(["GroupedType","Incident_Title"]);
-  assert.equal(futureSchema.publicTitleField,"incident_title");
-  assert.equal(futureSchema.waterRescueDistinguishable,false);
-  assert.equal(futureSchema.verticalRescueDistinguishable,false);
-  assert.equal(futureSchema.needsPublicValueVerification,true);
-  assert.equal(classifyQfdRescueJobType("Technical rescue near river").requested,false);
+test("Duplicates preserve the most recently updated QFD record",()=>{
+  const records={type:"FeatureCollection",features:[
+    make("same","RESCUE TECHNICAL",[153.1,-27.5],{LastUpdate:1728320000000}),
+    make("same","RESCUE ROAD CRASH",[153.2,-27.6],{LastUpdate:1728325000000})
+  ]};
+  const results=normaliseQfdPublicIncidents(records);
+  assert.equal(results.length,1);
+  assert.equal(results[0].groupedType,"RESCUE ROAD CRASH");
+  assert.equal(results[0].longitude,153.2);
 });
-test("Query contains published grouped rescue type, not unverified specific labels",()=>{
-  const url=new URL(qfdTechnicalRescueUrl());
-  assert.equal(url.searchParams.get("where"),"GroupedType = 'RESCUE TECHNICAL'");
-  assert.equal(url.searchParams.get("resultRecordCount"),"500");
-  assert.equal(url.searchParams.get("outSR"),"4326");
-  assert.equal(url.searchParams.get("f"),"geojson");
-  assert.throws(()=>qfdTechnicalRescueUrl(4),RangeError);
+test("Provider errors and malformed responses fail closed",()=>{
+  assert.throws(()=>normaliseQfdPublicIncidents({features:[]}),/GeoJSON/);
+  assert.throws(()=>normaliseQfdPublicIncidents({error:{message:"provider error"}}),/provider error/);
 });
-const sample={
-  type:"FeatureCollection",
-  features:[{
-    type:"Feature",geometry:{type:"Point",coordinates:[153.12,-27.5]},
-    properties:{Master_Incident_Number:"example-1",GroupedType:"RESCUE TECHNICAL",
-      CurrentStatus:"RESPONDING",Locality:"Example",Response_Date:1728320000000,
-      VehiclesAssigned:2,VehiclesOnRoute:1,VehiclesOnScene:1}
-  },{
-    type:"Feature",geometry:{type:"Point",coordinates:[153.1,-27.5]},
-    properties:{Master_Incident_Number:"wrong-type",GroupedType:"RESCUE ROAD CRASH"}
-  },{
-    type:"Feature",geometry:{type:"Point",coordinates:[151,-30]},
-    properties:{Master_Incident_Number:"not-qld",GroupedType:"RESCUE TECHNICAL"}
-  }]
-};
-test("QFD source preserves official approximate location and never invents subtype",()=>{
-  const result=normaliseQfdTechnicalRescues(sample);
-  assert.equal(result.length,1);
-  assert.equal(result[0].id,"example-1");
-  assert.equal(result[0].category,"technical-unspecified");
-  assert.equal(result[0].subtypeVerified,false);
-  assert.equal(result[0].longitude,153.12);
-  assert.equal(result[0].vehiclesAssigned,2);
+test("Internal QFD job codes remain advisory not published group identifiers",()=>{
+  assert.equal(classifyQfdRescueJobType("RESCUE VERTICAL").category,"vertical");
+  assert.equal(classifyQfdRescueJobType("RESCUE MOUNTAIN RESCUE").category,"mountain");
+  assert.equal(classifyQfdRescueJobType("RESCUE RTC LARGE MULTI").category,"road-crash");
+  assert.equal(classifyQfdRescueJobType("ASSIST EXTREME WEATHER").category,"weather-assistance");
+  assert.equal(classifyQfdRescueJobType("RESCUE TECHNICAL").requested,false);
+  assert.equal(Object.values(QFD_JOB_TYPE_LABELS).length,6);
+  const schema=qfdPublicClassificationAvailability(["GroupedType","Locality"]);
+  assert.equal(schema.groupedTypeAvailable,true);
+  assert.equal(schema.detailedSubtypeField,null);
 });
-test("Malformed or provider-error payloads fail closed",()=>{
-  assert.throws(()=>normaliseQfdTechnicalRescues({features:[]}),/GeoJSON/);
-  assert.throws(()=>normaliseQfdTechnicalRescues({error:{message:"service down"}}),/service down/);
+test("QFD public picture-marker metadata takes precedence over provisional icons",()=>{
+  const catalog=qfdOfficialSymbolCatalog({drawingInfo:{renderer:{
+    type:"uniqueValue",field1:"GroupedType",uniqueValueInfos:[
+      {value:"RESCUE ROAD CRASH",symbol:{type:"esriPMS",imageData:"YWJjZA=="}},
+      {value:"FIRE VEGETATION",symbol:{type:"esriPMS",imageData:"YWJjZA=="}}
+    ]
+  }}});
+  assert.deepEqual(Object.keys(catalog),["RESCUE ROAD CRASH"]);
+  assert.equal(catalog["RESCUE ROAD CRASH"],"data:image/png;base64,YWJjZA==");
+  assert.equal(qfdSymbolFor("RESCUE ROAD CRASH",catalog),catalog["RESCUE ROAD CRASH"]);
+  assert.match(qfdSymbolFor("RESCUE TECHNICAL",catalog),/^data:image\/svg\+xml/);
+  assert.equal(QFD_GROUP_ICON_COUNT,3);
+});
+test("Missing public renderer never invents an official QFD icon",()=>{
+  assert.deepEqual(qfdOfficialSymbolCatalog({fields:[{name:"GroupedType"}]}),{});
+  assert.equal(safeQfdSymbolImage({type:"esriSMS"}),"");
+  assert.equal(safeQfdSymbolImage({type:"esriPMS",url:"javascript:alert(1)"}),"");
+  assert.equal(safeQfdSymbolImage({type:"esriPMS",url:"https://evil.example/x.png"}),"");
+  assert.match(provisionalQfdSymbol("ASSIST PUBLIC"),/^data:image\/svg\+xml/);
+  assert.equal(provisionalQfdSymbol("FIRE VEGETATION"),"");
 });
 await (async()=>{
-  checks++;
   const calls=[];
-  const features=await fetchQfdTechnicalRescues({fetchImpl:async(url)=>{
-    calls.push(url);
-    return {ok:true,json:async()=>sample};
+  const records=await fetchQfdPublicIncidents({fetchImpl:async(url)=>{
+    calls.push(url);return {ok:true,json:async()=>sample};
   }});
   assert.equal(calls.length,1);
-  assert.equal(features.length,1);
-  console.log("PASS source adapter single-page fetch");
+  assert.equal(records.length,3);
+  checks++;console.log("PASS publisher snapshot fetch with exact server/client filtering");
 })();
 await (async()=>{
-  checks++;
-  await assert.rejects(fetchQfdTechnicalRescues({fetchImpl:async()=>({
-    ok:false,status:503
-  })}),/HTTP 503/);
-  console.log("PASS upstream error doesn't masquerade as no incidents");
+  await assert.rejects(fetchQfdPublicIncidents({fetchImpl:async()=>({ok:false,status:503})}),/HTTP 503/);
+  checks++;console.log("PASS provider fetch failure is not interpreted as no QFD incidents");
 })();
-for(const label of Object.values(QFD_JOB_TYPE_LABELS))assert.ok(label.length>0);
-console.log(checks+" QFD rescue classification checks passed.");
+await (async()=>{
+  const renderer={drawingInfo:{renderer:{type:"uniqueValue",field1:"GroupedType",
+    uniqueValueInfos:[{value:"ASSIST PUBLIC",symbol:{type:"esriPMS",imageData:"YWJjZA=="}}]}}};
+  const r=await fetchQfdPublicSymbolCatalog({fetchImpl:async()=>({ok:true,json:async()=>renderer})});
+  assert.equal(Object.keys(r).length,1);
+  const absent=await fetchQfdPublicSymbolCatalog({fetchImpl:async()=>({ok:true,json:async()=>({})})});
+  assert.deepEqual(absent,{});
+  checks++;console.log("PASS official ArcGIS symbols used only when verified publisher renderer exists");
+})();
+test("Map controller, legend and popup agree about the three grouped incident symbols",()=>{
+  const ui=source("../src/context-layers/qfd-technical-rescues-operational-v1.js");
+  const html=source("../live3d-operational-v9.html");
+  for(const group of accepted)assert.ok(html.includes('data-qfd-group-icon="'+group+'"'));
+  assert.match(ui,/billboard:\s*\{/);
+  assert.match(ui,/qfdSymbolFor\(item\.groupedType,officialSymbols\)/);
+  assert.match(ui,/fetchQfdPublicIncidents/);
+  assert.match(ui,/fetchQfdPublicSymbolCatalog/);
+  assert.match(html,/id="qfdSymbolStatus"/);
+  assert.match(ui,/Provisional icons/);
+});
+console.log(checks+" QFD public-group/official-symbol validation checks passed.");

@@ -7,6 +7,7 @@ on:
       - feature/v9.12.3-decluttered-town-labels
       - feature/v9.12.4-imagery-only-town-labels
       - feature/v9.12.5-official-state-border
+      - feature/v9.13.3-desktop-town-label-readability
     paths:
       - "frontend/src/context-layers/qld-town-label-*"
       - "frontend/src/context-layers/qld-population-centres-v2.js"
@@ -41,13 +42,13 @@ jobs:
           python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-label-preview.log 2>&1 &
           sleep 2
           curl -fsS http://127.0.0.1:8765/tools/qld-town-label-visual-qa.html >/dev/null
-      - name: Verify full StormTracker UI with mobile drag and imagery switching
+      - name: Verify full StormTracker mobile and desktop town labels, Birdsville readability and imagery switching
         run: node scripts/smoke-qld-town-label-production-ui.mjs
-      - name: Upload mobile map evidence
+      - name: Upload desktop/mobile map evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: stormtracker-v9-12-3-mobile-label-visual-evidence
+          name: stormtracker-v9-13-3-desktop-mobile-label-visual-evidence
           path: qa-screenshots/
           if-no-files-found: ignore
           retention-days: 7

@@ -642,7 +642,7 @@ export function initialiseOperationalFloodRoadClosures({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#floodRoadClosureInfo"
+            "#nav,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo"
           );
 
       if (blockedControl) {

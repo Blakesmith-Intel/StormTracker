@@ -100,6 +100,7 @@ import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.j
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
 import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule } from "./doppler-available-window-v1.js?v=9.16-doppler-window";
+import { buildOperationalWindowChoices } from "./operational-window-choices-v1.js?v=9.16-four-windows";
 import { dopplerMapCoordinateToLonLat } from "./bom-doppler-georef-v1.js?v=9.16-independent";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
@@ -696,14 +697,13 @@ function availableHistorySummary(times = availableRadarHistoryTimes) {
   );
 }
 
-// Four user-facing windows; never alter the existing combined Doppler schedule.
-const RAIN_ONLY_LOOP_MINUTES = Object.freeze([60, 120, 180]);
+// Four user-facing windows. The existing combined Doppler schedule is unchanged.
 function isCombinedDopplerWindowSelected() {
   return selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE;
 }
 function shouldDisplayDopplerForSelectedWindow() {
-  // Source history keeps updating in the background for menu availability,
-  // but 60/120/180-minute rain-only playback must never hold wind images.
+  // Always poll real Doppler source history for future combined-loop selection,
+  // but never carry its images into any longer rain-only radar window.
   return isDopplerSourceActive() && isCombinedDopplerWindowSelected();
 }
 
@@ -711,26 +711,22 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   availableRadarHistoryTimes = continuousRadarHistoryTimes(times);
   const selector = $("loopDurationMinutes");
   const previous = preserveSelection ? selector.value : "";
-  const available = new Set(availableRadarLoopMinutes(availableRadarHistoryTimes));
-  const combined = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
-
-  const both = document.createElement("option");
-  both.value = DOPPLER_AVAILABLE_LOOP_VALUE;
-  both.textContent = "Radar + Doppler — All available";
-  both.disabled = !combined || !isDopplerSourceActive();
-
-  const rain = RAIN_ONLY_LOOP_MINUTES.map(minutes => {
+  const window = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
+  const choices = buildOperationalWindowChoices({
+    combinedAvailable: Boolean(window && isDopplerSourceActive()),
+    rainAvailableMinutes: availableRadarLoopMinutes(availableRadarHistoryTimes)
+  });
+  const options = choices.map(choice => {
     const option = document.createElement("option");
-    option.value = String(minutes);
-    option.textContent = minutes + " min — Rain radar only";
-    option.disabled = !available.has(minutes);
+    option.value = choice.value;
+    option.textContent = choice.label;
+    option.disabled = choice.disabled;
     return option;
   });
-  const options = [both, ...rain];
   selector.replaceChildren(...options);
-  const enabled = options.filter(option => !option.disabled);
+  const enabled = choices.filter(choice => !choice.disabled);
   selector.disabled = sequenceLoading || !enabled.length;
-  const selected = enabled.some(option => option.value === previous)
+  const selected = enabled.some(choice => choice.value === previous)
     ? previous : enabled[0]?.value ?? "";
   if (selected) selector.value = selected;
   else selector.selectedIndex = -1;

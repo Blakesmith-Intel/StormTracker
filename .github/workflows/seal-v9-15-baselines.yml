@@ -23,7 +23,7 @@ jobs:
       - name: Check pinned release history, current source and full regression
         env:
           V14: b799cb9b8cdda9f6cecc1945a148c2e574e8dd3e
-          V15: __V15_COMMIT__
+          V15: 363d336fff008a81f2f763ea3e5bd6d1dfdb5a16
           PAGES_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
@@ -59,7 +59,7 @@ jobs:
       - name: Create immutable version tags pointing to exact production commits
         env:
           V14: b799cb9b8cdda9f6cecc1945a148c2e574e8dd3e
-          V15: __V15_COMMIT__
+          V15: 363d336fff008a81f2f763ea3e5bd6d1dfdb5a16
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"

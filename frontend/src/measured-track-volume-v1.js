@@ -263,42 +263,31 @@ export function buildMeasuredTrackVolume(
       continue;
     }
 
-    const inferred =
-      inferColumn(
-        model,
-        inputDbz,
-        {
-          occupancyThreshold,
-          minimumOutputDbz
-        }
-      );
+    // The observed 2-D echo belongs to the measured segmentation, whether
+    // or not the empirical vertical profile can construct a column.
+    const mercator = pixelCentreMercator(frame,column,row);
+    const geographic = webMercatorToDegrees(mercator.x,mercator.y);
 
-    if (!inferred.length) {
-      continue;
-    }
-
-    inferredColumnCount++;
-
-    const mercator =
-      pixelCentreMercator(
-        frame,
-        column,
-        row
-      );
-
-    const geographic =
-      webMercatorToDegrees(
-        mercator.x,
-        mercator.y
-      );
+    const inferred = inferColumn(model,inputDbz,{
+      occupancyThreshold,minimumOutputDbz
+    });
 
     measuredReflectivityFootprint.push({
       longitude:geographic.longitude,
       latitude:geographic.latitude,
       source_category:Number(frame.categories[index]),
       representative_dbzh:inputDbz,
-      projection_altitude_m_amsl:Math.max(0,Math.min(...inferred.map(p=>p.altitude_m_amsl))-250)
+      // A display projection at the volume base; not a measured altitude.
+      projection_altitude_m_amsl: inferred.length
+        ? Math.max(0,Math.min(...inferred.map(p=>p.altitude_m_amsl))-250)
+        : 250
     });
+
+    if (!inferred.length) {
+      continue;
+    }
+
+    inferredColumnCount++;
 
     const pixelAreaM2 =
       groundPixelAreaM2(

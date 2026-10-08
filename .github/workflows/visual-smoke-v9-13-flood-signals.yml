@@ -5,10 +5,13 @@ on:
   push:
     branches:
       - feature/v9.13.0-bom-flood-signal-filter
+      - feature/v9.13.1-bom-historical-bootstrap
     paths:
       - "scripts/smoke-bom-flood-signal-browser.mjs"
       - ".github/workflows/visual-smoke-v9-13-flood-signals.yml"
       - "frontend/src/context-layers/river-gauge-layer-v1.js"
+      - "frontend/src/context-layers/bom-recent-river-history-v1.js"
+      - "scripts/smoke-bom-flood-signal-browser.mjs"
       - "frontend/src/context-layers/river-gauges-operational-v1.js"
 
 permissions:

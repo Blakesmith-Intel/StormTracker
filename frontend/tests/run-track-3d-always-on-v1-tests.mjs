@@ -16,7 +16,7 @@ test("Track-specific 3-D is permanently on: no UI checkbox",()=>{
 });
 test("Track mode is requested for measured tracks and falls back on temporal frames",()=>{
   assert.match(controller,/function useTrackSpecificVolume\(index\)/);
-  assert.match(controller,/return hasTrackSpecificVolume\(index\)/);
+  assert.match(controller,/&& hasTrackSpecificVolume\(index\)/);
   assert.match(controller,/isTemporallyInferredRadarFrame/);
   assert.match(controller,/Temporal gap-fill · frame-wide inferred/);
   assert.match(controller,/Frame-wide fallback \(no measured track\)/);

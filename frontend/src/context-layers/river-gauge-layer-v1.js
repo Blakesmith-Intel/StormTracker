@@ -12,6 +12,7 @@ import {
   FLOOD_SIGNAL_STORAGE_KEY,
   appendGaugeObservation,
   cleanFloodSignalHistory,
+  compactFloodHistory,
   filterOperationalFloodGauges
 } from "./river-flood-signals-v1.js?v=9.13.0";
 
@@ -460,6 +461,9 @@ export function createRiverGaugeLayer({
         for (const feature of result.payload.features) {
           appendGaugeObservation(history, feature, observedAt);
         }
+        history = compactFloodHistory(
+          history, result.payload.features, observedAt
+        );
         try {
           storage?.setItem(FLOOD_SIGNAL_STORAGE_KEY, JSON.stringify(history));
         } catch {

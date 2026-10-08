@@ -141,13 +141,18 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
   const samples=history[String(feature?.id??"")]??[];
   const recent=latestRiseRate(samples,nowMs);
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
-  const timely=observed===null || nowMs-observed<=6*3600000;
+  // Without a dated/current observation a classification cannot safely be
+  // presented as an active operational condition.
+  const timely=observed!==null && nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS;
 
   if ((level==="moderate"||level==="major") && timely) return {
     show:true,state:level,reason:`${level} flood classification (BoM)`,
     source:"bom-classification",rise:recent
   };
-  if(!recent || tendency!=="rising")return {
+  // A historical rise from local storage is not evidence that a newer
+  // bulletin is still rising. Require its timestamp to match the latest data.
+  if(!timely || !recent || tendency!=="rising" ||
+      Math.abs(recent.observedAt-observed)>10*60000)return {
     show:false,reason:"No verified rapid rise or moderate/major flood classification"
   };
   if(!tidal && level==="minor" &&

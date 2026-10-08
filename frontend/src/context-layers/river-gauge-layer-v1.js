@@ -17,6 +17,11 @@ import {
   filterOperationalFloodGauges
 } from "./river-flood-signals-v1.js?v=9.13.0";
 
+import {
+  recentFloodHistoryCandidate,
+  fetchBoMRecentHistory
+} from "./bom-recent-river-history-v1.js?v=9.13.1";
+
 export function riverGaugeOperationalSummary(
   feature
 ) {
@@ -312,6 +317,75 @@ export function createRiverGaugeLayer({
   let timer = null;
   let lastLoadedAt = 0;
   let diagnostics = null;
+  // Per-session bounded requests. The existing worker handles CORS, while
+  // observations and flood classification remain entirely in the browser.
+  const recentRequested = new Set();
+  let recentLoading = null;
+  let latestSourceFeatures = [];
+
+  function persistHistory(){
+    try {storage?.setItem(FLOOD_SIGNAL_STORAGE_KEY,JSON.stringify(history));}
+    catch {/* storage quotas/private mode must not break the map */}
+  }
+
+  async function backfillRecentBoMHistory(features){
+    if(recentLoading)return recentLoading;
+    const nowMs=now();
+    const list=features.map(f=>recentFloodHistoryCandidate(f,history,nowMs))
+      .filter(Boolean).sort((a,b)=>Number(a.tidal)-Number(b.tidal));
+    const candidates=list.filter(item=>!recentRequested.has(item.id))
+      .slice(0,Math.max(0,Math.min(24,48-recentRequested.size)));
+    if(!candidates.length)return null;
+    for(const c of candidates)recentRequested.add(c.id);
+    recentLoading=(async()=>{
+      let next=0,success=0,failures=0;
+      await Promise.all(Array.from({length:Math.min(4,candidates.length)},async()=>{
+        while(next<candidates.length){
+          const target=candidates[next++];
+          try{
+            const observations=await fetchBoMRecentHistory(target,{
+              fetchImpl,timeoutMs:10000
+            });
+            if(!observations.length){failures++;continue;}
+            // Prefer identical timestamps already obtained from current
+            // bulletins instead of replacing them with historical duplicates.
+            const existing=new Map((history[target.id]??[])
+              .map(x=>[x.time,x.height]));
+            for(const obs of observations){
+              if(!existing.has(obs.time))existing.set(obs.time,obs.height);
+            }
+            history[target.id]=[...existing].sort((a,b)=>a[0]-b[0])
+              .map(([time,height])=>({time,height}));
+            success++;
+          }catch(error){
+            failures++;
+            console.warn("BoM recent station unavailable:",target.id,
+              error?.message??error);
+          }
+        }
+      }));
+      history=compactFloodHistory(history,latestSourceFeatures,now());
+      persistHistory();
+      // A 15-minute poll may have arrived while a station page loaded.
+      // Classify against the latest published BoM bulletin, never a stale one.
+      const signals=filterOperationalFloodGauges(latestSourceFeatures,history,now());
+      diagnostics={...(diagnostics??{}),floodSignalCounts:signals.counts,
+        recentHistory:{loaded:success,failed:failures,attempted:recentRequested.size}};
+      render({type:"FeatureCollection",features:signals.features});
+      if(failures || success){
+        const severity=failures?"warning":"ok";
+        onStatus({kind:severity,message:
+          `${signals.features.length} qualifying flood signals · ${success} BoM station histories loaded`+
+          (failures?` · ${failures} unavailable (screening incomplete)`:"")+
+          " · BoM warnings remain authoritative",
+          count:signals.features.length,...signals.counts,
+          historyLoaded:success,historyFailed:failures});
+      }
+    })();
+    try{return await recentLoading;}
+    finally{recentLoading=null;}
+  }
+
 
   function markerImage(
     state
@@ -471,6 +545,7 @@ export function createRiverGaugeLayer({
           // Browser storage may be disabled or full; fresh evidence still works.
         }
 
+        latestSourceFeatures = result.payload.features;
         const alerts = filterOperationalFloodGauges(
           result.payload.features, history, observedAt
         );
@@ -519,6 +594,11 @@ export function createRiverGaugeLayer({
             lastLoadedAt
         });
 
+        // Bootstrap only plausible rising stations asynchronously. Severe
+        // BoM classifications render immediately without waiting for history.
+        void backfillRecentBoMHistory(latestSourceFeatures).catch(error=>{
+          console.warn("BoM history bootstrap skipped:",error);
+        });
         return currentFeatures;
       })();
 
@@ -663,6 +743,10 @@ export function createRiverGaugeLayer({
 
     get historyStationCount() {
       return Object.keys(history).length;
+    },
+
+    get recentHistoryRequestCount() {
+      return recentRequested.size;
     },
 
     attribution:

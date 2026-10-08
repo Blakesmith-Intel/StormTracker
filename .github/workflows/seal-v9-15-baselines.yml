@@ -1,0 +1,80 @@
+name: Seal verified StormTracker V9.14.0 and V9.15.0 tags
+
+on:
+  workflow_run:
+    workflows: ["Deploy static StormTracker"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  seal:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Check pinned release history, current source and full regression
+        env:
+          V14: b799cb9b8cdda9f6cecc1945a148c2e574e8dd3e
+          V15: 363d336fff008a81f2f763ea3e5bd6d1dfdb5a16
+          PAGES_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          git cat-file -e "$V14^{commit}"
+          git cat-file -e "$V15^{commit}"
+          git cat-file -e "$PAGES_SHA^{commit}"
+          git merge-base --is-ancestor "$V14" "$V15"
+          git merge-base --is-ancestor "$V15" "$PAGES_SHA"
+          git show "$V14:frontend/index.html" | grep -F 'v=9.14.0'
+          git show "$V15:frontend/index.html" | grep -F 'v=9.15.0-unplanned'
+          git show "$PAGES_SHA:frontend/index.html" | grep -F 'v=9.15.0-unplanned'
+          npm test
+          node --check relay/worker.js
+      - name: Confirm currently published production frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://blakesmith-intel.github.io/StormTracker"
+          passed=0
+          for n in 1 2 3 4 5 6; do
+            if curl -fsSL --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "$BASE/index.html?seal=$GITHUB_RUN_ID-$n" | grep -Fq 'live3d-operational-v9.html?v=9.15.0-unplanned' &&
+               curl -fsSL --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "$BASE/live3d-operational-v9.html?seal=$GITHUB_RUN_ID-$n" | grep -Fq 'Unplanned road closures'; then
+              passed=1
+              break
+            fi
+            echo "Waiting for the accepted V9.15.0 production frontend to propagate (attempt $n of 6)"
+            sleep 10
+          done
+          test "$passed" -eq 1
+          echo "PASS Production Pages is serving V9.15 unplanned-closure UI"
+      - name: Confirm current V9.15 QLDTraffic relay is operational
+        run: node scripts/smoke-v9-15-qltraffic-relay-v1.mjs
+      - name: Create immutable version tags pointing to exact production commits
+        env:
+          V14: b799cb9b8cdda9f6cecc1945a148c2e574e8dd3e
+          V15: 363d336fff008a81f2f763ea3e5bd6d1dfdb5a16
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for name in v9.14.0 v9.15.0; do
+            sha="$V14"
+            test "$name" = v9.15.0 && sha="$V15"
+            existing="$(git ls-remote --tags origin "refs/tags/$name" | awk '{print $1}')"
+            if [ -n "$existing" ]; then
+              echo "Tag $name already exists; verifying it resolves to the expected release commit"
+              git fetch origin "refs/tags/$name:refs/tags/$name" || true
+              test "$(git rev-list -n 1 "refs/tags/$name")" = "$sha"
+            else
+              git tag -a "$name" "$sha" -m "StormTracker accepted production baseline $name"
+              git push origin "refs/tags/$name"
+            fi
+            echo "SEALED $name -> $sha"
+          done

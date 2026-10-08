@@ -30,6 +30,10 @@ const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.j
 const markup=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",import.meta.url)),"utf8");
 assert.match(runtime,/buildOperationalWindowChoices\(\{/);
 assert.match(runtime,/selector.replaceChildren\(\.\.\.options\)/);
+assert.match(runtime,/const selected = choices.some\(choice => choice.value === previous\)/,
+  "temporary source outages must never switch rain-only to Doppler mode");
+assert.match(runtime,/\$\("loadHybridButton"\).disabled = !selectedWindow/,
+  "unavailable rain windows cannot be requested");
 assert.match(runtime,/function shouldDisplayDopplerForSelectedWindow\(\)/);
 assert.match(runtime,/return isDopplerSourceActive\(\) && isCombinedDopplerWindowSelected\(\)/);
 assert.match(runtime,/function driveWindFromCommonPlayback\(radarIndex\) \{\s*if \(!shouldDisplayDopplerForSelectedWindow\(\)/);
@@ -46,5 +50,6 @@ assert.match(runtime,/independentDopplerRefresh = createLiveLoopRefresh\(/,
 assert.match(runtime,/hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/,
  "retain existing combined playback implementation");
 assert.doesNotMatch(markup,/id="showDopplerOverlay"|id="dopplerPlayButton"/);
+assert.doesNotMatch(markup,/Load 30-min storm loop/);
 assert.match(markup,/id="radarOpacity"|id="dopplerOpacity"|id="volumeOpacity"/);
 console.log("PASS exactly four ordered window choices; combined Doppler intact; wind hidden in rain-only without stopping source refresh.");

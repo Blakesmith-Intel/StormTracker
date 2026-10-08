@@ -105,7 +105,11 @@ assert.match(gaugeUi, /window\.addEventListener\([\s\S]*"pointerdown"/);
 assert.match(gaugeUi, /window\.addEventListener\([\s\S]*"pointerup"/);
 const roadLayer = read("frontend/src/context-layers/flood-road-closures-v1.js");
 const roadUi = read("frontend/src/context-layers/flood-road-closures-operational-v1.js");
-assert.match(roadLayer, /createRoadClosureBadgeImage/);
+assert.match(roadLayer, /qldTrafficRoadImpactIcon/);
+assert.match(roadUi, /floodRoadClosureLegendIcon/);
+assert.match(roadUi, /floodRoadClosureInfoIcon/);
+assert.doesNotMatch(roadLayer, /createRoadClosureBadgeImage/,
+  "Custom road closure artwork must not return after switching to official QLDTraffic icons.");
 assert.match(roadLayer, /stormTrackerFloodClosureId/);
 assert.doesNotMatch(
   roadLayer,

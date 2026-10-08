@@ -1,0 +1,97 @@
+import assert from "node:assert/strict";
+import {
+  createRiverGaugeLayer
+} from "../src/context-layers/river-gauge-layer-v1.js";
+
+let now=Date.UTC(2026,9,8,8,30);
+let step=0;
+let failFetch=false;
+const features=[
+  {id:"bom:040123",properties:{bom_stn_num:"040123",awrc_stateid:"QLD-1",name:"Upper river",state:"QLD",location_types:"water level gauge;",lat:-27.5,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.5]}},
+  {id:"bom:040124",properties:{bom_stn_num:"040124",awrc_stateid:"QLD-2",name:"Coastal tide",state:"QLD",location_types:"water level gauge;tide gauge;",lat:-27.4,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.4]}},
+  {id:"bom:040125",properties:{bom_stn_num:"040125",awrc_stateid:"QLD-3",name:"Moderate flood",state:"QLD",location_types:"water level gauge;",lat:-27.6,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.6]}}
+];
+const reportedTime=()=>step===0?"6:15 pm Thu 08/10/2026":"7:00 pm Thu 08/10/2026";
+const latest=()=>[
+  {stationName:"Upper river",stationId:"040123",heightMetres:step===0?1.0:1.6,
+   tendency:"rising",floodClass:"minor",observedText:reportedTime()},
+  {stationName:"Coastal tide",stationId:"040124",heightMetres:step===0?0.9:1.5,
+   tendency:"rising",floodClass:"",observedText:reportedTime()},
+  {stationName:"Moderate flood",stationId:"040125",heightMetres:4.0,
+   tendency:"falling",floodClass:"moderate",observedText:reportedTime()}
+];
+const calls={requests:0,render:0,added:[],observed:[],status:[],stored:{}};
+const storage={
+  getItem:key=>calls.stored[key]??null,
+  setItem:(key,value)=>{calls.stored[key]=value;}
+};
+class MockCollection{
+  values=[];
+  suspendEvents(){}
+  resumeEvents(){}
+  removeAll(){this.values=[];}
+  add(value){const entity={...value};this.values.push(entity);return entity;}
+}
+class MockDataSource{
+  constructor(id){this.name=id;this.entities=new MockCollection();this.show=false;}
+}
+const CesiumRef={
+  CustomDataSource:MockDataSource,
+  Cartesian3:{fromDegrees:(lon,lat,alt)=>[lon,lat,alt]},
+  VerticalOrigin:{CENTER:1},
+  HeightReference:{CLAMP_TO_GROUND:2}
+};
+const viewer={
+  dataSources:{add:src=>{calls.added.push(src);}},
+  scene:{requestRender:()=>{calls.render++;}}
+};
+const fetchImpl=async url=>{
+  calls.requests++;
+  if (failFetch) throw new Error("Simulated BoM relay outage");
+  let response;
+  if(String(url).includes("river-gauge-metadata"))response={type:"FeatureCollection",features};
+  else if(String(url).includes("river-height-bulletins"))
+    response={products:[{product:"IDQ60285",observations:latest()}],failed:[],partial:false};
+  else throw Error("Unexpected relay URL: "+url);
+  return {ok:true,async json(){return response;}};
+};
+const layer=createRiverGaugeLayer({
+  viewer,CesiumRef,fetchImpl,storage,now:()=>now,
+  onUpdate:items=>calls.observed.push(items),
+  onStatus:item=>calls.status.push(item)
+});
+assert.equal(layer.dataSource.show,false,"Gauge layer still has a visibility toggle");
+await layer.refresh();
+assert.equal(layer.features.length,1,"First reading should display moderate only, not guess any rise rates");
+assert.equal(layer.features[0].id,"bom:040125");
+assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"moderate");
+assert.equal(layer.historyStationCount,3,"Capture all water-level readings for later comparison");
+assert.equal(calls.added.length,1);
+assert.equal(layer.dataSource.entities.values.length,1);
+assert.equal(layer.dataSource.entities.values[0].stormTrackerRiverGaugeId,"bom:040125");
+now+=45*60000;
+step=1;
+await layer.refresh({force:true});
+assert.equal(layer.features.length,2,
+  "Two observed height readings should reveal above-minor non-tidal rapid rise and continuing moderate flood");
+const ids=layer.features.map(f=>f.id).sort();
+assert.deepEqual(ids,["bom:040123","bom:040125"]);
+const rise=layer.features.find(f=>f.id==="bom:040123");
+assert.equal(rise.properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
+assert.ok(rise.properties.STORMTRACKER_RISE_RATE_M_PER_H>0.3);
+assert.ok(!layer.features.some(f=>f.id==="bom:040124"),"Ordinary tide rise is suppressed without a tidal baseline");
+assert.ok(calls.stored["stormtracker.qld-flood-observations.v1"]);
+layer.setVisible(true);
+assert.equal(layer.dataSource.show,true);
+layer.setVisible(false);
+assert.equal(layer.dataSource.show,false);
+assert.ok(calls.status.some(item=>item.count===2 && item.rapidRise===1 && item.moderate===1));
+assert.ok(calls.observed.length>=2);
+assert.equal(calls.requests,4,"Two gauge metadata calls and two bulletin calls");
+now += 2*3600000;
+failFetch=true;
+await assert.rejects(layer.refresh({force:true}),/Simulated BoM relay outage/);
+assert.equal(layer.features.length,0,
+  "Never continue displaying old flood-like markers after feed has been stale over 90 minutes");
+assert.ok(calls.status.some(entry=>String(entry.message).includes("old flood markers cleared")));
+console.log("Flood layer integration passed: hidden/background observation storage, initial moderate-only marker, second measured rapid-rise above minor, tidal suppression, popup IDs and toggle.");

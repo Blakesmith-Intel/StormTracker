@@ -10,7 +10,9 @@ permissions:
 
 jobs:
   seal:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    # V9.14/V9.15 are already sealed. Gate the historical one-time seal to its last
+    # V9.15 production tree so future releases do not incorrectly expect V9.15 HTML.
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_sha == '3d1839f7c655f1adebb773a559a615e481ee52d8' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -1,0 +1,89 @@
+name: Seal verified StormTracker V9.16.0 production
+on:
+  workflow_run:
+    workflows: ["Deploy static StormTracker"]
+    types: [completed]
+permissions:
+  contents: write
+jobs:
+  seal:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify accepted V9.16 release source
+        id: accepted
+        shell: bash
+        env:
+          PAGES_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if ! grep -Fq 'v=9.16-window-menu-v2' frontend/index.html; then
+            echo "matches=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test "$(git ls-remote origin refs/heads/main | awk '{print $1}')" = "$PAGES_SHA"
+          grep -Fq 'severeStormAlertOverlay.setEnabled(false)' frontend/src/live3d-operational-v9.js
+          grep -Fq 'id="showSevereRadarAlerts" type="checkbox" disabled' frontend/live3d-operational-v9.html
+          grep -Fq 'id="showExperimentalHookAlerts" type="checkbox" disabled' frontend/live3d-operational-v9.html
+          grep -Fq 'RAIN_ONLY_LOOP_MINUTES = Object.freeze([60,120,180])' frontend/src/operational-window-choices-v1.js
+          npm test
+          node --check relay/worker.js
+          echo "matches=true" >> "$GITHUB_OUTPUT"
+      - name: Validate real production Pages publication
+        if: steps.accepted.outputs.matches == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://blakesmith-intel.github.io/StormTracker"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          ok=0
+          for n in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 25 -H 'Cache-Control: no-cache' "$BASE/index.html?seal=$GITHUB_RUN_ID-$n" -o "$tmp/index" &&
+               curl -fsSL --max-time 25 -H 'Cache-Control: no-cache' "$BASE/live3d-operational-v9.html?seal=$GITHUB_RUN_ID-$n" -o "$tmp/html" &&
+               curl -fsSL --max-time 25 -H 'Cache-Control: no-cache' "$BASE/src/live3d-operational-v9.js?seal=$GITHUB_RUN_ID-$n" -o "$tmp/runtime" &&
+               grep -Fq 'v=9.16-window-menu-v2' "$tmp/index" &&
+               grep -Fq 'id="showSevereRadarAlerts" type="checkbox" disabled' "$tmp/html" &&
+               grep -Fq 'id="showExperimentalHookAlerts" type="checkbox" disabled' "$tmp/html" &&
+               grep -Fq 'severeStormAlertOverlay.setEnabled(false)' "$tmp/runtime"; then
+              ok=1
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" -eq 1
+      - name: Seal immutable version tag and restore branch
+        if: steps.accepted.outputs.matches == 'true'
+        shell: bash
+        env:
+          PAGES_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version=v9.16.0
+          existing="$(git ls-remote --tags origin "refs/tags/$version^{}" | awk '{print $1}')"
+          if [ -z "$existing" ]; then
+            existing="$(git ls-remote --tags origin "refs/tags/$version" | awk '{print $1}')"
+          fi
+          if [ -z "$existing" ]; then
+            git tag -a "$version" "$PAGES_SHA" -m "StormTracker V9.16.0 accepted operational playback (research alerts disabled)"
+            git push origin "refs/tags/$version"
+            existing="$PAGES_SHA"
+          fi
+          test "$existing" = "$PAGES_SHA"
+          restore="$(git ls-remote --heads origin "refs/heads/restore/$version" | awk '{print $1}')"
+          if [ -z "$restore" ]; then
+            git push origin "$PAGES_SHA:refs/heads/restore/$version"
+          else
+            test "$restore" = "$PAGES_SHA"
+          fi
+          echo "SEALED $version -> $PAGES_SHA"

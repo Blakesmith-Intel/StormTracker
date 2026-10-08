@@ -1,6 +1,7 @@
 import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";
 import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
+import { loadCompleteRadarTiles } from "./radar-tile-retry-v1.js?v=9.16-radar-recovery";
 
 const BOM_WMTS_BASE = "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts";
 const REFLECTIVITY_LAYER = "atm_surf_air_precip_reflectivity_dbz";
@@ -144,25 +145,20 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
 
   if (!ctx) throw new Error("Unable to create a 2-D canvas context.");
 
-  const jobs = [];
-
+  const tasks = [];
   for (let row = window.rowStart; row <= window.rowEnd; row++) {
     for (let col = window.colStart; col <= window.colEnd; col++) {
-      jobs.push((async () => {
-        const image = await fetchReadableImage(
-          buildBomReflectivityTileUrl(col, row, observedUtc)
-        );
-
-        return {
-          image,
-          x: (col - window.colStart) * tileSize,
-          y: (row - window.rowStart) * tileSize
-        };
-      })());
+      tasks.push({
+        col, row,
+        url: buildBomReflectivityTileUrl(col, row, observedUtc),
+        x: (col - window.colStart) * tileSize,
+        y: (row - window.rowStart) * tileSize
+      });
     }
   }
-
-  const tiles = await Promise.all(jobs);
+  // A single bad WMTS request no longer discards a scan without a targeted retry.
+  // We still require every actual BoM tile before publishing a measured frame.
+  const tiles = await loadCompleteRadarTiles(tasks, fetchReadableImage, { retries: 1 });
 
   for (const tile of tiles) {
     ctx.putImageData(tile.image, tile.x, tile.y);

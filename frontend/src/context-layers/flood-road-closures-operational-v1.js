@@ -179,9 +179,7 @@ function showClosureInfo(
     panel.hidden =
       true;
 
-    $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
-
-  panel.dataset.closureId =
+    panel.dataset.closureId =
       "";
 
     return;
@@ -203,6 +201,8 @@ function showClosureInfo(
       "hidden",
       ""
     );
+
+  $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
 
   panel.dataset.closureId =
     String(

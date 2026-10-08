@@ -2443,7 +2443,7 @@ function renderDopplerOverlay() {
   renderDopplerVelocityLegend(radarId);
   const token=++dopplerOverlayRenderToken;
   const status=$("dopplerOverlayStatus");
-  if(!$("showDopplerOverlay").checked){
+  if(!isDopplerSourceActive()){
     dopplerOverlayTransition.clear();
     $("dopplerOverlayCount").textContent="0";
     if(status)status.textContent="hidden";
@@ -2469,7 +2469,7 @@ function renderDopplerOverlay() {
   Cesium.SingleTileImageryProvider.fromUrl(raster.canvas.toDataURL("image/png"),{
     rectangle:raster.rectangle
   }).then(provider=>{
-    if(token!==dopplerOverlayRenderToken||!$("showDopplerOverlay").checked||
+    if(token!==dopplerOverlayRenderToken||!isDopplerSourceActive()||
        independentDopplerSourceId!==radarId)return;
     dopplerOverlayTransition.replace({
       layer:new Cesium.ImageryLayer(provider),key,alpha:opacity,
@@ -2489,14 +2489,14 @@ function formatDualClock(utc) {
 }
 function updateDualSourceTimes() {
   const radarUtc=hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
-  const windUtc=$("showDopplerOverlay").checked ? independentDopplerRecord?.observedUtc : null;
+  const windUtc=isDopplerSourceActive() ? independentDopplerRecord?.observedUtc : null;
   const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
   if(radar){
     radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
     radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
   }
   if(wind){
-    wind.textContent=!$("showDopplerOverlay").checked ? "Off" :
+    wind.textContent=!isDopplerSourceActive() ? "Off" :
       windUtc ? formatDualClock(windUtc) : "Loading";
     wind.title=windUtc ? formatProductTime(windUtc) : "No measured Doppler frame displayed";
   }
@@ -2511,7 +2511,7 @@ function updateDualSourceTimes() {
   }
 }
 function updateIndependentDopplerUi() {
-  const active=$("showDopplerOverlay").checked;
+  const active=isDopplerSourceActive();
   const total=independentDopplerFrames.length;
   const item=independentDopplerFrames[independentDopplerIndexValue];
   const label=total ? (independentDopplerIndexValue+1)+"/"+total : "—";
@@ -2532,7 +2532,7 @@ function updateIndependentDopplerUi() {
 async function showIndependentDopplerFrame(nextIndex) {
   const radarId=$("dopplerOverlayRadar").value;
   const generation=++independentDopplerRequest;
-  if(!$("showDopplerOverlay").checked||!independentDopplerFrames.length)return;
+  if(!isDopplerSourceActive()||!independentDopplerFrames.length)return;
   const index=Math.max(0,Math.min(independentDopplerFrames.length-1,Number(nextIndex)));
   const frame=independentDopplerFrames[index];
   let record;
@@ -2547,7 +2547,7 @@ async function showIndependentDopplerFrame(nextIndex) {
     }
     throw error;
   }
-  if(generation!==independentDopplerRequest || !$("showDopplerOverlay").checked||
+  if(generation!==independentDopplerRequest || !isDopplerSourceActive()||
      radarId!==$("dopplerOverlayRadar").value)return;
   independentDopplerIndexValue=index;
   independentDopplerSourceId=radarId;
@@ -2557,7 +2557,7 @@ async function showIndependentDopplerFrame(nextIndex) {
 }
 
 async function refreshIndependentDopplerHistory(automatic=false) {
-  if(independentDopplerLoading||!$("showDopplerOverlay").checked)return;
+  if(independentDopplerLoading||!isDopplerSourceActive())return;
   const radarId=$("dopplerOverlayRadar").value;
   const region=selectedRadarRegion();
   independentDopplerLoading=true;
@@ -2598,7 +2598,7 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     updateIndependentDopplerUi();
     // A radar-site switch can invalidate an in-flight wind request.
     // Immediately fetch the newly selected source after it finishes.
-    if($("showDopplerOverlay").checked &&
+    if(isDopplerSourceActive() &&
        (region!==selectedRadarRegion()||radarId!==$("dopplerOverlayRadar").value)) {
       void refreshIndependentDopplerHistory(false).catch(error=>{
         $("dopplerOverlayStatus").textContent=error.message;
@@ -3858,9 +3858,6 @@ async function runSourceLoad(loader, background = false) {
   } finally {
     sequenceLoading = false;
     $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
-    $("showDopplerOverlay").disabled =
-      selectedSourceRadars().length === 0
-      ;
 
     $("radarSite").disabled = false;
     for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
@@ -4109,7 +4106,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   $("operationalLoopWindow").textContent = "Checking history";
   hybridSource.entities.removeAll(); clearHybridTrackVolumeCollection();
   // Both reloads run on independent source pathways and clocks.
-  if($("showDopplerOverlay").checked) {
+  if(isDopplerSourceActive()) {
     void refreshIndependentDopplerHistory(false).catch(error=>{
       $("dopplerOverlayStatus").textContent=error.message;
     });
@@ -4228,20 +4225,7 @@ $("trackDisplayFilter").addEventListener("change", event => {
 });
 $("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
 
-$("showDopplerOverlay").addEventListener("change", async event => {
-  if(!event.target.checked){
-    ++independentDopplerRequest;
-    independentDopplerRecord=null;
-    independentDopplerSourceId=null;
-    clearDopplerOverlay({smooth:true});
-    updateIndependentDopplerUi();
-  }else{
-    updateIndependentDopplerUi();
-    try { await refreshIndependentDopplerHistory(false); }
-    catch(error){$("dopplerOverlayStatus").textContent="Wind source unavailable: "+error.message;}
-  }
-});
-
+// Doppler source is automatic; opacity 0 hides it without discarding its data.
 // Opacity changes only rendered colours, never decoded samples or tracking.
 $("radarOpacity").addEventListener("input", event => {
   frameCrossfade.clear();
@@ -4279,7 +4263,7 @@ $("dopplerOverlayRadar").addEventListener("change", async () => {
   independentDopplerSourceId=null;
   clearDopplerOverlay();
   updateIndependentDopplerUi();
-  if($("showDopplerOverlay").checked){
+  if(isDopplerSourceActive()){
     refreshIndependentDopplerHistory(false).catch(error=>{
       $("dopplerOverlayStatus").textContent=error.message;
     });

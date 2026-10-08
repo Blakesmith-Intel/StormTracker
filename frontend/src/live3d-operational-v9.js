@@ -1561,25 +1561,17 @@ function resetTrackDisplaySelection() {
   }
 }
 
-function useTrackSpecificVolume(
-  index
-) {
-  return (
-    Boolean(
-      $("showTrackVolumes")
-        ?.checked
-    )
-    && hasTrackSpecificVolume(
-      index
-    )
-  );
+function useTrackSpecificVolume(index) {
+  // Measured-track volume is the permanent 3-D mode for observed frames.
+  // A missing track, or temporal gap-fill frame, cannot invent a measured volume.
+  return hasTrackSpecificVolume(index);
 }
 
 function applyHybridVolumeMode(
   index
 ) {
   const wanted = selectedTrackId();
-  const trackVolumesRequested = Boolean($("showTrackVolumes")?.checked);
+  const trackVolumesRequested = true; // Permanent operational mode; no toggle.
   const temporalInferred =
     isTemporallyInferredRadarFrame(
       hybridFrames[index]
@@ -4216,19 +4208,6 @@ $("hybridPlayButton").addEventListener("click", () => {
   if (playback.isPlaying()) playback.pause();
   else playback.play();
 });
-
-$("showTrackVolumes").addEventListener(
-  "change",
-  () => {
-    applyHybridVolumeMode(
-      hybridFrameIndex
-    );
-
-    renderHybridTracks(
-      hybridFrameIndex
-    );
-  }
-);
 
 $("showTrackLabels").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {

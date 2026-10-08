@@ -31,32 +31,25 @@ This file supersedes the older V9.9.1-era order in FUTURE_DEVELOPMENT_HANDOVER.m
    last successful source check, partial results and refresh failures. Keep
    radar and each provider independent. Do not replace real provider incidents
    with synthetic events.
-2. **QFD emergency response incident categories** (V9.15.0 draft):
-   include independently classified official **water rescue**, **vertical rescue**,
-   **mountain rescue**, **major multi-vehicle road crash rescue**, and
-   **extreme-weather assistance** records, with the distinct QFD labels:
-   `RESCUE WATER ALL TYPES`, `XE RESCUE WATER`, `RESCUE VERTICAL`,
-   `RESCUE MOUNTAIN RESCUE`, `RESCUE RTC LARGE MULTI`, and
-   `ASSIST EXTREME WEATHER`.
-   The water labels do not automatically mean *swift-water* conditions.
-   Mountain rescue is within SES situational-awareness scope but does not
-   prove SES attendance. Major road crashes can disrupt traffic but must not
-   be represented as confirmed closures without a linked authoritative road
-   closure record. Extreme-weather assistance is in scope regardless of
-   whether the job itself is labelled a rescue.
-   Exact labels from an internal QFD system may serve as reference vocabulary,
-   but data must come from a legitimately **public QFD incident record or
-   official publicly released incident title**, with matched incident ID,
-   publication rules and suitable location generalisation.
-   The existing public ESCAD `GroupedType` is too broad to distinguish the
-   requested jobs. The optional generic `RESCUE TECHNICAL` layer is separately
-   marked **subtype unspecified**, not a substitute for exact classifications.
-   Never access restricted CAD/dispatch systems, invent incidents, infer
-   subtype from rain/radar/gauges, or expose personal incident details.
-   Validate source coverage, classification, deduplication, expiry,
-   official links, polling and browser-only CORS before enabling live
-   specific-type indicators. Missing verified public classification keeps
-   the relevant indicator blocked.
+2. **V9.15.0 public QFD incidents:** display only the three
+   ArcGIS `GroupedType` values `RESCUE TECHNICAL`, `RESCUE ROAD CRASH`
+   and `ASSIST PUBLIC`, in separate categories on the interactive map.
+   No unrelated fire or other group events. The server filter and browser
+   parser must both enforce the allowlist; incident cards show the actual
+   official public classification, response time, status and source.
+   QFD's map reports general-area locations, not precise rescue sites.
+   QFD-authored icon symbology is preferred; do not falsely label
+   provisional symbols as official. The public ESCAD layer does not
+   presently expose its dashboard renderer or picture-marker files,
+   so provider-artwork verification is an outstanding acceptance gate.
+   Continue to require functioning browser CORS, expiry safeguards,
+   current-only incident lifecycle and real mobile click validation.
+3. **Future detailed QFD rescue classes (blocked):** only when a legitimately
+   public source publishes the exact job type, consider separate water,
+   vertical, mountain, RTC large-multi and extreme-weather assistance types.
+   Never use internal-only CAD data, or infer precise subtypes from
+   `GroupedType` or environment/road reports. Road crash jobs are not
+   confirmed road closures without an authoritative traffic record.
 
 ## Permanently final wishlist item — observed lightning
 

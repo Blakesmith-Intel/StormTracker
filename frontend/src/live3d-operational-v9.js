@@ -279,14 +279,26 @@ function syncBasemapReferenceLayer(basemapId) {
 
 // Read-only QA instrumentation is opt-in and does not alter live controls.
 if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
-  window.__stormtrackerTownLabelDiagnostics = () => ({
-    count: queenslandTownLabels?.count ?? 0,
-    visible: queenslandTownLabels?.visibleLabels ?? [],
-    labelMode: queenslandTownLabels?.mode ?? "unloaded",
-    cameraHeight: queenslandTownLabels?.cameraHeight ?? null,
-    cameraPitchDegrees: queenslandTownLabels?.cameraPitchDegrees ?? null,
-    labelCalculations: queenslandTownLabels?.calculationCount ?? 0
-  });
+  window.__stormtrackerTownLabelDiagnostics = () => {
+    const canvas = scene.canvas;
+    const centre = viewer.camera.pickEllipsoid(
+      new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2),
+      Cesium.Ellipsoid.WGS84
+    );
+    const geo = centre
+      ? Cesium.Cartographic.fromCartesian(centre, Cesium.Ellipsoid.WGS84)
+      : null;
+    return {
+      count: queenslandTownLabels?.count ?? 0,
+      visible: queenslandTownLabels?.visibleLabels ?? [],
+      labelMode: queenslandTownLabels?.mode ?? "unloaded",
+      cameraHeight: queenslandTownLabels?.cameraHeight ?? null,
+      cameraPitchDegrees: queenslandTownLabels?.cameraPitchDegrees ?? null,
+      centreLongitude: geo ? Cesium.Math.toDegrees(geo.longitude) : null,
+      centreLatitude: geo ? Cesium.Math.toDegrees(geo.latitude) : null,
+      labelCalculations: queenslandTownLabels?.calculationCount ?? 0
+    };
+  };
   // Development-only reproducible camera positions for mobile visual QA.
   window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {
     // Camera range is distance from the named town, not altitude above a

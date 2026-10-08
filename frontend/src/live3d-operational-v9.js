@@ -95,6 +95,8 @@ import {
 import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
+import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
+import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
   radarHistoryTimeline,
@@ -543,6 +545,29 @@ let dopplerOverlayRenderToken =
 
 let selectedTrackDisplayId =
   "";
+
+// Independent alert markers render above 3-D weather and storm-ID labels.
+// Clicking a real candidate focuses its ST track without touching playback.
+const severeStormAlertOverlay = createSevereStormAlertOverlay({
+  scene, CesiumRef: Cesium, container: $("mapPanel"),
+  onFocus: alert => {
+    selectedTrackDisplayId = alert.track_id;
+    if (hybridFrames.length) {
+      updateTrackDisplayControls(hybridFrameIndex);
+      applyHybridVolumeMode(hybridFrameIndex);
+      renderHybridTracks(hybridFrameIndex);
+    }
+    mapCamera?.setView({
+      longitude: alert.longitude,
+      latitude: alert.latitude,
+      targetHeight: 0,
+      range: 85000,
+      heading: 0,
+      pitch: Cesium.Math.toRadians(-52)
+    });
+    scene.requestRender();
+  }
+});
 
 // Prevent an older asynchronous radar-image load from replacing a newer
 // frame after rapid scrubbing/playback.
@@ -2234,6 +2259,24 @@ function dopplerStateForFrame(
   );
 }
 
+function syncSevereStormAlerts(index) {
+  const frame = hybridFrames[index];
+  const result = hybridResults[index];
+  const previousFrame = hybridFrames[index - 1] ?? null;
+  const previousResult = hybridResults[index - 1] ?? null;
+  const detection = buildSevereStormFrameAlerts({
+    frame, result, previousFrame, previousResult,
+    dopplerState: dopplerStateForFrame(index),
+    enableExperimentalHook: Boolean($("showExperimentalHookAlerts")?.checked)
+  });
+  severeStormAlertOverlay.setFrame({
+    alerts: detection.alerts,
+    observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
+    windSupported: detection.windSourceSupported,
+    experimentalHook: Boolean($("showExperimentalHookAlerts")?.checked)
+  });
+}
+
 function dopplerContextForTrack(
   index,
   trackId
@@ -3087,6 +3130,7 @@ async function showHybridFrame(index) {
   updateDopplerUiForFrame(
     hybridFrameIndex
   );
+  syncSevereStormAlerts(hybridFrameIndex);
 
   updateHybridSourceMetrics(
     frame
@@ -3915,6 +3959,7 @@ async function loadLatest() {
   hybridFrames = [];
   hybridResults = [];
   hybridDopplerFrameStates = [];
+  severeStormAlertOverlay.setFrame();
   syncFrameSlider(
     $("hybridFrameSlider"),
     0,
@@ -4238,6 +4283,8 @@ function updateRenderedTrackLabels() {
   stormTrackLabelOverlay.setVisible(Boolean($("showTrackLabels")?.checked));
 }
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
+$("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
+$("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;

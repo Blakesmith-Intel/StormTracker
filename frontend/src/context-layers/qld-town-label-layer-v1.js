@@ -4,8 +4,9 @@ import {
 import {
   rankQueenslandTowns,
   layoutTownLabels,
-  labelBudget
-} from "./qld-town-label-declutter-v1.js?v=9.12.4";
+  labelBudget,
+  townLabelTypography
+} from "./qld-town-label-declutter-v1.js?v=9.13.3";
 
 // Cesium camera.pitch may describe the camera's current reference frame
 // (for example after lookAt transforms). Use the actual world-space line of
@@ -93,6 +94,12 @@ export function createQueenslandTownLabelLayer({
     );
     const budget = labelBudget(width, height, cameraHeight, currentMode, cameraPitchDegrees);
     const candidates = [];
+    // Desktop labels are larger than mobile; keep Cesium glyph sizes and
+    // screen-space collision boxes in sync across viewport resizes.
+    for (const place of towns) {
+      const font = townLabelTypography(width, place.population).font;
+      if (place.label.font !== font) place.label.font = font;
+    }
 
     if (budget > 0 && camera?.positionWC) {
       const ellipsoid = scene.globe?.ellipsoid ?? CesiumRef.Ellipsoid.WGS84;
@@ -167,8 +174,9 @@ export function createQueenslandTownLabelLayer({
             text: town.name,
             position,
             show: false,
-            font: town.population >= 10000 ?
-              "bold 13px sans-serif" : "12px sans-serif",
+            font: townLabelTypography(
+              scene.canvas?.clientWidth ?? 0, town.population
+            ).font,
             fillColor: CesiumRef.Color.WHITE,
             outlineColor: CesiumRef.Color.BLACK,
             outlineWidth: 3,

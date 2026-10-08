@@ -142,6 +142,10 @@ import {
 } from "./context-layers/river-gauges-operational-v1.js?v=9.13.2";
 
 import {
+  initialiseOperationalQfdTechnicalRescues
+} from "./context-layers/qfd-technical-rescues-operational-v1.js?v=9.15.0";
+
+import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
@@ -449,6 +453,10 @@ initialiseOperationalPowerOutages({
 });
 
 initialiseOperationalRiverGauges({
+  viewer
+});
+
+initialiseOperationalQfdTechnicalRescues({
   viewer
 });
 

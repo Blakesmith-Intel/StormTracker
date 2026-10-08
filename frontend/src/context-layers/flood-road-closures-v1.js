@@ -10,7 +10,7 @@ export const QLD_TRAFFIC_ATTRIBUTION =
   "QLDTraffic · Queensland Department of Transport and Main Roads";
 
 export const DEFAULT_FLOOD_ROAD_CLOSURE_RELAY_URL =
-  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/flood-road-closures";
+  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/flood-road-closures-v9-15";
 
 function linePositions(CesiumRef, coordinates) {
   const flattened = [];

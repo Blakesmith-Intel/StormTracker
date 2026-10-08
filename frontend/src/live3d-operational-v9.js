@@ -97,6 +97,7 @@ import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
+import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
   radarHistoryTimeline,
@@ -3476,7 +3477,7 @@ async function loadHybridSequence(automatic = false) {
   const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(availableEndUtc)) : times;
   const timeline = withDoppler ? shared : radarHistoryTimeline(radarTimes, shared);
   if (!timeline.entries.length) throw new Error("No matching source history available. The current loop is retained.");
-  const frames = [], states = [], failures = [];
+  const frames = [], states = [], failures = [], failureDiagnostics = [];
   let newestFailure = "";
   for (const [index, entry] of timeline.entries.entries()) {
     if (
@@ -3496,31 +3497,20 @@ async function loadHybridSequence(automatic = false) {
         : loadBomReflectivityMosaicAtTime(entry.observedUtc, selectedRadarRegion()),
       prepareDopplerState(entry, sources)
     ]);
-    const needsPair =
-      withDoppler;
-
-    if (
-      radarLoad.status !== "fulfilled"
-      || dopplerLoad.status !== "fulfilled"
-      || (
-        needsPair
-        && !shared.radarIds.every(
-          id =>
-            dopplerLoad.value.pairings
-              .some(
-                pair =>
-                  pair.radarId === id
-                  && pair.matched
-              )
-        )
-      )
-    ) {
+    const availability = sourceFrameLoadDecision({
+      radarLoad, dopplerLoad,
+      requiresDoppler: withDoppler,
+      requiredRadarIds: shared.radarIds
+    });
+    if (!availability.accepted) {
       failures.push(entry.observedUtc);
+      failureDiagnostics.push({
+        observedUtc: entry.observedUtc,
+        kind: availability.kind,
+        message: availability.message
+      });
       if (entry.observedUtc === availableEndUtc) {
-        newestFailure = radarLoad.status === "rejected" ? `Radar image: ${radarLoad.reason?.message}` :
-          dopplerLoad.status === "rejected" ? `Doppler preparation: ${dopplerLoad.reason?.message}` :
-          dopplerLoad.value.pairings.filter(pair => shared.radarIds.includes(pair.radarId) && !pair.matched)
-            .map(pair => pair.loadError ?? `Doppler ${pair.radarId} image unavailable`).join("; ");
+        newestFailure = availability.kind + ': ' + availability.message;
       }
       continue;
     }
@@ -3546,7 +3536,7 @@ async function loadHybridSequence(automatic = false) {
     }
 
     frames.push(radarLoad.value);
-    states.push(dopplerLoad.value);
+    states.push(availability.state);
   }
   if (!frames.length || (automatic && frames.at(-1).observedUtc !== availableEndUtc)) {
     throw new Error(newestFailure || "Newest matching images could not be loaded; keeping the current loop and retrying automatically.");
@@ -3745,12 +3735,17 @@ async function loadHybridSequence(automatic = false) {
   const observedLoaded =
     hybridFrames.length - inferredLoaded;
 
+  const frameFailures = summariseSkippedObservedFrames(failureDiagnostics);
   $("sharedHistoryNote").textContent =
     `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
+    (withDoppler ? " time-matched radar + Doppler frames" : " reflectivity frames") +
     (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
     ` (${range})` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
-    (failures.length ? ` · ${failures.length} unreadable source frames bridged/omitted where possible` : "");
+    (frameFailures.summary ? ` · ${frameFailures.summary}` : "");
+  $("sharedHistoryNote").title =
+    `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}` +
+    (frameFailures.detail ? `\nOmitted frame details:\n${frameFailures.detail}` : "");
   $("autoRefreshNote").textContent =
     needsHistoricalRebuild
       ? "Auto update: historical cache expanded; loop rebuilt chronologically."

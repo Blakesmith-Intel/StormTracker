@@ -13,14 +13,48 @@ try {
   });
   const errors=[];
   page.on("pageerror",e=>errors.push(e.message));
+  // The production relay intentionally allows GitHub Pages origin only.
+  // Preview origin 127.0.0.1 is never whitelisted. Forward the actual live
+  // BoM JSON response through Playwright's test router, not a mock payload.
+  for (const endpoint of ["river-height-bulletins","river-gauge-metadata"]) {
+    await page.route(`**/${endpoint}`,async route=>{
+      try {
+        const upstream=await fetch(route.request().url(),{
+          signal:AbortSignal.timeout(45000),
+          headers:{Accept:"application/json,application/geo+json"}
+        });
+        await route.fulfill({
+          status:upstream.status,
+          headers:{
+            "access-control-allow-origin":"*",
+            "content-type":"application/json; charset=utf-8"
+          },
+          body:await upstream.text()
+        });
+      }catch(error){
+        console.error("Live BoM preview relay failure:",endpoint,error);
+        await route.abort();
+      }
+    });
+  }
   await page.goto(
     "http://127.0.0.1:8765/live3d-operational-v9.html?qaFloodSignals=1",
     {waitUntil:"domcontentloaded",timeout:70000}
   );
-  await page.waitForFunction(
-    ()=>window.__stormtrackerFloodDiagnostics?.().loadedAt>0,
-    null,{timeout:90000}
-  );
+  try {
+    await page.waitForFunction(
+      ()=>window.__stormtrackerFloodDiagnostics?.().loadedAt>0,
+      null,{timeout:90000}
+    );
+  } catch (error) {
+    const debug=await page.evaluate(()=>({
+      status:document.querySelector("#riverGaugeStatus")?.textContent,
+      diagnostic:window.__stormtrackerFloodDiagnostics?.(),
+      state:document.readyState
+    }));
+    console.error("Flood browser timeout diagnostics:",JSON.stringify({debug,errors}));
+    throw error;
+  }
   const inspect=()=>page.evaluate(()=>window.__stormtrackerFloodDiagnostics());
   const first=await inspect();
   assert.equal(first.visible,true,"Exception-only gauges layer enabled on first load");

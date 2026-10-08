@@ -1,0 +1,202 @@
+import {
+  fetchQfdTechnicalRescues,QFD_REFRESH_MS,QFD_MAX_SNAPSHOT_MS
+} from "./qfd-technical-rescues-v1.js?v=9.15.0";
+import {sourceSnapshotState,checkedAtAest} from "./source-freshness-v1.js?v=9.14.0";
+import {addOfficialSourceRow,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.15.0";
+
+const $=id=>document.getElementById(id);
+const statusNode=()=>$("qfdTechnicalRescueStatus");
+const infoNode=()=>$("qfdTechnicalRescueInfo");
+const RESCUE_SOURCE_NOTE="QFD publishes general incident areas, not exact rescue locations. Swift-water and vertical subtypes are not available in the public feed.";
+
+function setStatus({kind="normal",message=""}={}) {
+  const el=statusNode();
+  if(!el)return;
+  el.dataset.kind=kind;
+  el.textContent=message;
+}
+function fmtDate(iso) {
+  if(!iso)return "";
+  return new Intl.DateTimeFormat("en-AU",{
+    timeZone:"Australia/Brisbane",day:"2-digit",month:"short",year:"numeric",
+    hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"
+  }).format(new Date(iso));
+}
+function detailRow(parent,label,value) {
+  if(value==null || String(value).trim()==="")return;
+  const key=document.createElement("span"),text=document.createElement("strong");
+  key.textContent=label;text.textContent=String(value);
+  parent.append(key,text);
+}
+function hideOtherPanels() {
+  for(const id of ["floodRoadClosureInfo","powerOutageInfo","riverGaugeInfo"])
+    $(id)?.setAttribute("hidden","");
+}
+export function initialiseOperationalQfdTechnicalRescues({
+  viewer,CesiumRef=globalThis.Cesium,fetchImpl=globalThis.fetch,
+  refreshMs=QFD_REFRESH_MS,now=()=>Date.now()
+}={}) {
+  if(!viewer || !CesiumRef)throw new Error("QFD technical rescue layer needs Cesium viewer");
+  const checkbox=$("showQfdTechnicalRescues");
+  const info=infoNode();
+  const dataSource=new CesiumRef.CustomDataSource("qfd-technical-rescues");
+  dataSource.show=Boolean(checkbox?.checked);
+  viewer.dataSources.add(dataSource);
+  const pinColor=CesiumRef.Color.fromCssColorString("#c78aff");
+  const edgeColor=CesiumRef.Color.fromCssColorString("#1d1426");
+  const canvas=viewer.scene.canvas;
+  let records=[],lastLoadedAt=0,lastStatus=null,loading=null,timer=null,selectedId="";
+  let started=false;
+
+  function report(state){lastStatus=state;setStatus(state);}
+  function showInfo(item) {
+    if(!info)return;
+    if(!item){selectedId="";info.hidden=true;info.dataset.rescueId="";return;}
+    selectedId=item.id;
+    info.dataset.rescueId=item.id;
+    $("qfdTechnicalRescueInfoTitle").textContent=item.locality||"Queensland";
+    const rows=$("qfdTechnicalRescueInfoRows");
+    if(!rows)return;
+    rows.replaceChildren();
+    detailRow(rows,"Classification","TECHNICAL RESCUE · subtype unspecified");
+    detailRow(rows,"Status",item.status);
+    detailRow(rows,"Response",fmtDate(item.responseAt));
+    detailRow(rows,"Last source update",fmtDate(item.lastUpdatedAt));
+    detailRow(rows,"QFD incident",item.id);
+    detailRow(rows,"Units assigned",item.vehiclesAssigned);
+    detailRow(rows,"Units en route",item.vehiclesOnRoute);
+    detailRow(rows,"Units at scene",item.vehiclesOnScene);
+    detailRow(rows,"Location","General incident area only — not an exact rescue site");
+    detailRow(rows,"Source advisory",RESCUE_SOURCE_NOTE);
+    addOfficialSourceRow(rows,"Source","QFD active incidents",OFFICIAL_SOURCE_LINKS.qfd);
+    hideOtherPanels();
+    info.hidden=false;
+  }
+  function render(features) {
+    records=features.slice();
+    dataSource.entities.removeAll();
+    for(const item of records){
+      const entity=dataSource.entities.add({
+        id:"qfd-rescue:"+item.id,
+        name:"QFD technical rescue — subtype unspecified",
+        position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude),
+        point:{
+          pixelSize:15,color:pinColor,outlineColor:edgeColor,outlineWidth:3,
+          heightReference:CesiumRef.HeightReference?.CLAMP_TO_GROUND,
+          disableDepthTestDistance:Number.POSITIVE_INFINITY
+        }
+      });
+      entity.stormTrackerQfdRescueId=item.id;
+    }
+    viewer.scene.requestRender();
+    if(selectedId)showInfo(records.find(x=>x.id===selectedId)??null);
+  }
+  function expire() {
+    if(!sourceSnapshotState({lastLoadedAt,maxAgeMs:QFD_MAX_SNAPSHOT_MS,nowMs:now()}).expired)return false;
+    if(records.length){render([]);}
+    report({kind:"error",message:"QFD public feed expired · rescue markers cleared · last checked "+checkedAtAest(lastLoadedAt)});
+    return true;
+  }
+  async function refresh({force=false}={}){
+    if(!dataSource.show&&!force)return records.slice();
+    if(loading)return loading;
+    loading=(async()=>{
+      report({kind:"loading",message:"Checking QFD public technical-rescue incidents…"});
+      const next=await fetchQfdTechnicalRescues({fetchImpl});
+      render(next);
+      lastLoadedAt=now();
+      report({kind:"ok",message:next.length+" public technical rescue incident(s) · subtype unspecified · checked "+checkedAtAest(lastLoadedAt)});
+      return records.slice();
+    })();
+    try{return await loading;}
+    catch(error){
+      if(!expire()){
+        report({kind:"warning",message:"QFD feed unavailable · cached rescues UNVERIFIED · "+String(error?.message??error).slice(0,140)});
+      }
+      throw error;
+    }finally{loading=null;}
+  }
+  function setVisible(value){
+    expire();
+    dataSource.show=Boolean(value);
+    viewer.scene.requestRender();
+    if(!dataSource.show){
+      showInfo(null);
+      setStatus({message:"QFD technical-rescue markers hidden"});
+    }else if(!lastLoadedAt || now()-lastLoadedAt>=refreshMs) {
+      refresh().catch(()=>{});
+    }else if(lastStatus)setStatus(lastStatus);
+  }
+  // Pick only records explicitly tagged by this layer. Never convert
+  // unrelated map imagery, tracks or other incidents into rescue markers.
+  function pickAt(position) {
+    if(!dataSource.show)return false;
+    const picks=viewer.scene.drillPick(position,12,26,26)||[];
+    for(const picked of picks){
+      const item=picked?.id??picked?.primitive?.id;
+      const id=item?.stormTrackerQfdRescueId;
+      if(id){
+        const match=records.find(x=>x.id===id);
+        if(match){showInfo(match);return true;}
+      }
+    }
+    return false;
+  }
+  const blocked="#nav,#qfdTechnicalRescueInfo,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo";
+  const tap={id:null,x:0,y:0,time:0,moved:false};
+  function onDown(event){
+    if(event.button!=null&&event.button!==0)return;
+    if(!canvas.parentElement?.contains(event.target)||event.target?.closest?.(blocked))return;
+    tap.id=event.pointerId;tap.x=event.clientX;tap.y=event.clientY;
+    tap.time=performance.now();tap.moved=false;
+  }
+  function onMove(event) {
+    if(tap.id===event.pointerId&&Math.hypot(event.clientX-tap.x,event.clientY-tap.y)>12)tap.moved=true;
+  }
+  function onUp(event) {
+    if(event.pointerId!==tap.id)return;
+    const click=!tap.moved&&performance.now()-tap.time<=700;
+    tap.id=null;
+    if(!click)return;
+    const rect=canvas.getBoundingClientRect();
+    pickAt(new CesiumRef.Cartesian2(event.clientX-rect.left,event.clientY-rect.top));
+  }
+  const onCancel=()=>{tap.id=null;};
+  const onVisibility=()=>{
+    if(document.hidden)return;
+    expire();
+    if(dataSource.show)refresh().catch(()=>{});
+  };
+  function start(){
+    if(started)return;
+    started=true;
+    window.addEventListener("pointerdown",onDown,{capture:true,passive:true});
+    window.addEventListener("pointermove",onMove,{capture:true,passive:true});
+    window.addEventListener("pointerup",onUp,{capture:true,passive:true});
+    window.addEventListener("pointercancel",onCancel,{capture:true,passive:true});
+    document.addEventListener("visibilitychange",onVisibility);
+    if(dataSource.show)refresh().catch(()=>{});
+    else setStatus({kind:"normal",message:"QFD technical rescue available · subtype unspecified · off by default"});
+    timer=setInterval(()=>{
+      if(!document.hidden){expire();if(dataSource.show)refresh().catch(()=>{});}
+    },refreshMs);
+  }
+  function stop(){
+    if(timer!==null)clearInterval(timer);
+    timer=null;started=false;
+    window.removeEventListener("pointerdown",onDown,true);
+    window.removeEventListener("pointermove",onMove,true);
+    window.removeEventListener("pointerup",onUp,true);
+    window.removeEventListener("pointercancel",onCancel,true);
+    document.removeEventListener("visibilitychange",onVisibility);
+  }
+  checkbox?.addEventListener("change",event=>setVisible(event.target.checked));
+  $("refreshQfdTechnicalRescuesButton")?.addEventListener("click",()=>refresh({force:true}).catch(()=>{}));
+  $("closeQfdTechnicalRescueInfo")?.addEventListener("click",()=>showInfo(null));
+  window.addEventListener("pagehide",stop,{once:true});
+  start();
+  return {dataSource,refresh,setVisible,stop,start,pickAt,
+    get features(){return records.slice();},
+    get lastLoadedAt(){return lastLoadedAt;}
+  };
+}

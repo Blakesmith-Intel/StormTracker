@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { chromium } from "playwright";
 import {
-  townLabelBox, boxesOverlap, labelBudget
+  townLabelBox, boxesOverlap, labelBudget, townLabelTypography
 } from "../frontend/src/context-layers/qld-town-label-declutter-v1.js";
 
 mkdirSync("qa-screenshots",{recursive:true});
@@ -32,7 +32,9 @@ try{
   function verify(result,description){
     assert.ok(result.count>=700,`${description}: Queensland names not loaded`);
     assert.ok(result.visible.length<=9,`${description}: too many visible labels (${result.visible.length})`);
-    const boxes=result.visible.map(t=>townLabelBox(t));
+    const boxes=result.visible.map(t=>townLabelBox({
+      ...t,fontSize:townLabelTypography(result.width,t.population).fontSize
+    }));
     for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
       assert.equal(boxesOverlap(boxes[i],boxes[j],9),false,
         `${description}: ${result.visible[i].name} overlaps ${result.visible[j].name}`);
@@ -143,4 +145,52 @@ try{
   assert.ok(await page.locator("#showFloodRoadClosures").count()===1);
   assert.ok(await page.locator("#showRiverGauges").count()===1);
   console.log(`Full StormTracker UI browser smoke passed: surveyed QLD state border restored on imagery, hidden in Street, reappears on satellite return; existing town labels, road/outage/gauge controls intact.`);
+
+  // Desktop acceptance specifically targets the user's Birdsville screenshot:
+  // the same real StormTracker viewer must render larger bold rural names on
+  // QLD imagery and retain the legacy Street/no-labels contract.
+  const desktop=await browser.newPage({
+    viewport:{width:1440,height:900},deviceScaleFactor:1
+  });
+  try{
+    await desktop.goto(
+      "http://127.0.0.1:8765/live3d-operational-v9.html?qaTownLabels=1",
+      {waitUntil:"domcontentloaded",timeout:70000}
+    );
+    await desktop.waitForFunction(
+      ()=>window.__stormtrackerTownLabelDiagnostics?.().count>=700,
+      null,{timeout:70000}
+    );
+    await desktop.locator("#basemapSelect").selectOption("qld-imagery");
+    await desktop.waitForTimeout(800);
+    await desktop.evaluate(()=>{
+      window.__stormtrackerTownLabelTestCamera(139.35,-25.9,110000,-70);
+    });
+    await desktop.waitForTimeout(900);
+    let desktopInfo=await desktop.evaluate(()=>{
+      const labels=window.__stormtrackerTownLabelDiagnostics();
+      const canvas=document.querySelector("#cesiumContainer canvas");
+      return {...labels,width:canvas?.clientWidth??0,height:canvas?.clientHeight??0,
+        mode:document.getElementById("basemapSelect").value};
+    });
+    assert.ok(desktopInfo.width>=700,
+      "Desktop satellite viewer must not use mobile font metrics");
+    assert.equal(desktopInfo.labelMode,"qld-imagery");
+    const birdsville=desktopInfo.visible.find(x=>x.name.toLowerCase()==="birdsville");
+    assert.ok(birdsville,"Birdsville must remain geographically anchored on desktop imagery");
+    assert.equal(birdsville.font,"bold 15px sans-serif",
+      "Desktop Birdsville must use 15px bold glyphs");
+    verify(desktopInfo,"Desktop Birdsville 15px");
+    await desktop.locator("#basemapSelect").selectOption("street");
+    await desktop.waitForTimeout(450);
+    desktopInfo=await desktop.evaluate(()=>{
+      const labels=window.__stormtrackerTownLabelDiagnostics();
+      return labels;
+    });
+    assert.equal(desktopInfo.visible.length,0,
+      "No additional town labels on desktop Street basemap");
+    console.log("Desktop StormTracker imagery QA passed: Birdsville 15px bold, collision-free labels and Street 0 overlays.");
+  }finally{
+    await desktop.close();
+  }
 }finally{await browser.close();}

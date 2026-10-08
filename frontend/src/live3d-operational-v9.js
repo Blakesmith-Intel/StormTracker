@@ -807,7 +807,7 @@ function updateOperationalOverview(
         ? "Latest frame"
         : isTemporallyInferredRadarFrame(frame)
           ? "Radar loop · inferred gap frame"
-          : (loadedWithDoppler ? "Radar / Doppler loop" : "Radar tracking loop");
+          : "Radar tracking loop";
   }
 
   const age =
@@ -859,40 +859,7 @@ function updateOperationalOverview(
         : "—";
   }
 
-  const doppler =
-    $("operationalDoppler");
-
-  if (doppler) {
-    if (
-      mode !== "sequence"
-    ) {
-      doppler.textContent =
-        "not loaded";
-    } else if (
-      isTemporallyInferredRadarFrame(frame)
-    ) {
-      doppler.textContent =
-        "not applied · inferred frame";
-    } else {
-      const state =
-        dopplerStateForFrame(
-          hybridFrameIndex
-        );
-
-      const matched =
-        state?.pairings
-          ?.filter(
-            pairing =>
-              pairing.matched
-          )
-          .length
-        ?? 0;
-
-      doppler.textContent =
-        selectedSourceRadars().length ? `${matched}/${selectedSourceRadars().length} matched${sharedTimeline?.unavailableRadarIds.length ? " · degraded" : ""}` : "Radar only";
-    }
-  }
-
+  // Independent Doppler source status uses its own observation clock.
   const frameTime = $("operationalFrameTime");
   if (frameTime) {
     frameTime.textContent = frame?.observedUtc ? formatProductTime(frame.observedUtc, { compact: true }) : "—";
@@ -3488,29 +3455,10 @@ async function loadHybridSequence(automatic = false) {
 
   let displayPlan;
 
-  if (withDoppler) {
-    displayPlan =
-      frames.map(frame => ({
-        observedUtc: frame.observedUtc,
-        kind: "observed"
-      }));
-  } else {
-    try {
-      displayPlan =
-        selectRadarHistoryPlan(
-          frames.map(frame => frame.observedUtc),
-          loopSelection
-        );
-    } catch {
-      // A frame can pass the lightweight timestamp probe but fail while the
-      // complete mosaic is loading. Keep the largest truthful playback run
-      // that can still be assembled from successfully decoded observations.
-      displayPlan =
-        selectRadarHistoryPlan(
-          frames.map(frame => frame.observedUtc),
-          ALL_AVAILABLE_LOOP_VALUE
-        );
-    }
+  try {
+    displayPlan = selectRadarHistoryPlan(frames.map(frame => frame.observedUtc),loopSelection);
+  } catch {
+    displayPlan = selectRadarHistoryPlan(frames.map(frame => frame.observedUtc),ALL_AVAILABLE_LOOP_VALUE);
   }
 
   const displayFrames = [];
@@ -3769,7 +3717,7 @@ async function loadHybridSequence(automatic = false) {
     );
   }
 
-  await buildDopplerSequence();
+  hybridDopplerFrameStates = []; // Independent Doppler never borrows a radar frame timestamp.
   syncFrameSlider(
     $("hybridFrameSlider"),
     hybridFrames.length,
@@ -3783,9 +3731,7 @@ async function loadHybridSequence(automatic = false) {
   for (const cache of [radarFrameCache, radarResultCache]) {
     for (const key of cache.keys()) if (!retained.has(key)) cache.delete(key);
   }
-  const wanted = new Set(states.flatMap(state => state.records.filter(record => record.filename)
-    .map(record => `${record.radarId}:${record.filename}`)));
-  for (const key of dopplerFrameCache.keys()) if (!wanted.has(key)) dopplerFrameCache.delete(key);
+  // Wind history cache retained independently of radar loop updates.
 
   pruneRadarFrames({
     beforeEpoch:
@@ -3818,7 +3764,6 @@ async function runSourceLoad(loader, background = false) {
   if (!background) frameCrossfade.clear();
   sequenceLoading = true;
   $("loopDurationMinutes").disabled = true;
-  $("showDopplerOverlay").disabled = true;
   $("radarSite").disabled = true;
   const buttons = background ? ["loadHybridButton", "loadButton"] : ["loadHybridButton", "loadButton", "jumpLatestButton", "hybridPlayButton"];
   for (const id of buttons) $(id).disabled = true;
@@ -3842,7 +3787,7 @@ async function runSourceLoad(loader, background = false) {
     $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
     $("showDopplerOverlay").disabled =
       selectedSourceRadars().length === 0
-      || !availableRadarLoopMinutes(availableRadarHistoryTimes).includes(30);
+      ;
 
     $("radarSite").disabled = false;
     for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
@@ -3878,9 +3823,9 @@ async function loadLatest() {
   loadedLoopSelection = null;
   loadedWithDoppler = null;
   $("hybridFrameLabel").textContent = "—";
-  $("hybridRows").innerHTML = '<div class="hybrid-muted">Load a shared loop to view storm tracks.</div>';
+  $("hybridRows").innerHTML = '<div class="hybrid-muted">Load radar history to view storm tracks.</div>';
   $("operationalLoopWindow").textContent = "Latest only";
-  $("sharedHistoryNote").textContent = "Load a loop to align radar and Doppler history.";
+  $("sharedHistoryNote").textContent = "Reflectivity and Doppler have independent source histories.";
   $("hybridTrackCount").textContent = "0";
   $("hybridPersistentCount").textContent = "0";
 
@@ -4050,7 +3995,9 @@ async function initialise() {
   for (const id of ["loadHybridButton", "loadButton", "jumpLatestButton"]) $(id).disabled = false;
   setStatus("Loading live radar tracking history…");
   autoRefresh.start();
+  independentDopplerRefresh.start();
   await runSourceLoad(loadHybridSequence);
+  updateIndependentDopplerUi();
 }
 
 
@@ -4139,17 +4086,10 @@ $("terrainEnabled").addEventListener(
 
 $("loopDurationMinutes").addEventListener("change", () => {
   frameCrossfade.clear();
-  if (
-    $("showDopplerOverlay").checked
-    && selectedLoopSelection() !== "30"
-  ) {
-    $("showDopplerOverlay").checked = false;
-    clearDopplerOverlay();
-  }
   updateLoopButtonLabel();
   if (!sequenceLoading) runSourceLoad(loadHybridSequence);
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefresh.check(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { autoRefresh.check(); independentDopplerRefresh.check(); } });
 $("jumpLatestButton").addEventListener("click", async () => {
   if (sequenceLoading) return;
   await playback.pause();
@@ -4201,38 +4141,34 @@ $("trackDisplayFilter").addEventListener("change", event => {
 });
 $("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
 
-$("showDopplerOverlay").addEventListener(
-  "change",
-  () => {
-    enforceDopplerWindow();
-
-    if (
-      !$("showDopplerOverlay")
-        .checked
-    ) {
-      clearDopplerOverlay({
-        smooth:
-          true
-      });
-    }
-
-    if (
-      !sequenceLoading
-      && (
-        loadedWithDoppler
-          !== $("showDopplerOverlay").checked
-        || loadedLoopSelection
-          !== selectedLoopSelection()
-      )
-    ) {
-      runSourceLoad(
-        loadHybridSequence
-      );
-    } else {
-      renderDopplerOverlay();
-    }
+$("showDopplerOverlay").addEventListener("change", async event => {
+  if(!event.target.checked){
+    ++independentDopplerRequest;
+    await independentDopplerPlayback.pause();
+    independentDopplerRecord=null;
+    independentDopplerSourceId=null;
+    clearDopplerOverlay({smooth:true});
+    updateIndependentDopplerUi();
+  }else{
+    updateIndependentDopplerUi();
+    try { await refreshIndependentDopplerHistory(false); }
+    catch(error){$("dopplerIndependentStatus").textContent="Wind source unavailable: "+error.message;}
   }
-);
+});
+$("dopplerFrameSlider").addEventListener("input", async event => {
+  await independentDopplerPlayback.pause();
+  showIndependentDopplerFrame(Number(event.target.value))
+    .catch(error=>$("dopplerIndependentStatus").textContent=error.message);
+});
+$("dopplerPlayButton").addEventListener("click",()=>{
+  if(independentDopplerPlayback.isPlaying()) independentDopplerPlayback.pause();
+  else independentDopplerPlayback.play();
+});
+$("dopplerLatestButton").addEventListener("click",async ()=>{
+  await independentDopplerPlayback.pause();
+  showIndependentDopplerFrame(independentDopplerFrames.length-1)
+    .catch(error=>$("dopplerIndependentStatus").textContent=error.message);
+});
 
 // Opacity changes only rendered colours, never decoded samples or tracking.
 $("radarOpacity").addEventListener("input", event => {
@@ -4263,12 +4199,21 @@ $("volumeOpacity").addEventListener("input", event => {
   scene.requestRender();
 });
 
-$("dopplerOverlayRadar").addEventListener(
-  "change",
-  () => {
-    renderDopplerOverlay();
+$("dopplerOverlayRadar").addEventListener("change", async () => {
+  ++independentDopplerRequest;
+  await independentDopplerPlayback.pause();
+  independentDopplerFrames=[];
+  independentDopplerIndexValue=0;
+  independentDopplerRecord=null;
+  independentDopplerSourceId=null;
+  clearDopplerOverlay();
+  updateIndependentDopplerUi();
+  if($("showDopplerOverlay").checked){
+    refreshIndependentDopplerHistory(false).catch(error=>{
+      $("dopplerIndependentStatus").textContent=error.message;
+    });
   }
-);
+});
 
 $("loadButton").addEventListener("click", () => runSourceLoad(loadLatest));
 

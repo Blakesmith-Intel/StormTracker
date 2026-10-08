@@ -13,6 +13,8 @@ import {
   safeQfdSymbolImage,qfdOfficialSymbolCatalog,provisionalQfdSymbol,
   qfdSymbolFor,fetchQfdPublicSymbolCatalog,QFD_GROUP_ICON_COUNT
 } from "../src/context-layers/qfd-public-symbols-v1.js";
+import {initialiseOperationalQfdTechnicalRescues}
+  from "../src/context-layers/qfd-technical-rescues-operational-v1.js";
 let checks=0;
 function test(name,fn) {fn();checks++;console.log("PASS "+name);}
 function source(rel){return readFileSync(fileURLToPath(new URL(rel,import.meta.url)),"utf8");}
@@ -157,4 +159,78 @@ test("Map controller, legend and popup agree about the three grouped incident sy
   assert.match(html,/id="qfdSymbolStatus"/);
   assert.match(ui,/Provisional icons/);
 });
+
+await (async()=>{
+  // A previously disabled layer must initialise its official legend independently
+  // from the incident feed. Also test transient source recovery without toggling.
+  const oldDoc=globalThis.document,oldWin=globalThis.window;
+  const originals=new Map(),handlers=new Map(),images=new Map();
+  const ids=["qfdTechnicalRescueStatus","qfdTechnicalRescueInfo",
+    "showQfdTechnicalRescues","refreshQfdTechnicalRescuesButton",
+    "closeQfdTechnicalRescueInfo","qfdSymbolStatus"];
+  for(const id of ids)originals.set(id,{
+    textContent:"",dataset:{},hidden:true,checked:false,
+    addEventListener(){},setAttribute(){}
+  });
+  const groups=["RESCUE TECHNICAL","RESCUE ROAD CRASH","ASSIST PUBLIC"];
+  for(const group of groups)images.set(group,{src:"",alt:"",title:""});
+  const documentMock={
+    hidden:false,
+    getElementById:id=>originals.get(id)??null,
+    querySelector:selector=>{
+      const found=/^\\[data-qfd-group-icon="(.+)"\\]$/.exec(selector);
+      return found?images.get(found[1])??null:null;
+    },
+    addEventListener:(name,handler)=>handlers.set(name,handler),
+    removeEventListener:name=>handlers.delete(name)
+  };
+  const windowMock={
+    addEventListener(){},removeEventListener(){}
+  };
+  const CesiumRef={
+    CustomDataSource:class { constructor(name){this.name=name;this.show=false;
+      this.entities={removeAll(){},add(x){return x;}};} }
+  };
+  const viewer={dataSources:{add(){}},scene:{canvas:{},requestRender(){}}};
+  const renderer={drawingInfo:{renderer:{type:"uniqueValue",field1:"GroupedType",
+    uniqueValueInfos:groups.map(value=>({
+      value,symbol:{type:"esriPMS",imageData:"YWJjZA=="}
+    }))
+  }}};
+  let requests=0,layer;
+  try {
+    globalThis.document=documentMock;
+    globalThis.window=windowMock;
+    layer=initialiseOperationalQfdTechnicalRescues({
+      viewer,CesiumRef,refreshMs:600000,
+      fetchImpl:async url=>{
+        requests++;
+        assert.match(url,/FeatureServer\\/0\\?f=json/,
+          "An OFF layer must fetch only official renderer metadata");
+        if(requests===1)return {ok:false,status:503};
+        return {ok:true,json:async()=>renderer};
+      }
+    });
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(layer.dataSource.show,false);
+    assert.equal(requests,1,"Official symbol metadata requested on startup");
+    assert.match(originals.get("qfdSymbolStatus").textContent,/Provisional icons/);
+    handlers.get("visibilitychange")();
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(requests,2,"Transient failure must be retried without enabling layer");
+    for(const group of groups){
+      assert.equal(images.get(group).src,"data:image/png;base64,YWJjZA==");
+      assert.equal(images.get(group).title,"QFD public ArcGIS symbol");
+    }
+    assert.match(originals.get("qfdSymbolStatus").textContent,/Official QFD incident icons/);
+    assert.equal(layer.dataSource.show,false,
+      "Fetching symbology must not enable or change QFD incidents");
+    checks++;
+    console.log("PASS official QFD icons load on startup and recover while incident layer remains OFF");
+  } finally {
+    layer?.stop();
+    globalThis.document=oldDoc;
+    globalThis.window=oldWin;
+  }
+})();
 console.log(checks+" QFD public-group/official-symbol validation checks passed.");

@@ -555,6 +555,7 @@ let independentDopplerRequest = 0;
 let windCycleCursor = -1;
 let windSourceFailCount = 0;
 let windRenderPending = false;
+let windLastRadarDriveKey = null;
 function chooseWindCursorForRadar(radarIndex) {
   const windFrames = independentDopplerFrames;
   if (!windFrames.length) return -1;
@@ -569,6 +570,9 @@ function chooseWindCursorForRadar(radarIndex) {
 }
 function driveWindFromCommonPlayback(radarIndex) {
   if (!$("showDopplerOverlay").checked || !independentDopplerFrames.length) return;
+  const key=String(radarIndex)+":"+String(hybridFrames[radarIndex]?.observedUtc);
+  if(!playback.isPlaying() && key===windLastRadarDriveKey)return;
+  windLastRadarDriveKey=key;
   if (playback.isPlaying() && windRenderPending) return;
   const next = playback.isPlaying()
     ? nextNativeDopplerIndex(windCycleCursor, independentDopplerFrames.length)
@@ -4053,6 +4057,8 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   independentDopplerIndexValue=0;
   independentDopplerRecord=null;
   independentDopplerSourceId=null;
+  windLastRadarDriveKey=null;
+  windCycleCursor=-1;
   configureRadarSite(); resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();

@@ -6,6 +6,7 @@ on:
     branches:
       - feature/v9.12.3-decluttered-town-labels
       - feature/v9.12.4-imagery-only-town-labels
+      - feature/v9.12.5-official-state-border
     paths:
       - "frontend/src/context-layers/qld-town-label-*"
       - "frontend/src/context-layers/qld-population-centres-v2.js"
@@ -13,6 +14,8 @@ on:
       - "scripts/smoke-qld-town-label-visual.mjs"
       - "scripts/smoke-qld-town-label-production-ui.mjs"
       - "frontend/src/live3d-operational-v9.js"
+      - "frontend/src/context-layers/qld-state-border-v1.js"
+      - "scripts/smoke-qld-state-border.mjs"
       - "frontend/index.html"
       - "frontend/live3d-operational-v9.html"
       - ".github/workflows/visual-smoke-v9-12-3-labels.yml"

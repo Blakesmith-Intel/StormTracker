@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+import {
+  DOPPLER_AVAILABLE_LOOP_VALUE,
+  dopplerAvailableWindow,
+  buildDopplerAvailableSchedule
+} from "../src/doppler-available-window-v1.js";
+
+const iso=(h,m)=>new Date(Date.UTC(2026,9,9,h,m)).toISOString();
+const r=[15,20,25,30,35,40,45,50,55].map(m=>iso(3,m));
+const d=[18,23,28,33,38,43,49].map(m=>({observedUtc:iso(3,m)}));
+const window=dopplerAvailableWindow(r,d);
+assert.equal(DOPPLER_AVAILABLE_LOOP_VALUE,"doppler-available");
+assert.equal(window.dopplerCount,7);
+assert.equal(window.startUtc,iso(3,18));
+assert.equal(window.endUtc,iso(3,49));
+assert.equal(window.spanMinutes,31);
+assert.equal(window.radarCount,6);
+assert.deepEqual(window.radarTimes,[20,25,30,35,40,45].map(m=>iso(3,m)));
+const events=buildDopplerAvailableSchedule(r,d);
+assert.equal(events[0].timelineUtc,iso(3,18));
+assert.equal(events.at(-1).timelineUtc,iso(3,49));
+assert.equal(events.length,13,"seven Doppler and six rain observations, no dropped event");
+assert.deepEqual(events.filter(e=>e.isDopplerObservation).map(e=>e.timelineUtc),d.map(e=>e.observedUtc));
+assert.deepEqual(events.filter(e=>e.isRadarObservation).map(e=>e.timelineUtc),window.radarTimes);
+assert.equal(events[0].radarObservedUtc,iso(3,15),"nearest preceding genuine radar available if within 8min");
+assert.equal(events[0].dopplerObservedUtc,iso(3,18));
+const at20=events.find(e=>e.timelineUtc===iso(3,20));
+assert.equal(at20.radarObservedUtc,iso(3,20));
+assert.equal(at20.dopplerObservedUtc,iso(3,18),"3:20 rain can display with 3:18 Doppler");
+assert.equal(at20.dopplerIndex,0);
+const at25=events.find(e=>e.timelineUtc===iso(3,25));
+assert.equal(at25.radarObservedUtc,iso(3,25));
+assert.equal(at25.dopplerObservedUtc,iso(3,23));
+assert.equal(events.at(-1).dopplerIndex,6);
+assert.equal(events.at(-1).radarObservedUtc,iso(3,45),"last radar can hold final actual scan, with real timestamp retained");
+assert.equal(events[0].dopplerIndex,0,"after last scan playback wraps to first index");
+const extended=[...d,{observedUtc:iso(3,54)}];
+const revised=buildDopplerAvailableSchedule(r,extended);
+assert.equal(revised.at(-1).dopplerObservedUtc,iso(3,54));
+assert.equal(revised.filter(e=>e.isDopplerObservation).length,8);
+assert.ok(revised.length>events.length);
+assert.equal(dopplerAvailableWindow(r,[]),null);
+assert.equal(dopplerAvailableWindow([iso(1,0)],[{observedUtc:iso(3,18)},{observedUtc:iso(3,23)}]),null);
+assert.equal(buildDopplerAvailableSchedule([],d).length,0);
+const source=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
+const html=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",import.meta.url)),"utf8");
+assert.match(source,/option.value = DOPPLER_AVAILABLE_LOOP_VALUE/);
+assert.match(source,/buildDopplerAvailableSchedule\(availableRadarHistoryTimes, independentDopplerFrames\)/);
+assert.match(source,/buildDopplerAvailableSchedule\(frames.map\(frame=>frame.observedUtc\),independentDopplerFrames\)/);
+assert.match(source,/hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/);
+assert.match(source,/lastCombinedDopplerLatestUtc = isCombined/);
+assert.match(source,/if\(isCombined && automatic\) hybridFrameIndex=0/);
+assert.match(source,/newestChanged && hybridCombinedSchedule.length/);
+assert.match(source,/refreshIndependentDopplerHistory\(false\)/);
+assert.doesNotMatch(source,/showDopplerOverlay/);
+assert.doesNotMatch(html,/id="showDopplerOverlay"/);
+assert.match(html,/id="dopplerOverlayRadar"/);
+assert.match(html,/id="radarOpacity"/);
+assert.match(html,/id="volumeOpacity"/);
+assert.match(html,/id="dopplerOpacity"/);
+assert.match(html,/id="hybridPlayButton"/);
+assert.match(html,/id="hybridFrameSlider"/);
+assert.match(html,/id="radarPlaybackTime"/);
+assert.match(html,/id="dopplerPlaybackTime"/);
+console.log("PASS seven real wind frames, every rain observation, aligned 31-minute shared restart; no Doppler toggle.");

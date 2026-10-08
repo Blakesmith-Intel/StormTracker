@@ -98,7 +98,7 @@ import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
-import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex } from "./independent-doppler-loop-v1.js?v=9.16-independent";
+import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
 import { dopplerMapCoordinateToLonLat } from "./bom-doppler-georef-v1.js?v=9.16-independent";
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
@@ -554,6 +554,7 @@ let independentDopplerRequest = 0;
 // retain their own real observations and are never required to match.
 let windCycleCursor = -1;
 let windSourceFailCount = 0;
+let windRenderPending = false;
 function chooseWindCursorForRadar(radarIndex) {
   const windFrames = independentDopplerFrames;
   if (!windFrames.length) return -1;
@@ -568,16 +569,18 @@ function chooseWindCursorForRadar(radarIndex) {
 }
 function driveWindFromCommonPlayback(radarIndex) {
   if (!$("showDopplerOverlay").checked || !independentDopplerFrames.length) return;
+  if (playback.isPlaying() && windRenderPending) return;
   const next = playback.isPlaying()
-    ? (windCycleCursor + 1 + independentDopplerFrames.length) % independentDopplerFrames.length
+    ? nextNativeDopplerIndex(windCycleCursor, independentDopplerFrames.length)
     : chooseWindCursorForRadar(radarIndex);
   if (next < 0) return;
   windCycleCursor = next;
+  windRenderPending = true;
   void showIndependentDopplerFrame(next).catch(error => {
     windSourceFailCount++;
     const status = $("dopplerOverlayStatus");
     if (status) status.textContent="Wind frame unavailable · "+error.message;
-  });
+  }).finally(() => {windRenderPending=false;});
 }
 
 const independentDopplerRefresh = createLiveLoopRefresh({
@@ -2533,7 +2536,7 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     }
     // A single bad historical PNG cannot prevent the remainder from playing.
     let loaded=false;
-    for(let offset=0;offset<Math.min(4,frames.length);offset++){
+    for(let offset=0;offset<frames.length;offset++){
       const candidate=(nextIndex-offset+frames.length)%frames.length;
       try { await showIndependentDopplerFrame(candidate); loaded=true; break; }
       catch(error){console.warn("Skipping unreadable wind scan",frames[candidate].observedUtc,error);}

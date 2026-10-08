@@ -106,15 +106,15 @@ assert.equal(listenerRemoved, true);
 assert.equal(visual.removed, true);
 
 // Guard against labels going back under the 3-D volume or decoupling point from label.
-assert.match(css, /\\.storm-track-overlay\\s*\\{[^}]*z-index:550/s);
-assert.match(css, /\\.storm-track-marker-label/);
-assert.match(css, /\\.storm-track-overlay\\s*\\{[^}]*pointer-events:none/s);
-assert.match(css, /\\.frame-crossfade\\s*\\{[^}]*z-index:400/s);
-assert.match(javascript, /stormTrackLabelOverlay\\.setMarkers\\(stormTrackMarkers\\)/);
-assert.match(javascript, /stormTrackLabelOverlay\\.setVisible\\(Boolean\\(\\$\\("showTrackLabels"\\)\\?\\.checked\\)\\)/);
-assert.match(javascript, /stormTrackMarkers\\.push\\(\\{/);
-assert.doesNotMatch(javascript, /id: \`hybrid-\\$\\{index\\}-\\$\\{track\\.track_id\\}\\`/);
+assert.match(css, /\.storm-track-overlay\s*\{[^}]*z-index:550/s);
+assert.match(css, /\.storm-track-marker-label/);
+assert.match(css, /\.storm-track-overlay\s*\{[^}]*pointer-events:none/s);
+assert.match(css, /\.frame-crossfade\s*\{[^}]*z-index:400/s);
+assert.match(javascript, /stormTrackLabelOverlay\.setMarkers\(stormTrackMarkers\)/);
+assert.match(javascript, /stormTrackLabelOverlay\.setVisible\(Boolean\(\$\("showTrackLabels"\)\?\.checked\)\)/);
+assert.match(javascript, /stormTrackMarkers\.push\(\{/);
+assert.doesNotMatch(javascript, /id: \`hybrid-\$\{index\}-\$\{track\.track_id\}\`/);
 assert.match(html, /id="showTrackLabels" type="checkbox" checked/);
-assert.match(html, /v=9\\.15\\.1-storm-labels/);
-assert.match(iframe, /v=9\\.15\\.1-storm-labels/);
+assert.match(html, /v=9\.15\.1-storm-labels/);
+assert.match(iframe, /v=9\.15\.1-storm-labels/);
 console.log("Foreground storm marker overlay tests passed: opacity-independent, paired dots and labels; paused toggle; camera updates; horizon; frame swap; cache bust.");

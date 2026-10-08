@@ -7,7 +7,7 @@ const index=read('frontend/index.html');
 const html=read('frontend/live3d-operational-v9.html');
 const css=read('frontend/src/operational-dashboard-v9-1.css');
 const js=read('frontend/src/live3d-operational-v9.js');
-assert.match(index,/live3d-operational-v9\.html\?v=9\.15\.0-icons-onload/);
+assert.match(index,/live3d-operational-v9\.html\?v=9\.15\.0-volume-opacity/);
 assert.match(html,/Operational V9\.15\.0/);
 assert.match(html,/radarOpacityValue[^>]*>65%/);
 assert.match(html,/dopplerOpacityValue[^>]*>45%/);

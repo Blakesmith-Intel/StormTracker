@@ -110,6 +110,10 @@ try{
     console.log(`Full app QA ${scenario.id}: basemap=${inspection.mode}, labels=${inspection.labelMode}, height=${inspection.cameraHeight}, pitch=${inspection.cameraPitchDegrees}, visible=${inspection.visible.map(t=>t.name).join(", ")}`);
     assert.equal(inspection.labelMode, scenario.mode,
       "Label layer basemap mode must match the actual basemap selector");
+    assert.ok(inspection.controllerTarget &&
+      Math.abs(inspection.controllerTarget.longitude-scenario.coords[0])<0.001 &&
+      Math.abs(inspection.controllerTarget.latitude-scenario.coords[1])<0.001,
+      `${scenario.id}: camera controller must target the intended coordinates, not a stale view`);
     verify(inspection, scenario.id);
     assert.ok(inspection.visible.length<=scenario.limit,
       `${scenario.id}: ${inspection.visible.length} names at horizon (altitude ${Math.round(inspection.cameraHeight)}m, pitch ${inspection.cameraPitchDegrees.toFixed(1)}°, recalculations ${inspection.labelCalculations})`);
@@ -179,6 +183,10 @@ try{
     assert.ok(desktopInfo.width>=700,
       "Desktop satellite viewer must not use mobile font metrics");
     assert.equal(desktopInfo.labelMode,"qld-imagery");
+    assert.ok(desktopInfo.controllerTarget &&
+      Math.abs(desktopInfo.controllerTarget.longitude-139.35)<0.001 &&
+      Math.abs(desktopInfo.controllerTarget.latitude+25.9)<0.001,
+      "Desktop viewer must genuinely be over Birdsville, not Brisbane");
     const birdsville=desktopInfo.visible.find(x=>x.name.toLowerCase()==="birdsville");
     assert.ok(birdsville,"Birdsville must remain geographically anchored on desktop imagery");
     assert.equal(birdsville.font,"bold 15px sans-serif",

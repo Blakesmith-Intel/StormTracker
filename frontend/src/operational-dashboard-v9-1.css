@@ -640,3 +640,34 @@ dialog::backdrop { background:#0009; }
   outline:2px solid #ffd43b;
   outline-offset:2px;
 }
+
+/* V9.15.0 candidate: QFD public technical-rescue records. No invented subtype. */
+.qfd-rescue-row button { min-height:25px; padding:3px 7px; }
+.qfd-rescue-row label { display:flex; align-items:center; gap:6px; }
+#qfdTechnicalRescueStatus { margin:-2px 0 5px; text-align:right; }
+#qfdTechnicalRescueStatus[data-kind="error"] { color:#ff9d91; }
+#qfdTechnicalRescueStatus[data-kind="ok"] { color:#99e2b7; }
+#qfdTechnicalRescueStatus[data-kind="warning"] { color:#ffc44d; }
+.qfd-rescue-key {
+  display:inline-block; flex:0 0 auto; width:14px; height:14px;
+  background:#c78aff; border:2px solid #23132c; box-shadow:0 0 0 1px #fff;
+  border-radius:4px; transform:rotate(45deg); box-sizing:border-box;
+}
+.qfd-rescue-key-large { width:22px; height:22px; margin:3px; border-width:3px; }
+.qfd-rescue-info-heading { display:flex; align-items:center; gap:10px; min-width:0; }
+.qfd-rescue-info-heading > div { display:grid; gap:2px; min-width:0; }
+.qfd-rescue-info .map-info-kicker { color:#d8a5ff; }
+#qfdTechnicalRescueInfoTitle { overflow-wrap:anywhere; }
+#qfdTechnicalRescueInfoRows { border-top:1px solid #31424d; padding-top:8px; }
+#qfdTechnicalRescueInfoRows > strong { text-align:left; }
+#qfdTechnicalRescueInfoRows > a {
+  color:#8fd8ff; font-weight:700; text-decoration:underline;
+  overflow-wrap:anywhere; text-underline-offset:2px;
+}
+#qfdTechnicalRescueInfoRows > a:focus-visible {
+  outline:2px solid #ffd43b; outline-offset:2px;
+}
+@media (max-width:700px) {
+  .qfd-rescue-row button { min-height:25px; font-size:9px; }
+  #qfdTechnicalRescueStatus { font-size:8px; margin:-1px 0 3px; }
+}

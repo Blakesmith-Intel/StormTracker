@@ -895,7 +895,7 @@ await assert.rejects(
             503
         })
     }),
-  /Energex outage feed HTTP 503.*Ergon outage feed HTTP 503.*Essential Energy outage feed HTTP 503/
+  /Energex.*outage feed HTTP 503.*Ergon.*outage feed HTTP 503.*Essential Energy outage feed HTTP 503/
 );
 
 console.log(

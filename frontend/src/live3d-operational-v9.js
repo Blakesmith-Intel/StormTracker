@@ -2571,18 +2571,31 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     const frames=buildIndependentDopplerFrames(
       sources.histories.get(radarId),sources.latestRecords.get(radarId));
     const previous=independentDopplerFrames;
+    const previousNewestUtc=previous.at(-1)?.observedUtc;
     const previousIndex=independentDopplerIndexValue;
     const nextIndex=independentDopplerIndex(frames,previous,previousIndex);
     // The shared Play/Pause button belongs to the radar timeline.
     // Doppler refresh must never pause, stop or gate it.
     independentDopplerFrames=frames;
     independentDopplerIndexValue=nextIndex;
+    if(availableRadarHistoryTimes.length)updateRadarHistoryOptions(availableRadarHistoryTimes);
     if(!frames.length){
       independentDopplerRecord=null;
       independentDopplerSourceId=null;
       clearDopplerOverlay();
       updateIndependentDopplerUi();
       throw Error("No actual Doppler observations published for "+radarId);
+    }
+    const newestChanged=Date.parse(frames.at(-1)?.observedUtc) >
+      Date.parse(previousNewestUtc ?? "1970-01-01T00:00:00Z");
+    if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
+       newestChanged && hybridCombinedSchedule.length) {
+      $("autoRefreshNote").textContent =
+        "New Doppler source frame · synchronising radar and wind loop…";
+      if(!sequenceLoading) {
+        void runSourceLoad(()=>loadHybridSequence(true),true);
+      }
+      return;
     }
     // A single bad historical PNG cannot prevent the remainder from playing.
     let loaded=false;
@@ -4095,6 +4108,11 @@ async function initialise() {
   independentDopplerRefresh.start();
   await runSourceLoad(loadHybridSequence);
   updateIndependentDopplerUi();
+  if(isDopplerSourceActive()) {
+    void refreshIndependentDopplerHistory(false).catch(error=>{
+      $("dopplerOverlayStatus").textContent = "Doppler retry: " + error.message;
+    });
+  }
 }
 
 
@@ -4105,6 +4123,8 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   independentDopplerIndexValue=0;
   independentDopplerRecord=null;
   independentDopplerSourceId=null;
+  hybridCombinedSchedule=[];
+  lastCombinedDopplerLatestUtc=null;
   windLastRadarDriveKey=null;
   windCycleCursor=-1;
   configureRadarSite(); resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();

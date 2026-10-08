@@ -698,3 +698,37 @@ img.flood-road-key {
 }
 img.flood-road-key::before,img.flood-road-key::after {content:none;display:none;}
 img.flood-road-key-large {width:31px;height:31px;margin:0;}
+
+
+/* V9.15.1: observed storm-ID point/label pairs sit over every Cesium 3-D
+   primitive and the composited frame fade without intercepting map gestures. */
+.storm-track-overlay {
+  position:absolute;
+  inset:0;
+  z-index:550;
+  overflow:hidden;
+  pointer-events:none;
+}
+.storm-track-marker {
+  position:absolute;
+  box-sizing:border-box;
+  border:1px solid #fff;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 0 1px #07121bcc,0 0 4px #07121b;
+  pointer-events:none;
+}
+.storm-track-marker-label {
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + 7px);
+  transform:translateX(-50%);
+  white-space:nowrap;
+  padding:3px 5px;
+  background:rgba(0,0,0,.72);
+  border-radius:3px;
+  color:#fff;
+  font:12px/1.15 sans-serif;
+  text-shadow:0 1px 2px #000;
+  pointer-events:none;
+}

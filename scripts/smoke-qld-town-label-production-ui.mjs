@@ -78,6 +78,14 @@ try{
   verify(state,"After imagery basemap switch");
   assert.equal(state.mode,"qld-imagery");
   assert.equal(state.labelMode,"qld-imagery","Imagery must activate the label layer");
+  await page.waitForFunction(
+    ()=>window.__stormtrackerStateBorderDiagnostics?.().count > 0,
+    null,{timeout:65000}
+  );
+  let border=await page.evaluate(()=>window.__stormtrackerStateBorderDiagnostics());
+  assert.equal(border.mode,"qld-imagery");
+  assert.equal(border.visible,true,"Official QLD state border must be visible over imagery");
+  console.log(`Official QLD state border rendered over imagery: ${border.count} surveyed line features`);
   // Once imagery tiles start refining, Chromium cannot obtain a stable
   // WebGL screenshot. The live imagery-mode collision and count assertions
   // above are still required; preserve before/after drag screenshots.
@@ -115,6 +123,8 @@ try{
   assert.equal(state.mode,"street");
   assert.equal(state.labelMode,"street");
   assert.equal(state.visible.length,0,"Imagery-to-Street must remove every supplemental town name");
+  border=await page.evaluate(()=>window.__stormtrackerStateBorderDiagnostics());
+  assert.equal(border.visible,false,"Street OSM map must not show a duplicate border overlay");
   await page.mouse.move(x,y);
   await page.mouse.down();
   await page.mouse.move(x+9,y+5,{steps:6});
@@ -127,8 +137,10 @@ try{
   state=await inspect();
   assert.equal(state.labelMode,"qld-imagery");
   assert.ok(state.visible.length<=5,"Returning to QLD imagery must keep the phone clutter cap");
+  border=await page.evaluate(()=>window.__stormtrackerStateBorderDiagnostics());
+  assert.equal(border.visible,true,"Switching back to QLD imagery restores official interstate line");
   assert.ok(await page.locator("#showPowerOutages").count()===1);
   assert.ok(await page.locator("#showFloodRoadClosures").count()===1);
   assert.ok(await page.locator("#showRiverGauges").count()===1);
-  console.log(`Full StormTracker UI browser smoke passed: Street 0 supplemental town labels during drag and after switch-back; QLD imagery <=5 collision-free labels with ${state.count} town records; road/outage/gauge controls intact.`);
+  console.log(`Full StormTracker UI browser smoke passed: surveyed QLD state border restored on imagery, hidden in Street, reappears on satellite return; existing town labels, road/outage/gauge controls intact.`);
 }finally{await browser.close();}

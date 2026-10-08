@@ -1,0 +1,26 @@
+name: Smoke official Queensland state border
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.12.5-official-state-border
+    paths:
+      - "frontend/src/context-layers/qld-state-border-v1.js"
+      - "scripts/smoke-qld-state-border.mjs"
+      - ".github/workflows/smoke-v9-12-5-state-border.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  official-border:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test official QLD state border near Goondiwindi and CORS
+        run: node scripts/smoke-qld-state-border.mjs

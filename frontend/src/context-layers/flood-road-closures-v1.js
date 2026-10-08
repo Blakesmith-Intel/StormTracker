@@ -295,6 +295,11 @@ export function createFloodRoadClosureLayer({
   let timer = null;
   let lastLoadedAt = 0;
   let snapshotExpired = false;
+  let lastPresentedStatus = null;
+  function reportStatus(status) {
+    lastPresentedStatus = status;
+    onStatus(status);
+  }
   function expireStaleSnapshot() {
     if (snapshotExpired || !sourceSnapshotState({lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.floodRoadClosures}).expired) return false;
     snapshotExpired = true;
@@ -302,7 +307,7 @@ export function createFloodRoadClosureLayer({
     dataSource.entities.removeAll();
     viewer.scene.requestRender();
     onUpdate([]);
-    onStatus({kind:"error",message:"Source expired · old flood-closure markers removed · last checked "+checkedAtAest(lastLoadedAt)});
+    reportStatus({kind:"error",message:"Source expired · old flood-closure markers removed · last checked "+checkedAtAest(lastLoadedAt)});
     return true;
   }
 
@@ -560,7 +565,7 @@ export function createFloodRoadClosureLayer({
 
     loading =
       (async () => {
-        onStatus({
+        reportStatus({
           kind:
             "loading",
           message:
@@ -581,7 +586,7 @@ export function createFloodRoadClosureLayer({
           Date.now();
         snapshotExpired = false;
 
-        onStatus({
+        reportStatus({
           kind:
             "ok",
           message:
@@ -605,7 +610,7 @@ export function createFloodRoadClosureLayer({
       return await loading;
     } catch (error) {
       expireStaleSnapshot();
-      onStatus(sourceFailureStatus({error,lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.floodRoadClosures}));
+      reportStatus(sourceFailureStatus({error,lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.floodRoadClosures}));
 
       throw error;
     } finally {
@@ -641,6 +646,9 @@ export function createFloodRoadClosureLayer({
           .catch(
             () => {}
           );
+      }
+      else if (lastPresentedStatus) {
+        reportStatus(lastPresentedStatus);
       }
     }
   }

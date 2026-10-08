@@ -1,0 +1,115 @@
+name: Seal verified StormTracker V9.15.1 production
+
+on:
+  workflow_run:
+    workflows: ["Deploy static StormTracker"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  seal:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Identify the exact accepted frontend tree
+        id: accepted
+        env:
+          PAGES_SHA: ${{ github.event.workflow_run.head_sha }}
+          ACCEPTED_TREE: 52ee24a947783f98b724759872f35f1a86a34610
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse "$PAGES_SHA:frontend")"
+          if [ "$actual" != "$ACCEPTED_TREE" ]; then
+            echo "Not the V9.15.1 release tree; historical seal skipped."
+            echo "matches=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git merge-base --is-ancestor 363d336fff008a81f2f763ea3e5bd6d1dfdb5a16 "$PAGES_SHA"
+          test "$(git ls-remote origin refs/heads/main | awk '{print $1}')" = "$PAGES_SHA"
+          echo "matches=true" >> "$GITHUB_OUTPUT"
+          echo "PASS Accepted V9.15.1 frontend tree $ACCEPTED_TREE on deployed main $PAGES_SHA"
+      - uses: actions/setup-node@v4
+        if: steps.accepted.outputs.matches == 'true'
+        with:
+          node-version: "24"
+      - name: Regression, source syntax and visual contract
+        if: steps.accepted.outputs.matches == 'true'
+        run: |
+          set -euo pipefail
+          npm test
+          node --check relay/worker.js
+          grep -Fq 'v=9.15.1-intensity40' frontend/index.html
+          grep -Fq 'v=9.15.1-intensity40' frontend/live3d-operational-v9.html
+          grep -Fq 'createStormTrackLabelOverlay' frontend/src/live3d-operational-v9.js
+          grep -Fq 'MINIMUM_VOLUME_DISPLAY_DBZ = 40' frontend/src/volume-display-threshold-v1.js
+      - name: Validate the actual deployed production Pages assets
+        if: steps.accepted.outputs.matches == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://blakesmith-intel.github.io/StormTracker"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          passed=0
+          for n in 1 2 3 4 5 6; do
+            if curl -fsSL --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "$BASE/index.html?seal=$GITHUB_RUN_ID-$n" -o "$tempdir/index.html" &&
+               curl -fsSL --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "$BASE/live3d-operational-v9.html?seal=$GITHUB_RUN_ID-$n" -o "$tempdir/live.html" &&
+               curl -fsSL --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "$BASE/src/live3d-operational-v9.js?seal=$GITHUB_RUN_ID-$n" -o "$tempdir/live.js" &&
+               curl -fsSL --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "$BASE/src/volume-display-threshold-v1.js?seal=$GITHUB_RUN_ID-$n" -o "$tempdir/threshold.js" &&
+               grep -Fq 'live3d-operational-v9.html?v=9.15.1-intensity40' "$tempdir/index.html" &&
+               grep -Fq 'live3d-operational-v9.js?v=9.15.1-intensity40' "$tempdir/live.html" &&
+               grep -Fq 'storm-track-label-overlay-v1.js' "$tempdir/live.js" &&
+               grep -Fq 'volume-display-threshold-v1.js' "$tempdir/live.js" &&
+               grep -Fq 'MINIMUM_VOLUME_DISPLAY_DBZ = 40' "$tempdir/threshold.js"; then
+              passed=1
+              break
+            fi
+            echo "Awaiting accepted V9.15.1 production assets, attempt $n/6"
+            sleep 10
+          done
+          test "$passed" -eq 1
+          echo "PASS Live production index, HTML, foreground storm label module, and >=40 dBZ volume threshold"
+      - name: Reconfirm existing QLDTraffic source relay
+        if: steps.accepted.outputs.matches == 'true'
+        run: node scripts/smoke-v9-15-qltraffic-relay-v1.mjs
+      - name: Seal immutable release tag and recovery branch (never force)
+        if: steps.accepted.outputs.matches == 'true'
+        env:
+          PAGES_SHA: ${{ github.event.workflow_run.head_sha }}
+          ACCEPTED_TREE: 52ee24a947783f98b724759872f35f1a86a34610
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version=v9.15.1
+          remote_tag="$(git ls-remote --tags origin "refs/tags/$version^{}" | awk '{print $1}')"
+          if [ -z "$remote_tag" ]; then
+            remote_tag="$(git ls-remote --tags origin "refs/tags/$version" | awk '{print $1}')"
+          fi
+          if [ -z "$remote_tag" ]; then
+            git tag -a "$version" "$PAGES_SHA" -m "StormTracker accepted production $version: foreground labels and >=40 dBZ 3-D display"
+            git push origin "refs/tags/$version"
+            sealed_sha="$PAGES_SHA"
+          else
+            git fetch origin "refs/tags/$version:refs/tags/$version" || true
+            sealed_sha="$(git rev-list -n 1 "$version")"
+            test "$(git rev-parse "$sealed_sha:frontend")" = "$ACCEPTED_TREE"
+          fi
+          remote_restore="$(git ls-remote --heads origin "refs/heads/restore/$version" | awk '{print $1}')"
+          if [ -z "$remote_restore" ]; then
+            git push origin "$sealed_sha:refs/heads/restore/$version"
+          else
+            test "$remote_restore" = "$sealed_sha"
+          fi
+          test "$(git rev-parse "$sealed_sha:frontend")" = "$ACCEPTED_TREE"
+          echo "SEALED $version -> $sealed_sha (frontend tree $ACCEPTED_TREE)"
+          echo "RESTORE restore/$version -> $sealed_sha"

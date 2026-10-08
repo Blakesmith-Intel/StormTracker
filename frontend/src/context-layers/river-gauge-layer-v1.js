@@ -498,7 +498,7 @@ export function createRiverGaugeLayer({
               : "ok",
 
           message:
-            `${summaries.length} flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}`,
+            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText} · screening only; follow BoM warnings`,
 
           count:
             summaries.length,

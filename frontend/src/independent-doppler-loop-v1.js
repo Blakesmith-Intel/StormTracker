@@ -32,3 +32,25 @@ export function independentDopplerIndex(next, previous, index) {
   const prior=next.findIndex(x=>Date.parse(x.observedUtc)>=oldEpoch);
   return prior<0?next.length-1:prior;
 }
+
+
+// Visual selection only: one user playback cursor, two original source clocks.
+// A missing/mismatched Doppler scan never invalidates a reflectivity frame.
+// No eight-minute gate, synthesized timestamp, or time-pairing for wind science.
+export function nearestIndependentDopplerFrameIndex(frames, displayedRadarUtc) {
+  if (!Array.isArray(frames) || !frames.length) return -1;
+  const target = Date.parse(displayedRadarUtc);
+  if (!Number.isFinite(target)) return frames.length - 1;
+  let selected = -1, bestDelta = Infinity, bestEpoch = Infinity;
+  for (let i=0; i<frames.length; i++) {
+    const epoch=Date.parse(frames[i]?.observedUtc);
+    if (!Number.isFinite(epoch)) continue;
+    const delta=Math.abs(epoch-target);
+    if (delta<bestDelta || (delta===bestDelta && epoch<bestEpoch)) {
+      selected=i;
+      bestDelta=delta;
+      bestEpoch=epoch;
+    }
+  }
+  return selected;
+}

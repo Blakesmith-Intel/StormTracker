@@ -1,3 +1,8 @@
+import {fetchQfdPublicSymbolCatalog,qfdOfficialSymbolCatalog}
+  from "../frontend/src/context-layers/qfd-public-symbols-v1.js";
+import {QFD_PUBLIC_GROUP_NAMES,QFD_ESCAD_ENDPOINT}
+  from "../frontend/src/context-layers/qfd-technical-rescues-v1.js";
+
 // Public-only source discovery. Do not use restricted CAD or login-based data.
 // Diagnostic prints provenance and published layer renderers, never private events.
 const targets=[
@@ -13,7 +18,7 @@ async function request(url) {
  try{
   const r=await fetch(url,{signal:controller.signal,headers:{Accept:"application/json,text/html;q=0.9"}});
   if(!r.ok)throw Error("HTTP "+r.status);
-  return {final:r.url,text:await r.text(),type:r.headers.get("content-type")};
+  return {final:r.url,text:await r.text(),type:r.headers.get("content-type"),cors:r.headers.get("access-control-allow-origin")};
  }finally{clearTimeout(timer);}
 }
 function ids(s){return [...new Set([...String(s).matchAll(/\b[a-f0-9]{32}\b/ig)].map(x=>x[0]))].slice(0,45);}
@@ -56,3 +61,20 @@ for(const id of [...itemIDs].slice(0,30)){
   }
  }catch(e){console.log("PUBLIC_ITEM_ERROR",id,String(e).slice(0,180));}
 }
+
+const catalog=await fetchQfdPublicSymbolCatalog();
+const metadataResponse=await request(QFD_ESCAD_ENDPOINT.replace(/\\/query$/,"")+"?f=json");
+const metadata=JSON.parse(metadataResponse.text);
+console.log("PUBLIC_RENDERER_CONFIRMATION",JSON.stringify({
+  field1:metadata?.drawingInfo?.renderer?.field1,
+  rendererType:metadata?.drawingInfo?.renderer?.type,
+  expectedGroups:QFD_PUBLIC_GROUP_NAMES,
+  actualOfficialGroups:Object.keys(catalog),
+  images:Object.entries(catalog).map(([key,value])=>({
+    groupedType:key,mime:value.split(";")[0].slice(5),dataLength:value.length
+  })),
+  cors:metadataResponse.cors??"not available"
+}));
+if(Object.keys(catalog).length!==3) {
+  console.error("WARNING: exact QFD grouped symbols incomplete; do not claim all are verified.");
+} else console.log("PASS three official QFD grouped incident icon assets found in public renderer");

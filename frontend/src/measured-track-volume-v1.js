@@ -536,3 +536,11 @@ export function highSupportTop40Trend(
       * 10
   };
 }
+
+// Display-only alignment with the frame-wide minimum dBZ setting.
+// Do not change the underlying inferred profile, sampling, scoring,
+// measured-track volume or high-support top calculations.
+export function shouldDisplayMeasuredTrackPoint(point,minimumDisplayDbz=30){
+  const value=Number(point?.dbzh),limit=Number(minimumDisplayDbz);
+  return Number.isFinite(value) && Number.isFinite(limit) && value>=limit;
+}

@@ -3695,20 +3695,26 @@ async function loadHybridSequence(automatic = false) {
     hybridFrames.length - inferredLoaded;
 
   const frameFailures = summariseSkippedObservedFrames(failureDiagnostics);
-  $("sharedHistoryNote").textContent =
-    `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
-    " reflectivity frames" +
-    (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
-    ` (${range})` +
-    (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
-    (frameFailures.summary ? ` · ${frameFailures.summary}` : "");
+  $("sharedHistoryNote").textContent = isCombined
+    ? `Doppler-defined loop · ${independentDopplerFrames.length} measured Doppler frames + ${new Set(hybridFrames.map(frame=>frame.observedUtc)).size} measured radar frames · ${hybridCombinedSchedule.length} shared playback steps · ${Math.round(loopMinutes)} min source window` +
+      (frameFailures.summary ? ` · ${frameFailures.summary}` : "")
+    : `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
+      " reflectivity frames" +
+      (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
+      ` (${range})` +
+      (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
+      (frameFailures.summary ? ` · ${frameFailures.summary}` : "");
   $("sharedHistoryNote").title =
-    `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}` +
+    (isCombined
+      ? `${formatProductTime(independentDopplerFrames[0].observedUtc)} → ${formatProductTime(independentDopplerFrames.at(-1).observedUtc)} (Doppler source bounds)`
+      : `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`) +
     (frameFailures.detail ? `\nOmitted frame details:\n${frameFailures.detail}` : "");
   $("autoRefreshNote").textContent =
-    needsHistoricalRebuild
-      ? "Auto update: historical cache expanded; loop rebuilt chronologically."
-       : "Auto update: independent radar and Doppler refresh every 5 minutes.";
+    isCombined
+      ? "Auto update: checking every 5 min; rebuilding together when new Doppler arrives."
+      : needsHistoricalRebuild
+        ? "Auto update: historical cache expanded; loop rebuilt chronologically."
+        : "Auto update: independent radar and Doppler refresh every 5 minutes.";
   if (
     selectedRadarRegion() !== "SEQ"
     && !["66","50","08"].includes(

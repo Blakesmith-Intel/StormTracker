@@ -1,3 +1,4 @@
+import {MAX_CONTEXT_SNAPSHOT_AGE_MS,sourceSnapshotState,sourceFailureStatus,checkedAtAest} from "./source-freshness-v1.js?v=9.14.0";
 import {
   parseEssentialEnergyKml
 } from "./essential-energy-kml-v1.js?v=9.11.2";
@@ -893,6 +894,18 @@ export function createPowerOutageLayer({
   let loading = null;
   let timer = null;
   let lastLoadedAt = 0;
+  let snapshotExpired = false;
+  function expireStaleSnapshot() {
+    if (snapshotExpired || !sourceSnapshotState({lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.powerOutages}).expired) return false;
+    snapshotExpired = true;
+    currentFeatures = [];
+    dataSource.entities.removeAll();
+    viewer.scene.requestRender();
+    onUpdate([]);
+    onStatus({kind:"error",message:"Source expired · old outage markers removed · last checked "+checkedAtAest(lastLoadedAt)});
+    return true;
+  }
+
 
   async function render(
     payload
@@ -1036,6 +1049,7 @@ export function createPowerOutageLayer({
 
         lastLoadedAt =
           Date.now();
+        snapshotExpired = false;
 
         const summaries =
           currentFeatures
@@ -1071,7 +1085,7 @@ export function createPowerOutageLayer({
               : "ok",
 
           message:
-            `${summaries.length} unplanned outage${summaries.length === 1 ? "" : "s"} | ${customers.toLocaleString("en-AU")} customers | ${providerText}${partialText}`,
+            `${summaries.length} unplanned outage${summaries.length === 1 ? "" : "s"} | ${customers.toLocaleString("en-AU")} customers | ${providerText}${partialText} | checked ${checkedAtAest(lastLoadedAt)}`,
 
           count:
             summaries.length,
@@ -1102,14 +1116,8 @@ export function createPowerOutageLayer({
     try {
       return await loading;
     } catch (error) {
-      onStatus({
-        kind:
-          "error",
-
-        message:
-          error?.message
-          ?? String(error)
-      });
+      expireStaleSnapshot();
+      onStatus(sourceFailureStatus({error,lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.powerOutages}));
 
       throw error;
     } finally {
@@ -1121,6 +1129,7 @@ export function createPowerOutageLayer({
   function setVisible(
     nextVisible
   ) {
+    expireStaleSnapshot();
     dataSource.show =
       Boolean(
         nextVisible
@@ -1148,6 +1157,12 @@ export function createPowerOutageLayer({
     }
   }
 
+  const onVisibilityChange = () => {
+    if (document.hidden) return;
+    expireStaleSnapshot();
+    if (dataSource.show) refresh().catch(() => {});
+  };
+
   function start() {
     if (timer) {
       return;
@@ -1162,6 +1177,7 @@ export function createPowerOutageLayer({
         );
     }
 
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange',onVisibilityChange);
     timer =
       setInterval(
         () => {
@@ -1173,6 +1189,7 @@ export function createPowerOutageLayer({
             return;
           }
 
+          expireStaleSnapshot();
           refresh()
             .catch(
               () => {}
@@ -1190,6 +1207,7 @@ export function createPowerOutageLayer({
     clearInterval(
       timer
     );
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange',onVisibilityChange);
 
     timer =
       null;

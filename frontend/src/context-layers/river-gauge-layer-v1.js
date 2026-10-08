@@ -10,6 +10,7 @@ import {
 
 import {
   FLOOD_SIGNAL_STORAGE_KEY,
+  FLOOD_SIGNAL_MAX_AGE_MS,
   appendGaugeObservation,
   cleanFloodSignalHistory,
   compactFloodHistory,
@@ -524,13 +525,18 @@ export function createRiverGaugeLayer({
     try {
       return await loading;
     } catch (error) {
+      // Never leave old warning-looking markers in place after a prolonged
+      // upstream outage: an old reading is not a current flood signal.
+      const expired = lastLoadedAt && now()-lastLoadedAt > FLOOD_SIGNAL_MAX_AGE_MS;
+      if (expired) {
+        render({type:"FeatureCollection",features:[]});
+      }
       onStatus({
         kind:
           "error",
 
         message:
-          error?.message
-          ?? String(error)
+          `${error?.message ?? String(error)}${expired ? " · old flood markers cleared" : ""}`
       });
 
       throw error;

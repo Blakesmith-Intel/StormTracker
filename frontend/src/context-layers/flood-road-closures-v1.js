@@ -1,3 +1,4 @@
+import {MAX_CONTEXT_SNAPSHOT_AGE_MS,sourceSnapshotState,sourceFailureStatus,checkedAtAest} from "./source-freshness-v1.js?v=9.14.0";
 import {
   filterFloodRoadClosures,
   floodRoadClosureSummary,
@@ -293,6 +294,18 @@ export function createFloodRoadClosureLayer({
   let loading = null;
   let timer = null;
   let lastLoadedAt = 0;
+  let snapshotExpired = false;
+  function expireStaleSnapshot() {
+    if (snapshotExpired || !sourceSnapshotState({lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.floodRoadClosures}).expired) return false;
+    snapshotExpired = true;
+    currentFeatures = [];
+    dataSource.entities.removeAll();
+    viewer.scene.requestRender();
+    onUpdate([]);
+    onStatus({kind:"error",message:"Source expired · old flood-closure markers removed · last checked "+checkedAtAest(lastLoadedAt)});
+    return true;
+  }
+
 
   function decorateClosureEntity(
     entity,
@@ -566,6 +579,7 @@ export function createFloodRoadClosureLayer({
 
         lastLoadedAt =
           Date.now();
+        snapshotExpired = false;
 
         onStatus({
           kind:
@@ -575,7 +589,7 @@ export function createFloodRoadClosureLayer({
               currentFeatures.length === 1
                 ? ""
                 : "s"
-            }`,
+            } · checked ${checkedAtAest(lastLoadedAt)}`,
           count:
             currentFeatures.length,
           transport:
@@ -590,13 +604,8 @@ export function createFloodRoadClosureLayer({
     try {
       return await loading;
     } catch (error) {
-      onStatus({
-        kind:
-          "error",
-        message:
-          error?.message
-          ?? String(error)
-      });
+      expireStaleSnapshot();
+      onStatus(sourceFailureStatus({error,lastLoadedAt,maxAgeMs:MAX_CONTEXT_SNAPSHOT_AGE_MS.floodRoadClosures}));
 
       throw error;
     } finally {
@@ -608,6 +617,7 @@ export function createFloodRoadClosureLayer({
   function setVisible(
     nextVisible
   ) {
+    expireStaleSnapshot();
     dataSource.show =
       Boolean(
         nextVisible
@@ -635,6 +645,12 @@ export function createFloodRoadClosureLayer({
     }
   }
 
+  const onVisibilityChange = () => {
+    if (document.hidden) return;
+    expireStaleSnapshot();
+    if (dataSource.show) refresh().catch(() => {});
+  };
+
   function start() {
     if (timer) {
       return;
@@ -649,6 +665,7 @@ export function createFloodRoadClosureLayer({
         );
     }
 
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange',onVisibilityChange);
     timer =
       setInterval(
         () => {
@@ -660,6 +677,7 @@ export function createFloodRoadClosureLayer({
             return;
           }
 
+          expireStaleSnapshot();
           refresh()
             .catch(
               () => {}
@@ -677,6 +695,7 @@ export function createFloodRoadClosureLayer({
     clearInterval(
       timer
     );
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange',onVisibilityChange);
 
     timer =
       null;

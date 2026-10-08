@@ -147,6 +147,11 @@ import {
 } from "./context-layers/qfd-technical-rescues-operational-v1.js?v=9.15.0-icons-onload";
 
 import {
+  addVolumeDisplayPoint,
+  setVolumeDisplayOpacity
+} from "./volume-display-opacity-v1.js?v=9.15.0-volume-opacity";
+
+import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
@@ -1158,6 +1163,7 @@ function renderInferredVolume(frame) {
     Number(
       $("pointSize").value
     );
+  const volumePercent=Number($("volumeOpacity").value);
 
   const candidateColumns =
     estimateCandidateColumns(
@@ -1263,14 +1269,9 @@ function renderInferredVolume(frame) {
             }
           );
 
-        const colour =
-          colourForDbzh(
-            point.dbzh
-          ).withAlpha(
-            supportStyle.alpha
-          );
+        const colour=colourForDbzh(point.dbzh);
 
-        inferredCollection.add({
+        addVolumeDisplayPoint(inferredCollection,{
           position:
             Cesium.Cartesian3
               .fromDegrees(
@@ -1289,7 +1290,7 @@ function renderInferredVolume(frame) {
 
           disableDepthTestDistance:
             0
-        });
+        },supportStyle.alpha,volumePercent);
 
         renderedPoints++;
         confidenceSum +=
@@ -2727,6 +2728,7 @@ function renderHybridTracks(index) {
   hybridSource.entities.suspendEvents();
   clearHybridTrackVolumeCollection();
   const showTrackVolumes = useTrackSpecificVolume(index);
+  const volumePercent=Number($("volumeOpacity").value);
   if (showTrackVolumes) hybridTrackVolumeCollection = scene.primitives.add(new Cesium.PointPrimitiveCollection());
   try {
     hybridSource.entities.removeAll();
@@ -2788,16 +2790,16 @@ function renderHybridTracks(index) {
           // The volume analysis retains the full inferred profile; only
           // the user-visible dots follow the same dBZ cutoff as frame-wide.
           if (!shouldDisplayMeasuredTrackPoint(point,displayedMinimumDbz)) continue;
-          hybridTrackVolumeCollection.add({
+          addVolumeDisplayPoint(hybridTrackVolumeCollection,{
             position: Cesium.Cartesian3.fromDegrees(
               point.longitude,
               point.latitude,
               displayAltitude(point.altitude_m_amsl)
             ),
-            color: colourForDbzh(point.dbzh).withAlpha(point.alpha),
+            color: colourForDbzh(point.dbzh),
             pixelSize: trackPointSize(point.support_band),
             disableDepthTestDistance: 0
-          });
+          },point.alpha,volumePercent);
         }
 
         // Critical visibility contract: track segmentation decides WHERE
@@ -2809,7 +2811,7 @@ function renderHybridTracks(index) {
           if (measured.representative_dbzh < displayedMinimumDbz) continue;
           const rgb=displayRgb(measured.source_category);
           if (!rgb) continue;
-          hybridTrackVolumeCollection.add({
+          addVolumeDisplayPoint(hybridTrackVolumeCollection,{
             position: Cesium.Cartesian3.fromDegrees(
               measured.longitude,
               measured.latitude,
@@ -2820,7 +2822,7 @@ function renderHybridTracks(index) {
             // This projected 2-D source intensity must not disappear
             // behind inferred vertical points or 3-D terrain.
             disableDepthTestDistance: Number.POSITIVE_INFINITY
-          });
+          },1,volumePercent);
         }
       }
 
@@ -4289,6 +4291,17 @@ $("dopplerOpacity").addEventListener("input", event => {
   dopplerOverlayTransition.setOpacity(
     opacity
   );
+  scene.requestRender();
+});
+
+// Display-only point transparency: retained measured source reflectivity and
+// empirical 3-D intensity calculations do not change. No radar/2-D surface
+// opacity or Doppler opacity is altered.
+$("volumeOpacity").addEventListener("input", event => {
+  const percent=Number(event.target.value);
+  $("volumeOpacityValue").textContent=`${percent}%`;
+  setVolumeDisplayOpacity(inferredCollection,percent);
+  setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
   scene.requestRender();
 });
 

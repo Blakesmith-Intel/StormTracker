@@ -92,7 +92,7 @@ import {
   pruneRadarFrames
 } from "./storage.js?v=9.8.3";
 
-import { buildSharedProductTimeline } from "./shared-product-timeline-v1.js?v=operational-v9-7";
+import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./shared-product-timeline-v1.js?v=9.16-nearest-observation";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
@@ -3179,7 +3179,7 @@ async function showHybridFrame(index) {
       : (
           `Frame ${hybridFrameIndex + 1}/${hybridFrames.length} · ` +
           `${formatProductTime(frame.observedUtc, { compact: true })} · ` +
-          `${loadedWithDoppler ? "shared radar / Doppler history" : "radar tracking history"}`
+          `${loadedWithDoppler ? (dopplerStateForFrame(hybridFrameIndex)?.pairings?.some(pair => pair.matched) ? "radar + nearest measured Doppler" : "RADAR ONLY — Doppler unavailable") : "radar tracking history"}`
         ),
     "ok"
   );
@@ -3388,17 +3388,18 @@ async function loadHybridSequence(automatic = false) {
     );
   }
 
-  const shared = buildSharedProductTimeline(times, sources.histories, sources.latestRecords, selectedSourceRadars());
-  shared.requestedRadarIds = selectedSourceRadars();
+  // Match each genuine reflectivity observation against its nearest real
+  // Doppler product within eight minutes; never relabel source timestamps.
+  const shared = buildRadarPrimaryProductTimeline(
+    times, sources.histories, sources.latestRecords, selectedSourceRadars(), 8
+  );
 
   // Radar-only playback must advance on new reflectivity even at sites that
   // also have a Doppler product. Doppler availability gates automatic refresh
   // only while the user has explicitly enabled the Doppler overlay.
-  const dopplerGatedRefresh =
-    automaticRefreshUsesDopplerGate(
-      withDoppler,
-      shared.requestedRadarIds
-    );
+  // A missing Doppler source cannot delay a valid radar observation.
+  // Unmatched radar frames display no Doppler rather than fabricated winds.
+  const dopplerGatedRefresh = false;
 
   const needsHistoricalRebuild =
     automatic
@@ -3440,7 +3441,7 @@ async function loadHybridSequence(automatic = false) {
   for (const key of dopplerFrameCache.keys()) if (!discoveredImages.has(key)) dopplerFrameCache.delete(key);
   const availableEndUtc =
     automaticRefreshEndUtc({
-      withDoppler,
+      withDoppler: false,
       radarTimes:
         times,
       sharedEndUtc:
@@ -3475,7 +3476,7 @@ async function loadHybridSequence(automatic = false) {
     return;
   }
   const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(availableEndUtc)) : times;
-  const timeline = withDoppler ? shared : radarHistoryTimeline(radarTimes, shared);
+  const timeline = radarHistoryTimeline(radarTimes, shared);
   if (!timeline.entries.length) throw new Error("No matching source history available. The current loop is retained.");
   const frames = [], states = [], failures = [], failureDiagnostics = [];
   let newestFailure = "";
@@ -3499,8 +3500,8 @@ async function loadHybridSequence(automatic = false) {
     ]);
     const availability = sourceFrameLoadDecision({
       radarLoad, dopplerLoad,
-      requiresDoppler: withDoppler,
-      requiredRadarIds: shared.radarIds
+      requiresDoppler: false,
+      requiredRadarIds: shared.requestedRadarIds
     });
     if (!availability.accepted) {
       failures.push(entry.observedUtc);
@@ -3738,7 +3739,7 @@ async function loadHybridSequence(automatic = false) {
   const frameFailures = summariseSkippedObservedFrames(failureDiagnostics);
   $("sharedHistoryNote").textContent =
     `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
-    (withDoppler ? " time-matched radar + Doppler frames" : " reflectivity frames") +
+    (withDoppler ? " reflectivity frames (nearest real Doppler where available)" : " reflectivity frames") +
     (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
     ` (${range})` +
     (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +
@@ -3749,7 +3750,7 @@ async function loadHybridSequence(automatic = false) {
   $("autoRefreshNote").textContent =
     needsHistoricalRebuild
       ? "Auto update: historical cache expanded; loop rebuilt chronologically."
-      : `${withDoppler ? "Doppler: 30-min loop. " : ""}Auto update: checks ${dopplerGatedRefresh ? "matching radar + Doppler products" : "radar images"} every 5 minutes.`;
+      : `${withDoppler ? "Doppler: closest actual source ≤8 min; radar-only if unmatched. " : ""}Auto update: checks radar images every 5 minutes.`;
   if (
     selectedRadarRegion() !== "SEQ"
     && !["66","50","08"].includes(

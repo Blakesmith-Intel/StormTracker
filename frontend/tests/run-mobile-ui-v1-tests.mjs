@@ -49,4 +49,4 @@ assert.match(js,/cameraPerformance\.pulse\(\)/);
 assert.match(js,/SingleTileImageryProvider/);
 assert.match(js,/createDopplerLayerTransition/);
 assert.match(js,/Math\.max\(\s*1\.0,\s*base \* scale/);
-console.log('Mobile UI checks passed: V9.13.0 keeps river gauges and flood closures with zoom-limited Queensland label decluttering and only unplanned power outages.');
+console.log('Mobile UI checks passed: V9.13.1 keeps river gauges and flood closures with zoom-limited Queensland label decluttering and only unplanned power outages.');

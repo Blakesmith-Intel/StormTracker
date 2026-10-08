@@ -110,3 +110,22 @@ route continued to return its four legacy records.
 This documentation-only PR refreshes the browser preview from the
 candidate branch and does **not** merge V9.14 or V9.15 into production.
 Verify the current live map presentation before release acceptance.
+
+
+## V9.15.1 live preview refresh — 40 dBZ volume floor (9 October 2026)
+
+The V9.15.1 foreground storm-ID preview has been visually accepted. The
+latest adjustment limits **rendered volumetric reflectivity to >=40 dBZ**,
+both frame-wide and track-specific, including the measured-reflectivity
+footprint projection. Controls default to 40 dBZ and only allow 40–60 dBZ.
+
+The display-only filter does not alter published BoM 2-D radar imagery,
+Doppler, underlying volume inference, storm identity, intensity categories,
+science metrics or label/point pairing. V9.15.1 branch regression passed
+at commit `e61dc1128f3c0727c87a268ef693cdbe9cfca35e`; this
+documentation-only change triggers Pages to rebuild the isolated
+`/preview/v9.15.1/` folder from the latest V9.15.1 candidate.
+
+Do not promote or tag V9.15.1 from this refresh. Root production frontend
+and V9.15.0 immutable restoration points stay untouched until the user
+visually verifies the 40 dBZ filter.

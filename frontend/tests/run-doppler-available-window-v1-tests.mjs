@@ -53,6 +53,8 @@ assert.match(source,/hybridCombinedSchedule = isCombined \? combinedSchedule : \
 assert.match(source,/lastCombinedDopplerLatestUtc = isCombined/);
 assert.match(source,/if\(isCombined && automatic\) hybridFrameIndex=0/);
 assert.match(source,/hasNewDopplerWindow\(\) && hybridCombinedSchedule.length/);
+assert.match(source,/Same source timestamp: refresh metadata only/);
+assert.match(source,/Never jump the wind/);
 assert.match(source,/refreshIndependentDopplerHistory\(false\)/);
 assert.match(source,/independentDopplerRefresh = createLiveLoopRefresh/);
 assert.match(source,/Auto update: checking every 5 min/);

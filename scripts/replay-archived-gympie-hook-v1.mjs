@@ -42,7 +42,7 @@ for(const entry of index){
   const result={tracks:tracks.map(trackToDict),segmentations:[segmentation]};
   const shapes=[];
   for(const track of result.tracks){
-    const observation=track.history.find(obs=>obs.observed_utc===frame.observedUtc);
+    const observation=track.history.find(obs=>Date.parse(obs.observed_utc)===Date.parse(frame.observedUtc));
     if(!observation)continue;
     const candidate=findExperimentalHookArc(frame,result,track.track_id);
     if(candidate)shapes.push(candidate);
@@ -74,7 +74,8 @@ for(const entry of index){
     "≥40dBZ pixels",record.measured_reflectivity_40dbz_pixel_count,
     "cells",record.segmented_measured_cells,
     "single-scan shape candidates",record.unconfirmed_shape_candidates,
-    "TWO-SCAN",record.two_scan_experimental_hook_candidates);
+    "TWO-SCAN",record.two_scan_experimental_hook_candidates,
+    hooks.length ? JSON.stringify(record.hook_candidates) : "");
   previousFrame=frame;previousResult=result;
 }
 const total=rows.reduce((n,item)=>n+item.two_scan_experimental_hook_candidates,0);

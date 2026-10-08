@@ -15,9 +15,9 @@ assert.match(js,/selectedTrackDisplayId/);
 assert.match(js,/showTrackLabels/);
 
 assert.match(js,/function updateRenderedTrackLabels\(\)/,
-  "Storm labels must be refreshable without advancing or replaying a frame.");
-assert.match(js,/if\(entity\?\.label\) entity\.label\.show=visible/,
-  "Labels on the existing Cesium entities must change immediately.");
+  "Storm identifier pairs must refresh without advancing or replaying a frame.");
+assert.match(js,/stormTrackLabelOverlay\.setVisible\(Boolean\(\$\("showTrackLabels"\)\?\.checked\)\)/,
+  "The Labels checkbox must immediately hide or show both the point and the label.");
 assert.match(js,/\$\("showTrackLabels"\)\.addEventListener\("change",updateRenderedTrackLabels\)/);
 
 assert.match(js,/showTrackThreatCone/);

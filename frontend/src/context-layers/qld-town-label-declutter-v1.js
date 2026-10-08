@@ -24,8 +24,24 @@ export function labelBudget(width, height, cameraHeight, mode = "street", camera
   return Math.max(0, budget);
 }
 
+// Shared font metrics: Cesium rendering and decluttering must use identical
+// typography, particularly after resizing between mobile and desktop widths.
+export function townLabelTypography(width, population = 0) {
+  const desktop = Number(width) >= 700;
+  const major = Number(population) >= 10000;
+  const fontSize = desktop ? (major ? 16 : 15) : (major ? 13 : 12);
+  return {
+    fontSize,
+    font: desktop ? `bold ${fontSize}px sans-serif`
+      : (major ? "bold 13px sans-serif" : "12px sans-serif")
+  };
+}
+
 export function townLabelBox({ name, x, y, fontSize = 12 }) {
-  const textWidth = Math.min(220, Math.max(24, name.length * fontSize * 0.60));
+  // Allow additional width for the heavier desktop glyphs; conservative
+  // estimate avoids overlapping rural names at oblique camera angles.
+  const textWidth = Math.min(280, Math.max(24, name.length * fontSize *
+    (fontSize >= 15 ? 0.66 : 0.60)));
   const halfWidth = textWidth / 2 + 7;
   const halfHeight = fontSize * 0.65 + 4;
   return {
@@ -118,7 +134,7 @@ export function layoutTownLabels({
         place.y < margin || place.y > height - margin) continue;
     const rect = townLabelBox({
       name: String(place.name ?? ""), x: place.x, y: place.y,
-      fontSize: place.population >= 10000 ? 13 : 12
+      fontSize: townLabelTypography(width, place.population).fontSize
     });
     if (rect.left < margin || rect.right > width - margin ||
         rect.top < margin || rect.bottom > height - margin) continue;

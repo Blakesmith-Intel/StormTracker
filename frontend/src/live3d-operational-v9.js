@@ -111,7 +111,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.12.4";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.13.3";
 
 import {
   createQueenslandStateBorderLayer
@@ -312,16 +312,18 @@ if (new URLSearchParams(window.location.search).has("qaTownLabels")) {
     labelMode: queenslandTownLabels?.mode ?? "unloaded",
     cameraHeight: queenslandTownLabels?.cameraHeight ?? null,
     cameraPitchDegrees: queenslandTownLabels?.cameraPitchDegrees ?? null,
-    labelCalculations: queenslandTownLabels?.calculationCount ?? 0
+    labelCalculations: queenslandTownLabels?.calculationCount ?? 0,
+    controllerTarget: mapCamera?.getState?.() ?? null
   });
   // Development-only reproducible camera positions for mobile visual QA.
   window.__stormtrackerTownLabelTestCamera = (longitude, latitude, height, pitch) => {
-    // Camera range is distance from the named town, not altitude above a
-    // potentially offset view. Keep the town at the visual centre.
-    viewer.camera.lookAt(
-      Cesium.Cartesian3.fromDegrees(longitude, latitude, 0),
-      new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(pitch), height)
-    );
+    // The app corrects camera mutations that bypass its controller.
+    // Move through that controller so the intended view stays on Birdsville
+    // throughout delayed imagery/terrain refinement and the visual test.
+    mapCamera.setView({
+      longitude, latitude, targetHeight:0, range:height,
+      heading:0, pitch:Cesium.Math.toRadians(pitch)
+    });
     queenslandTownLabels?.draw(true);
     scene.requestRender();
   };

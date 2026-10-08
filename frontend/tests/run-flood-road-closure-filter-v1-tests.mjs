@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-
 import {
   filterFloodRoadClosures,
   isActiveFloodRoadClosure,
@@ -7,195 +6,60 @@ import {
   isRoadClosureEvent
 } from "../src/context-layers/flood-road-closure-filter-v1.js";
 
+const referenceTime=Date.parse("2026-10-09T00:00:00+10:00");
 function event({
-  id,
-  status = "Published",
-  event_type = "Flooding",
-  event_subtype = "",
-  event_due_to = "",
-  impact_type = "Closures",
-  description = "",
-  duration = null
-}) {
-  return {
-    type: "Feature",
-    geometry: {
-      type: "Point",
-      coordinates: [153, -27]
-    },
-    properties: {
-      id,
-      status,
-      event_type,
-      event_subtype,
-      event_due_to,
-      description,
-      ...(duration ? { duration } : {}),
-      impact: {
-        impact_type
-      },
-      road_summary: {
-        road_name: "Test Road"
-      }
-    }
-  };
+  id, status="Published", event_type="Flooding",
+  event_subtype="Flash flooding",event_due_to="",
+  impact_type="Closures",impact_subtype="Road closed to all traffic",
+  description="",duration=null
+}={}){
+  return {type:"Feature",geometry:{type:"Point",coordinates:[153,-27]},
+    properties:{id,status,event_type,event_subtype,event_due_to,description,
+      ...(duration?{duration}:{}),
+      impact:{impact_type,impact_subtype},
+      road_summary:{road_name:"Test Road"}}};
 }
 
-const floodClosure = event({
-  id: "flood-closure"
+const permitted=[
+  event({id:"flash",event_subtype:"Flash flooding"}),
+  event({id:"long-term",event_subtype:"Long-term flooding"}),
+  event({id:"earlier",event_type:"Hazard",event_subtype:"Road damage",event_due_to:"Earlier flooding"}),
+  event({id:"heavy-rain",event_type:"Hazard",event_subtype:"Road damage",event_due_to:"Heavy rain"})
+];
+for(const f of permitted){
+  assert.equal(isFloodRelatedRoadEvent(f),true, f.properties.id);
+  assert.equal(isRoadClosureEvent(f),true, f.properties.id);
+  assert.equal(isActiveFloodRoadClosure(f,referenceTime),true,f.properties.id);
+}
+const rejected=[
+  ["no-all-traffic",event({id:"not-all",impact_subtype:"Road closed to through traffic"})],
+  ["restriction",event({id:"restriction",impact_type:"Restrictions"})],
+  ["water-over-road",event({id:"water",event_type:"Hazard",event_subtype:"Road damage",event_due_to:"Water over road"})],
+  ["earlier-flash",event({id:"earlier-flash",event_type:"Hazard",event_subtype:"Road damage",event_due_to:"Earlier flash flooding"})],
+  ["flooding-generic",event({id:"flooding",event_subtype:"",event_due_to:""})],
+  ["crash-mention",event({id:"description",event_type:"Crash",event_subtype:"",event_due_to:"Other",description:"Flash flooding in free text"})],
+  ["planned",event({id:"planned",status:"Draft"})],
+  ["ended",event({id:"ended",duration:{end:"2026-10-08T23:00:00+10:00"}})],
+  ["future",event({id:"future",duration:{start:"2026-10-09T01:00:00+10:00"}})]
+];
+for(const [name,f] of rejected)
+  assert.equal(isActiveFloodRoadClosure(f,referenceTime),false,name);
+
+assert.equal(isActiveFloodRoadClosure(event({
+  id:"local-time",duration:{start:"2026-10-08T23:30:00",end:"2026-10-09T00:30:00"}
+}),referenceTime),true,"Published timezone-less records are interpreted as AEST");
+
+const laidley=event({
+  id:750590,event_type:"Hazard",event_subtype:"Road damage",
+  event_due_to:"Earlier flooding",
+  duration:{start:"2026-06-30T14:26:00+10:00",end:"2026-11-30T14:26:00+10:00"}
 });
+assert.equal(isActiveFloodRoadClosure(laidley,referenceTime),true,
+  "QLDTraffic event 750590, Laidley Creek West Road, must pass the exact rule");
 
-assert.equal(
-  isFloodRelatedRoadEvent(floodClosure),
-  true
-);
-assert.equal(
-  isRoadClosureEvent(floodClosure),
-  true
-);
-assert.equal(
-  isActiveFloodRoadClosure(floodClosure),
-  true
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "flood-restriction",
-      impact_type: "Restrictions"
-    })
-  ),
-  false,
-  "Flood restrictions must not be displayed as closures."
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "rain-closure",
-      event_type: "Hazard",
-      event_due_to: "Heavy rain",
-      impact_type: "Closures"
-    })
-  ),
-  false,
-  "Heavy rain alone is not a flood classification."
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "water-over-road",
-      event_type: "Hazard",
-      event_due_to: "Water over road",
-      impact_type: "Closures"
-    })
-  ),
-  true,
-  "TMR water-over-road cause is explicitly flood related."
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "description-only",
-      event_type: "Crash",
-      event_due_to: "Other",
-      impact_type: "Closures",
-      description: "Flooding mentioned only in free text."
-    })
-  ),
-  false,
-  "Free-text keyword matches must never promote an unrelated event."
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "not-published",
-      status: "Draft"
-    })
-  ),
-  false
-);
-
-const fixedNow =
-  Date.parse("2026-10-08T00:00:00+10:00");
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "future-flood-closure",
-      duration: {
-        start: "2026-10-09T00:00:00+10:00"
-      }
-    }),
-    fixedNow
-  ),
-  false,
-  "Published future flood closures must not be shown yet."
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "expired-flood-closure",
-      duration: {
-        end: "2026-10-07T23:00:00+10:00"
-      }
-    }),
-    fixedNow
-  ),
-  false,
-  "Published expired flood closures must not remain on the map."
-);
-
-assert.equal(
-  isActiveFloodRoadClosure(
-    event({
-      id: "current-naive-qld-time",
-      duration: {
-        start: "2026-10-07T23:30:00",
-        end: "2026-10-08T00:30:00"
-      }
-    }),
-    fixedNow
-  ),
-  true,
-  "Timezone-less QLDTraffic times must be interpreted as Queensland local time."
-);
-
-const filtered = filterFloodRoadClosures({
-  type: "FeatureCollection",
-  features: [
-    floodClosure,
-    event({
-      id: "flood-restriction",
-      impact_type: "Restrictions"
-    }),
-    event({
-      id: "water-over-road",
-      event_type: "Hazard",
-      event_due_to: "Water over road"
-    }),
-    event({
-      id: "crash",
-      event_type: "Crash",
-      event_due_to: "Other"
-    })
-  ]
-}, fixedNow);
-
-assert.deepEqual(
-  filtered.features.map(
-    feature => feature.properties.id
-  ),
-  [
-    "flood-closure",
-    "water-over-road"
-  ]
-);
-
-console.log(
-  "Flood road-closure checks passed: only current, published TMR flood-classified closures survive; future, expired, restricted, rain-only and free-text false positives are rejected."
-);
+const result=filterFloodRoadClosures({
+  type:"FeatureCollection",features:[...permitted,...rejected.map(([,x])=>x),laidley]
+},referenceTime);
+assert.deepEqual(result.features.map(f=>f.properties.id),
+  ["flash","long-term","earlier","heavy-rain",750590]);
+console.log("PASS QLDTraffic closure classification: only current, published, all-traffic closures due to Flash flooding, Long-term flooding, Earlier flooding or Heavy rain, including Laidley Creek West event 750590");

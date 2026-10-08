@@ -111,7 +111,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.12.4";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.13.3";
 
 import {
   createQueenslandStateBorderLayer

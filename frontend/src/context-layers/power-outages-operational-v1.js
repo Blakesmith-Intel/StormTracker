@@ -523,7 +523,7 @@ export function initialiseOperationalPowerOutages({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#powerOutageInfo,#floodRoadClosureInfo"
+            "#nav,#powerOutageInfo,#floodRoadClosureInfo,#riverGaugeInfo"
           );
 
       if (blockedControl) {

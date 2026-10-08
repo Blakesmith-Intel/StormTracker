@@ -131,11 +131,11 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.12.0";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.14.0";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.13.4";
+} from "./context-layers/power-outages-operational-v1.js?v=9.14.0";
 
 import {
   initialiseOperationalRiverGauges

@@ -273,6 +273,9 @@ dialog::backdrop { background:#0009; }
 #floodRoadClosureStatus[data-kind="ok"] {
   color:#99e2b7;
 }
+#floodRoadClosureStatus[data-kind="warning"] {
+  color:#ffc44d;
+}
 .map-info-card {
   position:absolute;
   z-index:850;

@@ -1,0 +1,49 @@
+name: Browser smoke V9.14 operational context
+
+on:
+  push:
+    branches:
+      - feature/v9.14.0-source-freshness
+    paths:
+      - "frontend/**"
+      - "scripts/smoke-qld-town-label-production-ui.mjs"
+      - ".github/workflows/smoke-v9-14-context.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop-and-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Regression gate
+        run: npm test
+      - name: Set up temporary automated test browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Serve branch assets for test only
+        run: |
+          python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-v9-14-preview.log 2>&1 &
+          sleep 2
+          curl --fail --silent --show-error http://127.0.0.1:8765/live3d-operational-v9.html > /dev/null
+      - name: Desktop/mobile labels, state border, basemap and incident layer controls
+        run: |
+          # The complete CI smoke should finish within eight minutes.
+          # A hung WebGL render or Playwright evaluate must not consume
+          # the full Actions runner lifetime without clear failure.
+          timeout --signal=TERM --kill-after=15s 480s node scripts/smoke-qld-town-label-production-ui.mjs
+      - name: Preserve QA screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stormtracker-v9-14-mobile-desktop-qa
+          path: qa-screenshots/
+          if-no-files-found: ignore
+          retention-days: 7

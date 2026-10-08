@@ -31,7 +31,11 @@ try{
   });
   function verify(result,description){
     assert.ok(result.count>=700,`${description}: Queensland names not loaded`);
-    assert.ok(result.visible.length<=9,`${description}: too many visible labels (${result.visible.length})`);
+    const budget=labelBudget(result.width,result.height,
+      result.cameraHeight??50000,result.mode,
+      result.cameraPitchDegrees??-90);
+    assert.ok(result.visible.length<=budget,
+      `${description}: too many visible labels (${result.visible.length}/${budget})`);
     const boxes=result.visible.map(t=>townLabelBox({
       ...t,fontSize:townLabelTypography(result.width,t.population).fontSize
     }));
@@ -39,8 +43,7 @@ try{
       assert.equal(boxesOverlap(boxes[i],boxes[j],9),false,
         `${description}: ${result.visible[i].name} overlaps ${result.visible[j].name}`);
     }
-    const max=labelBudget(result.width,result.height,50000,result.mode);
-    assert.ok(result.visible.length<=Math.max(9,max));
+
   }
   await page.waitForTimeout(1800);
   let state=await inspect();

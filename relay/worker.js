@@ -20,6 +20,8 @@ import {
   BOM_RIVER_TIDE_GAUGE_QUERY_URL
 } from "../frontend/src/context-layers/river-gauges-v1.js";
 
+import {parseBomRecentWaterLevels} from "../frontend/src/context-layers/bom-recent-river-history-v1.js";
+
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
 
@@ -874,6 +876,38 @@ async function relayRiverHeightBulletins(
   );
 }
 
+
+const QLD_RECENT_PRODUCT_IDS = new Set(
+  Array.from({length:12},(_,i)=>"IDQ"+(65388+i))
+);
+// The existing relay handles CORS. No new server, storage or infrastructure.
+async function relayRiverRecentHistory(request,incoming,origin){
+  const product=String(incoming.searchParams.get("product")??"").toUpperCase();
+  const station=String(incoming.searchParams.get("station")??"");
+  if(!QLD_RECENT_PRODUCT_IDS.has(product)||!new RegExp("^\\d{5,7}$").test(station))
+    return errorResponse("Invalid QLD BoM recent-history station",400,origin);
+  const url="https://www.bom.gov.au/fwo/"+product+"/"+product+"."+station+".tbl.shtml";
+  let response;
+  try {
+    response=await fetch(url,{headers:{Accept:"text/html"},
+      cf:{cacheEverything:true,cacheTtl:300}});
+  }catch {
+    return errorResponse("BoM recent-data source unavailable",502,origin);
+  }
+  if(!response.ok)return errorResponse(
+    "BoM recent-data HTTP "+response.status,502,origin);
+  const html=await response.text();
+  if(html.length>1200000)return errorResponse("BoM recent-data response too large",502,origin);
+  const samples=parseBomRecentWaterLevels(html,{nowMs:Date.now(),maxAgeHours:48});
+  if(!samples.length)return errorResponse("BoM station has no usable recent observations",502,origin);
+  const headers=corsHeaders(origin);
+  headers.set("Content-Type","application/json; charset=utf-8");
+  headers.set("Cache-Control","public, max-age=300");
+  return new Response(request.method==="HEAD"?null:JSON.stringify({
+    format:"StormTrackerBomRecentRiverHistoryV1",product,station,samples
+  }),{status:200,headers});
+}
+
 async function relayWmts(request, incoming, origin) {
   const layer =
     incoming.searchParams.get("LAYER");
@@ -1375,6 +1409,10 @@ export default {
         request,
         origin
       );
+    }
+
+    if (incoming.pathname === "/river-recent-history") {
+      return relayRiverRecentHistory(request,incoming,origin);
     }
 
     if (incoming.pathname === "/wmts") {

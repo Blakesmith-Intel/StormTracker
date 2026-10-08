@@ -107,7 +107,7 @@ import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.13.0";
+} from "./context-layers/basemap-manager-v1.js?v=9.13.1";
 
 import {
   createQueenslandTownLabelLayer
@@ -139,7 +139,7 @@ import {
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.13.0";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.13.1";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,

@@ -1,0 +1,25 @@
+name: Probe BoM historical river data feasibility
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.13.1-bom-historical-bootstrap
+    paths:
+      - "scripts/probe-bom-recent-series-v1.mjs"
+      - ".github/workflows/probe-bom-historical-v9-13-1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-public-recent-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Inspect live BoM per-gauge historic resources
+        run: node scripts/probe-bom-recent-series-v1.mjs

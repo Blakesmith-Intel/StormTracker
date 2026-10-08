@@ -48,8 +48,14 @@
       <div id="powerOutageStatus" class="note" role="status">Energex + Ergon + Essential Energy · unplanned outages</div>
       <div class="layer-row river-gauge-row"><label><input id="showRiverGauges" type="checkbox" checked> <span class="river-gauge-key" aria-hidden="true"></span> Flood signals</label><button id="refreshRiverGaugesButton" type="button">Refresh</button></div>
       <div id="riverGaugeStatus" class="note" role="status">BoM · moderate/major flood · rapid rise above minor · unusual tidal rise</div>
-      <div class="layer-row qfd-rescue-row"><label><input id="showQfdTechnicalRescues" type="checkbox"> <span class="qfd-rescue-key" aria-hidden="true"></span> QFD technical rescue</label><button id="refreshQfdTechnicalRescuesButton" type="button">Refresh</button></div>
-      <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · public technical rescues only; swift-water / vertical subtype not specified</div>
+      <div class="layer-row qfd-rescue-row"><label><input id="showQfdTechnicalRescues" type="checkbox"> QFD rescue &amp; assistance</label><button id="refreshQfdTechnicalRescuesButton" type="button">Refresh</button></div>
+      <div id="qfdSymbolLegend" class="qfd-symbol-legend" aria-label="QFD incident symbology">
+        <span><img data-qfd-group-icon="RESCUE TECHNICAL" alt="" aria-hidden="true"> Technical rescue</span>
+        <span><img data-qfd-group-icon="RESCUE ROAD CRASH" alt="" aria-hidden="true"> Road crash rescue</span>
+        <span><img data-qfd-group-icon="ASSIST PUBLIC" alt="" aria-hidden="true"> Assist public</span>
+      </div>
+      <div id="qfdSymbolStatus" class="note qfd-symbol-status" role="status">Checking QFD published incident symbols…</div>
+      <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · displaying only three public QFD grouped types</div>
       <div class="layer-row"><label><input id="showDopplerOverlay" type="checkbox"> Doppler overlay</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
       <div class="layer-row"><label><input id="showTrackVolumes" type="checkbox" checked> Track-specific 3-D</label><button id="openDetailsButton">Tracks / details</button></div>
       <div class="track-display-controls">
@@ -95,7 +101,7 @@
       <div id="powerOutageInfoRows" class="metric"></div>
     </section>
     <section id="qfdTechnicalRescueInfo" class="map-info-card qfd-rescue-info" aria-live="polite" hidden>
-      <header><div class="qfd-rescue-info-heading"><span class="qfd-rescue-key qfd-rescue-key-large" aria-hidden="true"></span><div><span class="map-info-kicker">QFD TECHNICAL RESCUE · SUBTYPE UNSPECIFIED</span><strong id="qfdTechnicalRescueInfoTitle">Technical rescue</strong></div></div><button id="closeQfdTechnicalRescueInfo" type="button" aria-label="Close QFD rescue details">×</button></header>
+      <header><div class="qfd-rescue-info-heading"><span class="qfd-rescue-key qfd-rescue-key-large" aria-hidden="true"></span><div><span class="map-info-kicker">QFD PUBLIC INCIDENT · GROUPED TYPE</span><strong id="qfdTechnicalRescueInfoTitle">Technical rescue</strong></div></div><button id="closeQfdTechnicalRescueInfo" type="button" aria-label="Close QFD rescue details">×</button></header>
       <div id="qfdTechnicalRescueInfoRows" class="metric"></div>
     </section>
     <section id="riverGaugeInfo" class="map-info-card river-gauge-info" aria-live="polite" hidden>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {
   labelBudget, townLabelBox, boxesOverlap, greatCircleKm,
-  rankQueenslandTowns, layoutTownLabels
+  rankQueenslandTowns, layoutTownLabels, townLabelTypography
 } from "../src/context-layers/qld-town-label-declutter-v1.js";
 
 assert.equal(labelBudget(390, 350, 2_000_000), 0, "No planetary-scale wall of labels");
@@ -22,6 +22,30 @@ assert.equal(labelBudget(160, 350, 10_000), 0, "Tiny map viewport does not get c
 assert.ok(labelBudget(1200, 800, 50_000, "qld-imagery") <= 28);
 assert.equal(greatCircleKm({latitude:-25,longitude:139},{latitude:-25,longitude:139}),0);
 
+assert.deepEqual(townLabelTypography(390,115),{
+ fontSize:12,font:"12px sans-serif"
+});
+assert.deepEqual(townLabelTypography(390,18000),{
+ fontSize:13,font:"bold 13px sans-serif"
+});
+assert.deepEqual(townLabelTypography(1200,115),{
+ fontSize:15,font:"bold 15px sans-serif"
+});
+assert.deepEqual(townLabelTypography(1200,18000),{
+ fontSize:16,font:"bold 16px sans-serif"
+});
+assert.equal(townLabelTypography(699,100).fontSize,12);
+assert.equal(townLabelTypography(700,100).fontSize,15);
+const adjacent=[
+ {id:"birdsville",name:"Birdsville",population:115,priority:120,x:130,y:170},
+ {id:"bedourie",name:"Bedourie",population:110,priority:110,x:235,y:170}
+];
+assert.equal(layoutTownLabels({candidates:adjacent,width:390,height:350,
+ cameraHeight:30000,mode:"qld-imagery"}).length,2,
+ "Mobile keeps original smaller label collision geometry");
+assert.equal(layoutTownLabels({candidates:adjacent,width:1024,height:720,
+ cameraHeight:30000,mode:"qld-imagery"}).length,1,
+ "Desktop enlarged bold labels require larger spacing to avoid overlap");
 const b = townLabelBox({name:"Birdsville",x:100,y:100});
 assert.ok(boxesOverlap(b,townLabelBox({name:"Bedourie",x:101,y:100})));
 assert.equal(boxesOverlap(b,townLabelBox({name:"Bedourie",x:270,y:250})),false);

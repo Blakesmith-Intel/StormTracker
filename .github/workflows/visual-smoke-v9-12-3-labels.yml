@@ -1,10 +1,11 @@
-name: Visual QA V9.12.3 Queensland town labels
+name: Visual QA Queensland town labels
 
 on:
   workflow_dispatch:
   push:
     branches:
       - feature/v9.12.3-decluttered-town-labels
+      - feature/v9.12.4-imagery-only-town-labels
     paths:
       - "frontend/src/context-layers/qld-town-label-*"
       - "frontend/src/context-layers/qld-population-centres-v2.js"

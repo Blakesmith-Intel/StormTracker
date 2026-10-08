@@ -25,9 +25,9 @@ try {
   });
   const cases=[
     ["birdsville","qld-imagery",-70,9],
-    ["birdsville","street",-70,9],
+    ["birdsville","street",-70,0],
     ["brisbane","qld-imagery",-70,9],
-    ["brisbane","street",-70,9],
+    ["brisbane","street",-70,0],
     ["qld","qld-imagery",-70,5],
     ["qld","qld-imagery",-12,5]
   ];
@@ -40,8 +40,9 @@ try {
     const data=await page.evaluate(()=>window.visualQA.inspect());
     assert.ok(data.count>=700,`Expected official Queensland town names in ${place}`);
     assert.ok(data.visible<=limit,`${place}: ${data.visible} exceeds ${limit} label budget`);
+    if(mode==="street")assert.equal(data.visible,0,"Street cannot render any supplemental labels");
     assert.deepEqual(data.overlaps,[],`Overlapping town label names in ${place}`);
-    if(place==="birdsville")assert.ok(
+    if(place==="birdsville"&&mode==="qld-imagery")assert.ok(
       data.labels.some(x=>x.name.toLowerCase()==="birdsville"),
       "Birdsville label must remain at its actual map location"
     );
@@ -57,7 +58,7 @@ try {
     );
   }
   assert.deepEqual(jsErrors,[],"Browser JavaScript exceptions");
-  console.log("Visual browser smoke passed: real Cesium, mobile viewport, QLD government live data, Birdsville/Brisbane/continental views, no label collisions.");
+  console.log("Visual browser smoke passed: mobile Street has no supplemental labels, imagery retains rural places with zero collisions.");
 }finally {
   await browser.close();
 }

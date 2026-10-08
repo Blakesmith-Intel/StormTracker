@@ -43,6 +43,9 @@ try{
   await page.waitForTimeout(1800);
   let state=await inspect();
   verify(state,"Initial full UI");
+  assert.equal(state.mode,"street");
+  assert.equal(state.labelMode,"street");
+  assert.equal(state.visible.length,0,"Initial Street mode must have NO StormTracker town labels");
   const screenshot = async (fileName) => {
     try {
       await page.screenshot({
@@ -68,11 +71,13 @@ try{
   await page.waitForTimeout(650);
   state=await inspect();
   verify(state,"After mobile-sized camera drag");
+  assert.equal(state.visible.length,0,"Map interactions in Street mode must never show supplemental town labels");
   await page.locator("#basemapSelect").selectOption("qld-imagery");
   await page.waitForTimeout(1000);
   state=await inspect();
   verify(state,"After imagery basemap switch");
   assert.equal(state.mode,"qld-imagery");
+  assert.equal(state.labelMode,"qld-imagery","Imagery must activate the label layer");
   // Once imagery tiles start refining, Chromium cannot obtain a stable
   // WebGL screenshot. The live imagery-mode collision and count assertions
   // above are still required; preserve before/after drag screenshots.
@@ -102,8 +107,28 @@ try{
         `Actual StormTracker Birdsville view must identify Birdsville. Visible: ${inspection.visible.map(t=>t.name).join(", ")}`);
     }
   }
+  // The user's specific regression: returning from satellite to Street
+  // must eliminate all supplemental place names, even after camera movement.
+  await page.locator("#basemapSelect").selectOption("street");
+  await page.waitForTimeout(650);
+  state=await inspect();
+  assert.equal(state.mode,"street");
+  assert.equal(state.labelMode,"street");
+  assert.equal(state.visible.length,0,"Imagery-to-Street must remove every supplemental town name");
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(x+9,y+5,{steps:6});
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  state=await inspect();
+  assert.equal(state.visible.length,0,"Street camera gestures must not resurrect labels");
+  await page.locator("#basemapSelect").selectOption("qld-imagery");
+  await page.waitForTimeout(550);
+  state=await inspect();
+  assert.equal(state.labelMode,"qld-imagery");
+  assert.ok(state.visible.length<=5,"Returning to QLD imagery must keep the phone clutter cap");
   assert.ok(await page.locator("#showPowerOutages").count()===1);
   assert.ok(await page.locator("#showFloodRoadClosures").count()===1);
   assert.ok(await page.locator("#showRiverGauges").count()===1);
-  console.log(`Full StormTracker UI browser smoke passed: ${state.count} town records, ${state.visible.length} visible after pan/switch, zero collisions; road/outage/gauge controls intact.`);
+  console.log(`Full StormTracker UI browser smoke passed: Street 0 supplemental town labels during drag and after switch-back; QLD imagery <=5 collision-free labels with ${state.count} town records; road/outage/gauge controls intact.`);
 }finally{await browser.close();}

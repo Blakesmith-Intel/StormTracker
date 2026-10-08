@@ -1,12 +1,15 @@
 // Screen-space layout of Queensland town names. All functions in this file
 // are deterministic and independent of Cesium, DOM and network access.
 export function labelBudget(width, height, cameraHeight, mode = "street", cameraPitchDegrees = -90) {
+  // Street/OpenStreetMap already embeds its own place names in imagery.
+  // Never draw a second StormTracker population-centre label layer there.
+  if (mode !== "qld-imagery") return 0;
   if (!Number.isFinite(width) || !Number.isFinite(height) ||
       width < 180 || height < 140) return 0;
   // Do not pepper the horizon with Queensland text at continental/planet scale.
   if (cameraHeight > 1800000) return 0;
   const area = width * height;
-  const density = mode === "street" ? 16000 : 11500;
+  const density = 11500;
   const cap = width < 600 ? 9 : 28;
   let budget = Math.min(cap, Math.floor(area / density));
   if (cameraHeight > 700000) budget = Math.min(budget, 5);
@@ -102,8 +105,7 @@ export function layoutTownLabels({
   const margin = 14;
   const boxes = [];
   const picked = [];
-  // Dense metropolitan labels should give way to already-present OSM
-  // street text. Sticky ranking reduces flicker during a slow pan.
+  // Sticky ranking reduces flicker during a slow pan in imagery mode.
   const sorted = [...candidates].sort((a, b) => {
     const rank = p => (Number(p.priority) || 0) +
       (prev.has(String(p.id)) ? 10 : 0);

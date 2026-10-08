@@ -10,6 +10,9 @@ export const QFD_JOB_TYPE_LABELS=Object.freeze({
   largeMultiRoadCrash:"RESCUE RTC LARGE MULTI"
 });
 
+// Requested means included in the situational-awareness scope, NOT proof of
+// current public availability, an exact rescue subtype, an SES tasking,
+// or an official road closure.
 // Exact-name classification only. Do not use keywords such as 'water',
 // 'mountain', 'extreme' or incident location to infer a rescue subtype.
 export function classifyQfdRescueJobType(jobType) {
@@ -21,13 +24,14 @@ export function classifyQfdRescueJobType(jobType) {
     case QFD_JOB_TYPE_LABELS.extraordinaryWater:
       return {category:"water",rescue:true,requested:true};
     case QFD_JOB_TYPE_LABELS.mountain:
-      // Mountain rescues may involve vertical methods but are not
-      // automatically classified as vertical rescue incidents.
-      return {category:"mountain",rescue:true,requested:false};
+      // Operationally relevant to QFD/SES; separate from vertical rescue.
+      return {category:"mountain",rescue:true,requested:true};
     case QFD_JOB_TYPE_LABELS.extremeWeather:
-      return {category:"weather-assistance",rescue:false,requested:false};
+      // Assistance can involve SES support even where no rescue is declared.
+      return {category:"weather-assistance",rescue:false,requested:true};
     case QFD_JOB_TYPE_LABELS.largeMultiRoadCrash:
-      return {category:"road-crash",rescue:true,requested:false};
+      // A possible traffic disruption, never proof of an official closure.
+      return {category:"road-crash",rescue:true,requested:true};
     default:
       return {category:"unverified",rescue:false,requested:false};
   }

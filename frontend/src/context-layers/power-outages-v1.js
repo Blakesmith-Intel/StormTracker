@@ -31,6 +31,11 @@ export const ERGON_OUTAGE_AREA_QUERY_URL =
   "https://services.arcgis.com/33eHbTVqo7gtiCE8/ArcGIS/rest/services/VwErgonOutages/FeatureServer/0/query"
   + OUTAGE_QUERY_SUFFIX;
 
+export const ENERGEX_OUTAGE_POINT_QUERY_URL =
+  ENERGEX_OUTAGE_AREA_QUERY_URL.replace("/0/query", "/1/query");
+export const ERGON_OUTAGE_POINT_QUERY_URL =
+  ERGON_OUTAGE_AREA_QUERY_URL.replace("/0/query", "/1/query");
+
 export const DEFAULT_ESSENTIAL_ENERGY_RELAY_URL =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/essential-energy-outages";
 
@@ -520,31 +525,79 @@ async function fetchText(
   }
 }
 
+// ArcGIS has a finite per-request maximum (2,000 records per layer).
+// Load all pages, never silently treat an incomplete first page as complete.
+export async function fetchPagedPowerOutageFeatures({
+  fetchImpl, url, provider, pageSize = 1000, maxPages = 12
+}) {
+  const features = [];
+  const seenPageIds = new Set();
+  for (let page = 0; page < maxPages; page += 1) {
+    const pageUrl = new URL(url);
+    pageUrl.searchParams.set("resultOffset", String(page * pageSize));
+    pageUrl.searchParams.set("resultRecordCount", String(pageSize));
+    const payload = await fetchJson(fetchImpl, pageUrl.toString(), provider);
+    if (payload?.error) throw new Error(
+      provider + " outage feed: " + (payload.error.message || "ArcGIS query error")
+    );
+    if (!Array.isArray(payload?.features)) throw new Error(
+      provider + " outage feed did not return a GeoJSON FeatureCollection"
+    );
+    if (payload.features.length) {
+      const key = payload.features.map(f => String(
+        f?.properties?.OBJECTID ?? f?.properties?.objectid ?? f?.id ?? ""
+      )).join("|");
+      if (seenPageIds.has(key)) throw new Error(
+        provider + " outage feed repeated a page; refusing incomplete data"
+      );
+      seenPageIds.add(key);
+    }
+    features.push(...payload.features);
+    if (payload.exceededTransferLimit !== true &&
+        payload.features.length < pageSize) return features;
+  }
+  throw new Error(provider + " outage feed exceeded safe pagination limit");
+}
+
 async function loadProvider({
   fetchImpl,
   provider,
   url,
+  pointUrl,
   nowMs
 }) {
-  const payload =
-    await fetchJson(
-      fetchImpl,
-      url,
-      provider
-    );
-
-  return {
-    provider,
-
-    payload:
-      filterCurrentPowerOutages(
-        annotateProvider(
-          payload,
-          provider
-        ),
-        nowMs
-      )
-  };
+  // Polygon and point are separate authoritative layers; a fault without an
+  // affected-area polygon still deserves an interactive operational marker.
+  const names = ["area", "point"];
+  const results = await Promise.allSettled([url, pointUrl].map((source, index) =>
+    fetchPagedPowerOutageFeatures({
+      fetchImpl, url: source, provider: provider + " " + names[index]
+    })
+  ));
+  const layerErrors = [];
+  const all = [];
+  for (let i = 0; i < results.length; i += 1) {
+    if (results[i].status === "fulfilled") all.push(...results[i].value);
+    else layerErrors.push({
+      provider: provider + " " + names[i],
+      message: results[i].reason?.message ?? String(results[i].reason)
+    });
+  }
+  if (results.every(r => r.status === "rejected")) {
+    throw new Error(layerErrors.map(x => x.message).join(" | "));
+  }
+  // Prefer a surveyed affected-area polygon where both layers publish the
+  // same incident. The point remains as a fallback when there is no polygon.
+  const unique = new Map();
+  const filtered = filterCurrentPowerOutages(annotateProvider({
+    type: "FeatureCollection", features: all
+  }, provider), nowMs);
+  for (const feature of filtered.features) {
+    if (!unique.has(String(feature.id))) unique.set(String(feature.id), feature);
+  }
+  return {provider, layerErrors, payload: {
+    type: "FeatureCollection", features: [...unique.values()]
+  }};
 }
 
 async function loadEssentialProvider({
@@ -604,6 +657,12 @@ export async function loadPowerOutages({
   ergonUrl =
     ERGON_OUTAGE_AREA_QUERY_URL,
 
+  energexPointUrl =
+    ENERGEX_OUTAGE_POINT_QUERY_URL,
+
+  ergonPointUrl =
+    ERGON_OUTAGE_POINT_QUERY_URL,
+
   essentialUrl =
     DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
 
@@ -628,13 +687,17 @@ export async function loadPowerOutages({
         provider:
           "Energex",
         url:
-          energexUrl
+          energexUrl,
+        pointUrl:
+          energexPointUrl
       },
       {
         provider:
           "Ergon",
         url:
           ergonUrl,
+        pointUrl:
+          ergonPointUrl,
         kind:
           "geojson"
       },
@@ -668,6 +731,8 @@ export async function loadPowerOutages({
                   request.provider,
                 url:
                   request.url,
+                pointUrl:
+                  request.pointUrl,
                 nowMs
               })
       )
@@ -693,6 +758,7 @@ export async function loadPowerOutages({
         available.push(
           provider
         );
+        failed.push(...(result.value.layerErrors ?? []));
 
         features.push(
           ...(
@@ -763,6 +829,12 @@ export function createPowerOutageLayer({
 
   ergonUrl =
     ERGON_OUTAGE_AREA_QUERY_URL,
+
+  energexPointUrl =
+    ENERGEX_OUTAGE_POINT_QUERY_URL,
+
+  ergonPointUrl =
+    ERGON_OUTAGE_POINT_QUERY_URL,
 
   essentialUrl =
     DEFAULT_ESSENTIAL_ENERGY_RELAY_URL,
@@ -880,6 +952,19 @@ export function createPowerOutageLayer({
         .stormTrackerPowerOutageProvider =
         summary.provider;
 
+      if (entity.billboard && typeof CesiumRef.PointGraphics === "function") {
+        // Cesium GeoJSON's default pin is easy to miss on satellite imagery.
+        // Replace with a high-contrast ground-clamped clickable outage node.
+        entity.billboard.show = false;
+        entity.point = new CesiumRef.PointGraphics({
+          pixelSize: 13,
+          color: unplannedColour,
+          outlineColor: outlineColour,
+          outlineWidth: 2,
+          heightReference: CesiumRef.HeightReference?.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
+        });
+      }
       if (
         entity.polygon
       ) {
@@ -939,6 +1024,8 @@ export function createPowerOutageLayer({
             fetchImpl,
             energexUrl,
             ergonUrl,
+            energexPointUrl,
+            ergonPointUrl,
             essentialUrl,
             queenslandBoundaryUrl
           });

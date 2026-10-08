@@ -2,7 +2,9 @@ name: Validate Gympie ST0027 higher radar elevations
 on:
   push:
     branches: [feature/severe-storm-radar-alerts-v1]
-    paths: [.github/workflows/multi-elevation-gympie-st0027.yml]
+    paths:
+      - .github/workflows/multi-elevation-gympie-st0027.yml
+      - scripts/multi-elevation-gympie-st0027.py
   workflow_dispatch:
 permissions:
   contents: read

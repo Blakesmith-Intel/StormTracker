@@ -436,13 +436,6 @@ export function createRiverGaugeLayer({
     force =
       false
   } = {}) {
-    if (
-      !dataSource.show
-      && !force
-    ) {
-      return currentFeatures;
-    }
-
     if (loading) {
       return loading;
     }
@@ -480,7 +473,7 @@ export function createRiverGaugeLayer({
         render({type:"FeatureCollection",features:alerts.features});
 
         lastLoadedAt =
-          Date.now();
+          observedAt;
 
         const summaries =
           currentFeatures.map(
@@ -578,14 +571,10 @@ export function createRiverGaugeLayer({
       return;
     }
 
-    if (
-      dataSource.show
-    ) {
-      refresh()
-        .catch(
-          () => {}
-        );
-    }
+    // Keep collecting observed water heights even when the visual layer is
+    // toggled off, otherwise a first-time alert has no measured rise history.
+    // This only works while the browser tab is open; no backend is required.
+    refresh().catch(() => {});
 
     timer =
       setInterval(

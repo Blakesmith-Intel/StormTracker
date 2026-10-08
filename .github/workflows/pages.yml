@@ -20,17 +20,52 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Validate frontend before publication
+      - name: Validate current production source
         run: npm test
+
+      # Preview subpaths share the trusted production github.io Origin,
+      # so existing Cloudflare relay CORS policies work unchanged.
+      - name: Checkout V9.14 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: feature/v9.14.0-source-freshness
+          path: preview-builds/v9.14.0
+          persist-credentials: false
+      - name: Checkout V9.15 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: feature/v9.15.0-qfd-technical-rescue
+          path: preview-builds/v9.15.0
+          persist-credentials: false
+      - name: Validate both candidates independently
+        run: |
+          (cd preview-builds/v9.14.0 && npm test)
+          (cd preview-builds/v9.15.0 && npm test)
+
+      - name: Stage isolated live previews without changing production
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0
+          cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
+          cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
+          printf 'V9.14.0 candidate %s\n' "$(git -C preview-builds/v9.14.0 rev-parse HEAD)" > frontend/preview/v9.14.0/BUILD.txt
+          printf 'V9.15.0 candidate %s\n' "$(git -C preview-builds/v9.15.0 rev-parse HEAD)" > frontend/preview/v9.15.0/BUILD.txt
+          test -f frontend/preview/v9.14.0/src/live3d-operational-v9.js
+          test -f frontend/preview/v9.15.0/src/live3d-operational-v9.js
+          git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
+          echo "Authorised-origin previews staged. Production root still V9.13.4."
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend
-      - name: Deploy to GitHub Pages
+      - name: Deploy production root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4

@@ -230,13 +230,15 @@ const cameraPerformance =
     scene
   });
 
+const DEFAULT_RADAR_SITE_ID = "66"; // Brisbane (Mt Stapylton)
+
 const CORE_HOME =
   Object.freeze({
     longitude:
-      153.05,
+      QLD_RADAR_SITES[DEFAULT_RADAR_SITE_ID].longitude,
 
     latitude:
-      -27.25,
+      QLD_RADAR_SITES[DEFAULT_RADAR_SITE_ID].latitude,
 
     targetHeight:
       5000,
@@ -976,9 +978,11 @@ function configureRadarSite() {
 for (const site of Object.values(QLD_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
   const option = document.createElement("option"); option.value = site.id;
   option.textContent = `${site.name}${site.dopplerProduct ? "" : " · radar only"}`;
-  $("radarSite").append(option);
+  if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
-
+// Start with a real single-radar site; SEQ remains selectable, never the default.
+$("radarSite").value = DEFAULT_RADAR_SITE_ID;
+configureRadarSite();
 
 function displayRgb(category) {
   return (

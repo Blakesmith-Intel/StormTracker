@@ -434,6 +434,24 @@ export function initialiseOperationalRiverGauges({
         }
     });
 
+  // Opt-in browser QA: verify only qualifying BoM flood signals are rendered.
+  if (
+    typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).has("qaFloodSignals")
+  ) {
+    window.__stormtrackerFloodDiagnostics = () => ({
+      visible: Boolean(layer.dataSource.show),
+      alertCount: layer.features.length,
+      states: layer.features.map(feature =>
+        feature.properties?.STORMTRACKER_DISPLAY_STATE ?? "unknown"
+      ),
+      matched: layer.diagnostics?.matchedCount ?? 0,
+      counts: layer.diagnostics?.floodSignalCounts ?? null,
+      historyStationCount: layer.historyStationCount,
+      loadedAt: layer.lastLoadedAt
+    });
+  }
+
   function showById(
     gaugeId
   ) {

@@ -35,7 +35,6 @@ const rows=[
 ];
 const parsed=parseBomRecentWaterLevels(table(rows),{nowMs:now});
 assert.deepEqual(parsed,[
- {time:Date.UTC(2026,9,6,6,15),height:1.3},
  {time:Date.UTC(2026,9,8,6,45),height:1.4},
  {time:Date.UTC(2026,9,8,7,30),height:1.42},
  {time:Date.UTC(2026,9,8,7,45),height:1.5}

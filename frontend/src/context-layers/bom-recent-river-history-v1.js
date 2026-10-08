@@ -1,4 +1,4 @@
-import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS} from "./river-flood-signals-v1.js?v=9.13.0";
+import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, tidalRiseBaseline, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
 
 // BoM publishes recent tabular readings alongside each public .plt.shtml
 // gauge plot. Parse only the first date/water-level table; never infer data
@@ -70,7 +70,7 @@ export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now())
   const sample=history[String(feature?.id??"")]??[];
   const valid=Array.isArray(sample)?sample.filter(x=>Number.isFinite(x?.time)): [];
   if(tidal){
-    if(valid.length>=10 && (valid.at(-1).time-valid[0].time)>=14*3600000)return null;
+    if(tidalRiseBaseline(valid,nowMs)!==null && latestRiseRate(valid,nowMs)!==null)return null;
   }else if(valid.length>=2){
     const sorted=[...valid].sort((a,b)=>a.time-b.time);
     if(sorted.at(-1).time>=nowMs-90*60000 &&

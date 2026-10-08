@@ -31,22 +31,32 @@ This file supersedes the older V9.9.1-era order in FUTURE_DEVELOPMENT_HANDOVER.m
    last successful source check, partial results and refresh failures. Keep
    radar and each provider independent. Do not replace real provider incidents
    with synthetic events.
-2. **QFD swift-water and vertical rescue incidents** (new wishlist items):
-   investigate whether the Queensland Fire Department officially publishes
-   legitimate, machine-readable, reusable and sufficiently current public
-   incident records for either rescue type. Keep **swift-water rescue** and
-   **vertical rescue** as separately selectable, independently classified
-   incident types, with clear incident status, official timestamps and
-   clickable source panels if a lawful public feed becomes available.
-   Use only officially released public records and permissible location
-   precision. Never scrape restricted dispatch, CAD, pager, operational
-   or internal emergency-services systems or reveal personal details.
-   Verify the true source classification rather than inferring swift-water
-   or vertical rescue from flood gauges, closures, rain, radar, terrain,
-   social posts or generic "rescue" categories. Confirm duplicate handling,
-   updates, stale/closed job removal, source links, polling limits and
-   geographic coverage independently for each rescue category.
-   **No verified public feed = that incident type remains blocked**.
+2. **QFD emergency response incident categories** (V9.15.0 draft):
+   include independently classified official **water rescue**, **vertical rescue**,
+   **mountain rescue**, **major multi-vehicle road crash rescue**, and
+   **extreme-weather assistance** records, with the distinct QFD labels:
+   `RESCUE WATER ALL TYPES`, `XE RESCUE WATER`, `RESCUE VERTICAL`,
+   `RESCUE MOUNTAIN RESCUE`, `RESCUE RTC LARGE MULTI`, and
+   `ASSIST EXTREME WEATHER`.
+   The water labels do not automatically mean *swift-water* conditions.
+   Mountain rescue is within SES situational-awareness scope but does not
+   prove SES attendance. Major road crashes can disrupt traffic but must not
+   be represented as confirmed closures without a linked authoritative road
+   closure record. Extreme-weather assistance is in scope regardless of
+   whether the job itself is labelled a rescue.
+   Exact labels from an internal QFD system may serve as reference vocabulary,
+   but data must come from a legitimately **public QFD incident record or
+   official publicly released incident title**, with matched incident ID,
+   publication rules and suitable location generalisation.
+   The existing public ESCAD `GroupedType` is too broad to distinguish the
+   requested jobs. The optional generic `RESCUE TECHNICAL` layer is separately
+   marked **subtype unspecified**, not a substitute for exact classifications.
+   Never access restricted CAD/dispatch systems, invent incidents, infer
+   subtype from rain/radar/gauges, or expose personal incident details.
+   Validate source coverage, classification, deduplication, expiry,
+   official links, polling and browser-only CORS before enabling live
+   specific-type indicators. Missing verified public classification keeps
+   the relevant indicator blocked.
 
 ## Permanently final wishlist item — observed lightning
 

@@ -2571,7 +2571,6 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     const frames=buildIndependentDopplerFrames(
       sources.histories.get(radarId),sources.latestRecords.get(radarId));
     const previous=independentDopplerFrames;
-    const previousNewestUtc=previous.at(-1)?.observedUtc;
     const previousIndex=independentDopplerIndexValue;
     const nextIndex=independentDopplerIndex(frames,previous,previousIndex);
     // The shared Play/Pause button belongs to the radar timeline.
@@ -2586,10 +2585,12 @@ async function refreshIndependentDopplerHistory(automatic=false) {
       updateIndependentDopplerUi();
       throw Error("No actual Doppler observations published for "+radarId);
     }
-    const newestChanged=Date.parse(frames.at(-1)?.observedUtc) >
-      Date.parse(previousNewestUtc ?? "1970-01-01T00:00:00Z");
+    // If a newly published wind frame could not be combined on the last
+    // attempt (e.g. transient missing radar tile), retry every five minutes
+    // until that real timestamp is incorporated, without falsely claiming
+    // the displayed shared loop has advanced.
     if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
-       newestChanged && hybridCombinedSchedule.length) {
+       hasNewDopplerWindow() && hybridCombinedSchedule.length) {
       $("autoRefreshNote").textContent =
         "New Doppler source frame · synchronising radar and wind loop…";
       if(!sequenceLoading) {

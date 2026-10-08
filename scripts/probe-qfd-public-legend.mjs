@@ -1,6 +1,6 @@
 import {fetchQfdPublicSymbolCatalog,qfdOfficialSymbolCatalog}
   from "../frontend/src/context-layers/qfd-public-symbols-v1.js";
-import {QFD_PUBLIC_GROUP_NAMES,QFD_ESCAD_ENDPOINT}
+import {QFD_PUBLIC_GROUP_NAMES,QFD_ESCAD_ENDPOINT,qfdPublicIncidentUrl}
   from "../frontend/src/context-layers/qfd-technical-rescues-v1.js";
 
 // Public-only source discovery. Do not use restricted CAD or login-based data.
@@ -78,3 +78,24 @@ console.log("PUBLIC_RENDERER_CONFIRMATION",JSON.stringify({
 if(Object.keys(catalog).length!==3) {
   console.error("WARNING: exact QFD grouped symbols incomplete; do not claim all are verified.");
 } else console.log("PASS three official QFD grouped incident icon assets found in public renderer");
+
+const knownFields=new Set((metadata.fields??[]).map(field=>field.name));
+const queryFields=new URL(qfdPublicIncidentUrl()).searchParams.get("outFields").split(",");
+console.log("PUBLIC_QUERY_SCHEMA",JSON.stringify({
+  required:queryFields,missing:queryFields.filter(field=>!knownFields.has(field)),
+  cors:metadataResponse.cors
+}));
+try{
+ const query=await request(qfdPublicIncidentUrl());
+ const result=JSON.parse(query.text);
+ console.log("PUBLIC_GROUP_QUERY",JSON.stringify({
+   httpSuccess:true,cors:query.cors,
+   responseType:result.type,featureCount:result.features?.length??null,
+   error:result.error?.message??null,
+   // Never write the live details of individual QFD jobs to Actions logs.
+   verifiedGroups:[...new Set((result.features??[]).map(f=>f.properties?.GroupedType))],
+   geometryTypes:[...new Set((result.features??[]).map(f=>f.geometry?.type))]
+ }));
+ if(result.error||!Array.isArray(result.features))
+   console.error("ERROR: actual public query unavailable; release gate blocked.");
+}catch(e){console.error("PUBLIC_GROUP_QUERY_ERROR",String(e).slice(0,200));}

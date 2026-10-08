@@ -139,7 +139,9 @@ function showRiverGaugeInfo(
     panel.hidden =
       true;
 
-    panel.dataset
+    $("qfdTechnicalRescueInfo")?.setAttribute("hidden","");
+
+  panel.dataset
       .gaugeId =
       "";
 
@@ -549,7 +551,7 @@ export function initialiseOperationalRiverGauges({
       const blockedControl =
         event.target
           ?.closest?.(
-            "#nav,#riverGaugeInfo,#floodRoadClosureInfo,#powerOutageInfo"
+            "#nav,#riverGaugeInfo,#floodRoadClosureInfo,#powerOutageInfo,#qfdTechnicalRescueInfo"
           );
 
       if (blockedControl) {

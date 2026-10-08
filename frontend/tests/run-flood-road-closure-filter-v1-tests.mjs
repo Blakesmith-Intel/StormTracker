@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   filterFloodRoadClosures,
+  filterLegacyFloodRoadClosures,
   isActiveFloodRoadClosure,
   isFloodRelatedRoadEvent,
   isRoadClosureEvent
@@ -62,4 +63,17 @@ const result=filterFloodRoadClosures({
 },referenceTime);
 assert.deepEqual(result.features.map(f=>f.properties.id),
   ["flash","long-term","earlier","heavy-rain",750590]);
+
+const legacy=filterLegacyFloodRoadClosures({type:"FeatureCollection",features:[
+  event({id:"legacy-water-over-road",event_type:"Hazard",
+    event_subtype:"Road damage",event_due_to:"Water over road"}),
+  event({id:"legacy-rain",event_type:"Hazard",
+    event_subtype:"Road damage",event_due_to:"Heavy rain"}),
+  event({id:"legacy-through",event_type:"Flooding",
+    impact_subtype:"Road closed to through traffic"})
+]},referenceTime);
+assert.deepEqual(legacy.features.map(x=>x.properties.id),
+  ["legacy-water-over-road","legacy-through"],
+  "The deployed V9.13 road endpoint must retain its existing broader classifications");
+console.log("PASS dual QLDTraffic policies — original v4 endpoint remains unchanged; strict V9.15 policy isolated");
 console.log("PASS QLDTraffic closure classification: only current, published, all-traffic closures due to Flash flooding, Long-term flooding, Earlier flooding or Heavy rain, including Laidley Creek West event 750590");

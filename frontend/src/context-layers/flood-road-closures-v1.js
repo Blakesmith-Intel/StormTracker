@@ -4,7 +4,7 @@ import {
   filterFloodRoadClosures,
   floodRoadClosureSummary,
   floodRoadGeometryParts
-} from "./flood-road-closure-filter-v1.js?v=9.15.0-closures";
+} from "./flood-road-closure-filter-v1.js?v=9.15.0-unplanned";
 
 export const QLD_TRAFFIC_ATTRIBUTION =
   "QLDTraffic · Queensland Department of Transport and Main Roads";

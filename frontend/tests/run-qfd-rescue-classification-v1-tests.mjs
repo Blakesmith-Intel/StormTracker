@@ -21,15 +21,31 @@ test("QFD water rescue types are recognised but not inferred",()=>{
   assert.equal(classifyQfdRescueJobType("RESCUE TECHNICAL").requested,false);
   assert.equal(classifyQfdRescueJobType("flooded road").requested,false);
 });
-test("Vertical rescue is separate from mountain rescue",()=>{
-  assert.equal(classifyQfdRescueJobType("Rescue Vertical").category,"vertical");
-  assert.equal(classifyQfdRescueJobType("Rescue Mountain Rescue").category,"mountain");
-  assert.equal(classifyQfdRescueJobType("Rescue Mountain Rescue").requested,false);
+test("Vertical and mountain rescue are both included, but remain distinct",()=>{
+  const vertical=classifyQfdRescueJobType("Rescue Vertical");
+  const mountain=classifyQfdRescueJobType("Rescue Mountain Rescue");
+  assert.deepEqual(vertical,{category:"vertical",rescue:true,requested:true});
+  assert.deepEqual(mountain,{category:"mountain",rescue:true,requested:true});
+  assert.notEqual(vertical.category,mountain.category);
 });
-test("Weather assistance and large multi RTC never become water or vertical rescue",()=>{
-  assert.equal(classifyQfdRescueJobType("Assist Extreme Weather").requested,false);
-  assert.equal(classifyQfdRescueJobType("Rescue RTC Large Multi").requested,false);
-  assert.equal(classifyQfdRescueJobType("Rescue RTC Large Multi").category,"road-crash");
+test("Extreme-weather assistance is in scope without falsely claiming a rescue",()=>{
+  assert.deepEqual(classifyQfdRescueJobType("Assist Extreme Weather"),
+    {category:"weather-assistance",rescue:false,requested:true});
+});
+test("Large multi RTC is included but must remain distinct from road closures",()=>{
+  const rtc=classifyQfdRescueJobType("Rescue RTC Large Multi");
+  assert.deepEqual(rtc,{category:"road-crash",rescue:true,requested:true});
+  assert.notEqual(rtc.category,"road-closure");
+  assert.notEqual(rtc.category,"water");
+});
+test("All six requested official job labels are eligible; unknown and grouped types are not",()=>{
+  for(const label of Object.values(QFD_JOB_TYPE_LABELS)){
+    assert.equal(classifyQfdRescueJobType(label).requested,true,label);
+  }
+  for(const label of ["RESCUE TECHNICAL","flooded road","flood rescue","road closure",
+    "ASSIST WEATHER","SES mountain operation"]){
+    assert.equal(classifyQfdRescueJobType(label).requested,false,label);
+  }
 });
 test("Public QFD ESCAD grouped type is insufficient for requested subtypes",()=>{
   const fields=["OBJECTID","Master_Incident_Number","GroupedType","Locality","CurrentStatus"];

@@ -57,7 +57,9 @@ export function initialiseOperationalQfdTechnicalRescues({
       img.title=officialSymbols[group]?"QFD public ArcGIS symbol":"Provisional symbol — QFD icon unavailable";
     }
     const note=$("qfdSymbolStatus");
-    if(note)note.textContent=symbolsAreOfficial()?"Official QFD ArcGIS icons":"Provisional icons · official QFD artwork not available from public layer";
+    if(note)note.textContent=symbolsAreOfficial()
+      ?"Official QFD incident icons · public ArcGIS GroupedType renderer"
+      :"Provisional icons · QFD symbology temporarily unavailable";
   }
   async function loadOfficialSymbols(){
     if(symbolLookup)return symbolLookup;
@@ -132,6 +134,9 @@ export function initialiseOperationalQfdTechnicalRescues({
     if(loading)return loading;
     loading=(async()=>{
       report({kind:"loading",message:"Checking QFD grouped incidents…"});
+      // Obtain the verified QFD GroupedType renderer before drawing incidents.
+      // Avoid a temporary flash of provisional icons on a normal connection.
+      await loadOfficialSymbols();
       const next=await fetchQfdPublicIncidents({fetchImpl});
       render(next);
       lastLoadedAt=now();

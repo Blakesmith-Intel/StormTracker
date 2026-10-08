@@ -10,16 +10,27 @@ const origin="https://blakesmith-intel.github.io";
 const base="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
 const upstream="https://data.qldtraffic.qld.gov.au/events_v2.geojson";
 async function request(url,withOrigin=false){
-  const response=await fetch(url,{
-    headers:{Accept:"application/json",...(withOrigin?{Origin:origin}:{})},
-    signal:AbortSignal.timeout(25000),cache:"no-store"
-  });
-  if(withOrigin)assert.equal(response.headers.get("access-control-allow-origin"),origin,
-    "CORS should allow the existing production/preview Pages origin");
-  assert.ok(response.ok,"Unexpected status "+response.status+" from "+new URL(url).pathname);
-  const payload=await response.json();
-  assert.ok(Array.isArray(payload.features),"Provider must return FeatureCollection");
-  return payload;
+  // Cloudflare can need a short propagation window immediately after deploy.
+  // Never treat a 404 as an empty incident feed; fail after bounded retries.
+  for(let attempt=0;attempt<7;attempt++){
+    const response=await fetch(url,{
+      headers:{Accept:"application/json",...(withOrigin?{Origin:origin}:{})},
+      signal:AbortSignal.timeout(25000),cache:"no-store"
+    });
+    if(response.status===404 && url.endsWith("/flood-road-closures-v9-15")
+       && attempt<6){
+      console.log("WAIT Cloudflare endpoint propagation, attempt "+(attempt+1));
+      await new Promise(resolve=>setTimeout(resolve,5000));
+      continue;
+    }
+    if(withOrigin)assert.equal(response.headers.get("access-control-allow-origin"),origin,
+      "CORS should allow the existing production/preview Pages origin");
+    assert.ok(response.ok,"Unexpected status "+response.status+" from "+new URL(url).pathname);
+    const payload=await response.json();
+    assert.ok(Array.isArray(payload.features),"Provider must return FeatureCollection");
+    return payload;
+  }
+  throw new Error("V9.15 endpoint never became available");
 }
 const [oldRoute,newRoute,official]=await Promise.all([
   request(base+"/flood-road-closures",true),

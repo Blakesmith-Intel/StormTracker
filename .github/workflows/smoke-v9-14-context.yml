@@ -16,7 +16,7 @@ permissions:
 jobs:
   desktop-and-mobile:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,7 +34,11 @@ jobs:
           sleep 2
           curl --fail --silent --show-error http://127.0.0.1:8765/live3d-operational-v9.html > /dev/null
       - name: Desktop/mobile labels, state border, basemap and incident layer controls
-        run: node scripts/smoke-qld-town-label-production-ui.mjs
+        run: |
+          # The complete CI smoke should finish within eight minutes.
+          # A hung WebGL render or Playwright evaluate must not consume
+          # the full Actions runner lifetime without clear failure.
+          timeout --signal=TERM --kill-after=15s 480s node scripts/smoke-qld-town-label-production-ui.mjs
       - name: Preserve QA screenshot evidence
         if: always()
         uses: actions/upload-artifact@v4

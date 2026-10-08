@@ -6,10 +6,15 @@ on:
     branches:
       - feature/v9.13.0-bom-flood-signal-filter
       - feature/v9.13.1-bom-historical-bootstrap
+      - feature/v9.13.2-flood-event-persistence-source-links
     paths:
       - "scripts/smoke-bom-flood-signal-browser.mjs"
       - ".github/workflows/visual-smoke-v9-13-flood-signals.yml"
       - "frontend/src/context-layers/river-gauge-layer-v1.js"
+      - "frontend/src/context-layers/river-flood-events-v1.js"
+      - "frontend/src/context-layers/official-source-links-v1.js"
+      - "frontend/src/context-layers/power-outages-operational-v1.js"
+      - "frontend/src/context-layers/flood-road-closures-operational-v1.js"
       - "frontend/src/context-layers/bom-recent-river-history-v1.js"
       - "scripts/smoke-bom-flood-signal-browser.mjs"
       - "frontend/src/context-layers/river-gauges-operational-v1.js"

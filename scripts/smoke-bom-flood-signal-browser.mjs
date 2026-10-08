@@ -89,6 +89,38 @@ try {
   await page.waitForTimeout(400);
   assert.ok((await inspect()).alertCount>=0,
     "Street switch must not disrupt flood screen");
+  // Render actual clickable, keyboard-safe Source anchors in each map
+  // panel inside the real mobile StormTracker DOM.
+  const sourceLinks=await page.evaluate(async()=>{
+    const module=await import("/src/context-layers/official-source-links-v1.js?v=9.13.2");
+    const scenarios=[
+      ["floodRoadClosureInfoRows","QLDTraffic",module.roadOfficialUrl("")],
+      ["powerOutageInfoRows","Energex",module.powerOfficialUrl("Energex")],
+      ["riverGaugeInfoRows","BoM",module.OFFICIAL_SOURCE_LINKS.bom],
+      ["riverGaugeInfoRows","BoM gauge",module.bomGaugePlotUrl(
+        "/fwo/IDQ65388/IDQ65388.540576.plt.shtml")]
+    ];
+    return scenarios.map(([id,label,url])=>{
+      const el=document.getElementById(id);
+      module.addOfficialSourceRow(el,"Source",label,url);
+      const link=el.lastElementChild;
+      return {
+        id,label,href:link.href,rel:link.rel,target:link.target,
+        text:link.textContent,color:getComputedStyle(link).color,
+        underline:getComputedStyle(link).textDecorationLine
+      };
+    });
+  });
+  assert.equal(sourceLinks.length,4);
+  for(const link of sourceLinks){
+    assert.ok(link.href.startsWith("https://"),"Official URLs must be HTTPS");
+    assert.equal(link.target,"_blank");
+    assert.equal(link.rel,"noopener noreferrer");
+    assert.ok(link.underline.includes("underline"),
+      "Map Source links must be visibly interactive on mobile");
+  }
+  assert.ok(sourceLinks.find(x=>x.label==="BoM gauge").href.includes("540576.plt.shtml"));
+  console.log("Mobile official source links verified:",sourceLinks.map(x=>x.label).join(", "));
   assert.equal(errors.length,0,"Browser JavaScript errors: "+errors.join(" | "));
   console.log("Mobile flood signal browser smoke passed: current BoM feed, bounded historical bootstrap, only qualifying exceptions, history persistence, toggle and both basemap modes.");
 }finally {

@@ -1,7 +1,8 @@
+import {addOfficialSourceRow,bomGaugePlotUrl,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.13.2";
 import {
   createRiverGaugeLayer,
   riverGaugeOperationalSummary
-} from "./river-gauge-layer-v1.js?v=9.13.1";
+} from "./river-gauge-layer-v1.js?v=9.13.2";
 
 import {
   BOM_RIVER_TIDE_GAUGE_ATTRIBUTION
@@ -194,6 +195,10 @@ function showRiverGaugeInfo(
   );
 
   addDetailRow(rows, "Signal", summary.alertReason);
+  if(summary.alertPersisted){
+    addDetailRow(rows,"Event state",
+      `Monitoring · ${summary.recoveryReadings}/2 recovery observations confirmed`);
+  }
 
   addDetailRow(rows, "Measured rise",
     summary.riseRateMetresPerHour === null ? "" :
@@ -270,11 +275,14 @@ function showRiverGaugeInfo(
     summary.sourceProduct
   );
 
-  addDetailRow(
-    rows,
-    "Source",
-    BOM_RIVER_TIDE_GAUGE_ATTRIBUTION
+  addOfficialSourceRow(
+    rows,"Source",BOM_RIVER_TIDE_GAUGE_ATTRIBUTION,
+    OFFICIAL_SOURCE_LINKS.bom
   );
+  const directPlot=bomGaugePlotUrl(summary.recentDataHref);
+  addOfficialSourceRow(rows,"BoM gauge",
+    directPlot?"View recent observations and river-height plot":"View BoM river-height station data",
+    directPlot||OFFICIAL_SOURCE_LINKS.bom);
 
   addDetailRow(rows, "Interpretation",
     summary.displayState === "rapid-rise" || summary.displayState === "tidal-anomaly"
@@ -417,19 +425,11 @@ export function initialiseOperationalRiverGauges({
               .gaugeId
             || "";
 
-          if (
-            selectedId
-            && !features.some(
-              feature =>
-                String(
-                  feature.id
-                )
-                === selectedId
-            )
-          ) {
-            showRiverGaugeInfo(
-              null
-            );
+          const latest=features.find(feature=>String(feature.id)===selectedId);
+          if(selectedId){
+            // Refresh the already-open panel whenever new levels or the
+            // persisted event state change; never require a second tap.
+            showRiverGaugeInfo(latest??null);
           }
         }
     });

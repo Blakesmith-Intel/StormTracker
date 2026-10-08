@@ -15,7 +15,11 @@ import {
   cleanFloodSignalHistory,
   compactFloodHistory,
   filterOperationalFloodGauges
-} from "./river-flood-signals-v1.js?v=9.13.0";
+} from "./river-flood-signals-v1.js?v=9.13.2";
+
+import {
+  FLOOD_EVENTS_STORAGE_KEY,cleanFloodEvents,reconcileFloodEvents
+} from "./river-flood-events-v1.js?v=9.13.2";
 
 import {
   recentFloodHistoryCandidate,
@@ -112,7 +116,10 @@ export function riverGaugeOperationalSummary(
 
     tidalBaselineMetresPerHour:
       typeof properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H === "number"
-        ? properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H : null
+        ? properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H : null,
+
+    alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
+    recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0)
   };
 }
 
@@ -306,6 +313,16 @@ export function createRiverGaugeLayer({
 
   let currentFeatures = [];
   let history = {};
+  let floodEvents={};
+  try {
+    floodEvents=cleanFloodEvents(
+      JSON.parse(storage?.getItem(FLOOD_EVENTS_STORAGE_KEY)??"{}"),now()
+    );
+  }catch{floodEvents={};}
+  const persistEventState=()=>{
+    try{storage?.setItem(FLOOD_EVENTS_STORAGE_KEY,JSON.stringify(floodEvents));}
+    catch{/* storage disabled/full: preserve active in-memory state */}
+  };
   try {
     history = cleanFloodSignalHistory(
       JSON.parse(storage?.getItem(FLOOD_SIGNAL_STORAGE_KEY) ?? "{}"), now()
@@ -368,7 +385,11 @@ export function createRiverGaugeLayer({
       persistHistory();
       // A 15-minute poll may have arrived while a station page loaded.
       // Classify against the latest published BoM bulletin, never a stale one.
-      const signals=filterOperationalFloodGauges(latestSourceFeatures,history,now());
+      const signals=reconcileFloodEvents(
+        latestSourceFeatures,history,floodEvents,now()
+      );
+      floodEvents=signals.events;
+      persistEventState();
       diagnostics={...(diagnostics??{}),floodSignalCounts:signals.counts,
         recentHistory:{loaded:success,failed:failures,attempted:recentRequested.size}};
       render({type:"FeatureCollection",features:signals.features});
@@ -546,9 +567,11 @@ export function createRiverGaugeLayer({
         }
 
         latestSourceFeatures = result.payload.features;
-        const alerts = filterOperationalFloodGauges(
-          result.payload.features, history, observedAt
+        const alerts = reconcileFloodEvents(
+          result.payload.features,history,floodEvents,observedAt
         );
+        floodEvents=alerts.events;
+        persistEventState();
         diagnostics = {...result, floodSignalCounts:alerts.counts};
         render({type:"FeatureCollection",features:alerts.features});
 
@@ -744,6 +767,8 @@ export function createRiverGaugeLayer({
     get historyStationCount() {
       return Object.keys(history).length;
     },
+
+    get activeScreeningEvents(){return Object.keys(floodEvents).length;},
 
     get recentHistoryRequestCount() {
       return recentRequested.size;

@@ -31,8 +31,8 @@ test("Track intensity pins preserve measured source palette, not weaker inferred
   assert.match(controller,/projected 2-D source intensity/);
 });
 test("Vertical reflectivity remains inferred, rather than filled with surface measured dBZ",()=>{
-  assert.match(controller,/color: colourForDbzh\\(point\\.dbzh\\)/);
-  assert.match(controller,/\\},point\\.alpha,volumePercent\\)/);
+  assert.ok(controller.includes("color: colourForDbzh(point.dbzh)"));
+  assert.ok(controller.includes("},point.alpha,volumePercent)"));
   assert.match(controller,/shouldDisplayMeasuredTrackPoint\(point,displayedMinimumDbz\)/);
   assert.match(controller,/BoM measured 2-D reflectivity core \(projected\)/);
   assert.match(measured,/const inferred =\s*inferColumn/);

@@ -1,0 +1,26 @@
+name: Smoke V9.13 BoM flood observation feed
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v9.13.0-bom-flood-signal-filter
+    paths:
+      - "scripts/smoke-bom-flood-signal-feed.mjs"
+      - ".github/workflows/smoke-v9-13-bom-flood-signal.yml"
+      - "frontend/src/context-layers/river-flood-signals-v1.js"
+
+permissions:
+  contents: read
+
+jobs:
+  feed-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate real BoM timestamps, flood gauge station IDs and relay
+        run: node scripts/smoke-bom-flood-signal-feed.mjs

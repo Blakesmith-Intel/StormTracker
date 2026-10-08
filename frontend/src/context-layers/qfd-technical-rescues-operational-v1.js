@@ -77,6 +77,8 @@ export function initialiseOperationalQfdTechnicalRescues({
     if(!item){selectedId="";info.hidden=true;info.dataset.rescueId="";return;}
     selectedId=item.id;
     info.dataset.rescueId=item.id;
+    const cardIcon=$("qfdTechnicalRescueInfoIcon");
+    if(cardIcon)cardIcon.src=qfdSymbolFor(item.groupedType,officialSymbols);
     $("qfdTechnicalRescueInfoTitle").textContent=item.locality||"Queensland";
     const rows=$("qfdTechnicalRescueInfoRows");
     if(!rows)return;

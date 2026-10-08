@@ -1,18 +1,14 @@
-const FLOOD_EVENT_TYPES = new Set([
-  "flooding"
-]);
-
-const FLOOD_EVENT_SUBTYPES = new Set([
+// Only these four official QLDTraffic classifications justify a displayed
+// road closure. Generic "Flooding", water-over-road and free-text references
+// are insufficient on their own.
+const PERMITTED_ROAD_CLOSURE_REASONS = new Set([
   "flash flooding",
-  "long-term flooding"
+  "long-term flooding",
+  "earlier flooding",
+  "heavy rain"
 ]);
 
-const FLOOD_EVENT_CAUSES = new Set([
-  "earlier flooding",
-  "earlier flash flooding",
-  "water over road",
-  "flooding of river"
-]);
+const CLOSED_TO_ALL_TRAFFIC = "road closed to all traffic";
 
 function normalise(value) {
   return String(value ?? "")
@@ -31,13 +27,10 @@ export function isFloodRelatedRoadEvent(featureOrProperties) {
     propertiesOf(featureOrProperties);
 
   return (
-    FLOOD_EVENT_TYPES.has(
-      normalise(properties.event_type)
-    )
-    || FLOOD_EVENT_SUBTYPES.has(
+    PERMITTED_ROAD_CLOSURE_REASONS.has(
       normalise(properties.event_subtype)
     )
-    || FLOOD_EVENT_CAUSES.has(
+    || PERMITTED_ROAD_CLOSURE_REASONS.has(
       normalise(properties.event_due_to)
     )
   );
@@ -47,9 +40,10 @@ export function isRoadClosureEvent(featureOrProperties) {
   const properties =
     propertiesOf(featureOrProperties);
 
-  return normalise(
-    properties.impact?.impact_type
-  ) === "closures";
+  return (
+    normalise(properties.impact?.impact_type) === "closures"
+    && normalise(properties.impact?.impact_subtype) === CLOSED_TO_ALL_TRAFFIC
+  );
 }
 
 function parsedEventTime(value) {

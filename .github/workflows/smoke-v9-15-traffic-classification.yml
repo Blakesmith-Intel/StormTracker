@@ -1,0 +1,22 @@
+name: Verify V9.15 official road closure classifications
+on:
+  push:
+    branches: [feature/v9.15.0-qfd-technical-rescue]
+    paths:
+      - scripts/smoke-v9-15-traffic-classification.mjs
+      - .github/workflows/smoke-v9-15-traffic-classification.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-live-provider:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm test
+      - name: Compare current QLDTraffic to exact four-cause all-traffic filter
+        run: node scripts/smoke-v9-15-traffic-classification.mjs

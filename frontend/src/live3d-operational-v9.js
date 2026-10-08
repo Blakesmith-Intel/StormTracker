@@ -2598,6 +2598,12 @@ async function refreshIndependentDopplerHistory(automatic=false) {
       }
       return;
     }
+    if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
+       hybridCombinedSchedule.length) {
+      // Same source timestamp: refresh metadata only. Never jump the wind
+      // layer to newest and desynchronise an already playing shared cycle.
+      return;
+    }
     // A single bad historical PNG cannot prevent the remainder from playing.
     let loaded=false;
     for(let offset=0;offset<frames.length;offset++){

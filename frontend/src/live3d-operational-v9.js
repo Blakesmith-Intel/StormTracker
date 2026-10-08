@@ -4166,6 +4166,8 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
   if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];
+  severeStormAlertOverlay.setFrame(); // Never carry alerts into a different radar region.
+  stormTrackLabelOverlay.setMarkers([]); // Clear obsolete track identities during source change.
   syncFrameSlider(
     $("hybridFrameSlider"),
     0,

@@ -819,3 +819,46 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   color:#f0bb79; font-weight:700;
 }
 @media(max-width:700px) {.source-time-gap{font-size:9px;margin-left:0;}}
+
+/* V9 isolated additional observed-radar windows. The primary radar and all
+   existing storm science/playback controls remain unchanged. */
+#multiRadarSelectButton { white-space:nowrap; }
+#multiRadarCount {
+  display:inline-grid; place-items:center; margin-left:3px;
+  min-width:17px; height:17px; padding:0 3px;
+  border:1px solid #7794a7; border-radius:5px;
+  font-size:10px; font-variant-numeric:tabular-nums;
+}
+#multiRadarSelectButton[aria-expanded="true"] {
+  border-color:#92d3ef; background:#29546a;
+}
+.multi-radar-panel {
+  position:absolute; z-index:var(--stormtracker-control-z);
+  right:10px; top:60px;
+  width:min(320px,calc(100vw - 20px)); max-height:min(68vh,560px);
+  overflow:auto; padding:10px; border:1px solid #567282;
+  background:#0d1b25f5; color:#e5f3f9; box-shadow:0 4px 18px #0009;
+  border-radius:8px; font-size:11px;
+}
+.multi-radar-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.multi-radar-heading strong { font-size:12px; }
+.multi-radar-heading button { min-height:25px; min-width:26px; padding:2px 6px; font-size:17px; }
+.multi-radar-panel > p { margin:0 0 8px; }
+.multi-radar-checklist { display:grid; gap:3px; max-height:240px; overflow:auto; }
+.multi-radar-checklist label {
+  display:flex; align-items:center; gap:7px; min-height:29px;
+  padding:4px 5px; border-radius:4px; font-size:11px; color:#e2eff4;
+}
+.multi-radar-checklist label:hover { background:#29404e; }
+.multi-radar-checklist label[data-primary="true"] { color:#a8bec9; background:#21313d; }
+.multi-radar-checklist input { flex:none; }
+.multi-radar-actions { display:flex; gap:6px; margin:8px 0; }
+.multi-radar-actions button { flex:1; min-height:30px; }
+#multiRadarStatus { min-height:25px; margin-top:6px; overflow-wrap:anywhere; }
+@media(max-width:700px) {
+  #nav { max-width:calc(100% - 10px); gap:4px; }
+  #nav #radarSite { max-width:min(46vw,180px); min-width:0; font-size:10px; }
+  #nav button { min-height:29px; padding:3px 6px; font-size:10px; }
+  .multi-radar-panel { right:5px; top:49px; max-height:min(65dvh,440px); padding:8px; }
+  .multi-radar-checklist { max-height:170px; }
+}

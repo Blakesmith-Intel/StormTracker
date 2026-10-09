@@ -24,13 +24,18 @@ export function isNativeDopplerDisplayAnnotationRow(row) {
 // Accept only Bureau velocity palette pixels. Preserve their exact original
 // RGBA (not the nearest palette swatch), and exclude GUI text/background/legend.
 // This crop accepts both original 524 × 564 GIFs and bare 512 × 512 panels.
-export function extractNativeDopplerPanel(imageData, palette, { includeZero = false } = {}) {
+export function extractNativeDopplerPanel(imageData, palette, {
+  includeZero = false,
+  // Only BoM's composite latest GIF needs the in-panel annotation crop.
+  // The separate timestamped PNGs contain weather-only source pixels.
+  maskAnnotationRows = true
+} = {}) {
   const layout = historicalPanelLayout(imageData.width, imageData.height);
   const size = layout.panelSize;
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
-    if (isNativeDopplerDisplayAnnotationRow(row)) continue;
+    if (maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row)) continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
       const alpha = imageData.data[from + 3];

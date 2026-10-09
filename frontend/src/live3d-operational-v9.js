@@ -130,7 +130,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.13.4";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.16.12-foreground";
 
 import {
   createQueenslandStateBorderLayer
@@ -344,6 +344,7 @@ function syncBasemapReferenceLayer(basemapId) {
   queenslandTownLabels = createQueenslandTownLabelLayer({
     viewer,
     CesiumRef: Cesium,
+    container: document.getElementById("mapPanel"),
     mode: basemapId,
     onStatus: ({ kind, message }) => {
       if (kind === "warning") setBasemapStatus(message, "normal");

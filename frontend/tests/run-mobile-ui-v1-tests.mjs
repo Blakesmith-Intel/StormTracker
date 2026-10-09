@@ -8,7 +8,7 @@ const html=read('frontend/live3d-operational-v9.html');
 const css=read('frontend/src/operational-dashboard-v9-1.css');
 const js=read('frontend/src/live3d-operational-v9.js');
 assert.match(index,/live3d-operational-v9\.html\?v=9\.16-bom-native-rain30-v1/);
-assert.match(html,/Operational V9\.16\.0/);
+assert.match(html,/V9\.16\.1 native Doppler/);
 assert.match(html,/radarOpacityValue[^>]*>65%/);
 assert.match(html,/dopplerOpacityValue[^>]*>45%/);
 assert.match(html,/id="basemapSelect"/);

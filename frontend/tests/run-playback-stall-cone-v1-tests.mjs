@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { directPoint, distanceKm } from "../src/geo.js";
+import { geodesicMotion } from "../src/tracking.js";
 import { createContinuousPlayback } from "../src/continuous-playback-v1.js";
 import {
   sourceAlignedPlaybackDelayMs,
@@ -49,6 +50,23 @@ assert.equal(evaluateChronologicalTrackThreatCone({
   ...track,history:measured.slice(0,1)
 },measured[0],buildTrackThreatCone,{},coneOptions).cone,null,
 "one source scan does not establish storm motion");
+
+// A near-stationary storm marker can wobble 0.2 km north after repeated
+// 3 km eastward measured steps. That false 0-degree heading must not swing
+// the forward +90m envelope away from its supported eastward motion.
+const jitterPoint=directPoint(
+  measured[3].centroid_longitude,measured[3].centroid_latitude,0,200
+);
+const jitter={observed_utc:utc(20),centroid_longitude:jitterPoint.longitude,
+  centroid_latitude:jitterPoint.latitude,sampled_area_km2:25};
+const jitterTrack={track_id:"ST0001",history:[...measured,jitter],
+  motion:geodesicMotion(measured[3],jitter)};
+const jitterCone=buildTrackThreatCone(jitterTrack,jitter);
+assert.ok(jitterCone);
+assert.ok(Math.abs(jitterCone.heading_degrees-90)<5,
+  "sub-kilometre centroid wobble must not swing a well-supported heading");
+assert.ok(jitterCone.heading_half_angle_degrees<15,
+  "sub-kilometre centroid wobble must not exaggerate cone width");
 
 let index=0;
 const presented=[];

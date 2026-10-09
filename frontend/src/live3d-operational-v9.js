@@ -167,10 +167,7 @@ import {
   shouldRenderVolumePoint
 } from "./volume-display-threshold-v1.js?v=9.15.1-intensity40";
 
-import {
-  dopplerOverlayFrameKey,
-  createDopplerLayerTransition
-} from "./doppler-layer-transition-v1.js?v=9.9.1";
+import { dopplerOverlayFrameKey } from "./doppler-layer-transition-v1.js?v=9.9.1";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -216,6 +213,10 @@ const stormTrackLabelOverlay = createStormTrackLabelOverlay({
 const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
+const dopplerImageryHandover = createRadarImageryHandover({
+  imageryLayers: viewer.imageryLayers, scene
+});
+let displayedDopplerKey=null;
 // Camera controls never depend on imagery animation or transition state.
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) cameraPerformance.restore();
@@ -646,16 +647,6 @@ const independentDopplerRefresh = createLiveLoopRefresh({
     $("dopplerOverlayStatus").textContent = "Doppler refresh retry: " + error.message;
   }
 });
-
-const dopplerOverlayTransition =
-  createDopplerLayerTransition({
-    imageryLayers:
-      viewer.imageryLayers,
-
-    requestRender:
-      () =>
-        scene.requestRender()
-  });
 
 let dopplerOverlayRenderToken =
   0;
@@ -1736,7 +1727,8 @@ function dopplerDisplayColour(
 function clearDopplerOverlay() {
   dopplerOverlayRenderToken++;
   // Immediate clear; no fade-out and no background animation.
-  dopplerOverlayTransition.clear({durationMs:0});
+  dopplerImageryHandover.reset();
+  displayedDopplerKey=null;
 
   const count =
     $("dopplerOverlayCount");
@@ -2360,31 +2352,38 @@ async function prepareWindObservation(index) {
   const provider=await prepareNativeDopplerProvider(radarId,record);
   return {radarId,index,frame,record,provider};
 }
-function commitWindObservation(prepared,{updateUi=true}={}) {
-  if(!prepared || $("dopplerOverlayRadar").value!==prepared.radarId)
-    throw Error("Doppler site changed while preparing wind scan");
+async function commitWindObservation(prepared,{
+  updateUi=true,isCurrent=()=>true
+}={}) {
+  if(!prepared || $("dopplerOverlayRadar").value!==prepared.radarId || !isCurrent())return false;
   const {radarId,index,record,provider}=prepared;
   const key=dopplerOverlayFrameKey(radarId,record);
-  if(dopplerOverlayTransition.currentKey!==key){
-    dopplerOverlayTransition.replace({
-      layer:new Cesium.ImageryLayer(provider),key,
-      alpha:Number($("dopplerOpacity").value)/100,
-      durationMs:0,
-      onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
-    });
+  if(displayedDopplerKey!==key){
+    const ready=await dopplerImageryHandover.replace(
+      new Cesium.ImageryLayer(provider),{
+        alpha:Number($("dopplerOpacity").value)/100,
+        timeoutMs:2200,
+        isCurrent:()=>isCurrent() && $("dopplerOverlayRadar").value===radarId
+      }
+    );
+    if(!ready || !isCurrent())return false;
+    displayedDopplerKey=key;
+  } else {
+    dopplerImageryHandover.setOpacity(Number($("dopplerOpacity").value)/100);
   }
-  dopplerOverlayRenderToken++; // Invalidate a superseded pending async overlay.
-  independentDopplerRequest++; // Invalidate older wind-frame preparations.
+  if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);
+  dopplerOverlayRenderToken++;
   independentDopplerIndexValue=index;
   independentDopplerSourceId=radarId;
   independentDopplerRecord=record;
   windCycleCursor=index;
   windLastRadarDriveKey=null;
-  if(updateUi) updateIndependentDopplerUi();
+  if(updateUi)updateIndependentDopplerUi();
   $("dopplerOverlayCount").textContent=record.nativePanel.nativePixelCount.toLocaleString();
   $("dopplerOverlayStatus").textContent=radarId+" · "+
-    formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
+    formatDopplerUtc(record.observedUtc)+" · original BoM Doppler observation";
   scene.requestRender();
+  return true;
 }
 async function prepareWindForPlayback(index) {
   if(!shouldDisplayDopplerForSelectedWindow() || !hybridCombinedSchedule.length)
@@ -2403,41 +2402,32 @@ function renderDopplerOverlay() {
   const token=++dopplerOverlayRenderToken;
   const status=$("dopplerOverlayStatus");
   if(!shouldDisplayDopplerForSelectedWindow()){
-    dopplerOverlayTransition.clear();
-    $("dopplerOverlayCount").textContent="0";
+    clearDopplerOverlay();
     if(status)status.textContent="hidden";
     return;
   }
-  const record=independentDopplerSourceId===radarId?independentDopplerRecord:null;
+  const record=independentDopplerSourceId===radarId
+    ? independentDopplerRecord : null;
   if(!record){
-    dopplerOverlayTransition.clear();
-    $("dopplerOverlayCount").textContent="0";
-    if(status)status.textContent=radarId+" — independent Doppler observation loading";
+    if(status)status.textContent=radarId+" · waiting for original BoM Doppler scan";
     return;
   }
   const key=dopplerOverlayFrameKey(radarId,record);
-  const opacity=Number($("dopplerOpacity").value)/100;
-  if(key&&dopplerOverlayTransition.currentKey===key){
-    dopplerOverlayTransition.setOpacity(opacity);
-    if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · independent Doppler";
+  if(displayedDopplerKey===key){
+    dopplerImageryHandover.setOpacity(Number($("dopplerOpacity").value)/100);
     return;
   }
-  const raster=independentDopplerCanvas(radarId,record);
-  $("dopplerOverlayCount").textContent=raster.rendered.toLocaleString();
-  if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
-  prepareNativeDopplerProvider(radarId,record).then(provider=>{
-    if(token!==dopplerOverlayRenderToken||!shouldDisplayDopplerForSelectedWindow()||
-       independentDopplerSourceId!==radarId)return;
-    dopplerOverlayTransition.replace({
-      layer:new Cesium.ImageryLayer(provider),key,alpha:opacity,
-      durationMs:0,
-      onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
-    });
-  }).catch(error=>{
-    if(token!==dopplerOverlayRenderToken)return;
-    dopplerOverlayTransition.clear({durationMs:0});
-    if(status)status.textContent=radarId+" · wind imagery failed";
-    console.warn("Independent Doppler imagery failed",error);
+  const index=independentDopplerFrames.findIndex(frame=>
+    frame.observedUtc===record.observedUtc);
+  if(index<0)return;
+  void prepareWindObservation(index).then(prepared=>
+    commitWindObservation(prepared,{
+      isCurrent:()=>token===dopplerOverlayRenderToken &&
+        shouldDisplayDopplerForSelectedWindow()
+    })
+  ).catch(error=>{
+    if(token===dopplerOverlayRenderToken && status)
+      status.textContent=radarId+" · Doppler unavailable · "+error.message;
   });
 }
 
@@ -2492,7 +2482,9 @@ async function showIndependentDopplerFrame(nextIndex) {
   const index=Math.max(0,Math.min(independentDopplerFrames.length-1,Number(nextIndex)));
   const prepared=await prepareWindObservation(index);
   if(generation!==independentDopplerRequest || !isDopplerSourceActive())return;
-  commitWindObservation(prepared);
+  await commitWindObservation(prepared,{
+    isCurrent:()=>generation===independentDopplerRequest && isDopplerSourceActive()
+  });
 }
 
 async function refreshIndependentDopplerHistory(automatic=false) {
@@ -3086,8 +3078,12 @@ async function showHybridFrame(index) {
     return;
   }
   if(preparedWind){
-    try{commitWindObservation(preparedWind,{updateUi:false});}
-    catch(error){
+    try {
+      const ready=await commitWindObservation(preparedWind,{
+        updateUi:false,isCurrent:()=>renderToken===hybridSceneRenderToken
+      });
+      if(!ready)throw Error("Wind image unavailable for current observation");
+    } catch(error){
       // Report a missing partner explicitly, rather than announcing the
       // combination as one measured radar+wind state.
       setStatus("Rain loaded; Doppler could not commit: "+error.message,"warning");
@@ -4304,7 +4300,7 @@ $("dopplerOpacity").addEventListener("input", event => {
   
   const opacity = Number(event.target.value) / 100;
   $("dopplerOpacityValue").textContent = `${event.target.value}%`;
-  dopplerOverlayTransition.setOpacity(
+  dopplerImageryHandover.setOpacity(
     opacity
   );
   scene.requestRender();

@@ -72,7 +72,20 @@ const fetchImpl=async url=>{
       geometry:{type:"Point",coordinates:[139.35,-25.9]}}
   ]};}};
 };
-const layer=createQueenslandTownLabelLayer({viewer:{scene},CesiumRef,fetchImpl,mode:"qld-imagery"});
+const container={children:[],appendChild(el){this.children.push(el);el.parent=this;}};
+const documentRef={createElement(){
+  return {
+    children:[],style:{},parent:null,
+    setAttribute(){},
+    appendChild(el){this.children.push(el);el.parent=this;},
+    remove(){if(this.parent)this.parent.children=
+      this.parent.children.filter(x=>x!==this);this.parent=null;}
+  };
+}};
+const layer=createQueenslandTownLabelLayer({
+  viewer:{scene,container:{parentElement:container}},
+  CesiumRef,fetchImpl,mode:"qld-imagery",container,documentRef
+});
 await layer.start();
 for(let t=0;t<100&&layer.gazetteerCount===0;t++)await new Promise(r=>setTimeout(r,10));
 assert.equal(layer.gazetteerCount,2,
@@ -84,6 +97,6 @@ const before=loads;
 layer.draw(true);
 assert.equal(loads,before,"Viewport coverage must prevent repeat fetches");
 layer.setMode("street");
-assert.equal(layer.visibleCount,0,"Street must have no duplicate supplemental names");
+assert.ok(layer.visibleCount>=2,"Street shows supplemental rural localities too");
 layer.destroy();
-console.log("QLD locality checks passed: official type/field schema, bounded viewport, close-zoom minor labels, existing-town dedupe and Street removal.");
+console.log("QLD locality checks passed: bounded official gazetteer query, rural additions in both Street and imagery, dedupe and DOM cleanup.");

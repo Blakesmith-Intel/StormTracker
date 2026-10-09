@@ -1,24 +1,20 @@
 // Screen-space layout of Queensland town names. All functions in this file
 // are deterministic and independent of Cesium, DOM and network access.
-export function labelBudget(width, height, cameraHeight, mode = "street", cameraPitchDegrees = -90) {
-  if (mode !== "qld-imagery") return 0;
+export function labelBudget(width,height,cameraHeight,mode="street",cameraPitchDegrees=-90) {
   if (!Number.isFinite(width) || !Number.isFinite(height) ||
-      width < 180 || height < 140 || cameraHeight > 1800000) return 0;
-  const mobile = width < 600;
-  const close = cameraHeight <= 100000;
-  // A 1200px desktop map can carry more distinct towns than a 390px phone.
-  // Keep collision testing as the final density constraint, not a fixed
-  // statewide five-label gate that persists when users zoom in.
-  let budget = Math.min(mobile ? 9 : 42, Math.floor(width * height / 14000));
-  if (cameraHeight > 700000) budget = Math.min(budget, mobile ? 5 : 9);
-  else if (cameraHeight > 250000) budget = Math.min(budget, mobile ? 6 : 17);
-  else if (cameraHeight > 100000) budget = Math.min(budget, mobile ? 7 : 26);
-  // Near-horizon views get a smaller allowance but do not hide every
-  // locality from a large desktop monitor at close range.
-  if (cameraPitchDegrees > -20) budget = Math.min(budget, mobile ? 4 : 10);
-  else if (cameraPitchDegrees > -40) budget = Math.min(budget, mobile ? 6 : 18);
-  if (mobile && !close) budget = Math.min(budget, 6);
-  return Math.max(0, budget);
+      width<180 || height<140 || cameraHeight>3_800_000) return 0;
+  // Physical screen area and collision checks determine useful density.
+  // No arbitrary statewide 8-label limit, nor street-mode suppression.
+  const mobile=width<600;
+  const area=width*height;
+  let budget=Math.min(mobile?16:170,
+    Math.max(2,Math.floor(area/(mobile?11500:9200))));
+  // At the planetary horizon reduce only the proportional share of labels,
+  // retaining meaningful named geographical anchors on desktop.
+  if(cameraHeight>2_200_000) budget=Math.ceil(budget*.6);
+  else if(cameraHeight>1_100_000) budget=Math.ceil(budget*.78);
+  if(cameraPitchDegrees>-20) budget=Math.ceil(budget*.8);
+  return Math.max(0,budget);
 }
 
 // Shared font metrics: Cesium rendering and decluttering must use identical
@@ -94,41 +90,31 @@ export function layoutTownLabels({
   cameraPitchDegrees = -90,
   previousVisible = []
 }) {
-  let budget = labelBudget(width, height, cameraHeight, mode, cameraPitchDegrees);
-  // Camera altitude and pitch can be misleading after Cesium lookAt transforms.
-  // Measure how much of Queensland is actually visible. A view spanning
-  // multiple distant regions is always a statewide-scale view, even when
-  // the camera is low and almost horizontal.
-  const positions = candidates.filter(place =>
-    Number.isFinite(place.longitude) && Number.isFinite(place.latitude)
-  );
-  if (positions.length > 1) {
-    const latitudes = positions.map(place => place.latitude);
-    const longitudes = positions.map(place => place.longitude);
-    const middleLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
-    const northSouthKm = (Math.max(...latitudes) - Math.min(...latitudes)) * 111.2;
-    const eastWestKm = (Math.max(...longitudes) - Math.min(...longitudes)) *
-      111.2 * Math.cos(middleLat * Math.PI / 180);
-    const spanKm = Math.hypot(northSouthKm, eastWestKm);
-    // The number of distant candidates is not a valid measure of ground
-    // footprint on a close-up scene. Only constrain truly statewide views.
-    // Keep a stricter cap for phones while letting wide desktop map windows
-    // label additional rural settlements whenever they do not collide.
-    if (spanKm > 1200) budget = Math.min(budget, width < 600 ? 5 : 8);
-    else if (spanKm > 700) budget = Math.min(budget, width < 600 ? 5 : 14);
-  }
+  const budget=labelBudget(width,height,cameraHeight,mode,cameraPitchDegrees);
+  // Geographic extent and sparse population never impose another global cap:
+  // screen-space collision is the real readability constraint.
   if (!budget) return [];
   const prev = new Set(previousVisible.map(String));
   const margin = 14;
   const boxes = [];
   const picked = [];
   // Sticky ranking reduces flicker during a slow pan in imagery mode.
-  const sorted = [...candidates].sort((a, b) => {
-    const rank = p => (Number(p.priority) || 0) +
-      (prev.has(String(p.id)) ? 10 : 0);
-    return rank(b) - rank(a) || String(a.id).localeCompare(String(b.id));
+  const sorted = [...candidates].sort((a,b) => {
+    const rank=p=>(Number(p.priority)||0)+(prev.has(String(p.id))?10:0);
+    return rank(b)-rank(a) || String(a.id).localeCompare(String(b.id));
   });
-  for (const place of sorted) {
+  // The first pass gives each distinct part of the *visible screen* one
+  // strong geographic anchor; the second fills the free spaces. This prevents
+  // a city cluster outranking every western Queensland town at broad zoom.
+  const cellWidth=Math.max(110,Math.min(210,width/7));
+  const cellHeight=Math.max(75,Math.min(145,height/5));
+  const seenCells=new Set(),distributed=[],remaining=[];
+  for(const p of sorted){
+    const cell=Math.floor(p.x/cellWidth)+":"+Math.floor(p.y/cellHeight);
+    if(seenCells.has(cell)) remaining.push(p);
+    else {seenCells.add(cell);distributed.push(p);}
+  }
+  for (const place of [...distributed,...remaining]) {
     if (picked.length >= budget) break;
     if (!Number.isFinite(place.x) || !Number.isFinite(place.y) ||
         place.x < margin || place.x > width - margin ||

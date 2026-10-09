@@ -150,7 +150,9 @@ def main(destination,radars):
         source=f"https://dapds00.nci.org.au/thredds/fileServer/rq0/{radar}/2023/vol/{radar}_20231225.pvol.zip"
         where=destination/radar
         where.mkdir(exist_ok=True)
-        with RemoteZip(source) as archive:
+        # NCI THREDDS rejects suffix-style ranges although HEAD advertises Range.
+        # Resolve archive Content-Length with HEAD, then request explicit offsets.
+        with RemoteZip(source, support_suffix_range=False, timeout=45) as archive:
             selected,total=select_scans(archive.infolist(),radar)
             frames=[]
             for stamp,entry in selected:

@@ -46,6 +46,12 @@ dot(6+300,6+480,[255,0,0]); // text region: not recoverable as observed wind
 const cleaned=extractNativeDopplerPanel(source,palette);
 assert.deepEqual(Array.from(cleaned.data.slice((470*512+300)*4,(470*512+300)*4+4)),[0,0,255,255]);
 assert.equal(cleaned.data[(480*512+300)*4+3],0);
+const rawPNG=extractNativeDopplerPanel(source,palette,{maskAnnotationRows:false});
+assert.deepEqual(Array.from(rawPNG.data.slice((480*512+300)*4,(480*512+300)*4+4)),
+  [255,0,0,255],
+  "standalone BoM transparent PNG retains original valid wind pixels even in bottom rows");
+assert.equal(rawPNG.nativePixelCount,cleaned.nativePixelCount+1,
+  "composite-only footer crop must not remove good transparent PNG data");
 assert.deepEqual(Array.from(source.data.slice(((6+480)*524+6+300)*4,((6+480)*524+6+300)*4+4)),
   [255,0,0,255],"source decoded BoM pixels remain intact for later analysis");
 console.log("PASS source-faithful Doppler velocity mask, original imagery unchanged and embedded footer excluded without per-frame repaint.");

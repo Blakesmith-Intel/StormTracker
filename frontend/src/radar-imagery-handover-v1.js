@@ -42,6 +42,7 @@ export function createRadarImageryHandover({
   async function replace(layer, {
     alpha = 1,
     timeoutMs = 2200,
+    decodedSingleTile = false,
     isCurrent = () => true
   } = {}) {
     if (!layer) throw new TypeError("Replacement radar imagery is required");
@@ -91,9 +92,15 @@ export function createRadarImageryHandover({
         // Cesium's documented signal covers queued terrain and imagery
         // for this view. Two consecutive rendered frames avoid a single
         // stale true immediately after the layer was inserted.
-        consecutiveReady = scene.globe?.tilesLoaded === true
-          ? consecutiveReady + 1 : 0;
-        if (frames >= 2 && consecutiveReady >= 2) {
+        // A decoded native BoM SingleTile image does not depend on unrelated
+        // basemap/terrain requests completing. Permit handover after THREE
+        // successful render boundaries even if the global Cesium tile queue
+        // is still busy with other layers. Non-predecoded imagery must pass
+        // the existing global tilesLoaded test.
+        const imageReady = scene.globe?.tilesLoaded === true ||
+          (decodedSingleTile && frames >= 3);
+        consecutiveReady = imageReady ? consecutiveReady + 1 : 0;
+        if (frames >= 2 && consecutiveReady >= (decodedSingleTile ? 1 : 2)) {
           finish(true);
         } else {
           scene.requestRender();

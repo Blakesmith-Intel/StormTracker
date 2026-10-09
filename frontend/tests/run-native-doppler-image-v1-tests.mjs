@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { extractNativeDopplerPanel, reprojectNativeDopplerPanel,
   NATIVE_DOPPLER_DISPLAY_SIZE, NATIVE_DOPPLER_ANNOTATION_START_ROW,
-  NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW, nativeDopplerDisplayFooterOpacity,
+  nativeDopplerDisplayFooterOpacity,
   isNativeDopplerDisplayAnnotationRow } from "../src/native-doppler-image-v1.js";
 const source = {width:524, height:564, data:new Uint8ClampedArray(524*564*4)};
 const dot=(x,y,rgb)=>{const i=(y*source.width+x)*4;
@@ -34,33 +34,31 @@ for(let i=0;i<projected.data.length;i+=4){
 assert.ok(seen.has("0,0,255")||seen.has("255,0,0"));
 assert.ok([...seen].every(rgb=>rgb==="0,0,255"||rgb==="255,0,0"),
   "raster contains only unchanged native BoM colours; no hybrid repaint");
-// The scanned UTC/range/angle footer is present in both historical BoM
-// weather PNG and composite GIF. The underlying decoded source retains ALL
-// measured pixel values for downstream scientific analysis.
-assert.equal(NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW,438);
-assert.equal(NATIVE_DOPPLER_ANNOTATION_START_ROW,459);
+// Embedded BoM scan text is removed with a straight full-opacity display
+// boundary at row 438; no semitransparent band or interpolation.
+assert.equal(NATIVE_DOPPLER_ANNOTATION_START_ROW,438);
 assert.equal(nativeDopplerDisplayFooterOpacity(420),1);
-assert.equal(nativeDopplerDisplayFooterOpacity(459),0);
+assert.equal(nativeDopplerDisplayFooterOpacity(437),1);
+assert.equal(nativeDopplerDisplayFooterOpacity(438),0);
 assert.equal(nativeDopplerDisplayFooterOpacity(500),0);
-assert.ok(nativeDopplerDisplayFooterOpacity(447)>0 &&
-  nativeDopplerDisplayFooterOpacity(447)<1);
-assert.equal(isNativeDopplerDisplayAnnotationRow(458),false);
-assert.equal(isNativeDopplerDisplayAnnotationRow(459),true);
+assert.equal(isNativeDopplerDisplayAnnotationRow(437),false);
+assert.equal(isNativeDopplerDisplayAnnotationRow(438),true);
 assert.equal(isNativeDopplerDisplayAnnotationRow(511),true);
 assert.equal(isNativeDopplerDisplayAnnotationRow(512),false);
-dot(6+300,6+420,[0,0,255]); // genuine science outside the display footer
-dot(6+300,6+447,[255,0,0]); // transition band
-dot(6+300,6+480,[255,0,0]); // annotation region
+dot(6+300,6+437,[0,0,255]); // last genuine fully displayed row
+dot(6+300,6+438,[255,0,0]); // first hidden annotation row
+dot(6+300,6+480,[255,0,0]); // annotation footer
 const originalSource=new Uint8ClampedArray(source.data);
 const cleaned=extractNativeDopplerPanel(source,palette);
-assert.equal(cleaned.data[(420*512+300)*4+3],255);
-const feather=cleaned.data[(447*512+300)*4+3];
-assert.ok(feather>0 && feather<255,
-  "display-only footer transition must avoid a hard rectangular edge");
+assert.equal(cleaned.data[(437*512+300)*4+3],255);
+assert.equal(cleaned.data[(438*512+300)*4+3],0);
 assert.equal(cleaned.data[(480*512+300)*4+3],0);
+for(let i=3;i<cleaned.data.length;i+=4)
+  assert.ok(cleaned.data[i]===0||cleaned.data[i]===255,
+    "Doppler displayed alpha must NEVER have soft or partial transparency");
 const rawSource=extractNativeDopplerPanel(source,palette,{maskAnnotationRows:false});
 assert.equal(rawSource.data[(480*512+300)*4+3],255,
-  "uncropped ORIGINAL source remains accessible for scientific inspection");
+  "uncropped original source available independently for scientific analysis");
 assert.deepEqual(source.data,originalSource,
-  "image display filtering must NEVER modify decoded BoM source pixels");
-console.log("PASS BoM footer fade on historical Doppler PNG display, smooth alpha boundary, source science unchanged.");
+  "Display crop must never mutate measured BoM source pixels");
+console.log("PASS BoM native Doppler hard footer cutoff, fully opaque displayed pixels and untouched source science.");

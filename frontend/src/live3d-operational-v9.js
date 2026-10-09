@@ -1915,7 +1915,9 @@ async function decodeHistoricalDopplerFrame(
             }
           );
 
-        const nativePanel = extractNativeDopplerPanel(sourceImageData, palette);
+        const nativePanel = extractNativeDopplerPanel(sourceImageData, palette, {
+          maskAnnotationRows:false // timestamped PNG is already weather-only
+        });
 
         return {
           radarId:
@@ -2591,8 +2593,13 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     dopplerHistories=sources.histories;
     dopplerPalettes=sources.palettes;
     dopplerLatestRecords=sources.latestRecords;
+    // The BoM page composites 'locations', 'range' and other map layers.
+    // Its latest GIF carries annotation ink; those pixels must NEVER enter
+    // native wind animation. The timestamped .T.YYYYMMDDHHMM.png files are
+    // the separate velocity-only image layer from BoM's radar loop.
+    // Preserve the latest GIF for source clock/palette SCIENCE only.
     const frames=buildIndependentDopplerFrames(
-      sources.histories.get(radarId),sources.latestRecords.get(radarId));
+      sources.histories.get(radarId),null);
     const previous=independentDopplerFrames;
     const previousIndex=independentDopplerIndexValue;
     const nextIndex=independentDopplerIndex(frames,previous,previousIndex);

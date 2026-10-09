@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import {createBoundedFrameCache} from "../src/bounded-frame-cache-v1.js";
+const destroyed=[];
+const cache=createBoundedFrameCache({limit:2,onEvict:x=>destroyed.push(x)});
+cache.put("a",{id:1});cache.put("b",{id:2});
+assert.equal(cache.get("a").id,1);
+cache.put("c",{id:3});
+assert.deepEqual(destroyed.map(x=>x.id),[2],"oldest unused Cesium collection evicted");
+assert.equal(cache.get("b"),null);
+cache.clear();
+assert.deepEqual(destroyed.map(x=>x.id),[2,1,3]);
+assert.equal(cache.size,0);
+assert.throws(()=>createBoundedFrameCache({limit:0}),RangeError);
+console.log("PASS bounded GPU frame cache reuse, true LRU eviction and cleanup.");

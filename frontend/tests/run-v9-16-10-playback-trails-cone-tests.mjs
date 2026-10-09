@@ -46,8 +46,10 @@ assert.equal(sourceAlignedPlaybackDelayMs(450,schedule,false),450);
 assert.equal(sourceAlignedPlaybackDelayMs(450,schedule,true),225);
 assert.equal(sourceAlignedPlaybackDelayMs(150,schedule,true),80);
 assert.throws(()=>sourceAlignedPlaybackDelayMs(0,schedule,true),RangeError);
-assert.match(runtime,/const steps=hybridCombinedSchedule\.length \? 0 :/,
-  "combined playback must avoid synthetic radar morph frames");
+assert.match(runtime,/const steps=\(hybridCombinedSchedule\.length \|\| hasVisibleVolume\) \? 0 :/,
+  "only hide volumetric overlays if no intermediate geometry exists; do not animate rain beyond measured 3-D");
+assert.match(runtime,/onBeforeReveal:commitMeasuredGeometry/,
+  "measured 2-D and 3-D must become visible within the same Cesium handover");
 assert.match(runtime,/windOnlyStep \? true : await renderSurface/,
   "Doppler-only union events must not re-render unchanged rain");
 assert.match(runtime,/\+\+hybridSceneRenderToken;\s*\+\+independentDopplerRequest;[\s\S]*?renderDopplerOverlay\(\)/,

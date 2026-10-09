@@ -803,6 +803,8 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   gap:4px 14px; padding:5px 2px 2px; font-size:11px; color:#b5cad6;
 }
 .dual-source-times span {display:inline-flex; align-items:baseline; gap:6px;}
+.dual-source-times [hidden] { display:none !important; }
+.track-details-row { justify-content:flex-end; }
 .dual-source-times strong {font-size:11px; font-variant-numeric:tabular-nums; color:#e6f3f8; font-weight:600;}
 @media (max-width:700px) {
   .dual-source-times {font-size:10px; gap:2px 9px; padding:3px 1px;}

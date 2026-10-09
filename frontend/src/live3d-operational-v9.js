@@ -1015,123 +1015,62 @@ function displayRgb(category) {
   );
 }
 
-async function renderSurface(
-  frame,
-  renderToken = null,
-  {timeoutMs=2200}={}
-) {
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-  canvas.width =
-    frame.width;
-
-  canvas.height =
-    frame.height;
-
-  const context =
-    canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error(
-      "Unable to create surface reflectivity canvas."
-    );
+// Cache real BoM frame raster providers across repeated loops; previously the
+// app decoded, reprojected, PNG-encoded and loaded each same frame on EVERY
+// playback pass, with work repeated at every playback speed.
+const measuredRadarProviderCache = new WeakMap();
+const reflectivityRgbLookup = new Uint8Array(16*3);
+for(const item of SOURCE_PALETTES.reflectivityRgb) {
+  if(item.value>0 && item.value<16 && item.rgb) {
+    reflectivityRgbLookup.set(item.rgb,item.value*3);
   }
-
-  const image =
-    context.createImageData(
-      frame.width,
-      frame.height
+}
+async function prepareRadarSurfaceProvider(frame) {
+  const prior=measuredRadarProviderCache.get(frame);
+  if(prior)return prior;
+  const job=(async()=>{
+    const canvas=document.createElement("canvas");
+    canvas.width=frame.width;
+    canvas.height=frame.height;
+    const context=canvas.getContext("2d");
+    if(!context)throw new Error("Unable to create surface reflectivity canvas.");
+    const image=context.createImageData(frame.width,frame.height);
+    const rgba=image.data, categories=frame.categories;
+    for(let p=0,j=0;p<categories.length;p++,j+=4) {
+      const category=categories[p];
+      if(category<=0||category>=16)continue;
+      const rgb=category*3;
+      rgba[j]=reflectivityRgbLookup[rgb];
+      rgba[j+1]=reflectivityRgbLookup[rgb+1];
+      rgba[j+2]=reflectivityRgbLookup[rgb+2];
+      rgba[j+3]=255;
+    }
+    const projected=reprojectWebMercatorRgbaToGeographic(frame,rgba);
+    const output=context.createImageData(frame.width,frame.height);
+    output.data.set(projected);
+    context.putImageData(output,0,0);
+    const sw=webMercatorToDegrees(frame.georef.minX,frame.georef.minY);
+    const ne=webMercatorToDegrees(frame.georef.maxX,frame.georef.maxY);
+    const rectangle=Cesium.Rectangle.fromDegrees(
+      sw.longitude,sw.latitude,ne.longitude,ne.latitude
     );
-
-  for (
-    let p = 0, i = 0;
-    p < frame.categories.length;
-    p++, i += 4
-  ) {
-    const category =
-      frame.categories[p];
-
-    if (!category) {
-      image.data[i + 3] = 0;
-      continue;
-    }
-
-    const rgb =
-      displayRgb(category);
-
-    if (!rgb) {
-      image.data[i + 3] = 0;
-      continue;
-    }
-
-    image.data[i] =
-      rgb[0];
-
-    image.data[i + 1] =
-      rgb[1];
-
-    image.data[i + 2] =
-      rgb[2];
-
-    image.data[i + 3] =
-      255;
+    return Cesium.SingleTileImageryProvider.fromUrl(
+      canvas.toDataURL("image/png"),{rectangle}
+    );
+  })();
+  // Motion previews are one-use frames. Measured and normal gap-fill frames
+  // are stable and safe to cache for the current source loop.
+  const transient=frame.sourceMetadata?.temporalInference?.method===
+    "motion-compensated-category-warp";
+  if(!transient)measuredRadarProviderCache.set(frame,job);
+  try{return await job;}catch(error){
+    if(!transient)measuredRadarProviderCache.delete(frame);
+    throw error;
   }
+}
 
-  const geographicRgba =
-    reprojectWebMercatorRgbaToGeographic(
-      frame,
-      image.data
-    );
-
-  const geographicImage =
-    context.createImageData(
-      frame.width,
-      frame.height
-    );
-
-  geographicImage.data.set(
-    geographicRgba
-  );
-
-  context.putImageData(
-    geographicImage,
-    0,
-    0
-  );
-
-  const southWest =
-    webMercatorToDegrees(
-      frame.georef.minX,
-      frame.georef.minY
-    );
-
-  const northEast =
-    webMercatorToDegrees(
-      frame.georef.maxX,
-      frame.georef.maxY
-    );
-
-  const rectangle =
-    Cesium.Rectangle.fromDegrees(
-      southWest.longitude,
-      southWest.latitude,
-      northEast.longitude,
-      northEast.latitude
-    );
-
-  const provider =
-    await Cesium
-      .SingleTileImageryProvider
-      .fromUrl(
-        canvas.toDataURL(
-          "image/png"
-        ),
-        { rectangle }
-      );
-
+async function renderSurface(frame,renderToken=null,{timeoutMs=2200}={}) {
+  const provider=await prepareRadarSurfaceProvider(frame);
   if (
     renderToken != null
     && renderToken !== hybridSceneRenderToken
@@ -3099,18 +3038,21 @@ async function showHybridFrame(index) {
     try{
       const motion=createRadarMotionTransition(previousFrame,frame);
       const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
+      const morphStarted=performance.now();
       for(let i=1;i<=steps;i++){
+        if(performance.now()-morphStarted>
+            playbackDelayForSpeed(selectedPlaybackSpeed())*.5)break;
         if(renderToken!==hybridSceneRenderToken ||
            motionGeneration!==visualMotionGeneration || !playback.isPlaying())break;
         const displayFrame=motion.frame(i/(steps+1));
-        const shown=await renderSurface(displayFrame,renderToken,{timeoutMs:650});
+        const shown=await renderSurface(displayFrame,renderToken,{
+          timeoutMs:Math.min(180,Math.round(playbackDelayForSpeed(selectedPlaybackSpeed())*.4))
+        });
         if(!shown)break;
         // A display-only morph, not another BoM measurement. The
         // measurement timeline and all scientific overlays remain unchanged.
         $("mapTruthLabel").textContent="MOTION-INTERPOLATED RAIN · DISPLAY ONLY";
-        await new Promise(resolve=>setTimeout(resolve,
-          Math.min(105,Math.round(playbackDelayForSpeed(selectedPlaybackSpeed())/(steps+1)/2))
-        ));
+        // No additional sleep: rendering itself occupies the playback budget.
       }
     }catch{
       // If motion estimation or an interim tile fails, go directly to the

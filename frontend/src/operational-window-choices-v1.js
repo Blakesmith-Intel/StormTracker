@@ -13,7 +13,7 @@ export function buildOperationalWindowChoices({
   return [
     {
       value: DOPPLER_AVAILABLE_LOOP_VALUE,
-      label: "Radar + Doppler — All available",
+      label: "Doppler — All available",
       disabled: !combinedAvailable
     },
     ...RAIN_ONLY_LOOP_MINUTES.map(minutes => ({

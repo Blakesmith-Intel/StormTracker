@@ -64,7 +64,8 @@ assert.doesNotMatch(html,/id="showDopplerOverlay"/);
 assert.match(html,/id="dopplerOverlayRadar"/);
 assert.match(html,/id="radarOpacity"/);
 assert.match(html,/id="volumeOpacity"/);
-assert.match(html,/id="dopplerOpacity"/);
+assert.doesNotMatch(html,/id="dopplerOpacity"/,
+  "Native Doppler is an independent 100%-opacity feed");
 assert.match(html,/id="hybridPlayButton"/);
 assert.match(html,/id="hybridFrameSlider"/);
 assert.match(html,/id="radarPlaybackTime"/);

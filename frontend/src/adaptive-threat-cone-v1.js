@@ -37,7 +37,9 @@ export function createAdaptiveThreatConeController({
   minimumSteeringMotionKm = 1.25,
   breachMarginKm = 0.5,
   minimumTranslationKm = 4,
-  minimumTranslationMinutes = 5
+  minimumTranslationMinutes = 5,
+  followMeasuredPosition = false,
+  minimumMeasuredReanchorKm = 0.5
 } = {}) {
   if (typeof buildCone !== "function") {
     throw new TypeError("Adaptive cone controller requires a cone builder");
@@ -125,6 +127,9 @@ export function createAdaptiveThreatConeController({
       else if (steeringChanged) reason = "steering-change";
       else if (elapsed >= rolloverMinutes) reason = "rolling-refresh";
       else if (translated) reason = "storm-advanced";
+      else if (followMeasuredPosition && elapsed >= 1 &&
+        observedTranslationKm >= minimumMeasuredReanchorKm)
+        reason = "measured-position";
     }
 
     if (reason) {

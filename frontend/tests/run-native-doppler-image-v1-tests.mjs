@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { extractNativeDopplerPanel, reprojectNativeDopplerPanel,
-  NATIVE_DOPPLER_DISPLAY_SIZE } from "../src/native-doppler-image-v1.js";
+  NATIVE_DOPPLER_DISPLAY_SIZE, NATIVE_DOPPLER_ANNOTATION_START_ROW,
+  nativeDopplerDisplayFooterOpacity,
+  isNativeDopplerDisplayAnnotationRow } from "../src/native-doppler-image-v1.js";
 const source = {width:524, height:564, data:new Uint8ClampedArray(524*564*4)};
 const dot=(x,y,rgb)=>{const i=(y*source.width+x)*4;
   source.data.set([rgb[0],rgb[1],rgb[2],255],i);};
@@ -32,4 +34,31 @@ for(let i=0;i<projected.data.length;i+=4){
 assert.ok(seen.has("0,0,255")||seen.has("255,0,0"));
 assert.ok([...seen].every(rgb=>rgb==="0,0,255"||rgb==="255,0,0"),
   "raster contains only unchanged native BoM colours; no hybrid repaint");
-console.log("PASS native BoM pixel preservation, source mask, GIF footer crop, accurate geographic raster.");
+// Embedded BoM scan text is removed with a straight full-opacity display
+// boundary at row 438; no semitransparent band or interpolation.
+assert.equal(NATIVE_DOPPLER_ANNOTATION_START_ROW,438);
+assert.equal(nativeDopplerDisplayFooterOpacity(420),1);
+assert.equal(nativeDopplerDisplayFooterOpacity(437),1);
+assert.equal(nativeDopplerDisplayFooterOpacity(438),0);
+assert.equal(nativeDopplerDisplayFooterOpacity(500),0);
+assert.equal(isNativeDopplerDisplayAnnotationRow(437),false);
+assert.equal(isNativeDopplerDisplayAnnotationRow(438),true);
+assert.equal(isNativeDopplerDisplayAnnotationRow(511),true);
+assert.equal(isNativeDopplerDisplayAnnotationRow(512),false);
+dot(6+300,6+437,[0,0,255]); // last genuine fully displayed row
+dot(6+300,6+438,[255,0,0]); // first hidden annotation row
+dot(6+300,6+480,[255,0,0]); // annotation footer
+const originalSource=new Uint8ClampedArray(source.data);
+const cleaned=extractNativeDopplerPanel(source,palette);
+assert.equal(cleaned.data[(437*512+300)*4+3],255);
+assert.equal(cleaned.data[(438*512+300)*4+3],0);
+assert.equal(cleaned.data[(480*512+300)*4+3],0);
+for(let i=3;i<cleaned.data.length;i+=4)
+  assert.ok(cleaned.data[i]===0||cleaned.data[i]===255,
+    "Doppler displayed alpha must NEVER have soft or partial transparency");
+const rawSource=extractNativeDopplerPanel(source,palette,{maskAnnotationRows:false});
+assert.equal(rawSource.data[(480*512+300)*4+3],255,
+  "uncropped original source available independently for scientific analysis");
+assert.deepEqual(source.data,originalSource,
+  "Display crop must never mutate measured BoM source pixels");
+console.log("PASS BoM native Doppler hard footer cutoff, fully opaque displayed pixels and untouched source science.");

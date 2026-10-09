@@ -46,6 +46,7 @@ export function transitionProgress(
 
 export function createDopplerLayerTransition({
   imageryLayers,
+  scene = null,
   requestRender = () => {},
   requestFrame =
     callback =>
@@ -75,6 +76,15 @@ export function createDopplerLayerTransition({
   let animationGeneration = 0;
   const managedLayers =
     new Set();
+  let stagedLayer = null;
+  let stageGeneration = 0;
+  function cancelStage() {
+    stageGeneration++;
+    if (stagedLayer) {
+      removeLayer(stagedLayer);
+      stagedLayer = null;
+    }
+  }
 
   function removeLayer(
     layer
@@ -191,6 +201,7 @@ export function createDopplerLayerTransition({
       };
     }
 
+    cancelStage();
     cancelAnimation();
 
     // If rapid playback interrupted the previous blend, preserve the most recent
@@ -210,13 +221,18 @@ export function createDopplerLayerTransition({
         ? 0
         : nextAlpha;
 
-    imageryLayers.add(
-      layer
-    );
+    if (typeof imageryLayers.indexOf !== "function" || imageryLayers.indexOf(layer)<0)
+      imageryLayers.add(layer);
 
     managedLayers.add(
       layer
     );
+
+    // Prepared wind imagery is staged UNDER the previous native scan.
+    // At presentation time it must move ABOVE that scan so a top-only
+    // fade can preserve 100% combined coverage across the transition.
+    if(previousLayer && nextAlpha===1 && typeof imageryLayers.raiseToTop==="function")
+      imageryLayers.raiseToTop(layer);
 
     currentLayer =
       layer;
@@ -284,9 +300,10 @@ export function createDopplerLayerTransition({
         * progress;
 
       previousLayer.alpha =
-        previousStartAlpha
-        * (1 - progress);
+        nextAlpha===1 ? 1 : previousStartAlpha*(1-progress);
 
+      // Full-opacity standalone wind frames composite OVER the existing
+      // fully opaque source. The basemap never shines through at mid-fade.
       requestRender();
 
       if (progress < 1) {
@@ -331,6 +348,7 @@ export function createDopplerLayerTransition({
     durationMs =
       0
   } = {}) {
+    cancelStage();
     cancelAnimation();
 
     removeStaleLayers(
@@ -422,8 +440,56 @@ export function createDopplerLayerTransition({
       );
   }
 
+  // Pre-stage a decoded genuine BoM wind tile UNDER the previous one.
+  // The outgoing Doppler stays fully visible during loading. Only after
+  // Cesium has rendered the staged texture do we begin a brief crossfade.
+  async function replacePrepared({layer,key,alpha=targetAlpha,
+    durationMs=DEFAULT_DOPPLER_CROSSFADE_MS,onAdded=()=>{},
+    timeoutMs=900}={}) {
+    if (!layer) throw new TypeError("Prepared Doppler layer required");
+    if (currentLayer && currentKey===key)
+      return replace({layer,key,alpha,durationMs,onAdded});
+    if (!currentLayer || !scene?.postRender?.addEventListener ||
+        typeof imageryLayers.indexOf!=="function")
+      return replace({layer,key,alpha,durationMs,onAdded});
+    cancelStage();
+    // On a rapid playback step, finish the outgoing scan at the selected
+    // opacity before preparing another transition. Otherwise cancelling a
+    // half-finished blend can expose the basemap through both wind layers.
+    cancelAnimation();
+    removeStaleLayers(currentLayer);
+    if(currentLayer) currentLayer.alpha=targetAlpha;
+    const token=stageGeneration;
+    stagedLayer=layer;
+    layer.alpha=0.001;
+    imageryLayers.add(layer,Math.max(0,imageryLayers.indexOf(currentLayer)));
+    requestRender();
+    const ready=await new Promise(resolve=>{
+      let settled=false,frames=0,timeout,remove=()=>{};
+      const finish=value=>{
+        if(settled)return;
+        settled=true;remove();clearTimeout(timeout);resolve(value);
+      };
+      remove=scene.postRender.addEventListener(()=>{
+        if(token!==stageGeneration){finish(false);return;}
+        if(++frames>=3){finish(true);return;}
+        requestRender();
+      });
+      timeout=setTimeout(()=>finish(false),timeoutMs);
+      requestRender();
+    });
+    if(token!==stageGeneration)return {changed:false,cancelled:true};
+    stagedLayer=null;
+    if(!ready){
+      removeLayer(layer);
+      return {changed:false,ready:false};
+    }
+    return replace({layer,key,alpha,durationMs,onAdded});
+  }
+
   return {
     replace,
+    replacePrepared,
     clear,
     setOpacity,
 

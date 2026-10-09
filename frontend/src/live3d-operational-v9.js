@@ -55,7 +55,7 @@ import {
   paletteFromLatestDopplerImage
 } from "./bom-doppler-history-spatial-v1.js?v=operational-v9-7";
 
-import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.1-native";
+import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.14-hard-footer";
 import { resolveRainHistoryWindow } from "./rain-history-recovery-v1.js?v=9.16.1-history";
 
 import {
@@ -95,15 +95,17 @@ import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./
 import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.11-atomic-volume";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
+import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
+import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
-import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule } from "./doppler-available-window-v1.js?v=9.16-doppler-window";
+import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule, buildDopplerOnlySchedule } from "./doppler-available-window-v1.js?v=9.16.11-doppler-only";
 import { buildOperationalWindowChoices } from "./operational-window-choices-v1.js?v=9.16-four-windows";
 
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
@@ -115,12 +117,12 @@ import {
   hasNewMatchedProducts,
   createLiveLoopRefresh
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
-import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
-import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
+import { createContinuousPlayback } from "./continuous-playback-v1.js?v=9.16.10";
+import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=9.16.10";
 import {
   evaluateChronologicalTrackThreatCone,
   measuredTrackMotionAtObservation
-} from "./adaptive-threat-cone-v1.js?v=9.16.3-chronological";
+} from "./adaptive-threat-cone-v1.js?v=9.16.10";
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
@@ -128,7 +130,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.13.4";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.16.12-foreground";
 
 import {
   createQueenslandStateBorderLayer
@@ -175,7 +177,7 @@ import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
-} from "./doppler-layer-transition-v1.js?v=9.9.1";
+} from "./doppler-layer-transition-v1.js?v=9.16.13-opaque-crossfade";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -342,6 +344,7 @@ function syncBasemapReferenceLayer(basemapId) {
   queenslandTownLabels = createQueenslandTownLabelLayer({
     viewer,
     CesiumRef: Cesium,
+    container: document.getElementById("mapPanel"),
     mode: basemapId,
     onStatus: ({ kind, message }) => {
       if (kind === "warning") setBasemapStatus(message, "normal");
@@ -484,8 +487,11 @@ const VOLUME_METRIC_IDS=[
   "inferredTop40","inferredTop50","meanConfidence","highSupportPoints",
   "mediumSupportPoints","lowSupportPoints","highSupportTop40","highSupportTop50"
 ];
+// A complete standard 60-minute loop has up to 13 genuine 5-minute scans.
+// Preserve its already-built collections across repeated passes, but remain
+// bounded for long loops and browser-only / mobile GPU memory.
 const volumeGeometryCache=createBoundedFrameCache({
-  limit:6,
+  limit:14,
   onEvict:entry=>{if(entry?.collection)scene.primitives.remove(entry.collection);}
 });
 function clearVolumeGeometryCache(){
@@ -525,6 +531,11 @@ initialiseOperationalQfdTechnicalRescues({
 let hybridFrames = [];
 let hybridResults = [];
 let hybridFrameIndex = 0;
+let windPlaybackFrames = [];
+function isNativeDopplerPlayback() {
+  return loadedLoopSelection === DOPPLER_AVAILABLE_LOOP_VALUE &&
+    windPlaybackFrames.length > 0;
+}
 let hybridHistory = new Map();
 let sequenceLoading = false;
 let sharedTimeline = null;
@@ -555,14 +566,15 @@ function prewarmUpcomingFrames(index){
     for(let offset=1;offset<=2;offset++){
       if(generation!==playbackPrewarmGeneration ||
          region!==selectedRadarRegion() || sequenceLoading) return;
-      const next=(index+offset)%hybridFrames.length;
-      const frame=hybridFrames[next];
+      const windMode=isNativeDopplerPlayback();
+      const length=windMode ? windPlaybackFrames.length : hybridFrames.length;
+      if (!length) return;
+      const next=(index+offset)%length;
+      const frame=windMode ? windPlaybackFrames[next] : hybridFrames[next];
       if(!frame)continue;
       try {
-        await Promise.all([
-          prepareRadarSurfaceProvider(frame),
-          prepareWindForPlayback(next)
-        ]);
+        if (windMode) await prepareWindObservation(next);
+        else await prepareRadarSurfaceProvider(frame);
       } catch(error) {
         // Genuine source images can expire from BoM; this is best effort.
         console.warn("Playback prewarm skipped",frame.observedUtc,error);
@@ -572,10 +584,10 @@ function prewarmUpcomingFrames(index){
 }
 const playbackPerformanceMeter=createPlaybackPerformanceMeter({windowSize:24});
 const playback = createContinuousPlayback({
-  count: () => hybridFrames.length,
-  currentIndex: () => hybridFrameIndex,
-  showFrame: showHybridFrame,
-  delay: () => playbackDelayForSpeed(selectedPlaybackSpeed()),
+  count: () => isNativeDopplerPlayback() ? windPlaybackFrames.length : hybridFrames.length,
+  currentIndex: () => isNativeDopplerPlayback() ? independentDopplerIndexValue : hybridFrameIndex,
+  showFrame: index => isNativeDopplerPlayback() ? showDopplerOnlyFrame(index) : showHybridFrame(index),
+  delay: () => effectivePlaybackDelayMs(),
   onPlayingChange: playing => {
     $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
     $("hybridPlayButton").setAttribute("aria-pressed", String(playing));
@@ -670,6 +682,7 @@ const dopplerOverlayTransition =
   createDopplerLayerTransition({
     imageryLayers:
       viewer.imageryLayers,
+    scene,
 
     requestRender:
       () =>
@@ -728,7 +741,8 @@ function selectedLoopSelection() {
 function selectedLoopMinutes() {
   const selection = selectedLoopSelection();
   return selection === DOPPLER_AVAILABLE_LOOP_VALUE
-    ? (dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames)?.spanMinutes ?? 0)
+    ? Math.max(0, (Date.parse(independentDopplerFrames.at(-1)?.observedUtc) -
+        Date.parse(independentDopplerFrames[0]?.observedUtc))/60000 || 0)
     : Number(selection);
 }
 
@@ -778,7 +792,7 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   // Native BoM rain playback starts at 30 minutes. Longer durations must be
   // backed by published source history or this browser's rolling archive.
   const choices = buildOperationalWindowChoices({
-    combinedAvailable: Boolean(window && isDopplerSourceActive()),
+    combinedAvailable: isDopplerSourceActive() && independentDopplerFrames.length >= 2,
     rainAvailableMinutes: rainAvailable,
     rainHasFrames: availableRadarHistoryTimes.length > 0
   });
@@ -805,6 +819,14 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   updateLoopButtonLabel();
 }
 
+function effectivePlaybackDelayMs() {
+  if(isNativeDopplerPlayback()) return playbackDelayForSpeed(selectedPlaybackSpeed());
+  return sourceAlignedPlaybackDelayMs(
+    playbackDelayForSpeed(selectedPlaybackSpeed()),
+    hybridCombinedSchedule,
+    hybridCombinedSchedule.length > 0 && isCombinedDopplerWindowSelected()
+  );
+}
 function selectedPlaybackSpeed() {
   return Number(
     $("playbackSpeed")
@@ -822,8 +844,8 @@ function updateLoopButtonLabel() {
   if (button) {
     button.textContent =
       window.matchMedia?.("(max-width:700px)").matches
-        ? (dopplerAvailable ? "Load R+D" : `Load ${minutes}m rain`)
-        : (dopplerAvailable ? "Load Radar + Doppler — All available" :
+        ? (dopplerAvailable ? "Load Doppler" : `Load ${minutes}m rain`)
+        : (dopplerAvailable ? "Load Doppler — All available" :
             `Load ${minutes}-min rain radar`);
   }
 
@@ -1025,22 +1047,23 @@ function resetView() {
   else mapCamera.setView(REGIONAL_HOME);
 }
 function configureRadarSite() {
-  const ids = selectedSourceRadars();
-  const selector = $("dopplerOverlayRadar");
-  selector.replaceChildren(...ids.map(id => {
-    const option = document.createElement("option"); option.value = id;
-    option.textContent = `${id} · ${QLD_RADAR_SITES[id].name}`; return option;
-  }));
-  selector.disabled = ids.length === 0;
-  $("radarSite").title = selectedRadarRegion() === "SEQ" ? "Regional mosaic: Mt Stapylton, Marburg and Gympie" :
-    `${QLD_RADAR_SITES[selectedRadarRegion()].name}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
+  const selected=selectedRadarRegion();
+  const ids=selectedSourceRadars();
+  // The single primary radar selector owns the wind-source site too.
+  // Internal hidden input preserves existing verified loading/science paths
+  // without an independently user-selectable Doppler radar.
+  $("dopplerOverlayRadar").value=ids[0]??"";
+  const site=QLD_RADAR_SITES[selected];
+  $("radarSite").title=selected==="SEQ"
+    ? "Legacy south-east region (not exposed as an operational option)"
+    : `${site?.name??"Radar"}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
 }
 for (const site of Object.values(QLD_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
   const option = document.createElement("option"); option.value = site.id;
   option.textContent = `${site.name}${site.dopplerProduct ? "" : " · radar only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
-// Start with a real single-radar site; SEQ remains selectable, never the default.
+// Operational map uses one original BoM radar site at a time; legacy SEQ is not offered.
 $("radarSite").value = DEFAULT_RADAR_SITE_ID;
 configureRadarSite();
 
@@ -1111,7 +1134,7 @@ async function prepareRadarSurfaceProvider(frame) {
   }
 }
 
-async function renderSurface(frame,renderToken=null,{timeoutMs=2200}={}) {
+async function renderSurface(frame,renderToken=null,{timeoutMs=2200,onBeforeReveal=null}={}) {
   const provider=await prepareRadarSurfaceProvider(frame);
   if (
     renderToken != null
@@ -1127,6 +1150,10 @@ async function renderSurface(frame,renderToken=null,{timeoutMs=2200}={}) {
     {
       alpha: Number($("radarOpacity").value) / 100,
       timeoutMs,
+      // prepareRadarSurfaceProvider only returns after source image decode.
+      // Global terrain/basemap tile requests must not stall this handover.
+      decodedSingleTile: true,
+      beforeReveal:onBeforeReveal,
       isCurrent: () => renderToken == null ||
         renderToken === hybridSceneRenderToken
     }
@@ -1584,9 +1611,11 @@ function updateTrackDisplayControls(index) {
     : null;
   const cone = $("showTrackThreatCone");
   const status = $("trackThreatConeStatus");
+  const measuredMotion = observation && selectedTrack
+    ? measuredTrackMotionAtObservation(selectedTrack, observation) : null;
   const canProject = Boolean(
-    selectedTrackDisplayId && observation &&
-    measuredTrackMotionAtObservation(selectedTrack, observation)
+    selectedTrackDisplayId && observation && measuredMotion &&
+    measuredMotion.speed_kmh > 0 && measuredMotion.speed_kmh <= 160
   );
   cone.disabled = !canProject;
   if (!selectedTrackDisplayId) cone.checked = false;
@@ -1888,7 +1917,11 @@ async function decodeHistoricalDopplerFrame(
             }
           );
 
-        const nativePanel = extractNativeDopplerPanel(sourceImageData, palette);
+        const nativePanel = extractNativeDopplerPanel(sourceImageData, palette, {
+          // The optional BoM map overlays are separate, but the scan footer
+          // is still embedded in archived PNGs; clean DISPLAY copies only.
+          maskAnnotationRows:true
+        });
 
         return {
           radarId:
@@ -2406,19 +2439,28 @@ async function prepareWindObservation(index) {
   const provider=await prepareNativeDopplerProvider(radarId,record);
   return {radarId,index,frame,record,provider};
 }
-function commitWindObservation(prepared,{updateUi=true}={}) {
+async function commitWindObservation(prepared,{updateUi=true,renderToken=null}={}) {
+  // Never restore wind from a stale asynchronous render after rain-only
+  // selection has already removed the combined Doppler layer.
+  if (!shouldDisplayDopplerForSelectedWindow())
+    throw Error("Combined Doppler display was disabled during wind preparation");
   if(!prepared || $("dopplerOverlayRadar").value!==prepared.radarId)
     throw Error("Doppler site changed while preparing wind scan");
   const {radarId,index,record,provider}=prepared;
   const key=dopplerOverlayFrameKey(radarId,record);
   if(dopplerOverlayTransition.currentKey!==key){
-    dopplerOverlayTransition.replace({
+    // The new decoded native BoM image is staged behind the current scan
+    // and allowed to render before the short display-only blend begins.
+    const handover=await dopplerOverlayTransition.replacePrepared({
       layer:new Cesium.ImageryLayer(provider),key,
-      alpha:Number($("dopplerOpacity").value)/100,
-      durationMs:0,
+      alpha:1, // native standalone Doppler is always fully opaque
+      durationMs:dopplerCrossfadeDurationMs(),
       onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
     });
+    if(handover?.cancelled || handover?.ready===false) return false;
   }
+  if((renderToken!=null && renderToken!==hybridSceneRenderToken) ||
+     !shouldDisplayDopplerForSelectedWindow()) return false;
   dopplerOverlayRenderToken++; // Invalidate a superseded pending async overlay.
   independentDopplerRequest++; // Invalidate older wind-frame preparations.
   independentDopplerIndexValue=index;
@@ -2431,6 +2473,7 @@ function commitWindObservation(prepared,{updateUi=true}={}) {
   $("dopplerOverlayStatus").textContent=radarId+" · "+
     formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
   scene.requestRender();
+  return true;
 }
 async function prepareWindForPlayback(index) {
   if(!shouldDisplayDopplerForSelectedWindow() || !hybridCombinedSchedule.length)
@@ -2462,7 +2505,7 @@ function renderDopplerOverlay() {
     return;
   }
   const key=dopplerOverlayFrameKey(radarId,record);
-  const opacity=Number($("dopplerOpacity").value)/100;
+  const opacity=1; // standalone Doppler is fixed at 100%
   if(key&&dopplerOverlayTransition.currentKey===key){
     dopplerOverlayTransition.setOpacity(opacity);
     if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · independent Doppler";
@@ -2491,9 +2534,13 @@ function formatDualClock(utc) {
   return formatProductTime(utc,{compact:true}).split(" / ")[0];
 }
 function updateDualSourceTimes() {
-  const radarUtc=hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
+  const radarUtc=isNativeDopplerPlayback() ? null :
+    hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
   const windUtc=shouldDisplayDopplerForSelectedWindow() ? independentDopplerRecord?.observedUtc : null;
   const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
+  const windOnly=isNativeDopplerPlayback();
+  $("radarClockGroup").hidden=windOnly;
+  $("windClockGroup").hidden=!windOnly;
   if(radar){
     radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
     radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
@@ -2503,24 +2550,15 @@ function updateDualSourceTimes() {
       windUtc ? formatDualClock(windUtc) : "Loading";
     wind.title=windUtc ? formatProductTime(windUtc) : "No measured Doppler frame displayed";
   }
-  if(gap){
-    const delta=Math.abs(Date.parse(radarUtc)-Date.parse(windUtc))/60000;
-    gap.hidden=!Number.isFinite(delta);
-    if(!gap.hidden){
-      gap.textContent="Δ"+delta.toFixed(delta<10?1:0)+" min";
-      gap.title="These are independent observations "+delta.toFixed(1)+" minutes apart, not one measured radar scan";
-      gap.dataset.ageWarning=String(delta>15);
-    }
-  }
+  // No combined visual timeline remains: one clock belongs to the active
+  // rain-only OR wind-only playback, never a misleading source-time delta.
+  if(gap)gap.hidden=true;
 }
 function updateIndependentDopplerUi() {
   const active=shouldDisplayDopplerForSelectedWindow();
   const total=independentDopplerFrames.length;
   const item=independentDopplerFrames[independentDopplerIndexValue];
-  const label=total ? (independentDopplerIndexValue+1)+"/"+total : "—";
   const timestamp=item ? formatDopplerUtc(item.observedUtc) : "No source frames";
-  $("operationalDoppler").textContent=active
-    ? (total ? label+" · "+timestamp : "loading wind history") : "hidden";
   updateDualSourceTimes();
   $("dopplerFrameTime").textContent=active&&independentDopplerRecord?formatDopplerUtc(independentDopplerRecord.observedUtc):"—";
   $("dopplerRadarsLoaded").textContent=active&&independentDopplerRecord?"1":"0";
@@ -2538,7 +2576,7 @@ async function showIndependentDopplerFrame(nextIndex) {
   const index=Math.max(0,Math.min(independentDopplerFrames.length-1,Number(nextIndex)));
   const prepared=await prepareWindObservation(index);
   if(generation!==independentDopplerRequest || !isDopplerSourceActive())return;
-  commitWindObservation(prepared);
+  return await commitWindObservation(prepared);
 }
 
 async function refreshIndependentDopplerHistory(automatic=false) {
@@ -2553,8 +2591,13 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     dopplerHistories=sources.histories;
     dopplerPalettes=sources.palettes;
     dopplerLatestRecords=sources.latestRecords;
+    // The BoM page composites 'locations', 'range' and other map layers.
+    // Its latest GIF carries annotation ink; those pixels must NEVER enter
+    // native wind animation. The timestamped .T.YYYYMMDDHHMM.png files are
+    // the separate velocity-only image layer from BoM's radar loop.
+    // Preserve the latest GIF for source clock/palette SCIENCE only.
     const frames=buildIndependentDopplerFrames(
-      sources.histories.get(radarId),sources.latestRecords.get(radarId));
+      sources.histories.get(radarId),null);
     const previous=independentDopplerFrames;
     const previousIndex=independentDopplerIndexValue;
     const nextIndex=independentDopplerIndex(frames,previous,previousIndex);
@@ -2575,6 +2618,15 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     // until that real timestamp is incorporated, without falsely claiming
     // the displayed shared loop has advanced.
     if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
+       isNativeDopplerPlayback()) {
+      if(hasNewDopplerWindow() && !sequenceLoading)
+        void runSourceLoad(()=>loadHybridSequence(true),true);
+      // Metadata polling must not drive unrelated wind frames on-screen.
+      return;
+    }
+    if(selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
+       isNativeDopplerPlayback()) return;
+    if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
        hasNewDopplerWindow() && hybridCombinedSchedule.length) {
       $("autoRefreshNote").textContent =
         "New Doppler source frame · synchronising radar and wind loop…";
@@ -2587,6 +2639,13 @@ async function refreshIndependentDopplerHistory(automatic=false) {
        hybridCombinedSchedule.length) {
       // Same source timestamp: refresh metadata only. Never jump the wind
       // layer to newest and desynchronise an already playing shared cycle.
+      return;
+    }
+    if (!shouldDisplayDopplerForSelectedWindow()) {
+      // Keep genuine source history fresh in rain-only mode, but don't decode
+      // or commit wind imagery until a combined window is explicitly selected.
+      // This avoids unnecessary CPU work and a stale wind-layer resurrection.
+      windCycleCursor=nextIndex;
       return;
     }
     // A single bad historical PNG cannot prevent the remainder from playing.
@@ -2844,6 +2903,7 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
       "direction-change": "repositioned: storm changed direction",
       "steering-change": "reoriented: verified updated steering",
       "storm-advanced": "repositioned: measured storm advanced",
+      "measured-position": "anchored to current measured storm position",
       "rolling-refresh": "repositioned: 30-min refresh",
       "timeline-rewound": "rebuilt for earlier observation"
     }[projection.reason] ?? "within issued envelope";
@@ -2878,7 +2938,7 @@ function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
     const projection = evaluateChronologicalTrackThreatCone(
       track, observation, buildTrackThreatCone,
       { horizonMinutes:90, directionChangeThresholdDegrees:12 },
-      { rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5 }
+      { rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5, followMeasuredPosition:true }
     );
     if (projection.cone) return {track, projection, sourceUtc};
   }
@@ -2998,6 +3058,7 @@ function renderHybridTracks(index) {
       if (trail.length >= 2) {
         hybridSource.entities.add({
           id: `hybrid-trail-${track.track_id}`,
+          show: Boolean($("showTrackLabels")?.checked),
           polyline: {
             positions: trail.map(item => Cesium.Cartesian3.fromDegrees(
               item.longitude, item.latitude, displayAltitude(item.altitude)
@@ -3015,7 +3076,7 @@ function renderHybridTracks(index) {
         const projection = evaluateChronologicalTrackThreatCone(
           track, observation, buildTrackThreatCone,
           { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
-          { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5 }
+          { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5, followMeasuredPosition: true }
         );
         renderIssuedThreatCone(track, projection, null, observation);
       }
@@ -3097,6 +3158,56 @@ function updateHybridSourceMetrics(frame) {
       : "none";
 }
 
+
+async function showDopplerOnlyFrame(index) {
+  if (!isNativeDopplerPlayback() || !shouldDisplayDopplerForSelectedWindow())
+    return false;
+  const renderToken=++hybridSceneRenderToken;
+  const started=performance.now();
+  const next=Math.max(0,Math.min(windPlaybackFrames.length-1,Number(index)));
+  const source=windPlaybackFrames[next];
+  if (!source) return false;
+  let prepared;
+  try {
+    prepared=await prepareWindObservation(next);
+  } catch(error) {
+    setStatus("Doppler scan unavailable: "+error.message,"warning");
+    return false;
+  }
+  if(renderToken!==hybridSceneRenderToken ||
+     !isNativeDopplerPlayback() || !shouldDisplayDopplerForSelectedWindow())
+    return false;
+  try {
+    if(!await commitWindObservation(prepared,{renderToken,updateUi:true}))
+      return false;
+  } catch(error) {
+    setStatus("Doppler scan held: "+error.message,"warning");
+    return false;
+  }
+  if(renderToken!==hybridSceneRenderToken || !isNativeDopplerPlayback())
+    return false;
+  const time=prepared.record?.observedUtc ?? source.observedUtc;
+  syncFrameSlider($("hybridFrameSlider"),windPlaybackFrames.length,next);
+  $("hybridFrameLabel").textContent=(next+1)+"/"+windPlaybackFrames.length;
+  $("hybridSceneFrame").textContent=formatProductTime(time);
+  $("sourceTime").textContent=formatProductTime(time);
+  $("mapTruthLabel").textContent="GENUINE BoM DOPPLER RADIAL VELOCITY · no synthetic wind observations";
+  updateDualSourceTimes();
+  const telemetry=playbackPerformanceMeter.record({
+    frameMs:performance.now()-started,
+    targetMs:playbackDelayForSpeed(selectedPlaybackSpeed()),
+    windMs:performance.now()-started,radarMs:0,volumeMs:0
+  });
+  const meter=$("playbackPerformanceSummary");
+  if(meter){
+    meter.textContent=`Doppler ${telemetry.actualFps.toFixed(1)} fps · target ${telemetry.targetFps.toFixed(1)} fps · ${telemetry.overruns}/${telemetry.samples} slow frames`;
+    meter.title="Native measured wind animation; radar surface and volumetric geometry are not redrawn";
+  }
+  prewarmUpcomingFrames(next);
+  setStatus(`Genuine BoM Doppler ${next+1}/${windPlaybackFrames.length} · ${formatProductTime(time,{compact:true})} · radial wind, not measured surface gust`,"ok");
+  return true;
+}
+
 async function showHybridFrame(index) {
   const renderToken =
     ++hybridSceneRenderToken;
@@ -3115,9 +3226,21 @@ async function showHybridFrame(index) {
   // Extra motion-warped 2-D images exist only on-screen during sequential
   // playback; no scene opacity or whole-screen image crossfade is used.
   const previousFrame = latestFrame;
+  // Native wind may advance without a new radar scan. Preserve the genuine
+  // visible radar image and its expensive inferred/track geometry.
+  const windOnlyStep = isDopplerOnlyPlaybackStep(
+    previousFrame, frame, hybridCombinedSchedule.length > 0, Boolean(surfaceLayer)
+  );
   motionTransition.cancel();
   const motionGeneration=visualMotionGeneration;
-  const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
+  // A display-only motion-warp rain image has NO matching measured 3-D
+  // geometry. Never show it when inferred volumetric structure is visible:
+  // otherwise the 2-D echo advances while the 3-D plume stays at the previous
+  // observed timestamp. At zero 3-D opacity, the original smooth rain preview
+  // remains available without affecting scientific tracks.
+  const hasVisibleVolume = Number($("volumeOpacity").value)>0;
+  const steps=(hybridCombinedSchedule.length || hasVisibleVolume) ? 0 :
+    radarMotionStepsForSpeed(selectedPlaybackSpeed());
   const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
     canMotionInterpolateRadar(previousFrame,frame);
@@ -3155,11 +3278,35 @@ async function showHybridFrame(index) {
     windPreparationMs=performance.now()-windStart;
   }catch(error){
     setStatus("Combined observation held: "+error.message,"warning");
-    return;
+    return false;
   }
   if(renderToken!==hybridSceneRenderToken)return;
   const radarStart=performance.now();
-  const surfaceApplied=await renderSurface(frame,renderToken);
+  let surfaceApplied=false,geometryCommitted=false;
+  const commitMeasuredGeometry=()=>{
+    if(renderToken!==hybridSceneRenderToken)return;
+    const began=performance.now();
+    // Synchronously create/show the measured-frame inference and tracks
+    // BEFORE the newly decoded 2-D BoM surface becomes visible. Cesium then
+    // renders both together, never offset by a source observation.
+    renderInferredVolume(frame);
+    updateTrackDisplayControls(requestedIndex);
+    applyHybridVolumeMode(requestedIndex);
+    renderHybridTracks(requestedIndex);
+    syncSevereStormAlerts(requestedIndex);
+    volumeConstructionMs=performance.now()-began;
+    geometryCommitted=true;
+  };
+  try {
+    surfaceApplied=windOnlyStep ? true : await renderSurface(frame,renderToken,{
+      timeoutMs:playback.isPlaying() ? 1100 : 2200,
+      onBeforeReveal:commitMeasuredGeometry
+    });
+  } catch(error) {
+    // A corrupt/expired source tile is not a reason to freeze every cycle.
+    setStatus("Skipping unavailable original BoM frame: "+error.message,"warning");
+    return false;
+  }
   radarPresentationMs=performance.now()-radarStart;
   if(renderToken!==hybridSceneRenderToken)return;
 
@@ -3168,15 +3315,15 @@ async function showHybridFrame(index) {
     // observation. Keep the previous scan and retry normally on the next cycle.
     motionTransition.cancel();
     setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
-    return;
+    return false;
   }
   if(preparedWind){
-    try{commitWindObservation(preparedWind,{updateUi:false});}
+    try{await commitWindObservation(preparedWind,{updateUi:false,renderToken});}
     catch(error){
       // Report a missing partner explicitly, rather than announcing the
       // combination as one measured radar+wind state.
       setStatus("Rain loaded; Doppler could not commit: "+error.message,"warning");
-      return;
+      return false;
     }
   }
   // All requested imagery is now staged/committed. The UI cursor and source
@@ -3184,23 +3331,10 @@ async function showHybridFrame(index) {
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
-  const volumeStart=performance.now();
-  renderInferredVolume(frame);
-  volumeConstructionMs=performance.now()-volumeStart;
-
-  updateTrackDisplayControls(
-    hybridFrameIndex
-  );
-
-  applyHybridVolumeMode(
-    hybridFrameIndex
-  );
-
-  renderHybridTracks(
-    hybridFrameIndex
-  );
-
-  syncSevereStormAlerts(hybridFrameIndex);
+  // The handover has already presented the matching measured 3-D geometry
+  // in the same Cesium frame as this source raster. Wind-only events reuse it.
+  if(!windOnlyStep && !geometryCommitted)
+    throw Error("Measured radar volume was not committed with its 2-D frame");
   // Combined wind was committed synchronously above; no asynchronous
   // wind driver may overtake the now-visible radar/slider transaction.
 
@@ -3234,10 +3368,10 @@ async function showHybridFrame(index) {
     `${hybridFrameIndex+1}/${hybridFrames.length}${temporalInferred?" · inferred":""}`;
   if(preparedWind)updateIndependentDopplerUi();
   else updateDualSourceTimes();
-  prewarmUpcomingFrames(hybridFrameIndex);
+  if (!windOnlyStep) prewarmUpcomingFrames(hybridFrameIndex);
   const telemetry=playbackPerformanceMeter.record({
     frameMs:performance.now()-totalStart,
-    targetMs:playbackDelayForSpeed(selectedPlaybackSpeed()),
+    targetMs:effectivePlaybackDelayMs(),
     windMs:windPreparationMs,
     radarMs:radarPresentationMs,
     volumeMs:volumeConstructionMs
@@ -3282,6 +3416,7 @@ async function showHybridFrame(index) {
   );
   // No opacity fade. The last full observed frame is the final step of
   // the spatially advected radar animation.
+  return true;
 }
 
 async function warmRadarHistoryCache(
@@ -3364,7 +3499,58 @@ async function warmRadarHistoryCache(
   }
 }
 
+
+async function loadDopplerSequence(automatic=false) {
+  if(!isDopplerSourceActive()) throw Error("Choose a published BoM Doppler radar site");
+  if(independentDopplerFrames.length<2) {
+    await refreshIndependentDopplerHistory(false);
+  }
+  const plan=buildDopplerOnlySchedule(independentDopplerFrames);
+  if(plan.length<2) throw Error("At least two genuine BoM Doppler scans are required");
+  if(automatic && !hasNewDopplerWindow()) return;
+  const oldTime=independentDopplerFrames[independentDopplerIndexValue]?.observedUtc;
+  const resume=automatic ? playback.isPlaying() : true;
+  await playback.pause();
+  ++hybridSceneRenderToken;
+  windPlaybackFrames=plan.map(step=>independentDopplerFrames.find(frame=>
+    frame.observedUtc===step.dopplerObservedUtc)).filter(Boolean);
+  loadedLoopSelection=DOPPLER_AVAILABLE_LOOP_VALUE;
+  hybridCombinedSchedule=[]; // Never insert rain timestamps into Doppler playback.
+  lastCombinedDopplerLatestUtc=windPlaybackFrames.at(-1)?.observedUtc ?? null;
+  const recovered=automatic ? windPlaybackFrames.findIndex(frame=>
+    frame.observedUtc===oldTime) : 0;
+  independentDopplerIndexValue=Math.max(0,recovered);
+  // Hide radar display, inferred 3-D and storm annotations, NOT their
+  // underlying measured analysis or caches. Rain-only restores the controls.
+  radarImageryHandover.setOpacity(0);
+  if(inferredCollection) inferredCollection.show=false;
+  if(hybridTrackVolumeCollection) hybridTrackVolumeCollection.show=false;
+  hybridSource.show=false;
+  stormTrackLabelOverlay.setVisible(false);
+  scene.requestRender();
+  const minutes=Math.round((Date.parse(windPlaybackFrames.at(-1).observedUtc)-
+    Date.parse(windPlaybackFrames[0].observedUtc))/60000);
+  $("operationalLoopWindow").textContent=
+    `Doppler only · ${minutes} min / ${windPlaybackFrames.length} real scans`;
+  $("sharedHistoryNote").textContent=
+    `Original BoM Doppler radial velocity · ${windPlaybackFrames.length} real scans · no added rain frames · ${formatProductTimeRange(windPlaybackFrames[0].observedUtc,windPlaybackFrames.at(-1).observedUtc)}`;
+  $("autoRefreshNote").textContent=
+    "Auto update: new actual Doppler observations checked every 5 minutes.";
+  syncFrameSlider($("hybridFrameSlider"),windPlaybackFrames.length,independentDopplerIndexValue);
+  $("hybridPlayButton").disabled=windPlaybackFrames.length<2;
+  $("hybridFrameSlider").disabled=false;
+  const displayed=await showDopplerOnlyFrame(independentDopplerIndexValue);
+  if(!displayed) throw Error("Initial genuine BoM Doppler image could not be presented");
+  if(resume) playback.play();
+}
+
 async function loadHybridSequence(automatic = false) {
+  if(selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE)
+    return loadDopplerSequence(automatic);
+  windPlaybackFrames=[];
+  hybridSource.show=true;
+  stormTrackLabelOverlay.setVisible(Boolean($("showTrackLabels")?.checked));
+  radarImageryHandover.setOpacity(Number($("radarOpacity").value)/100);
   if (!automatic) setStatus("Checking available BOM radar history…");
 
   const region = selectedRadarRegion();
@@ -4035,15 +4221,16 @@ async function runSourceLoad(loader, background = false) {
   } finally {
     sequenceLoading = false;
     prewarmUpcomingFrames(hybridFrameIndex);
-    $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
+    $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length && independentDopplerFrames.length<2;
 
     $("radarSite").disabled = false;
     for (const id of ["loadButton", "jumpLatestButton"]) $(id).disabled = false;
     const selectedWindow = $("loopDurationMinutes").selectedOptions?.[0];
     $("loadHybridButton").disabled = !selectedWindow ||
       selectedWindow.disabled || !selectedWindow.value;
-    $("hybridPlayButton").disabled = hybridFrames.length < 2;
-    $("hybridFrameSlider").disabled = !hybridFrames.length;
+    const activeCount=isNativeDopplerPlayback() ? windPlaybackFrames.length : hybridFrames.length;
+    $("hybridPlayButton").disabled = activeCount < 2;
+    $("hybridFrameSlider").disabled = !activeCount;
   }
 }
 
@@ -4265,6 +4452,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   independentDopplerRecord=null;
   independentDopplerSourceId=null;
   hybridCombinedSchedule=[];
+  windPlaybackFrames=[];
   lastCombinedDopplerLatestUtc=null;
   windLastRadarDriveKey=null;
   windCycleCursor=-1;
@@ -4296,7 +4484,9 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   hybridSource.entities.removeAll(); clearHybridTrackVolumeCollection();
   // Both reloads run on independent source pathways and clocks.
   if(isDopplerSourceActive()) {
-    void refreshIndependentDopplerHistory(false).catch(error=>{
+    if(selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE)
+      await refreshIndependentDopplerHistory(false);
+    else void refreshIndependentDopplerHistory(false).catch(error=>{
       $("dopplerOverlayStatus").textContent=error.message;
     });
   }
@@ -4359,6 +4549,10 @@ $("terrainEnabled").addEventListener(
 
 $("loopDurationMinutes").addEventListener("change", () => {
   motionTransition.cancel();
+  // Invalidate any pending combined-frame handover BEFORE clearing Doppler.
+  // Otherwise an awaiting native BoM image can resurrect the outgoing wind.
+  ++hybridSceneRenderToken;
+  ++independentDopplerRequest;
   // Apply the visible-mode boundary immediately, before the new radar
   // history finishes loading. Doppler's source cache remains untouched.
   renderDopplerOverlay();
@@ -4370,7 +4564,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { au
 $("jumpLatestButton").addEventListener("click", async () => {
   if (sequenceLoading) return;
   await playback.pause();
-  if (hybridFrames.length) {
+  if(isNativeDopplerPlayback()){
+    showDopplerOnlyFrame(windPlaybackFrames.length-1).catch(error=>setStatus(error.message,"error"));
+  } else if (hybridFrames.length) {
     showHybridFrame(hybridFrames.length - 1).catch(error => setStatus(error.message, "error"));
   } else {
     runSourceLoad(loadLatest);
@@ -4393,7 +4589,8 @@ $("hybridFrameSlider").addEventListener("input", async event => {
   motionTransition.cancel();
   const index = Number(event.target.value);
   await playback.pause();
-  showHybridFrame(index).catch(error => setStatus(error.message, "error"));
+  (isNativeDopplerPlayback() ? showDopplerOnlyFrame(index) : showHybridFrame(index))
+    .catch(error => setStatus(error.message, "error"));
 });
 $("hybridPlayButton").addEventListener("click", () => {
   motionTransition.cancel();
@@ -4404,7 +4601,10 @@ $("hybridPlayButton").addEventListener("click", () => {
 // Toggle BOTH tracking points and their labels on the CURRENT (even paused)
 // frame, without updating radar, volume primitives or the playback position.
 function updateRenderedTrackLabels() {
-  stormTrackLabelOverlay.setVisible(Boolean($("showTrackLabels")?.checked));
+  const show = Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
+  stormTrackLabelOverlay.setVisible(show);
+  setStormTrackTrailVisibility(hybridSource.entities, show);
+  scene.requestRender();
 }
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
@@ -4412,35 +4612,29 @@ $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStorm
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
-  updateTrackDisplayControls(hybridFrameIndex);
-  applyHybridVolumeMode(hybridFrameIndex);
-  renderHybridTracks(hybridFrameIndex);
+  if(!isNativeDopplerPlayback()) {
+    updateTrackDisplayControls(hybridFrameIndex);
+    applyHybridVolumeMode(hybridFrameIndex);
+    renderHybridTracks(hybridFrameIndex);
+  }
 });
-$("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
+$("showTrackThreatCone").addEventListener("change", () => {
+  if(!isNativeDopplerPlayback()) renderHybridTracks(hybridFrameIndex);
+});
 
-// Doppler source is automatic; opacity 0 hides it without discarding its data.
-// Opacity changes only rendered colours, never decoded samples or tracking.
+// Doppler is a separate native display with fixed 100% opacity.
+// Radar and inferred 3-D opacity remain independent.
 $("radarOpacity").addEventListener("input", event => {
   motionTransition.cancel();
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
-  radarImageryHandover.setOpacity(opacity);
+  radarImageryHandover.setOpacity(isNativeDopplerPlayback() ? 0 : opacity);
   surfaceLayer = radarImageryHandover.currentLayer;
   scene.requestRender();
 });
-$("dopplerOpacity").addEventListener("input", event => {
-  motionTransition.cancel();
-  const opacity = Number(event.target.value) / 100;
-  $("dopplerOpacityValue").textContent = `${event.target.value}%`;
-  dopplerOverlayTransition.setOpacity(
-    opacity
-  );
-  scene.requestRender();
-});
-
 // Display-only point transparency: retained measured source reflectivity and
 // empirical 3-D intensity calculations do not change. No radar/2-D surface
-// opacity or Doppler opacity is altered.
+// opacity is altered; standalone Doppler always stays fully opaque.
 $("volumeOpacity").addEventListener("input", event => {
   const percent=Number(event.target.value);
   $("volumeOpacityValue").textContent=`${percent}%`;
@@ -4449,22 +4643,8 @@ $("volumeOpacity").addEventListener("input", event => {
   scene.requestRender();
 });
 
-$("dopplerOverlayRadar").addEventListener("change", async () => {
-  ++independentDopplerRequest;
-  independentDopplerFrames=[];
-  independentDopplerIndexValue=0;
-  independentDopplerRecord=null;
-  independentDopplerSourceId=null;
-  clearDopplerOverlay();
-  updateIndependentDopplerUi();
-  if(isDopplerSourceActive()){
-    refreshIndependentDopplerHistory(false).catch(error=>{
-      $("dopplerOverlayStatus").textContent=error.message;
-    });
-  }
-});
-
-$("loadButton").addEventListener("click", () => runSourceLoad(loadLatest));
+$("loadButton").addEventListener("click", () => runSourceLoad(
+  isNativeDopplerPlayback() ? ()=>loadDopplerSequence(false) : loadLatest));
 
 $("minimumDbzh").addEventListener(
   "input",
@@ -4473,7 +4653,7 @@ $("minimumDbzh").addEventListener(
       .textContent =
         event.target.value;
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );
@@ -4500,7 +4680,7 @@ $("occupancyThreshold").addEventListener(
           event.target.value
         ).toFixed(2);
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );
@@ -4527,7 +4707,7 @@ $("verticalScale").addEventListener(
           event.target.value
         ).toFixed(1);
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );
@@ -4552,7 +4732,7 @@ $("pointSize").addEventListener(
       .textContent =
         event.target.value;
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );

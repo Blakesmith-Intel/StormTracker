@@ -60,10 +60,22 @@ input[type="checkbox"] { margin:0; accent-color:#92d3ef; }
 .support-medium { opacity:.58; } .support-low { opacity:.22; }
 #status { font-size:10px; line-height:1.3; min-height:26px; max-height:42px; overflow:auto; }
 #status[data-kind="error"] { color:#ff9d91; } #status[data-kind="ok"] { color:#99e2b7; }
-#mapPanel { position:relative; min-width:0; min-height:0; overflow:hidden; }
-#cesiumContainer { width:100%; height:100%; touch-action:none; overscroll-behavior:none; }
-#nav { position:absolute; z-index:800; top:10px; right:10px; display:flex; gap:8px; align-items:center; padding:5px; border:1px solid #ffffff30; border-radius:7px; background:#081116eb; }
-#mapTruthLabel { position:absolute; z-index:650; left:8px; bottom:28px; font-size:9px; color:#c1d3dd; background:#081116dc; padding:4px 7px; border-radius:4px; pointer-events:none; }
+/* Stable map stacking contract: future imagery and weather graphics belong
+   INSIDE #cesiumContainer (z=0), geographic names are always above them,
+   and interactive controls/attributions reserve the highest UI plane. */
+#mapPanel {
+  position:relative; min-width:0; min-height:0; overflow:hidden;
+  isolation:isolate;
+  --stormtracker-geo-label-z:2000;
+  --stormtracker-control-z:3000;
+}
+
+#cesiumContainer {
+  position:relative;z-index:0;isolation:isolate;width:100%;height:100%;
+  touch-action:none;overscroll-behavior:none;
+}
+#nav { position:absolute; z-index:var(--stormtracker-control-z); top:10px; right:10px; display:flex; gap:8px; align-items:center; padding:5px; border:1px solid #ffffff30; border-radius:7px; background:#081116eb; }
+#mapTruthLabel { position:absolute; z-index:var(--stormtracker-control-z); left:8px; bottom:28px; font-size:9px; color:#c1d3dd; background:#081116dc; padding:4px 7px; border-radius:4px; pointer-events:none; }
 dialog { width:min(650px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); margin:auto; padding:12px; border:1px solid #4a6575; border-radius:10px; background:#0e1820; color:#edf5f8; overflow:hidden; }
 dialog::backdrop { background:#0009; }
 .details-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -165,7 +177,7 @@ dialog::backdrop { background:#0009; }
 }
 
 .frame-crossfade { position:absolute; inset:0; width:100%; height:100%; z-index:400; pointer-events:none; }
-#cesiumCredits { position:absolute; right:4px; bottom:2px; z-index:900; pointer-events:auto; }
+#cesiumCredits { position:absolute; right:4px; bottom:2px; z-index:var(--stormtracker-control-z); pointer-events:auto; }
 
 #radarSite { width:180px; min-width:0; font-size:11px; }
 @media(max-width:700px) { #radarSite { width:150px; font-size:10px; } #nav { gap:4px; } }
@@ -278,7 +290,7 @@ dialog::backdrop { background:#0009; }
 }
 .map-info-card {
   position:absolute;
-  z-index:850;
+  z-index:var(--stormtracker-control-z);
   left:10px;
   top:10px;
   width:min(340px,calc(100% - 20px));
@@ -700,6 +712,22 @@ img.flood-road-key::before,img.flood-road-key::after {content:none;display:none;
 img.flood-road-key-large {width:31px;height:31px;margin:0;}
 
 
+/* Never add map imagery/volumes over this foreground layer. New weather/map
+   drawing belongs within #cesiumContainer; its entire stacking context is 0.
+   Only interactive controls, alert panels and required attribution sit above. */
+.qld-place-foreground {
+  position:absolute;inset:0;
+  z-index:var(--stormtracker-geo-label-z);
+  overflow:hidden;pointer-events:none;contain:layout style;
+}
+.qld-place-name {
+  position:absolute;transform:translate(-50%,-50%);
+  white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;
+  color:#fff;line-height:1.15;
+  -webkit-text-stroke:.35px #101318;
+  text-shadow:0 1px 2px #080b10,1px 0 2px #080b10,-1px 0 2px #080b10,0 -1px 2px #080b10;
+  pointer-events:none;user-select:none;
+}
 /* V9.15.1: observed storm-ID point/label pairs sit over every Cesium 3-D
    primitive and the composited frame fade without intercepting map gestures. */
 .storm-track-overlay {
@@ -735,7 +763,7 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
 
 /* V9.16 radar-evidence alerts — separate from track labels and map-info cards */
 .storm-severe-alert-dock {
-  position:absolute; z-index:865; right:10px; top:59px;
+  position:absolute; z-index:var(--stormtracker-control-z); right:10px; top:59px;
   width:min(292px,calc(100% - 20px)); max-height:44%;
   overflow:auto; padding:8px; border:1px solid #5f707a;
   border-radius:8px; background:#0e1820ed; box-shadow:0 4px 15px #0008;
@@ -752,7 +780,7 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
 .storm-severe-alert-detail { margin-top:7px; padding-top:6px; border-top:1px solid #4a6575; line-height:1.45; }
 .storm-severe-alert-detail p { margin:4px 0; color:#c1d3dd; font-size:10px; }
 .storm-severe-alert-detail button { margin-top:4px; min-height:24px; }
-.storm-severe-alert-pins { position:absolute; inset:0; pointer-events:none; z-index:840; }
+.storm-severe-alert-pins { position:absolute; inset:0; pointer-events:none; z-index:var(--stormtracker-control-z); }
 .storm-severe-alert-pin {
   position:absolute; pointer-events:auto; transform:translate(-50%,-50%);
   height:23px; width:23px; min-height:23px; padding:0;
@@ -775,6 +803,8 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   gap:4px 14px; padding:5px 2px 2px; font-size:11px; color:#b5cad6;
 }
 .dual-source-times span {display:inline-flex; align-items:baseline; gap:6px;}
+.dual-source-times [hidden] { display:none !important; }
+.track-details-row { justify-content:flex-end; }
 .dual-source-times strong {font-size:11px; font-variant-numeric:tabular-nums; color:#e6f3f8; font-weight:600;}
 @media (max-width:700px) {
   .dual-source-times {font-size:10px; gap:2px 9px; padding:3px 1px;}

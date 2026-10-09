@@ -49,7 +49,8 @@ assert.match(script,/playback = createContinuousPlayback\(/);
 assert.match(script,/independentDopplerRefresh = createLiveLoopRefresh\(/);
 assert.match(script,/function driveWindFromCommonPlayback\(/);
 assert.match(script,/preparedWind=await prepareWindForPlayback\(requestedIndex\)/);
-assert.match(script,/commitWindObservation\(preparedWind,\{updateUi:false\}\)/);
+assert.match(script,/await commitWindObservation\(preparedWind,\{updateUi:false,renderToken\}\)/,
+  "wind imagery must be prepared and committed before the source timeline advances");
 assert.doesNotMatch(script,/driveWindFromCommonPlayback\(hybridFrameIndex\)/,
   "radar timeline must not dispatch wind asynchronously after slider commit");
 assert.match(script,/nextNativeDopplerIndex\(windCycleCursor, independentDopplerFrames.length\)/);
@@ -71,7 +72,9 @@ assert.match(html,/id="dualSourceTimes"/);
 assert.match(html,/id="sourceTimeGap"/);
 assert.match(script,/function updateDualSourceTimes\(\)/);
 assert.match(script,/formatProductTime\(utc,\{compact:true\}\)/);
-assert.match(script,/delta>15/);
+assert.match(script,/\$\("radarClockGroup"\)\.hidden=windOnly/);
+assert.match(script,/\$\("windClockGroup"\)\.hidden=!windOnly/);
+assert.doesNotMatch(script,/delta>15/,"No misleading combined-source timestamp delta remains");
 assert.doesNotMatch(html,/id="dopplerPlayButton"|id="dopplerFrameSlider"|id="dopplerControls"/);
 assert.match(css,/\.dual-source-times/);
 console.log("PASS one player, two independent native loops, all radar/Doppler frames and genuine per-layer timestamps.");

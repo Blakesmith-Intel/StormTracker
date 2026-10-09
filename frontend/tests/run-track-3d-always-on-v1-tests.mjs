@@ -11,7 +11,8 @@ function test(name,fn){fn();checks++;console.log("PASS "+name);}
 test("Track-specific 3-D is permanently on: no UI checkbox",()=>{
   assert.doesNotMatch(html,/id="showTrackVolumes"/);
   assert.doesNotMatch(controller,/\$\("showTrackVolumes"\)/);
-  assert.match(html,/Track-specific 3-D · always on/);
+  assert.doesNotMatch(html,/Track-specific 3-D · always on/);
+  assert.match(html,/id="openDetailsButton"/,"Track details remains available without redundant 3-D label");
   assert.match(controller,/const trackVolumesRequested = true/);
 });
 test("Track mode is requested for measured tracks and falls back on temporal frames",()=>{

@@ -7,16 +7,38 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
+// BoM's separately delivered weather PNGs exclude the optional Locations
+// and Range overlays, BUT UTC/angle/range text is burned into the lower panel.
+// Use a HARD image boundary from source row 438: full original swatch/alpha
+// above it, fully transparent below. No partial alpha, blending, fill or
+// fabricated wind observations. Raw decoded BoM samples remain unchanged.
+export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 438;
+export function nativeDopplerDisplayFooterOpacity(row) {
+  return row < NATIVE_DOPPLER_ANNOTATION_START_ROW ? 1 : 0;
+}
+export function isNativeDopplerDisplayAnnotationRow(row) {
+  return Number.isInteger(row) &&
+    row >= NATIVE_DOPPLER_ANNOTATION_START_ROW &&
+    row < NATIVE_DOPPLER_PANEL_SIZE;
+}
+
 
 // Accept only Bureau velocity palette pixels. Preserve their exact original
 // RGBA (not the nearest palette swatch), and exclude GUI text/background/legend.
 // This crop accepts both original 524 × 564 GIFs and bare 512 × 512 panels.
-export function extractNativeDopplerPanel(imageData, palette, { includeZero = false } = {}) {
+export function extractNativeDopplerPanel(imageData, palette, {
+  includeZero = false,
+  // Historical weather PNGs and latest GIF both carry source scan metadata
+  // in the bottom panel. Mask it in DISPLAY copies only.
+  maskAnnotationRows = true
+} = {}) {
   const layout = historicalPanelLayout(imageData.width, imageData.height);
   const size = layout.panelSize;
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
+    // Crop the bottom annotation rows once, not on animation frames.
+    if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
       const alpha = imageData.data[from + 3];

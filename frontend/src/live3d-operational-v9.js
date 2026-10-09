@@ -55,7 +55,7 @@ import {
   paletteFromLatestDopplerImage
 } from "./bom-doppler-history-spatial-v1.js?v=operational-v9-7";
 
-import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.11-bom-raw-png";
+import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.13-footer-fade";
 import { resolveRainHistoryWindow } from "./rain-history-recovery-v1.js?v=9.16.1-history";
 
 import {
@@ -1917,7 +1917,9 @@ async function decodeHistoricalDopplerFrame(
           );
 
         const nativePanel = extractNativeDopplerPanel(sourceImageData, palette, {
-          maskAnnotationRows:false // timestamped PNG is already weather-only
+          // The optional BoM map overlays are separate, but the scan footer
+          // is still embedded in archived PNGs; clean DISPLAY copies only.
+          maskAnnotationRows:true
         });
 
         return {

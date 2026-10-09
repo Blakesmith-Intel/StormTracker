@@ -2432,7 +2432,7 @@ async function prepareWindObservation(index) {
   const provider=await prepareNativeDopplerProvider(radarId,record);
   return {radarId,index,frame,record,provider};
 }
-function commitWindObservation(prepared,{updateUi=true}={}) {
+async function commitWindObservation(prepared,{updateUi=true,renderToken=null}={}) {
   // Never restore wind from a stale asynchronous render after rain-only
   // selection has already removed the combined Doppler layer.
   if (!shouldDisplayDopplerForSelectedWindow())
@@ -2442,13 +2442,18 @@ function commitWindObservation(prepared,{updateUi=true}={}) {
   const {radarId,index,record,provider}=prepared;
   const key=dopplerOverlayFrameKey(radarId,record);
   if(dopplerOverlayTransition.currentKey!==key){
-    dopplerOverlayTransition.replace({
+    // The new decoded native BoM image is staged behind the current scan
+    // and allowed to render before the short display-only blend begins.
+    const handover=await dopplerOverlayTransition.replacePrepared({
       layer:new Cesium.ImageryLayer(provider),key,
       alpha:Number($("dopplerOpacity").value)/100,
-      durationMs:0,
+      durationMs:dopplerCrossfadeDurationMs(),
       onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
     });
+    if(handover?.cancelled || handover?.ready===false) return false;
   }
+  if((renderToken!=null && renderToken!==hybridSceneRenderToken) ||
+     !shouldDisplayDopplerForSelectedWindow()) return false;
   dopplerOverlayRenderToken++; // Invalidate a superseded pending async overlay.
   independentDopplerRequest++; // Invalidate older wind-frame preparations.
   independentDopplerIndexValue=index;
@@ -2461,6 +2466,7 @@ function commitWindObservation(prepared,{updateUi=true}={}) {
   $("dopplerOverlayStatus").textContent=radarId+" · "+
     formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
   scene.requestRender();
+  return true;
 }
 async function prepareWindForPlayback(index) {
   if(!shouldDisplayDopplerForSelectedWindow() || !hybridCombinedSchedule.length)
@@ -2569,7 +2575,7 @@ async function showIndependentDopplerFrame(nextIndex) {
   const index=Math.max(0,Math.min(independentDopplerFrames.length-1,Number(nextIndex)));
   const prepared=await prepareWindObservation(index);
   if(generation!==independentDopplerRequest || !isDopplerSourceActive())return;
-  commitWindObservation(prepared);
+  return await commitWindObservation(prepared);
 }
 
 async function refreshIndependentDopplerHistory(automatic=false) {
@@ -3237,7 +3243,7 @@ async function showHybridFrame(index) {
     return false;
   }
   if(preparedWind){
-    try{commitWindObservation(preparedWind,{updateUi:false});}
+    try{await commitWindObservation(preparedWind,{updateUi:false,renderToken});}
     catch(error){
       // Report a missing partner explicitly, rather than announcing the
       // combination as one measured radar+wind state.

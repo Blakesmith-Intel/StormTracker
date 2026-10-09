@@ -50,6 +50,13 @@ assert.match(runtime,/const steps=hybridCombinedSchedule\.length \? 0 :/,
   "combined playback must avoid synthetic radar morph frames");
 assert.match(runtime,/windOnlyStep \? true : await renderSurface/,
   "Doppler-only union events must not re-render unchanged rain");
+assert.match(runtime,/\+\+hybridSceneRenderToken;\s*\+\+independentDopplerRequest;[\s\S]*?renderDopplerOverlay\(\)/,
+  "switching to rain only must invalidate queued hybrid and wind frame commits before clearing overlay");
+assert.match(runtime,/if \(!shouldDisplayDopplerForSelectedWindow\(\)\)\s*throw Error\("Combined Doppler display was disabled during wind preparation"\)/,
+  "a prepared stale Doppler scan must not commit after rain-only selection");
+assert.match(runtime,/if \(!shouldDisplayDopplerForSelectedWindow\(\)\) \{[\s\S]*?windCycleCursor=nextIndex;\s*return;\s*\}/,
+  "rain-only refresh keeps Doppler history updated without wind-image decode or display");
+
 
 const start={longitude:153,latitude:-27};
 const stamps=[0,5,10,15].map(minutes=>new Date(Date.UTC(2026,9,9,0,minutes)).toISOString());

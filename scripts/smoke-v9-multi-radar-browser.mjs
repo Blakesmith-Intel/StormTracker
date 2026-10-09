@@ -72,6 +72,14 @@ async function waitFor(predicate,timeout=75000){
   return inspect();
 }
 async function screenshot(name){
+  // In headless CI, software WebGL screenshot capture can stall Cesium's GPU
+  // render queue and block subsequent real interaction tests. Preserve DOM
+  // layout metrics and source diagnostics instead; screenshots remain
+  // available outside CI on a hardware-accelerated browser.
+  if(process.env.CI){
+    note("software-WebGL-screenshot-skipped",{name});
+    return;
+  }
   try{
     await page.screenshot({path:"qa-screenshots/"+engine+"-"+name+".png",
       timeout:6500,captureBeyondViewport:false,animations:"disabled"});
@@ -92,6 +100,13 @@ try{
   await page.locator("#multiRadarSelectButton").click();
   assert.equal(await page.locator("#multiRadarPanel").isVisible(),true);
   assert.equal(await page.locator("#multiRadarSelectButton").getAttribute("aria-expanded"),"true");
+  const panelBounds=await page.locator("#multiRadarPanel").boundingBox();
+  const viewport=page.viewportSize();
+  assert.ok(panelBounds && panelBounds.x>=0 && panelBounds.y>=0 &&
+    panelBounds.x+panelBounds.width<=viewport.width+1 &&
+    panelBounds.y+panelBounds.height<=viewport.height+1,
+    "Additional radar menu must not be clipped outside the browser viewport");
+  note("radar-panel-layout",{bounds:panelBounds,viewport});
   assert.equal(await page.locator('#multiRadarChecklist input[value="66"]').isDisabled(),true);
   // Preserve fully functional checkbox toggles on a real rendered DOM.
   await page.locator('#multiRadarChecklist input[value="50"]').check();

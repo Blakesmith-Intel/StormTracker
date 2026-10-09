@@ -219,7 +219,9 @@ const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
 // Keep every camera gesture and manual control immediate during a visual fade.
-for (const event of ["pointerdown", "pointermove", "wheel", "keydown"]) {
+// Mere hover/pointer movement must not cancel a weather-frame fade.
+// An actual drag begins with pointerdown, which still cancels instantly.
+for (const event of ["pointerdown", "wheel", "keydown"]) {
   document.addEventListener(event, () => frameCrossfade.clear(), { passive: true });
 }
 document.addEventListener("visibilitychange", () => {
@@ -3059,6 +3061,9 @@ function updateHybridSourceMetrics(frame) {
 async function showHybridFrame(index) {
   const renderToken =
     ++hybridSceneRenderToken;
+  const previousVisibleIndex = latestFrame
+    ? hybridFrames.findIndex(item => item.observedUtc === latestFrame.observedUtc)
+    : -1;
 
   hybridFrameIndex =
     Math.max(
@@ -3104,6 +3109,12 @@ async function showHybridFrame(index) {
     );
 
   if (!surfaceApplied) {
+    // A rejected tile handover must not leave the UI claiming an undrawn
+    // observation. Keep the previous scan and retry normally on the next cycle.
+    if (previousVisibleIndex >= 0) {
+      hybridFrameIndex = previousVisibleIndex;
+      syncFrameSlider($("hybridFrameSlider"), hybridFrames.length, hybridFrameIndex);
+    }
     frameCrossfade.clear();
     setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
     return;

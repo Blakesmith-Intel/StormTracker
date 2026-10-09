@@ -74,16 +74,12 @@ import {
   ALL_AVAILABLE_LOOP_VALUE,
   availableRadarLoopMinutes,
   continuousRadarHistoryTimes,
-  buildRadarPlaybackPlan,
   normaliseRadarHistoryTimes,
   radarHistorySpanMinutes,
   selectRadarHistoryPlan
 } from "./radar-history-window-v1.js?v=9.8.3";
 
-import {
-  interpolateRadarFrame,
-  isTemporallyInferredRadarFrame
-} from "./radar-temporal-interpolation-v1.js?v=9.8.3";
+import { isTemporallyInferredRadarFrame } from "./radar-temporal-interpolation-v1.js?v=9.8.3";
 
 import {
   getRadarFrames,
@@ -604,42 +600,6 @@ function hasNewDopplerWindow() {
     Date.parse(independentDopplerFrames.at(-1)?.observedUtc) >
     Date.parse(lastCombinedDopplerLatestUtc);
 }
-function chooseWindCursorForRadar(radarIndex) {
-  const windFrames = independentDopplerFrames;
-  if (!windFrames.length) return -1;
-  const atTime = Date.parse(hybridFrames[radarIndex]?.observedUtc);
-  const start = Date.parse(windFrames[0].observedUtc);
-  const end = Date.parse(windFrames[windFrames.length - 1].observedUtc);
-  if (Number.isFinite(atTime) && atTime >= start && atTime <= end) {
-    return nearestIndependentDopplerFrameIndex(windFrames, hybridFrames[radarIndex].observedUtc);
-  }
-  const fraction = Math.max(0, Math.min(1, radarIndex / Math.max(1, hybridFrames.length - 1)));
-  return Math.round(fraction * (windFrames.length - 1));
-}
-function driveWindFromCommonPlayback(radarIndex) {
-  if (!shouldDisplayDopplerForSelectedWindow() || !independentDopplerFrames.length) return;
-  const key=String(radarIndex)+":"+String(hybridFrames[radarIndex]?.observedUtc);
-  if(!playback.isPlaying() && key===windLastRadarDriveKey && !hybridCombinedSchedule.length)return;
-  windLastRadarDriveKey=key;
-  if (playback.isPlaying() && windRenderPending && !hybridCombinedSchedule.length) return;
-  const scheduled = hybridCombinedSchedule[radarIndex];
-  const next = scheduled
-    ? independentDopplerFrames.findIndex(frame => frame.observedUtc === scheduled.dopplerObservedUtc)
-    : playback.isPlaying()
-      ? nextNativeDopplerIndex(windCycleCursor, independentDopplerFrames.length)
-      : chooseWindCursorForRadar(radarIndex);
-  if (scheduled && next === independentDopplerIndexValue &&
-      independentDopplerRecord?.observedUtc === scheduled.dopplerObservedUtc) return;
-  if (next < 0) return;
-  windCycleCursor = next;
-  windRenderPending = true;
-  void showIndependentDopplerFrame(next).catch(error => {
-    windSourceFailCount++;
-    const status = $("dopplerOverlayStatus");
-    if (status) status.textContent="Wind frame unavailable · "+error.message;
-  }).finally(() => {windRenderPending=false;});
-}
-
 const independentDopplerRefresh = createLiveLoopRefresh({
   refresh: () => document.hidden || !isDopplerSourceActive()
     ? undefined : refreshIndependentDopplerHistory(true),
@@ -705,33 +665,15 @@ function selectedLoopMinutes() {
 }
 
 function availableHistorySummary(times = availableRadarHistoryTimes) {
-  const history = normaliseRadarHistoryTimes(times);
-  if (!history.length) return "Radar history unavailable";
-
-  const plan = buildRadarPlaybackPlan(history);
-  const inferred =
-    plan.filter(entry => entry.kind === "inferred").length;
-  const span =
-    plan.length > 1
-      ? Math.round(
-          (
-            Date.parse(plan.at(-1).observedUtc)
-            - Date.parse(plan[0].observedUtc)
-          ) / 60000
-        )
-      : 0;
-
-  return (
-    `Radar history available: ${span} min · ` +
-    `${history.length} observed + ${inferred} inferred display frames · ` +
-    formatProductTimeRange(
-      plan[0]?.observedUtc,
-      plan.at(-1)?.observedUtc
-    )
-  );
+  const observations=normaliseRadarHistoryTimes(times);
+  if(!observations.length)return "BoM radar history unavailable";
+  return "BoM radar history: "+Math.round(radarHistorySpanMinutes(observations))+
+    " min · "+observations.length+" actual observed scans · "+
+    formatProductTimeRange(observations[0],observations.at(-1));
 }
+// Original-source rain and Doppler history share one playback controller,
+// but each keeps its own real UTC timestamp. No inferred 2-D scan is added.
 
-// Four user-facing windows. The existing combined Doppler schedule is unchanged.
 function isCombinedDopplerWindowSelected() {
   return selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE;
 }
@@ -1074,11 +1016,9 @@ async function prepareRadarSurfaceProvider(frame) {
   })();
   // Motion previews are one-use frames. Measured and normal gap-fill frames
   // are stable and safe to cache for the current source loop.
-  const transient=frame.sourceMetadata?.temporalInference?.method===
-    "motion-compensated-category-warp";
-  if(!transient)measuredRadarProviderCache.set(frame,job);
+  measuredRadarProviderCache.set(frame,job);
   try{return await job;}catch(error){
-    if(!transient)measuredRadarProviderCache.delete(frame);
+    measuredRadarProviderCache.delete(frame);
     throw error;
   }
 }
@@ -1678,51 +1618,6 @@ function canvasImageData(
     );
 }
 
-function dopplerDisplayColour(
-  velocity
-) {
-  const value =
-    Number(
-      velocity
-    );
-
-  if (
-    value < 0
-  ) {
-    const strength =
-      Math.min(
-        1,
-        Math.abs(
-          value
-        ) / 70
-      );
-
-    return Cesium.Color
-      .fromHsl(
-        0.56,
-        0.95,
-        0.72
-          - strength * 0.32,
-        0.78
-      );
-  }
-
-  const strength =
-    Math.min(
-      1,
-      value / 70
-    );
-
-  return Cesium.Color
-    .fromHsl(
-      0.13
-        - strength * 0.12,
-      0.95,
-      0.62
-        - strength * 0.18,
-      0.78
-    );
-}
 
 function clearDopplerOverlay() {
   dopplerOverlayRenderToken++;
@@ -1737,39 +1632,6 @@ function clearDopplerOverlay() {
     count.textContent =
       "0";
   }
-}
-
-function dopplerCanvasForFrame(frame, samples) {
-  const canvas = document.createElement("canvas");
-  canvas.width = frame.width;
-  canvas.height = frame.height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Unable to create Doppler overlay canvas.");
-  const southWest = webMercatorToDegrees(frame.georef.minX, frame.georef.minY);
-  const northEast = webMercatorToDegrees(frame.georef.maxX, frame.georef.maxY);
-  const longitudeSpan = northEast.longitude - southWest.longitude;
-  const latitudeSpan = northEast.latitude - southWest.latitude;
-  let rendered = 0;
-  for (const sample of samples) {
-    if (!Number.isFinite(sample.longitude) || !Number.isFinite(sample.latitude)) continue;
-    const x = (sample.longitude - southWest.longitude) / longitudeSpan * canvas.width;
-    const y = (northEast.latitude - sample.latitude) / latitudeSpan * canvas.height;
-    if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
-    const rgb = sample.palette_rgb;
-    context.fillStyle = rgb
-      ? `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`
-      : dopplerDisplayColour(sample.velocity_kmh).toCssColorString();
-    context.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
-    rendered++;
-  }
-  return {
-    canvas,
-    rectangle: Cesium.Rectangle.fromDegrees(
-      southWest.longitude, southWest.latitude,
-      northEast.longitude, northEast.latitude
-    ),
-    rendered
-  };
 }
 
 async function decodeHistoricalDopplerFrame(
@@ -3360,7 +3222,6 @@ async function loadHybridSequence(automatic = false) {
     requestedPlan
       .filter(entry => entry.kind === "observed")
       .map(entry => entry.observedUtc);
-  const requestedInferred = 0; // Genuine BoM scans only.
 
   if (!automatic) {
     setStatus("Loading independent reflectivity history: " + times.length + " observed frames…");
@@ -3592,38 +3453,15 @@ async function loadHybridSequence(automatic = false) {
   const displayResults = [];
   const displayStates = [];
 
-  for (const entry of displayPlan) {
-    if (entry.kind === "observed") {
-      const frame =
-        observedFrameByTime.get(entry.observedUtc);
-      if (!frame) continue;
-
-      displayFrames.push(frame);
-      displayResults.push(
-        observedResultByTime.get(entry.observedUtc)
-        ?? null
-      );
-      displayStates.push(
-        observedStateByTime.get(entry.observedUtc)
-        ?? {
-          reflectivityUtc: entry.observedUtc,
-          pairings: [],
-          records: [],
-          sourceFailures: 0
-        }
-      );
-      continue;
-    }
-
-    const before =
-      observedFrameByTime.get(entry.beforeUtc);
-    const after =
-      observedFrameByTime.get(entry.afterUtc);
-
-    if (!before || !after) continue;
-
-    // Never create temporal fill images. Missing BoM scans remain gaps in
-    // the source timeline, not synthetic frame positions or extra analysis.
+  for(const entry of displayPlan) {
+    if(entry.kind!=="observed")continue;
+    const frame=observedFrameByTime.get(entry.observedUtc);
+    if(!frame)continue;
+    displayFrames.push(frame);
+    displayResults.push(observedResultByTime.get(entry.observedUtc) ?? null);
+    displayStates.push(observedStateByTime.get(entry.observedUtc) ?? {
+      reflectivityUtc:entry.observedUtc,pairings:[],records:[],sourceFailures:0
+    });
   }
 
   if (!displayFrames.length) {
@@ -3836,11 +3674,6 @@ async function loadHybridSequence(automatic = false) {
   }
 
   hybridDopplerFrameStates = []; // Independent Doppler never borrows a radar frame timestamp.
-  syncFrameSlider(
-    $("hybridFrameSlider"),
-    hybridFrames.length,
-    hybridFrameIndex
-  );
   $("hybridPlayButton").disabled = hybridFrames.length < 2;
   await showHybridFrame(hybridFrameIndex);
   if (resume) playback.play();
@@ -4259,9 +4092,12 @@ for (const button of document.querySelectorAll("[data-detail-tab]")) {
 }
 $("hybridFrameSlider").addEventListener("input", async event => {
   
-  const index = Number(event.target.value);
+  const requested=Number(event.target.value);
+  // Native input sliders move before the Cesium image is ready. Restore the
+  // actual displayed cursor until the requested source image is committed.
+  syncFrameSlider($("hybridFrameSlider"),hybridFrames.length,hybridFrameIndex);
   await playback.pause();
-  showHybridFrame(index).catch(error => setStatus(error.message, "error"));
+  showHybridFrame(requested).catch(error => setStatus(error.message,"error"));
 });
 $("hybridPlayButton").addEventListener("click", () => {
   

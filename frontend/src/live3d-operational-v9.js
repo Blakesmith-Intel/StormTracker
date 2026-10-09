@@ -1143,6 +1143,28 @@ for(const site of Object.values(QLD_RADAR_SITES).sort((a,b)=>
   });
 }
 refreshAdditionalRadarChoices();
+// Opt-in, read-only browser diagnostics for verifying actual Cesium layers,
+// native BoM timestamps, selector state, and latest observed source frame.
+if(new URLSearchParams(window.location.search).has("qaMultiRadar")){
+  window.__stormtrackerMultiRadarDiagnostics=()=>({
+    primary:selectedRadarRegion(),
+    secondary:[...additionalRadarSiteIds],
+    visibleSupplemental:supplementalRadarDisplay.visibleSites,
+    primaryUtc:latestFrame?.observedUtc??null,
+    primaryRegion:latestFrame?.sourceMetadata?.region??null,
+    primaryInferred:Boolean(latestFrame?.sourceMetadata?.temporalInference),
+    dopplerOnly:isNativeDopplerPlayback(),
+    frameCount:hybridFrames.length,
+    sourceStatus:$("status")?.textContent??"",
+    addedStatus:$("multiRadarStatus")?.textContent??"",
+    mapWidth:$("cesiumContainer")?.clientWidth??0,
+    mapHeight:$("cesiumContainer")?.clientHeight??0,
+    radarAlpha:radarImageryHandover.currentLayer?.alpha??null,
+    extraAlpha:viewer.imageryLayers?.length??0,
+    openPanel:!$("multiRadarPanel").hidden,
+    cameraTarget:mapCamera?.getState?.()??null
+  });
+}
 $("multiRadarSelectButton").addEventListener("click",()=>{
   const panel=$("multiRadarPanel");panel.hidden=!panel.hidden;
   $("multiRadarSelectButton").setAttribute("aria-expanded",String(!panel.hidden));

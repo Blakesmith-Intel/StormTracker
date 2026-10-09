@@ -700,6 +700,20 @@ img.flood-road-key::before,img.flood-road-key::after {content:none;display:none;
 img.flood-road-key-large {width:31px;height:31px;margin:0;}
 
 
+/* V9.16.12: place names are geographic DOM text above EVERY Cesium
+   3-D volume, rain tile and terrain frame, independent of basemap mode. */
+.qld-place-foreground {
+  position:absolute;inset:0;z-index:525;overflow:hidden;pointer-events:none;
+  contain:layout style;
+}
+.qld-place-name {
+  position:absolute;transform:translate(-50%,-50%);
+  white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;
+  color:#fff;line-height:1.15;
+  -webkit-text-stroke:.35px #101318;
+  text-shadow:0 1px 2px #080b10,1px 0 2px #080b10,-1px 0 2px #080b10,0 -1px 2px #080b10;
+  pointer-events:none;user-select:none;
+}
 /* V9.15.1: observed storm-ID point/label pairs sit over every Cesium 3-D
    primitive and the composited frame fade without intercepting map gestures. */
 .storm-track-overlay {

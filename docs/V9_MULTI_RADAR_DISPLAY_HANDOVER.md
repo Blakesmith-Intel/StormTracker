@@ -13,6 +13,7 @@ The **primary radar** selector remains in the top-right of StormTracker. A new *
 - Existing 2-D primary radar raster, inferred 3-D volume, ST labels/tracks, threat cones, BoM native Doppler-only loop, performance optimisations, basemap, flood/road/power layers remain unchanged.
 - Existing global `radarOpacity` slider applies equally to supplemental measured reflectivity. Extra radar imagery never affects 3-D opacity or native Doppler's 100% opacity.
 - The original urban/rural map foreground labels remain DOM overlays on top of all additional Cesium raster layers.
+- With extra sites selected, display-only motion-warped primary rain previews are suspended; the primary and added sites stay on original BoM observation timestamps. Existing rain playback/step controls continue normally, using measured frames.
 - Default **one primary radar**. Multi-radar selections are transient to the page, not persistent across reloads; this is deliberate for safe opt-in preview.
 
 ## Technical structure

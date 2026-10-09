@@ -1,11 +1,15 @@
 import {
-  ALL_AVAILABLE_LOOP_VALUE, availableRadarLoopMinutes,
-  continuousRadarHistoryTimes, radarHistorySpanMinutes
+  availableRadarLoopMinutes, buildRadarPlaybackPlan,
+  continuousRadarHistoryTimes, radarHistorySpanMinutes,
+  selectRadarHistoryPlan
 } from "./radar-history-window-v1.js";
 
-// Source gaps and short BoM retention must not crash the operational player.
-// A partially available rain-only loop always uses genuine observations and
-// explicitly reports its shorter range while the browser archive accumulates.
+export const RAIN_STARTUP_MINUTES = 30;
+
+// A 30-minute rolling startup view uses only actual recent BoM observations,
+// with clearly identified display-only interpolation for intermediate frames.
+// It remains the fallback when the chosen longer rain-only archive is incomplete.
+// No Doppler scan is ever brought into this rain-only view.
 export function resolveRainHistoryWindow(observedTimes, requestedMinutes) {
   const minutes = Number(requestedMinutes);
   if (![60,120,180].includes(minutes)) {
@@ -13,10 +17,17 @@ export function resolveRainHistoryWindow(observedTimes, requestedMinutes) {
   }
   const current = continuousRadarHistoryTimes(observedTimes);
   const complete = availableRadarLoopMinutes(current).includes(minutes);
+  const plan = complete
+    ? selectRadarHistoryPlan(current,minutes)
+    : buildRadarPlaybackPlan(current);
+  const latest = Date.parse(plan.at(-1)?.observedUtc);
+  const cutoff = latest - RAIN_STARTUP_MINUTES * 60000;
   return {
     requestedMinutes: minutes,
     actualSpanMinutes: radarHistorySpanMinutes(current),
-    effectiveSelection: complete ? String(minutes) : ALL_AVAILABLE_LOOP_VALUE,
-    partial: !complete
+    plan: complete ? plan : plan.filter(frame =>
+      Date.parse(frame.observedUtc) >= cutoff),
+    partial: !complete,
+    starterMinutes: complete ? null : RAIN_STARTUP_MINUTES
   };
 }

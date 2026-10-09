@@ -713,14 +713,19 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   const selector = $("loopDurationMinutes");
   const previous = preserveSelection ? selector.value : "";
   const window = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
+  const rainAvailable = availableRadarLoopMinutes(availableRadarHistoryTimes);
+  const bootstrapRain = availableRadarHistoryTimes.length >= 2 && !rainAvailable.includes(60);
+  // The 60-minute rain selection remains usable while only the native
+  // ~30-minute feed exists. This is a 30-minute starter, NOT an extra menu mode.
   const choices = buildOperationalWindowChoices({
     combinedAvailable: Boolean(window && isDopplerSourceActive()),
-    rainAvailableMinutes: availableRadarLoopMinutes(availableRadarHistoryTimes)
+    rainAvailableMinutes: bootstrapRain ? [...rainAvailable, 60] : rainAvailable
   });
   const options = choices.map(choice => {
     const option = document.createElement("option");
     option.value = choice.value;
-    option.textContent = choice.label;
+    option.textContent = bootstrapRain && choice.value === "60"
+      ? choice.label + " · 30-min starter" : choice.label;
     option.disabled = choice.disabled;
     return option;
   });
@@ -730,7 +735,8 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   // Never silently switch a user's rain-only mode to combined Doppler just
   // because its requested duration is temporarily unavailable.
   const selected = choices.some(choice => choice.value === previous)
-    ? previous : enabled[0]?.value ?? "";
+    ? previous : enabled.some(choice => choice.value === "60")
+      ? "60" : enabled[0]?.value ?? "";
   if (selected) selector.value = selected;
   else selector.selectedIndex = -1;
   updateLoopButtonLabel();
@@ -3278,7 +3284,7 @@ async function loadHybridSequence(automatic = false) {
   const requestedPlan = isCombined
     ? [...new Set(combinedRequested.map(entry=>entry.radarObservedUtc))]
         .map(observedUtc=>({kind:"observed",observedUtc}))
-    : selectRadarHistoryPlan(availableRadarHistoryTimes,rainWindow.effectiveSelection);
+    : rainWindow.plan;
   const times =
     requestedPlan
       .filter(entry => entry.kind === "observed")
@@ -3505,11 +3511,10 @@ async function loadHybridSequence(automatic = false) {
       kind:"observed",observedUtc:entry.radarObservedUtc
     }));
   } else {
-    try {
-      displayPlan = selectRadarHistoryPlan(frames.map(frame=>frame.observedUtc),loopSelection);
-    } catch {
-      displayPlan = selectRadarHistoryPlan(frames.map(frame=>frame.observedUtc),ALL_AVAILABLE_LOOP_VALUE);
-    }
+    displayPlan = resolveRainHistoryWindow(
+      frames.map(frame => frame.observedUtc),
+      loopSelection
+    ).plan;
   }
 
   const displayFrames = [];
@@ -3619,7 +3624,7 @@ async function loadHybridSequence(automatic = false) {
     isCombined
       ? `Radar + Doppler · ${Math.round(loopMinutes)} min / ${hybridCombinedSchedule.length} steps`
       : rainHistoryIncomplete
-        ? `${Math.round(sharedTimeline.spanMinutes)} min available / ${loopMinutes} min requested · accumulating rain scans`
+        ? `${Math.round(sharedTimeline.spanMinutes)} min rain-only starter · collecting scans for ${loopMinutes} min`
         : loopSelection === ALL_AVAILABLE_LOOP_VALUE
           ? `${Math.round(sharedTimeline.spanMinutes)} min available`
           : `${loopMinutes} min loop`;

@@ -116,12 +116,12 @@ import {
   hasNewMatchedProducts,
   createLiveLoopRefresh
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
-import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
-import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
+import { createContinuousPlayback } from "./continuous-playback-v1.js?v=9.16.10";
+import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=9.16.10";
 import {
   evaluateChronologicalTrackThreatCone,
   measuredTrackMotionAtObservation
-} from "./adaptive-threat-cone-v1.js?v=9.16.3-chronological";
+} from "./adaptive-threat-cone-v1.js?v=9.16.10";
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
@@ -485,8 +485,11 @@ const VOLUME_METRIC_IDS=[
   "inferredTop40","inferredTop50","meanConfidence","highSupportPoints",
   "mediumSupportPoints","lowSupportPoints","highSupportTop40","highSupportTop50"
 ];
+// A complete standard 60-minute loop has up to 13 genuine 5-minute scans.
+// Preserve its already-built collections across repeated passes, but remain
+// bounded for long loops and browser-only / mobile GPU memory.
 const volumeGeometryCache=createBoundedFrameCache({
-  limit:6,
+  limit:14,
   onEvict:entry=>{if(entry?.collection)scene.primitives.remove(entry.collection);}
 });
 function clearVolumeGeometryCache(){
@@ -3178,9 +3181,16 @@ async function showHybridFrame(index) {
   }
   if(renderToken!==hybridSceneRenderToken)return;
   const radarStart=performance.now();
-  const surfaceApplied=windOnlyStep ? true : await renderSurface(frame,renderToken,{
-    timeoutMs:playback.isPlaying() ? 1100 : 2200
-  });
+  let surfaceApplied=false;
+  try {
+    surfaceApplied=windOnlyStep ? true : await renderSurface(frame,renderToken,{
+      timeoutMs:playback.isPlaying() ? 1100 : 2200
+    });
+  } catch(error) {
+    // A corrupt/expired source tile is not a reason to freeze every cycle.
+    setStatus("Skipping unavailable original BoM frame: "+error.message,"warning");
+    return false;
+  }
   radarPresentationMs=performance.now()-radarStart;
   if(renderToken!==hybridSceneRenderToken)return;
 

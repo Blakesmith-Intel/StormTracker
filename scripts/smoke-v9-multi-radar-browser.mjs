@@ -34,14 +34,34 @@ page.on("requestfailed",request=>{
       failure:request.failure()?.errorText});
   }
 });
-await page.route("**/wmts?**",async route=>{
-  // This is an authentic relay response. No seeded, manipulated or fabricated
-  // weather data; browser only receives the upstream's original image bytes.
+let wmtsResponses=0,wmtsFailures=0;
+await page.route(/^https:\/\/stormtracker-bom-relay\.stormtracker-bom-relay\.workers\.dev\/wmts(?:\?|$)/,
+  async route=>{
+  // Download the authentic public WMTS response without localhost Origin/
+  // Referer headers: production Pages is approved but preview localhost is
+  // not. Only the CORS *response header* changes. Source bytes are unchanged.
   try{
-    const response=await route.fetch({timeout:60000,maxRetries:1});
-    const headers={...response.headers(),"access-control-allow-origin":"*"};
-    await route.fulfill({response,headers});
+    const source=await fetch(route.request().url(),{
+      signal:AbortSignal.timeout(45000),
+      headers:{"accept":"image/png,image/*;q=0.8,*/*;q=0.1"}
+    });
+    const bytes=Buffer.from(await source.arrayBuffer());
+    wmtsResponses++;
+    if(source.status!==200 || !source.headers.get("content-type")?.includes("image")){
+      wmtsFailures++;
+      if(wmtsFailures<=12)console.log("LIVE_WMTS_PROBE",JSON.stringify({
+        http:source.status,contentType:source.headers.get("content-type"),
+        bytes:bytes.length,url:route.request().url().slice(0,250),
+        preview:bytes.toString("utf8",0,Math.min(120,bytes.length))
+      }));
+    }
+    await route.fulfill({status:source.status,
+      headers:{"access-control-allow-origin":"*",
+        "content-type":source.headers.get("content-type")??"application/octet-stream",
+        "cache-control":"no-store"},
+      body:bytes});
   }catch(error){
+    wmtsFailures++;
     console.log("LIVE_WMTS_PREVIEW_FETCH_ERROR",String(error).slice(0,350));
     await route.abort();
   }
@@ -167,6 +187,8 @@ try{
   });
 }finally{
   evidence.endedAt=new Date().toISOString();
+  evidence.wmtsResponses=wmtsResponses;
+  evidence.wmtsFailures=wmtsFailures;
   writeFileSync("qa-screenshots/"+engine+"-browser-report.json",
     JSON.stringify(evidence,null,2)+"\n");
   await page.close();

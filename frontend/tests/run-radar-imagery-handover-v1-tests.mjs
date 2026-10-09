@@ -1,0 +1,77 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { createRadarImageryHandover } from "../src/radar-imagery-handover-v1.js";
+
+function fixture() {
+  const listeners=new Set(), layers=[], queue=[], removed=[];
+  let nextId=0;
+  const scene={globe:{tilesLoaded:false},requests:0,
+    requestRender(){this.requests++},
+    postRender:{addEventListener(fn){listeners.add(fn);return ()=>listeners.delete(fn)}}
+  };
+  const imageryLayers={
+    add(layer,index=layers.length){layers.splice(index,0,layer);return layer},
+    remove(layer){const i=layers.indexOf(layer);if(i>=0)layers.splice(i,1);removed.push(layer);return true},
+    indexOf:layer=>layers.indexOf(layer),
+    raiseToTop(layer){const i=layers.indexOf(layer);layers.splice(i,1);layers.push(layer)}
+  };
+  const api=createRadarImageryHandover({imageryLayers,scene,
+    setTimeoutImpl:fn=>{queue.push(fn);return ++nextId},
+    clearTimeoutImpl:()=>{}});
+  const fire=()=>[...listeners].forEach(fn=>fn());
+  return {scene,layers,removed,api,fire,queue,listeners};
+}
+const f=fixture();
+const original={name:"old",alpha:0};
+assert.equal(await f.api.replace(original,{alpha:0.65}),true);
+assert.equal(f.layers[0],original);
+const replacement={name:"new",alpha:1};
+const job=f.api.replace(replacement,{alpha:0.65});
+assert.equal(f.layers.length,2);
+assert.equal(f.layers[0],replacement,"new layer staged under old layer");
+assert.equal(replacement.alpha,0.001);
+assert.equal(f.api.currentLayer,original);
+f.fire();f.fire();
+assert.equal(f.api.currentLayer,original,"do not unveil new imagery while tiles still loading");
+f.scene.globe.tilesLoaded=true;
+f.fire();f.fire();
+assert.equal(await job,true);
+assert.deepEqual(f.layers,[replacement]);
+assert.equal(f.api.currentLayer,replacement);
+assert.equal(replacement.alpha,0.65);
+assert.ok(f.removed.includes(original));
+f.api.setOpacity(0.4);
+assert.equal(replacement.alpha,0.4);
+
+const blocked={name:"blocked"};
+f.scene.globe.tilesLoaded=false;
+const wait=f.api.replace(blocked,{alpha:0.8});
+assert.equal(f.api.currentLayer,replacement);
+f.queue.at(-1)();
+assert.equal(await wait,false,"timeout must NOT replace visible radar with empty basemap");
+assert.equal(f.api.currentLayer,replacement);
+assert.ok(!f.layers.includes(blocked));
+
+const obsolete={name:"obsolete"};
+const inflight=f.api.replace(obsolete,{alpha:0.9});
+const newest={name:"newest"};
+const final=f.api.replace(newest,{alpha:0.75});
+assert.equal(await inflight,false);
+assert.ok(!f.layers.includes(obsolete));
+f.scene.globe.tilesLoaded=true;
+f.fire();f.fire();
+assert.equal(await final,true);
+assert.equal(f.api.currentLayer,newest);
+assert.equal(f.layers.length,1,"no leaking radar imagery layers");
+assert.equal(f.listeners.size,0,"all postRender subscriptions removed");
+f.api.reset();
+assert.equal(f.layers.length,0);
+const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
+assert.ok(runtime.includes("radarImageryHandover.replace("),"live surface must use the atomic swap");
+assert.ok(!runtime.includes("viewer.imageryLayers.remove(\n      surfaceLayer"),"never remove outgoing radar before new imagery is ready");
+assert.ok(runtime.includes("const snapshotReady = transitionFrame"),"manual and continuous playback transitions use a snapshot");
+assert.ok(runtime.includes("if (snapshotReady) await frameCrossfade.play("),"fade only after the complete scene is ready");
+assert.ok(runtime.includes("previousVisibleIndex"),"failed Cesium loads cannot falsely advance the frame indicator");
+assert.ok(!runtime.includes('"pointerdown", "pointermove", "wheel", "keydown"'),"hover must not interrupt radar transitions");
+console.log("PASS radar imagery atomic swaps, tiled readiness, timeout rollback, rapid-frame cancellation, opacity and cleanup.");

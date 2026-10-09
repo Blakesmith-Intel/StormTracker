@@ -75,7 +75,8 @@ export function buildTrackThreatCone(
     minimumFootprintRadiusKm = 2,
     maximumFootprintRadiusKm = 25,
     directionChangeThresholdDegrees = 12,
-    smoothingSegments = 3
+    smoothingSegments = 3,
+    forceMeasuredHeading = false
   } = {}
 ) {
   const motion = track?.motion;
@@ -108,7 +109,9 @@ export function buildTrackThreatCone(
   const smoothedHeadingDegrees = circularMeanDegrees(
     recent.slice(-smoothingCount).map(item => item.heading_degrees)
   ) ?? measuredHeadingDegrees;
-  const headingDegrees = directionChangeDetected
+  // A verified new steering heading must be allowed to overrule the
+  // three-segment smoother. The smoother remains for ordinary noisy frames.
+  const headingDegrees = forceMeasuredHeading || directionChangeDetected
     ? measuredHeadingDegrees
     : smoothedHeadingDegrees;
 
@@ -187,6 +190,7 @@ export function buildTrackThreatCone(
     direction_change_threshold_degrees: Number(directionChangeThresholdDegrees),
     direction_change_degrees: directionChangeDegrees,
     direction_change_detected: directionChangeDetected,
+    steering_heading_applied: Boolean(forceMeasuredHeading),
     heading_half_angle_degrees: headingHalfAngleDegrees,
     footprint_radius_km: baseRadiusKm,
     recent_motion_segment_count: recent.length,
@@ -197,6 +201,6 @@ export function buildTrackThreatCone(
       ...samples.slice().reverse().map(item => item.right)
     ],
     interpretation:
-      "Motion extrapolation using measured ST motion. Small heading changes are smoothed; a direction change at or above the configured tolerance reorients the cone immediately. Cone width combines the current measured footprint radius with recent heading variability; it is not a forecast probability."
+      "Motion extrapolation from measured ST centroids, not movement of individual rain cells. Routine jitter is smoothed; significant turns or independently verified steering divergence orient the cone to the latest measured heading. Width reflects current footprint and historical heading variability; not a calibrated probability forecast."
   };
 }

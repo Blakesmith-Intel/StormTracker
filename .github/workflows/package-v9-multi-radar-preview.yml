@@ -1,0 +1,43 @@
+name: Package V9.16.15 isolated static preview (no deployment)
+on:
+  push:
+    branches: [feature/v9-multi-radar-display]
+    paths:
+      - ".github/workflows/package-v9-multi-radar-preview.yml"
+      - "docs/V9_MULTI_RADAR_HARDWARE_ACCEPTANCE.md"
+      - "frontend/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-frontend-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify preview source and entrypoint
+        run: |
+          test -f frontend/live3d-operational-v9.html
+          test -f frontend/src/live3d-operational-v9.js
+          test -f frontend/src/multi-radar-display-v9.js
+          test -f frontend/src/operational-dashboard-v9-1.css
+          echo "Packaging exact PR-branch static frontend from $GITHUB_SHA"
+      - name: Zip standalone static site root (not production)
+        run: |
+          ( cd frontend && zip -q -r ../stormtracker-v9-16-15-preview.zip . )
+          sha256sum stormtracker-v9-16-15-preview.zip | tee preview-sha256.txt
+          ls -lh stormtracker-v9-16-15-preview.zip
+      - name: Upload browser-only preview ZIP for manual isolated hosting
+        uses: actions/upload-artifact@v4
+        with:
+          name: v9-16-15-isolated-static-preview
+          path: |
+            stormtracker-v9-16-15-preview.zip
+            preview-sha256.txt
+            docs/V9_MULTI_RADAR_HARDWARE_ACCEPTANCE.md
+          retention-days: 14
+          if-no-files-found: error
+      - name: Explain release boundary
+        run: |
+          echo "Preview ZIP prepared from feature branch only."
+          echo "No Cloudflare, GitHub Pages, production or other deployment occurs in this workflow."
+          echo "An authorised user must create a separate static preview site and verify BoM relay CORS."

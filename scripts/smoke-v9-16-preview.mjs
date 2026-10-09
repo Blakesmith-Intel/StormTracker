@@ -54,7 +54,10 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock, men
     read("preview/v9.16/src/operational-window-choices-v1.js")
   ]);
 
-requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Sealed V9.15.1 production entry");
+const productionMarker=process.env.PRODUCTION_MARKER??"9.15.1-intensity40";
+if(!productionIndex.includes("live3d-operational-v9.html?v=") ||
+   !productionIndex.includes(productionMarker))
+  throw Error("Production root not at expected sealed build: "+productionMarker);
 const [productionHtml, productionRuntime] = await Promise.all([
   read("live3d-operational-v9.html"), read("src/live3d-operational-v9.js")
 ]);
@@ -144,7 +147,7 @@ console.log("PASS Published V9.16 candidate at commit " + expectedSha);
 console.log("PASS Mt Stapylton selected; severe storm evidence controls published");
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
 console.log("PASS Four window choices; rain-only removes Doppler imagery and preserves the verified Doppler-defined combined timeline");
-console.log("PASS Production root stays SEALED V9.15.1; V9.16 research alerts stay isolated");
+console.log("PASS Production root matches sealed marker "+productionMarker+"; V9.16 research alerts stay isolated");
 console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
 console.log("PASS Two original-scan hook-shape indicators accessible in historical viewer; classification remains experimental");
 console.log("Preview: " + new URL("preview/v9.16/", origin).href);

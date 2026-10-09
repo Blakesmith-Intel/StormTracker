@@ -37,6 +37,5 @@ for(const utc of candidates){
   const result=await probe(url,utc);
   if(result?.r.status===200 && String(result.r.headers.get("content-type")).includes("image")){
     console.log("WMTS_VALID_SOURCE_OBSERVED_AT",utc);
-    break;
   }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>StormTracker — V9.16.13 100% Doppler and top-layer place names</title>
+  <title>StormTracker — V9.16.14 streamlined operational sidebar</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
   <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
@@ -20,7 +20,6 @@
         <span>Source age</span><strong id="operationalSourceAge">—</strong>
         <span>Loop window</span><strong id="operationalLoopWindow">Checking history</strong>
         <span>Frames / tracks</span><strong><span id="operationalFramesLoaded">0</span> / <span id="operationalActiveTracks">—</span></strong>
-        <span>Doppler</span><strong id="operationalDoppler">not loaded</strong>
       </div>
     </section>
     <section class="card loop-controls">
@@ -36,7 +35,7 @@
       <div class="playback-row"><button id="hybridPlayButton" disabled aria-pressed="false">Play</button><button id="jumpLatestButton" disabled>Latest</button><label for="hybridFrameSlider">Frame <strong id="hybridFrameLabel">—</strong></label></div>
       <input id="hybridFrameSlider" aria-label="Sequence frame" type="range" min="0" max="0" step="1" value="0" disabled>
       <div id="playbackPerformanceSummary" class="note" role="status" aria-live="off" title="Measured playback renderer timing">Frame timing starts when playback loads</div>
-      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span>Radar <strong id="radarPlaybackTime">—</strong></span><span>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Actual time separation between these independent radar products" hidden></span></div>
+      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span id="radarClockGroup">Radar <strong id="radarPlaybackTime">—</strong></span><span id="windClockGroup" hidden>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Independent source time comparison" hidden></span></div>
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card layer-controls">
@@ -58,8 +57,9 @@
       </div>
       <div id="qfdSymbolStatus" class="note qfd-symbol-status" role="status">Checking QFD published incident symbols…</div>
       <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · displaying only three public QFD grouped types</div>
-      <div class="layer-row"><label for="dopplerOverlayRadar">Doppler radar</label><select id="dopplerOverlayRadar" aria-label="Doppler display radar"><option value="66">66 · Mt Stapylton</option><option value="50">50 · Marburg</option><option value="08">08 · Gympie</option></select></div>
-      <div class="layer-row"><span id="trackVolumeModeLabel" title="Measured storm-cell tracking remains enabled; 2-D radar reflectivity is preserved at the base of each displayed volume.">Track-specific 3-D · always on</span><button id="openDetailsButton">Tracks / details</button></div>
+      <!-- Internal source identifier follows the primary radar selector. No second radar picker. -->
+      <input type="hidden" id="dopplerOverlayRadar" value="66">
+      <div class="layer-row track-details-row"><button id="openDetailsButton" type="button">Tracks / details</button></div>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label><input id="showSevereRadarAlerts" type="checkbox" disabled> Radar alerts ≥90 km/h — research preview only</label></div>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label title="Unvalidated scientific research"><input id="showExperimentalHookAlerts" type="checkbox" disabled> Hook-shape candidates (research preview only)</label></div>
       <div class="track-display-controls">
@@ -94,7 +94,7 @@
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
     <div id="cesiumCredits" class="cesium-widget-credits" aria-label="Map attribution"></div>
-    <div id="nav"><select id="radarSite" aria-label="Queensland radar site"><option value="66" selected>Brisbane (Mt Stapylton)</option><option value="SEQ">South-east Queensland (regional)</option></select><button id="resetButton">Reset view</button></div>
+    <div id="nav"><select id="radarSite" aria-label="Queensland radar site"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="resetButton">Reset view</button></div>
     <section id="floodRoadClosureInfo" class="map-info-card" aria-live="polite" hidden>
       <header><div class="flood-road-info-heading"><img id="floodRoadClosureInfoIcon" class="flood-road-key flood-road-key-large" alt="" aria-hidden="true"><div><span class="map-info-kicker">UNPLANNED ROAD CLOSURE</span><strong id="floodRoadClosureInfoTitle">Road closure</strong></div></div><button id="closeFloodRoadClosureInfo" type="button" aria-label="Close road closure details">×</button></header>
       <div id="floodRoadClosureInfoRows" class="metric"></div>

@@ -7,6 +7,19 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
+// BoM burns its own large UTC/range annotations INTO the last rows of the
+// source panel. They cannot be recovered as measured velocities. Remove
+// that source-annotation band only from the *display* raster rather than
+// displaying moving letter-shaped holes across the velocity colours.
+// The native decoded source and scientific samples are left untouched.
+// A single row comparison is less work than palette matching the excluded area.
+export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 472;
+export function isNativeDopplerDisplayAnnotationRow(row) {
+  return Number.isInteger(row) &&
+    row >= NATIVE_DOPPLER_ANNOTATION_START_ROW &&
+    row < NATIVE_DOPPLER_PANEL_SIZE;
+}
+
 
 // Accept only Bureau velocity palette pixels. Preserve their exact original
 // RGBA (not the nearest palette swatch), and exclude GUI text/background/legend.
@@ -17,6 +30,7 @@ export function extractNativeDopplerPanel(imageData, palette, { includeZero = fa
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
+    if (isNativeDopplerDisplayAnnotationRow(row)) continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
       const alpha = imageData.data[from + 3];

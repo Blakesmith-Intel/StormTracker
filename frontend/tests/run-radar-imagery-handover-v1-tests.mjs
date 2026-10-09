@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createRadarImageryHandover } from "../src/radar-imagery-handover-v1.js";
 
 function fixture() {
@@ -65,4 +67,11 @@ assert.equal(f.layers.length,1,"no leaking radar imagery layers");
 assert.equal(f.listeners.size,0,"all postRender subscriptions removed");
 f.api.reset();
 assert.equal(f.layers.length,0);
+const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
+assert.match(runtime,/radarImageryHandover\\.replace\\(/,"actual production surface must use the atomic swap");
+assert.doesNotMatch(runtime,/viewer\\.imageryLayers\\.remove\\(\\s*surfaceLayer/,"never remove outgoing radar before replacement renders");
+assert.match(runtime,/const snapshotReady = transitionFrame/,"manual and continuous playback snapshots must both be protected");
+assert.match(runtime,/if \\(snapshotReady\\) await frameCrossfade\\.play/,"blend only after complete scene ready");
+assert.match(runtime,/previousVisibleIndex/,"failed Cesium loads cannot falsely advance the frame indicator");
+assert.doesNotMatch(runtime,/\\["pointerdown", "pointermove", "wheel", "keydown"\\]/,"hover must not interrupt a valid frame transition");
 console.log("PASS radar imagery atomic swaps, tiled readiness, timeout rollback, rapid-frame cancellation, opacity and cleanup.");

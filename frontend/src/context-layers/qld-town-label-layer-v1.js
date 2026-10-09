@@ -1,5 +1,5 @@
 import { fetchQueenslandPopulationCentres } from "./qld-population-centres-v2.js?v=9.12.3";
-import { rankQueenslandTowns, greatCircleKm, layoutTownLabels, townLabelTypography }
+import { rankQueenslandTowns, sameGeographicSettlement, layoutTownLabels, townLabelTypography }
   from "./qld-town-label-declutter-v1.js?v=9.16.12";
 import { fetchQldNearbyLocalities, expandLocalityBounds, localityBoundsContain,
   qldLocalityViewBounds } from "./qld-nearby-localities-v1.js?v=9.13.4";
@@ -44,6 +44,29 @@ export function createQueenslandTownLabelLayer({
   let resizeDisposer=null,postRenderDisposer=null,localityCoverage=null;
   let localityBusy=false,lastLocalityRequest=0,localityRequestVersion=0;
   const elements=new Map();
+  const activePlacements=new Map();
+
+  // The Cesium camera can shift by several pixels between decluttering
+  // updates. Reproject ONLY the handful of visible, already-selected town
+  // anchors on EVERY Cesium render. Layout/collision selection stays
+  // throttled, but geographical positions must never lag behind panning.
+  function followCamera() {
+    const width=scene.canvas?.clientWidth??0,height=scene.canvas?.clientHeight??0;
+    for(const [id,place] of activePlacements) {
+      const el=elements.get(id);
+      if(!el)continue;
+      const pos=CesiumRef.SceneTransforms.worldToWindowCoordinates(scene,place.position);
+      if(!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y) ||
+         pos.x<0 || pos.y<0 || pos.x>width || pos.y>height) {
+        el.style.display="none";
+        continue;
+      }
+      if(el.style.display!=="")el.style.display="";
+      const left=Math.round(pos.x*10)/10+"px",top=Math.round(pos.y*10)/10+"px";
+      if(el.style.left!==left)el.style.left=left;
+      if(el.style.top!==top)el.style.top=top;
+    }
+  }
 
   function visibleInStreet(place){
     // Native OpenStreetMap already labels major population centres. Add
@@ -89,12 +112,11 @@ export function createQueenslandTownLabelLayer({
       places=places.filter(p=>!p.fromGazetteer);
       const unique=new Set();
       for(const item of records){
-        const sameName=p=>p.name.trim().toLowerCase()===item.name.toLowerCase()
-          &&greatCircleKm(p,item)<8;
-        if(places.some(sameName))continue;
+        if(places.some(p=>sameGeographicSettlement(p,item,25)))continue;
         const identity=item.name.toLowerCase()+":"+item.latitude.toFixed(3)+":"+
           item.longitude.toFixed(3);
-        if(unique.has(identity))continue;
+        if(unique.has(identity) ||
+           places.some(p=>sameGeographicSettlement(p,item,25)))continue;
         unique.add(identity);
         places.push({...item,fromGazetteer:true,
           position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude,0)});
@@ -108,6 +130,9 @@ export function createQueenslandTownLabelLayer({
   }
   function draw(force=false){
     if(destroyed || !places.length)return [];
+    // Camera tracking is deliberately not gated on the layout fingerprint
+    // or the 170ms decluttering interval; this fixes map-pan label drift.
+    followCamera();
     const key=fingerprint();
     if(!force && key===lastFingerprint)return selectedIds;
     const now=Date.now();
@@ -131,14 +156,17 @@ export function createQueenslandTownLabelLayer({
     const accepted=layoutTownLabels({candidates,width,height,cameraHeight,
       cameraPitchDegrees,mode:currentMode,previousVisible:selectedIds});
     const nextIds=new Set(accepted.map(p=>String(p.id)));
+    activePlacements.clear();
     for(const [id,element] of elements){
       if(!nextIds.has(id)){element.remove();elements.delete(id);}
     }
     for(const place of accepted){
+      const id=String(place.id);
+      activePlacements.set(id,place);
       const el=makeElement(place),type=townLabelTypography(width,place.population);
-      el.style.left=place.x+"px";el.style.top=place.y+"px";
       el.style.font=type.font;
     }
+    followCamera();
     selectedIds=accepted.map(p=>String(p.id));
     displayedPlaces=accepted.map(p=>({id:p.id,name:p.name,
       x:p.x,y:p.y,population:p.population,font:townLabelTypography(width,p.population).font}));
@@ -161,7 +189,8 @@ export function createQueenslandTownLabelLayer({
         for(const item of records){
           const identity=item.name.toLowerCase()+":"+item.latitude.toFixed(2)+":"+
             item.longitude.toFixed(2);
-          if(identities.has(identity))continue;
+          if(identities.has(identity) ||
+             places.some(p=>sameGeographicSettlement(p,item,25)))continue;
           identities.add(identity);
           places.push({...item,position:CesiumRef.Cartesian3.fromDegrees(
             item.longitude,item.latitude,0)});
@@ -191,7 +220,8 @@ export function createQueenslandTownLabelLayer({
     postRenderDisposer?.();
     if(resizeDisposer && typeof window!=="undefined")
       window.removeEventListener("resize",resizeDisposer);
-    elements.clear();root.remove();places=[];selectedIds=[];displayedPlaces=[];
+    elements.clear();activePlacements.clear();
+    root.remove();places=[];selectedIds=[];displayedPlaces=[];
   }
   return {start,draw,setMode,destroy,
     get count(){return places.length;},

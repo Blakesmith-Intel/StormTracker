@@ -7,7 +7,7 @@ const index=read('frontend/index.html');
 const html=read('frontend/live3d-operational-v9.html');
 const css=read('frontend/src/operational-dashboard-v9-1.css');
 const js=read('frontend/src/live3d-operational-v9.js');
-assert.match(index,/live3d-operational-v9\.html\?v=source-native-playback-review-v1/);
+assert.match(index,/live3d-operational-v9\.html\?v=source-native-playback-review-v2/);
 assert.match(html,/Native BoM playback review build/);
 assert.match(html,/<option value="1" selected>1× · Standard<\/option>/);
 assert.match(html,/<option value="2">2× · Fast<\/option>/);

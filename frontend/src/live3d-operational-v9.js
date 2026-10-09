@@ -90,7 +90,7 @@ import {
 } from "./storage.js?v=9.8.3";
 
 import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./shared-product-timeline-v1.js?v=9.16-nearest-observation";
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=native-playback-r2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
@@ -109,7 +109,7 @@ import {
   hasNewMatchedProducts,
   createLiveLoopRefresh
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
-import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
+import { createContinuousPlayback } from "./continuous-playback-v1.js?v=native-playback-r2";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
 import {
   evaluateChronologicalTrackThreatCone,

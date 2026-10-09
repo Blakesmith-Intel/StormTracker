@@ -5,7 +5,7 @@ const html=read("frontend/live3d-operational-v9.html");
 const runtime=read("frontend/src/live3d-operational-v9.js");
 const menu=read("frontend/src/operational-window-choices-v1.js");
 const index=read("frontend/index.html");
-assert.ok(index.includes("source-native-playback-review-v1"));
+assert.ok(index.includes("source-native-playback-review-v2"));
 assert.ok(html.includes("Native BoM playback review build"));
 assert.ok(runtime.includes("The screen plays genuine BoM scans only"));
 assert.ok(!runtime.includes("createRadarMotionTransition"));

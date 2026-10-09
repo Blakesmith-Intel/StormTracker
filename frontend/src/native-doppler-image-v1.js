@@ -8,20 +8,13 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
 // BoM's separately delivered weather PNGs exclude the optional Locations
-// and Range overlays, BUT the scan UTC/beam-angle/range footer is burnt into
-// the lower edge of even those historical weather images. The pixels beneath
-// the text are not recoverable velocity measurements. Taper a narrow display-
-// only strip to transparent once during image preparation, not per playback
-// frame, so there are no moving glyph-shaped holes or fabricated velocities.
-// Scientific geolocated sample records are decoded from ORIGINAL imageData.
-export const NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW = 438;
-export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 459;
-// Intentionally no extrapolation of Doppler velocities into the footer.
+// and Range overlays, BUT UTC/angle/range text is burned into the lower panel.
+// Use a HARD image boundary from source row 438: full original swatch/alpha
+// above it, fully transparent below. No partial alpha, blending, fill or
+// fabricated wind observations. Raw decoded BoM samples remain unchanged.
+export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 438;
 export function nativeDopplerDisplayFooterOpacity(row) {
-  if(row < NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW) return 1;
-  if(row >= NATIVE_DOPPLER_ANNOTATION_START_ROW) return 0;
-  return Math.max(0,(NATIVE_DOPPLER_ANNOTATION_START_ROW-row)/
-    (NATIVE_DOPPLER_ANNOTATION_START_ROW-NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW));
+  return row < NATIVE_DOPPLER_ANNOTATION_START_ROW ? 1 : 0;
 }
 export function isNativeDopplerDisplayAnnotationRow(row) {
   return Number.isInteger(row) &&
@@ -44,8 +37,8 @@ export function extractNativeDopplerPanel(imageData, palette, {
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
-    const opacity=maskAnnotationRows?nativeDopplerDisplayFooterOpacity(row):1;
-    if(opacity<=0)continue;
+    // Crop the bottom annotation rows once, not on animation frames.
+    if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
       const alpha = imageData.data[from + 3];
@@ -57,7 +50,7 @@ export function extractNativeDopplerPanel(imageData, palette, {
       data[to] = rgb[0];
       data[to + 1] = rgb[1];
       data[to + 2] = rgb[2];
-      data[to + 3] = Math.round(alpha*opacity);
+      data[to + 3] = alpha;
       nativePixelCount++;
     }
   }

@@ -232,6 +232,7 @@ const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
 let additionalRadarSiteIds=[];
+let previousPrimaryRadarId=DEFAULT_RADAR_SITE_ID;
 const supplementalRadarDisplay=createSupplementalRadarDisplay({
   imageryLayers:viewer.imageryLayers,scene,
   loadFrame:loadBomReflectivityMosaicAtTime,
@@ -4554,6 +4555,15 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   lastCombinedDopplerLatestUtc=null;
   windLastRadarDriveKey=null;
   windCycleCursor=-1;
+  // A user changing the primary within an active multi-site selection
+  // should not silently lose the radar they were viewing previously.
+  // Single-site V9 switching keeps its original one-radar behaviour.
+  const nextPrimary=selectedRadarRegion();
+  if(additionalRadarSiteIds.length && nextPrimary!==previousPrimaryRadarId){
+    additionalRadarSiteIds=chooseSupplementalRadarSites(nextPrimary,
+      [...additionalRadarSiteIds,previousPrimaryRadarId],QLD_RADAR_SITES);
+  }
+  previousPrimaryRadarId=nextPrimary;
   configureRadarSite(); resetView(); clearDopplerOverlay();
   refreshAdditionalRadarChoices(); showSupplementalRadarSites(null);
   resetTrackDisplaySelection();

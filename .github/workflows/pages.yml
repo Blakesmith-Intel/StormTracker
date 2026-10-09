@@ -70,6 +70,12 @@ jobs:
           ref: feature/severe-storm-radar-alerts-v1
           path: preview-builds/v9.16
           persist-credentials: false
+      - name: Checkout V9.16.11 native Doppler-only candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ba737cb252c969a61f465571a076f69bcb149cc4
+          path: preview-builds/v9.16.11
+          persist-credentials: false
       - name: Checkout V9.16.10 playback/cone/trail candidate
         uses: actions/checkout@v4
         with:
@@ -114,6 +120,10 @@ jobs:
           (cd preview-builds/v9.15.1 && npm test)
           (cd preview-builds/v9.16 && npm test)
 
+      - name: Validate V9.16.11 candidate independently
+        run: |
+          (cd preview-builds/v9.16.11 && npm test)
+          test "$(git -C preview-builds/v9.16.11 rev-parse HEAD)" = "ba737cb252c969a61f465571a076f69bcb149cc4"
       - name: Validate V9.16.10 candidate independently
         run: |
           (cd preview-builds/v9.16.10 && npm test)
@@ -134,7 +144,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1 frontend/preview/v9.16
-          mkdir -p frontend/preview/native-playback frontend/preview/v9.16.10 frontend/preview/playback-cone-fix
+          mkdir -p frontend/preview/native-playback frontend/preview/v9.16.10 frontend/preview/v9.16.11 frontend/preview/playback-cone-fix
           cp -a preview-builds/playback-cone-fix/frontend/. frontend/preview/playback-cone-fix/
           cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
           cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
@@ -142,6 +152,7 @@ jobs:
           cp -a preview-builds/v9.16/frontend/. frontend/preview/v9.16/
           cp -a preview-builds/native-playback/frontend/. frontend/preview/native-playback/
           cp -a preview-builds/v9.16.10/frontend/. frontend/preview/v9.16.10/
+          cp -a preview-builds/v9.16.11/frontend/. frontend/preview/v9.16.11/
           mkdir -p frontend/preview/v9.16/research-gympie
           cp -a preview-builds/gympie-observations/. frontend/preview/v9.16/research-gympie/
           test -f preview-builds/gympie-hook-audit/gympie-hook-replay.json
@@ -177,6 +188,10 @@ jobs:
           test -f frontend/preview/playback-cone-fix/src/combined-loop-playback-v1.js
           test -f frontend/preview/playback-cone-fix/tests/run-playback-stall-cone-v1-tests.mjs
           grep -Fq 'v8-perf-v9-recovery-v10' frontend/preview/playback-cone-fix/index.html
+          printf 'V9.16.11 measured Doppler-only preview %s\n' "$(git -C preview-builds/v9.16.11 rev-parse HEAD)" > frontend/preview/v9.16.11/BUILD.txt
+          test -f frontend/preview/v9.16.11/src/doppler-layer-transition-v1.js
+          grep -Fq 'buildDopplerOnlySchedule(independentDopplerFrames)' frontend/preview/v9.16.11/src/live3d-operational-v9.js
+          grep -Fq 'Doppler — All available' frontend/preview/v9.16.11/src/operational-window-choices-v1.js
           printf 'V9.16.10 playback, cone and trail candidate %s\n' "$(git -C preview-builds/v9.16.10 rev-parse HEAD)" > frontend/preview/v9.16.10/BUILD.txt
           test -f frontend/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
           grep -Fq 'setStormTrackTrailVisibility(hybridSource.entities, show)' frontend/preview/v9.16.10/src/live3d-operational-v9.js
@@ -203,6 +218,7 @@ jobs:
           cmp sealed-production/v9.15.1/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
           grep -Fq 'v=9.15.1-intensity40' published-site/index.html
           ! grep -Fq 'v8-perf-v9' published-site/index.html
+          test -f published-site/preview/v9.16.11/src/doppler-layer-transition-v1.js
           test -f published-site/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
           grep -Fq 'f4927fea810833230bce1af65df80ee2e3b59661' published-site/preview/v9.16.10/BUILD.txt
           echo "Deployment payload: SEALED V9.15.1 root + immutable V9.16.10 preview only"
@@ -230,6 +246,21 @@ jobs:
         run: |
           EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
 
+      - name: Verify published V9.16.11 genuine Doppler-only preview
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}/preview/v9.16.11"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          build="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq "ba737cb252c969a61f465571a076f69bcb149cc4" <<< "$build"
+          menu="$(retry_curl "$base/src/operational-window-choices-v1.js")"
+          grep -Fq 'Doppler — All available' <<< "$menu"
+          js="$(retry_curl "$base/src/live3d-operational-v9.js")"
+          grep -Fq 'await dopplerOverlayTransition.replacePrepared' <<< "$js"
+          echo "Verified V9.16.11 Doppler-only preview; sealed V9.15.1 public root unchanged"
       - name: Verify published V9.16.10 candidate
         shell: bash
         env:

@@ -819,3 +819,14 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   color:#f0bb79; font-weight:700;
 }
 @media(max-width:700px) {.source-time-gap{font-size:9px;margin-left:0;}}
+
+/* V10 opt-in research preview: candidate classification, never BoM warnings. */
+.storm-v10-layer-row { margin-top:5px; }
+.storm-v10-layer-row label { color:#f4c67a; font-weight:600; }
+.storm-v10-research-note { font-size:9px; line-height:1.25; color:#b8cad3; }
+.storm-severe-alert-row.tornadic { border-color:#f66367; background:#61292e; color:#fff0ee; }
+.storm-severe-alert-pin.tornadic { background:#ac2639; color:white; width:28px; border-color:#ffe8ea; }
+@media(max-width:700px) {
+  .storm-v10-layer-row { margin-top:3px; }
+  .storm-v10-research-note { font-size:8px; }
+}

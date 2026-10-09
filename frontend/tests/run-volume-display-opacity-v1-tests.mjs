@@ -63,12 +63,13 @@ test("Empty and untracked collections remain safe; non-volume objects untouched"
   assert.equal(setVolumeDisplayOpacity(c,10),0);
   assert.equal(alien.color.alpha,1);
 });
-test("Third opacity control matches Radar and Doppler and starts at full strength",()=>{
+test("Radar and inferred volume controls are separate; native Doppler is fixed 100%",()=>{
   const html=read("../live3d-operational-v9.html");
   const first=html.indexOf('id="radarOpacity"');
-  const second=html.indexOf('id="dopplerOpacity"');
-  const third=html.indexOf('id="volumeOpacity"');
-  assert.ok(first>=0&&first<second&&second<third,"Volume opacity sits next to other opacity controls");
+  const volume=html.indexOf('id="volumeOpacity"');
+  assert.ok(first>=0&&first<volume,"Volume opacity follows radar transparency");
+  assert.doesNotMatch(html,/id="dopplerOpacity"/,
+    "Doppler-only no longer has a transparency slider");
   assert.match(html,/<output id="volumeOpacityValue"[^>]*>100%<\/output>/);
   assert.match(html,/<input id="volumeOpacity" type="range" min="0" max="100" step="5" value="100"/);
 });

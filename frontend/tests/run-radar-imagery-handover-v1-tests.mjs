@@ -96,4 +96,39 @@ assert.equal(await nativeSwap,true,
 assert.equal(native.api.currentLayer,newNative);
 assert.equal(native.layers.length,1);
 native.api.reset();
-console.log("PASS radar imagery atomic swaps, tiled readiness, timeout rollback, rapid-frame cancellation, opacity and cleanup.");
+// Same-frame presentation contract: dependent measured 3-D geometry is
+// activated immediately BEFORE uncovering the matching 2-D radar source.
+const synced=fixture();
+const old2d={name:"t0",alpha:0};
+await synced.api.replace(old2d);
+const next2d={name:"t1",alpha:0};
+let geometryFrame="t0";
+const waiting=synced.api.replace(next2d,{
+  decodedSingleTile:true,
+  beforeReveal:()=>{
+    assert.equal(synced.api.currentLayer,old2d,
+      "old radar remains displayed until geometry prepares");
+    assert.equal(next2d.alpha,.001,
+      "incoming genuine rain image remains hidden during geometry update");
+    geometryFrame="t1";
+  }
+});
+synced.fire();synced.fire();
+assert.equal(geometryFrame,"t0","waiting for radar texture must not change 3-D data");
+synced.fire();
+assert.equal(await waiting,true);
+assert.equal(geometryFrame,"t1");
+assert.equal(synced.api.currentLayer,next2d);
+assert.equal(next2d.alpha,1);
+const failure2d={name:"failed",alpha:0};
+const oldGeometry=geometryFrame;
+const cancelled=synced.api.replace(failure2d,{
+  decodedSingleTile:true,
+  beforeReveal:()=>{geometryFrame="INVALID";},
+});
+synced.queue.at(-1)();
+assert.equal(await cancelled,false);
+assert.equal(geometryFrame,oldGeometry,
+  "failed radar tile must not advance volume to an unrenderable observation");
+synced.api.reset();
+console.log("PASS original BoM 2-D and measured-frame inferred 3-D reveal atomically, with failed tile rollback.");

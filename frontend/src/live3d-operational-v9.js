@@ -96,6 +96,7 @@ import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
+import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -477,6 +478,19 @@ let model = null;
 let validation = null;
 let latestFrame = null;
 let inferredCollection = null;
+const VOLUME_METRIC_IDS=[
+  "renderedColumns","renderedPoints","adaptiveStride","maxInferredDbzh",
+  "inferredTop40","inferredTop50","meanConfidence","highSupportPoints",
+  "mediumSupportPoints","lowSupportPoints","highSupportTop40","highSupportTop50"
+];
+const volumeGeometryCache=createBoundedFrameCache({
+  limit:6,
+  onEvict:entry=>{if(entry?.collection)scene.primitives.remove(entry.collection);}
+});
+function clearVolumeGeometryCache(){
+  volumeGeometryCache.clear();
+  inferredCollection=null;
+}
 let surfaceLayer = null;
 
 const hybridWorker =
@@ -529,6 +543,32 @@ const autoRefresh = createLiveLoopRefresh({
   onError: error => { $("autoRefreshNote").textContent = `Auto update retry: ${error.message}`; }
 });
 
+// Opportunistically prepare the next two genuine source images while the
+// current frame is visible. All preparation is display-only, never a new
+// radar/Doppler measurement, and never blocks the playback clock.
+let playbackPrewarmGeneration=0;
+function prewarmUpcomingFrames(index){
+  const generation=++playbackPrewarmGeneration;
+  const region=selectedRadarRegion();
+  window.setTimeout(async()=>{
+    for(let offset=1;offset<=2;offset++){
+      if(generation!==playbackPrewarmGeneration ||
+         region!==selectedRadarRegion() || sequenceLoading) return;
+      const next=(index+offset)%hybridFrames.length;
+      const frame=hybridFrames[next];
+      if(!frame)continue;
+      try {
+        await Promise.all([
+          prepareRadarSurfaceProvider(frame),
+          prepareWindForPlayback(next)
+        ]);
+      } catch(error) {
+        // Genuine source images can expire from BoM; this is best effort.
+        console.warn("Playback prewarm skipped",frame.observedUtc,error);
+      }
+    }
+  },0);
+}
 const playback = createContinuousPlayback({
   count: () => hybridFrames.length,
   currentIndex: () => hybridFrameIndex,
@@ -1124,12 +1164,21 @@ function renderInferredVolume(frame) {
     );
   }
 
-  if (inferredCollection) {
-    scene.primitives.remove(
-      inferredCollection
-    );
+  const signature=[
+    selectedRadarRegion(),frame.observedUtc,
+    $("occupancyThreshold").value,$("minimumDbzh").value,
+    $("pointSize").value,$("volumeOpacity").value
+  ].join(":");
+  if(inferredCollection)inferredCollection.show=false;
+  const previouslyBuilt=volumeGeometryCache.get(signature);
+  if(previouslyBuilt){
+    inferredCollection=previouslyBuilt.collection;
+    inferredCollection.show=true;
+    for(const [id,value] of Object.entries(previouslyBuilt.metrics))
+      $(id).textContent=value;
+    scene.requestRender();
+    return;
   }
-
   inferredCollection =
     scene.primitives.add(
       new Cesium.PointPrimitiveCollection()
@@ -1420,6 +1469,10 @@ function renderInferredVolume(frame) {
           / 1000
         ).toFixed(1)} km`;
 
+  volumeGeometryCache.put(signature,{
+    collection:inferredCollection,
+    metrics:Object.fromEntries(VOLUME_METRIC_IDS.map(id=>[id,$(id).textContent]))
+  });
   scene.requestRender();
 }
 
@@ -3173,6 +3226,7 @@ async function showHybridFrame(index) {
     `${hybridFrameIndex+1}/${hybridFrames.length}${temporalInferred?" · inferred":""}`;
   if(preparedWind)updateIndependentDopplerUi();
   else updateDualSourceTimes();
+  prewarmUpcomingFrames(hybridFrameIndex);
 
   const sceneFrame =
     $("hybridSceneFrame");
@@ -4197,7 +4251,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   lastSourceDiscoveryTimes = [];
   radarImageryHandover.reset();
   surfaceLayer = null;
-  if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
+  clearVolumeGeometryCache();
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];
   severeStormAlertOverlay.setFrame(); // Never carry alerts into a different radar region.
   stormTrackLabelOverlay.setMarkers([]); // Clear obsolete track identities during source change.

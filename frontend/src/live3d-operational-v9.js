@@ -98,6 +98,7 @@ import {
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
+import { describeBomSourceTimeGap } from "./bom-source-time-gap-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -2510,13 +2511,12 @@ function updateDualSourceTimes() {
       : "No measured Doppler frame displayed";
   }
   if(gap){
-    const delta=Math.abs(Date.parse(radarUtc)-Date.parse(windUtc))/60000;
-    gap.hidden=!Number.isFinite(delta);
-    if(!gap.hidden){
-      gap.textContent="BoM scans Δ"+delta.toFixed(delta<10?1:0)+" min";
-      gap.title="Reflectivity and Doppler were observed "+delta.toFixed(1)+
-        " minutes apart at the source. This is source-time separation, NOT a playback or rendering delay.";
-      gap.dataset.ageWarning=String(delta>15);
+    const sourceGap=describeBomSourceTimeGap(radarUtc,windUtc);
+    gap.hidden=!sourceGap.available;
+    if(sourceGap.available){
+      gap.textContent=sourceGap.label;
+      gap.title=sourceGap.description;
+      gap.dataset.ageWarning=String(sourceGap.warning);
     }
   }
 }

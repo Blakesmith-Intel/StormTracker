@@ -5,7 +5,7 @@ const html=read("frontend/live3d-operational-v9.html");
 const runtime=read("frontend/src/live3d-operational-v9.js");
 const menu=read("frontend/src/operational-window-choices-v1.js");
 const index=read("frontend/index.html");
-assert.ok(index.includes("9.16-window-menu-v2"));
+assert.ok(index.includes("9.16-bom-native-rain30-v1"));
 assert.ok(menu.includes("RAIN_ONLY_LOOP_MINUTES = Object.freeze([30,60,120,180])"));
 assert.ok(menu.includes("Radar + Doppler — All available"));
 assert.ok(runtime.includes("return isDopplerSourceActive() && isCombinedDopplerWindowSelected()"));

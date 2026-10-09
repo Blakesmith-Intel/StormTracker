@@ -79,7 +79,9 @@ import {
   selectRadarHistoryPlan
 } from "./radar-history-window-v1.js?v=9.8.3";
 
-import { isTemporallyInferredRadarFrame } from "./radar-temporal-interpolation-v1.js?v=9.8.3";
+// Retain the safety guard for an accidentally cached inferred observation.
+const isTemporallyInferredRadarFrame=frame=>
+  Boolean(frame?.sourceMetadata?.temporalInference?.displayOnly);
 
 import {
   getRadarFrames,
@@ -163,7 +165,12 @@ import {
   shouldRenderVolumePoint
 } from "./volume-display-threshold-v1.js?v=9.15.1-intensity40";
 
-import { dopplerOverlayFrameKey } from "./doppler-layer-transition-v1.js?v=9.9.1";
+// Identity uses BoM's published scan filename or observed UTC, not the
+// controller's frame number. One native texture per genuine source image.
+function dopplerOverlayFrameKey(radarId,record) {
+  const identity=record?.filename ?? record?.observedUtc ?? record?.product;
+  return identity ? String(radarId)+":"+String(identity) : null;
+}
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";

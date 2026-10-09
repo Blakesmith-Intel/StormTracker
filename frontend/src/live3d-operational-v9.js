@@ -3031,13 +3031,13 @@ async function showHybridFrame(index) {
   const previousFrame = latestFrame;
   motionTransition.cancel();
   const motionGeneration=visualMotionGeneration;
-  const canAnimate=playback.isPlaying() &&
+  const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
+  const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && hybridFrameIndex===previousVisibleIndex+1 &&
     canMotionInterpolateRadar(previousFrame,frame);
   if(canAnimate){
     try{
       const motion=createRadarMotionTransition(previousFrame,frame);
-      const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
       const morphStarted=performance.now();
       for(let i=1;i<=steps;i++){
         if(performance.now()-morphStarted>

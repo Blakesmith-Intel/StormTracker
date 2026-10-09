@@ -1,0 +1,50 @@
+name: Browser QA V9.16.15 multiple radar sites
+on:
+  push:
+    branches: [feature/v9-multi-radar-display]
+    paths:
+      - "scripts/smoke-v9-multi-radar-browser.mjs"
+      - "frontend/src/multi-radar-display-v9.js"
+      - "frontend/src/live3d-operational-v9.js"
+      - "frontend/live3d-operational-v9.html"
+      - "frontend/src/operational-dashboard-v9-1.css"
+      - ".github/workflows/browser-v9-multi-radar.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      BROWSER_ENGINE: ${{ matrix.browser }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install official browser harness and browser engine
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Validate all V9 implementation invariants
+        run: npm test
+      - name: Start isolated, unmodified V9.16.15 branch web server
+        run: |
+          python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-multi-radar-browser.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/live3d-operational-v9.html >/dev/null
+      - name: Run actual desktop or mobile simulated-WebKit UI against live BoM source images
+        run: node scripts/smoke-v9-multi-radar-browser.mjs
+      - name: Retain browser captures, measurements, errors and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v9-16-15-multi-radar-browser-${{ matrix.browser }}
+          path: qa-screenshots/
+          if-no-files-found: ignore
+          retention-days: 10

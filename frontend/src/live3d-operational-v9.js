@@ -1101,7 +1101,8 @@ function refreshAdditionalRadarChoices(){
 function showSupplementalRadarSites(frame){
   // No obsolete source area or stale rain inside Doppler-only playback.
   if(!frame || frame.sourceMetadata?.region!==selectedRadarRegion() ||
-     isNativeDopplerPlayback()){
+     frame.sourceMetadata?.temporalInference || isNativeDopplerPlayback()){
+    // Supplemental sites never inherit interpolated source timestamps.
     void supplementalRadarDisplay.show(null,{enabled:false});
     return;
   }

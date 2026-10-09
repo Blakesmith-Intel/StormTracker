@@ -25,8 +25,8 @@ assert.equal(buildIndependentDopplerFrames({frames:pngFrames},compositeGif).leng
   pngFrames.length+1,"source module still supports independently timestamped composite for other callers");
 assert.match(runtime,/const frames=buildIndependentDopplerFrames\(\s*sources\.histories\.get\(radarId\),null\)/,
   "animated Doppler source MUST NOT append the latest composite GIF");
-assert.match(runtime,/maskAnnotationRows:false/,
-  "transparent velocity PNG's bottom 40 rows must no longer be discarded");
+assert.match(runtime,/maskAnnotationRows:true/,
+  "genuine historical Doppler scans need a display-only mask for burned-in UTC/range metadata");
 assert.match(runtime,/frame\.source_kind==="latest"/,
   "original latest composite remains accessible only to legacy science/source metadata");
 assert.deepEqual(buildDopplerOnlySchedule(wind).map(step=>step.dopplerObservedUtc),
@@ -95,4 +95,48 @@ assert.equal(aborted.cancelled,true,"mode switch cancels a stale staged wind ima
 assert.equal(layers.length,0,"no stale wind persists after rain-only switch");
 assert.equal(postRender.size,0,"all Cesium listeners removed");
 assert.ok(renders>=3);
-console.log("PASS V9.16.11 original Doppler-only timeline, rain-free playback, pre-staged native imagery, smooth blend and mode cancellation.");
+// Native Doppler no longer supports adjustable opacity. Keep full coverage
+// during a 180ms crossfade: new scan fades ON TOP of the old opaque scan.
+const stack=[],frames=new Map();let clock2=0,next2=1;
+const imagery2={
+  add(layer,index=stack.length){stack.splice(index,0,layer);return layer;},
+  indexOf(layer){return stack.indexOf(layer);},
+  remove(layer){const i=stack.indexOf(layer);if(i>=0)stack.splice(i,1);},
+  raiseToTop(layer){const i=stack.indexOf(layer);if(i>=0){
+    stack.splice(i,1);stack.push(layer);
+  }}
+};
+const full=createDopplerLayerTransition({
+  imageryLayers:imagery2,
+  requestFrame:callback=>{let id=next2++;frames.set(id,callback);return id;},
+  cancelFrame:id=>frames.delete(id),
+  now:()=>clock2
+});
+const base={name:"wind observation one",alpha:1};
+full.replace({layer:base,key:"full-one",alpha:1,durationMs:180});
+const incoming={name:"wind observation two",alpha:1};
+full.replace({layer:incoming,key:"full-two",alpha:1,durationMs:180});
+assert.deepEqual(stack,[base,incoming],
+  "new scan must be ABOVE previous scan at the start of the blend");
+clock2=90;
+let step=[...frames.values()];frames.clear();step.forEach(fn=>fn(clock2));
+assert.equal(base.alpha,1,"old Doppler stays fully opaque");
+assert.ok(incoming.alpha>0&&incoming.alpha<1,
+  "only incoming wind is gradually revealed");
+assert.equal(1-(1-base.alpha)*(1-incoming.alpha),1,
+  "total image coverage never becomes semitransparent");
+clock2=180;
+step=[...frames.values()];frames.clear();step.forEach(fn=>fn(clock2));
+assert.deepEqual(stack,[incoming],"old imagery removed only after replacement is opaque");
+assert.equal(incoming.alpha,1);
+assert.match(runtime,/alpha:1, \/\/ native standalone Doppler is always fully opaque/);
+assert.match(runtime,/const opacity=1; \/\/ standalone Doppler is fixed at 100%/);
+assert.doesNotMatch(runtime,/\$\("dopplerOpacity"\)/,
+  "no runtime may read a discarded wind transparency slider");
+const html=read("../live3d-operational-v9.html");
+assert.doesNotMatch(html,/id="dopplerOpacity"/,
+  "Doppler transparency control has been removed");
+assert.match(html,/id="radarOpacity"/,
+  "rain-only transparency remains an independent control");
+
+console.log("PASS original Doppler-only timeline, 100% permanent wind coverage, source handovers without basemap bleed-through, source metadata and mode cancellation.");

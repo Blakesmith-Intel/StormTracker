@@ -661,7 +661,7 @@ function setStatus(message, kind = "normal") {
 }
 
 function selectedLoopSelection() {
-  return $("loopDurationMinutes")?.value || "60";
+  return $("loopDurationMinutes")?.value || "30";
 }
 
 function selectedLoopMinutes() {
@@ -714,18 +714,17 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   const previous = preserveSelection ? selector.value : "";
   const window = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
   const rainAvailable = availableRadarLoopMinutes(availableRadarHistoryTimes);
-  const bootstrapRain = availableRadarHistoryTimes.length >= 2 && !rainAvailable.includes(60);
-  // The 60-minute rain selection remains usable while only the native
-  // ~30-minute feed exists. This is a 30-minute starter, NOT an extra menu mode.
+  // Native BoM rain playback starts at 30 minutes. Longer durations must be
+  // backed by published source history or this browser's rolling archive.
   const choices = buildOperationalWindowChoices({
     combinedAvailable: Boolean(window && isDopplerSourceActive()),
-    rainAvailableMinutes: bootstrapRain ? [...rainAvailable, 60] : rainAvailable
+    rainAvailableMinutes: rainAvailable,
+    rainHasFrames: availableRadarHistoryTimes.length > 0
   });
   const options = choices.map(choice => {
     const option = document.createElement("option");
     option.value = choice.value;
-    option.textContent = bootstrapRain && choice.value === "60"
-      ? choice.label + " · 30-min starter" : choice.label;
+    option.textContent = choice.label;
     option.disabled = choice.disabled;
     return option;
   });
@@ -734,9 +733,12 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   selector.disabled = sequenceLoading || !enabled.length;
   // Never silently switch a user's rain-only mode to combined Doppler just
   // because its requested duration is temporarily unavailable.
-  const selected = choices.some(choice => choice.value === previous)
-    ? previous : enabled.some(choice => choice.value === "60")
-      ? "60" : enabled[0]?.value ?? "";
+  const selected = choices.some(choice => choice.value === previous && !choice.disabled)
+    ? previous
+    : previous === DOPPLER_AVAILABLE_LOOP_VALUE && preserveSelection
+      ? previous
+      : enabled.some(choice => choice.value === "30")
+        ? "30" : enabled[0]?.value ?? "";
   if (selected) selector.value = selected;
   else selector.selectedIndex = -1;
   updateLoopButtonLabel();
@@ -3624,7 +3626,7 @@ async function loadHybridSequence(automatic = false) {
     isCombined
       ? `Radar + Doppler · ${Math.round(loopMinutes)} min / ${hybridCombinedSchedule.length} steps`
       : rainHistoryIncomplete
-        ? `${Math.round(sharedTimeline.spanMinutes)} min rain-only starter · collecting scans for ${loopMinutes} min`
+        ? `${Math.round(sharedTimeline.spanMinutes)} min available · collecting BoM scans`
         : loopSelection === ALL_AVAILABLE_LOOP_VALUE
           ? `${Math.round(sharedTimeline.spanMinutes)} min available`
           : `${loopMinutes} min loop`;
@@ -3632,7 +3634,7 @@ async function loadHybridSequence(automatic = false) {
     isCombined
       ? `${Math.round(loopMinutes)} min actual Doppler source window; both streams restart together`
       : rainHistoryIncomplete
-        ? `Only ${Math.round(sharedTimeline.spanMinutes)} min of genuine recent reflectivity is currently available. Requested ${loopMinutes} min; auto-extends as BoM scans accumulate in this browser.`
+        ? `Only ${Math.round(sharedTimeline.spanMinutes)} min of genuine recent reflectivity is currently available. Original BoM scan times are preserved.`
         : `${Math.round(sharedTimeline.spanMinutes)} min actual reflectivity span`;
   $("sharedHistoryNote").title =
     `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
@@ -3650,7 +3652,7 @@ async function loadHybridSequence(automatic = false) {
       (frameFailures.summary ? ` · ${frameFailures.summary}` : "")
     : `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
       " reflectivity frames" +
-      (rainHistoryIncomplete ? ` · ${loopMinutes} min requested; playing real available scans until history fills` : "") +
+      (rainHistoryIncomplete ? ` · source history shorter than ${loopMinutes} min; showing available scans only` : "") +
       (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
       ` (${range})` +
       (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +

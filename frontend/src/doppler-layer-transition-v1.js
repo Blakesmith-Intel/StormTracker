@@ -46,6 +46,7 @@ export function transitionProgress(
 
 export function createDopplerLayerTransition({
   imageryLayers,
+  scene = null,
   requestRender = () => {},
   requestFrame =
     callback =>
@@ -75,6 +76,15 @@ export function createDopplerLayerTransition({
   let animationGeneration = 0;
   const managedLayers =
     new Set();
+  let stagedLayer = null;
+  let stageGeneration = 0;
+  function cancelStage() {
+    stageGeneration++;
+    if (stagedLayer) {
+      removeLayer(stagedLayer);
+      stagedLayer = null;
+    }
+  }
 
   function removeLayer(
     layer
@@ -191,6 +201,7 @@ export function createDopplerLayerTransition({
       };
     }
 
+    cancelStage();
     cancelAnimation();
 
     // If rapid playback interrupted the previous blend, preserve the most recent
@@ -210,9 +221,8 @@ export function createDopplerLayerTransition({
         ? 0
         : nextAlpha;
 
-    imageryLayers.add(
-      layer
-    );
+    if (typeof imageryLayers.indexOf !== "function" || imageryLayers.indexOf(layer)<0)
+      imageryLayers.add(layer);
 
     managedLayers.add(
       layer
@@ -331,6 +341,7 @@ export function createDopplerLayerTransition({
     durationMs =
       0
   } = {}) {
+    cancelStage();
     cancelAnimation();
 
     removeStaleLayers(
@@ -422,8 +433,50 @@ export function createDopplerLayerTransition({
       );
   }
 
+  // Pre-stage a decoded genuine BoM wind tile UNDER the previous one.
+  // The outgoing Doppler stays fully visible during loading. Only after
+  // Cesium has rendered the staged texture do we begin a brief crossfade.
+  async function replacePrepared({layer,key,alpha=targetAlpha,
+    durationMs=DEFAULT_DOPPLER_CROSSFADE_MS,onAdded=()=>{},
+    timeoutMs=900}={}) {
+    if (!layer) throw new TypeError("Prepared Doppler layer required");
+    if (currentLayer && currentKey===key)
+      return replace({layer,key,alpha,durationMs,onAdded});
+    if (!currentLayer || !scene?.postRender?.addEventListener ||
+        typeof imageryLayers.indexOf!=="function")
+      return replace({layer,key,alpha,durationMs,onAdded});
+    cancelStage();
+    const token=stageGeneration;
+    stagedLayer=layer;
+    layer.alpha=0.001;
+    imageryLayers.add(layer,Math.max(0,imageryLayers.indexOf(currentLayer)));
+    requestRender();
+    const ready=await new Promise(resolve=>{
+      let settled=false,frames=0,timeout,remove=()=>{};
+      const finish=value=>{
+        if(settled)return;
+        settled=true;remove();clearTimeout(timeout);resolve(value);
+      };
+      remove=scene.postRender.addEventListener(()=>{
+        if(token!==stageGeneration){finish(false);return;}
+        if(++frames>=3){finish(true);return;}
+        requestRender();
+      });
+      timeout=setTimeout(()=>finish(false),timeoutMs);
+      requestRender();
+    });
+    if(token!==stageGeneration)return {changed:false,cancelled:true};
+    stagedLayer=null;
+    if(!ready){
+      removeLayer(layer);
+      return {changed:false,ready:false};
+    }
+    return replace({layer,key,alpha,durationMs,onAdded});
+  }
+
   return {
     replace,
+    replacePrepared,
     clear,
     setOpacity,
 

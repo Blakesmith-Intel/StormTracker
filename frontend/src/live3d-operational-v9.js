@@ -105,7 +105,7 @@ import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
-import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule } from "./doppler-available-window-v1.js?v=9.16-doppler-window";
+import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule, buildDopplerOnlySchedule } from "./doppler-available-window-v1.js?v=9.16.11-doppler-only";
 import { buildOperationalWindowChoices } from "./operational-window-choices-v1.js?v=9.16-four-windows";
 
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
@@ -530,6 +530,11 @@ initialiseOperationalQfdTechnicalRescues({
 let hybridFrames = [];
 let hybridResults = [];
 let hybridFrameIndex = 0;
+let windPlaybackFrames = [];
+function isNativeDopplerPlayback() {
+  return loadedLoopSelection === DOPPLER_AVAILABLE_LOOP_VALUE &&
+    windPlaybackFrames.length > 0;
+}
 let hybridHistory = new Map();
 let sequenceLoading = false;
 let sharedTimeline = null;
@@ -560,14 +565,15 @@ function prewarmUpcomingFrames(index){
     for(let offset=1;offset<=2;offset++){
       if(generation!==playbackPrewarmGeneration ||
          region!==selectedRadarRegion() || sequenceLoading) return;
-      const next=(index+offset)%hybridFrames.length;
-      const frame=hybridFrames[next];
+      const windMode=isNativeDopplerPlayback();
+      const length=windMode ? windPlaybackFrames.length : hybridFrames.length;
+      if (!length) return;
+      const next=(index+offset)%length;
+      const frame=windMode ? windPlaybackFrames[next] : hybridFrames[next];
       if(!frame)continue;
       try {
-        await Promise.all([
-          prepareRadarSurfaceProvider(frame),
-          prepareWindForPlayback(next)
-        ]);
+        if (windMode) await prepareWindObservation(next);
+        else await prepareRadarSurfaceProvider(frame);
       } catch(error) {
         // Genuine source images can expire from BoM; this is best effort.
         console.warn("Playback prewarm skipped",frame.observedUtc,error);
@@ -577,9 +583,9 @@ function prewarmUpcomingFrames(index){
 }
 const playbackPerformanceMeter=createPlaybackPerformanceMeter({windowSize:24});
 const playback = createContinuousPlayback({
-  count: () => hybridFrames.length,
-  currentIndex: () => hybridFrameIndex,
-  showFrame: showHybridFrame,
+  count: () => isNativeDopplerPlayback() ? windPlaybackFrames.length : hybridFrames.length,
+  currentIndex: () => isNativeDopplerPlayback() ? independentDopplerIndexValue : hybridFrameIndex,
+  showFrame: index => isNativeDopplerPlayback() ? showDopplerOnlyFrame(index) : showHybridFrame(index),
   delay: () => effectivePlaybackDelayMs(),
   onPlayingChange: playing => {
     $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
@@ -675,6 +681,7 @@ const dopplerOverlayTransition =
   createDopplerLayerTransition({
     imageryLayers:
       viewer.imageryLayers,
+    scene,
 
     requestRender:
       () =>
@@ -733,7 +740,8 @@ function selectedLoopSelection() {
 function selectedLoopMinutes() {
   const selection = selectedLoopSelection();
   return selection === DOPPLER_AVAILABLE_LOOP_VALUE
-    ? (dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames)?.spanMinutes ?? 0)
+    ? Math.max(0, (Date.parse(independentDopplerFrames.at(-1)?.observedUtc) -
+        Date.parse(independentDopplerFrames[0]?.observedUtc))/60000 || 0)
     : Number(selection);
 }
 
@@ -783,7 +791,7 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   // Native BoM rain playback starts at 30 minutes. Longer durations must be
   // backed by published source history or this browser's rolling archive.
   const choices = buildOperationalWindowChoices({
-    combinedAvailable: Boolean(window && isDopplerSourceActive()),
+    combinedAvailable: isDopplerSourceActive() && independentDopplerFrames.length >= 2,
     rainAvailableMinutes: rainAvailable,
     rainHasFrames: availableRadarHistoryTimes.length > 0
   });
@@ -811,6 +819,7 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
 }
 
 function effectivePlaybackDelayMs() {
+  if(isNativeDopplerPlayback()) return playbackDelayForSpeed(selectedPlaybackSpeed());
   return sourceAlignedPlaybackDelayMs(
     playbackDelayForSpeed(selectedPlaybackSpeed()),
     hybridCombinedSchedule,
@@ -834,8 +843,8 @@ function updateLoopButtonLabel() {
   if (button) {
     button.textContent =
       window.matchMedia?.("(max-width:700px)").matches
-        ? (dopplerAvailable ? "Load R+D" : `Load ${minutes}m rain`)
-        : (dopplerAvailable ? "Load Radar + Doppler — All available" :
+        ? (dopplerAvailable ? "Load Doppler" : `Load ${minutes}m rain`)
+        : (dopplerAvailable ? "Load Doppler — All available" :
             `Load ${minutes}-min rain radar`);
   }
 
@@ -2512,7 +2521,8 @@ function formatDualClock(utc) {
   return formatProductTime(utc,{compact:true}).split(" / ")[0];
 }
 function updateDualSourceTimes() {
-  const radarUtc=hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
+  const radarUtc=isNativeDopplerPlayback() ? null :
+    hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
   const windUtc=shouldDisplayDopplerForSelectedWindow() ? independentDopplerRecord?.observedUtc : null;
   const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
   if(radar){
@@ -2595,6 +2605,15 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     // attempt (e.g. transient missing radar tile), retry every five minutes
     // until that real timestamp is incorporated, without falsely claiming
     // the displayed shared loop has advanced.
+    if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
+       isNativeDopplerPlayback()) {
+      if(hasNewDopplerWindow() && !sequenceLoading)
+        void runSourceLoad(()=>loadHybridSequence(true),true);
+      // Metadata polling must not drive unrelated wind frames on-screen.
+      return;
+    }
+    if(selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
+       isNativeDopplerPlayback()) return;
     if(automatic && selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE &&
        hasNewDopplerWindow() && hybridCombinedSchedule.length) {
       $("autoRefreshNote").textContent =

@@ -27,8 +27,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Validate current production source
+      - name: Validate current development source
         run: npm test
+      - name: Checkout sealed V9.15.1 production source
+        uses: actions/checkout@v4
+        with:
+          # Immutable accepted production reference. Never deploy main/frontend
+          # as the production root while experimental branches are under review.
+          ref: 7e4315754baae55aa288306cd05ecd39ae22ff75
+          path: sealed-production/v9.15.1
+          persist-credentials: false
+      - name: Verify and test sealed production source
+        run: |
+          set -euo pipefail
+          (cd sealed-production/v9.15.1 && npm test)
+          test "$(git -C sealed-production/v9.15.1 rev-parse HEAD)" = "7e4315754baae55aa288306cd05ecd39ae22ff75"
+          grep -Fq 'v=9.15.1-intensity40' sealed-production/v9.15.1/frontend/index.html
 
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
@@ -59,7 +73,7 @@ jobs:
       - name: Checkout V9.16.10 playback/cone/trail candidate
         uses: actions/checkout@v4
         with:
-          ref: f54ca309348e95ada32deafe1709b1de97186c4f
+          ref: f4927fea810833230bce1af65df80ee2e3b59661
           path: preview-builds/v9.16.10
           persist-credentials: false
       - name: Checkout validated native BoM playback review
@@ -103,7 +117,7 @@ jobs:
       - name: Validate V9.16.10 candidate independently
         run: |
           (cd preview-builds/v9.16.10 && npm test)
-          test "$(git -C preview-builds/v9.16.10 rev-parse HEAD)" = "f54ca309348e95ada32deafe1709b1de97186c4f"
+          test "$(git -C preview-builds/v9.16.10 rev-parse HEAD)" = "f4927fea810833230bce1af65df80ee2e3b59661"
       - name: Validate native BoM playback preview independently
         run: |
           (cd preview-builds/native-playback && npm test)
@@ -177,13 +191,39 @@ jobs:
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 
+      - name: Construct published site from SEALED production plus isolated previews
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p published-site
+          cp -a sealed-production/v9.15.1/frontend/. published-site/
+          mkdir -p published-site/preview
+          cp -a frontend/preview/. published-site/preview/
+          cmp sealed-production/v9.15.1/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.15.1/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
+          grep -Fq 'v=9.15.1-intensity40' published-site/index.html
+          ! grep -Fq 'v8-perf-v9' published-site/index.html
+          test -f published-site/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
+          grep -Fq 'f4927fea810833230bce1af65df80ee2e3b59661' published-site/preview/v9.16.10/BUILD.txt
+          echo "Deployment payload: SEALED V9.15.1 root + immutable V9.16.10 preview only"
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend
-      - name: Deploy production root and isolated previews
+          path: published-site
+      - name: Deploy sealed V9.15.1 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify immutable production root after Pages deployment
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$base/index.html" | grep -Fq 'v=9.15.1-intensity40'
+          echo "Verified sealed V9.15.1 public root; development source never published there"
+
       - name: Verify published V9.16 and stable V9.15.1 URLs
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -199,7 +239,7 @@ jobs:
           base="${PAGES_URL%/}/preview/v9.16.10"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq "f54ca309348e95ada32deafe1709b1de97186c4f" <<< "$build"
+          grep -Fq "f4927fea810833230bce1af65df80ee2e3b59661" <<< "$build"
           js="$(retry_curl "$base/src/live3d-operational-v9.js")"
           grep -Fq "setStormTrackTrailVisibility(hybridSource.entities, show)" <<< "$js"
           echo "Isolated V9.16.10 candidate available at $base/; production source unchanged."

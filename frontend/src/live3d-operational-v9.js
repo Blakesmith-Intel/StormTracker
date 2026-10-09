@@ -92,7 +92,9 @@ import {
 } from "./storage.js?v=9.8.3";
 
 import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./shared-product-timeline-v1.js?v=9.16-nearest-observation";
-import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
+import {
+  canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
+} from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
@@ -214,7 +216,10 @@ const stormTrackLabelOverlay = createStormTrackLabelOverlay({
   CesiumRef: Cesium,
   container: $("mapPanel")
 });
-const frameCrossfade = createSceneCrossfade({ scene, container: $("mapPanel") });
+// Cancels interim weather motion when camera, settings or source selection
+// changes. No compositor opacity animation, and no observed-frame alteration.
+let visualMotionGeneration=0;
+const motionTransition={cancel(){visualMotionGeneration++;}};
 const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
@@ -222,15 +227,15 @@ const radarImageryHandover = createRadarImageryHandover({
 // Mere hover/pointer movement must not cancel a weather-frame fade.
 // An actual drag begins with pointerdown, which still cancels instantly.
 for (const event of ["pointerdown", "wheel", "keydown"]) {
-  document.addEventListener(event, () => frameCrossfade.clear(), { passive: true });
+  document.addEventListener(event, () => motionTransition.cancel(), { passive: true });
 }
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
-    frameCrossfade.clear();
+    motionTransition.cancel();
     cameraPerformance.restore();
   }
 });
-window.addEventListener("resize", () => frameCrossfade.clear());
+window.addEventListener("resize", () => motionTransition.cancel());
 window.addEventListener("pagehide", () => touchCameraGestures.destroy(), { once:true });
 
 scene.fog.enabled = false;
@@ -286,7 +291,7 @@ const touchCameraGestures =
     container: $("cesiumContainer"),
     getController: () => mapCamera,
     onGesture: () => {
-      frameCrossfade.clear();
+      motionTransition.cancel();
       cameraPerformance.pulse();
     }
   });
@@ -533,7 +538,7 @@ const playback = createContinuousPlayback({
     $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
     $("hybridPlayButton").setAttribute("aria-pressed", String(playing));
   },
-  onError: error => { frameCrossfade.clear(); setStatus(error.message, "error"); }
+  onError: error => { motionTransition.cancel(); setStatus(error.message, "error"); }
 });
 
 let hybridTrackVolumes = [];
@@ -1012,7 +1017,8 @@ function displayRgb(category) {
 
 async function renderSurface(
   frame,
-  renderToken = null
+  renderToken = null,
+  {timeoutMs=2200}={}
 ) {
   const canvas =
     document.createElement(
@@ -1139,7 +1145,7 @@ async function renderSurface(
     new Cesium.ImageryLayer(provider),
     {
       alpha: Number($("radarOpacity").value) / 100,
-      timeoutMs: 2200,
+      timeoutMs,
       isCurrent: () => renderToken == null ||
         renderToken === hybridSceneRenderToken
     }
@@ -3079,15 +3085,39 @@ async function showHybridFrame(index) {
       hybridFrameIndex
     ];
 
-  // Mask BOTH playing and manually scrubbed frame transitions with a
-  // snapshot of the complete previous map, until new data is fully ready.
-  const transitionFrame = Boolean(
-    latestFrame && latestFrame.observedUtc !== frame.observedUtc
-  );
-  frameCrossfade.clear();
-  const snapshotReady = transitionFrame
-    ? await frameCrossfade.capture() : false;
-  if (renderToken !== hybridSceneRenderToken) return;
+  // Actual BoM frames remain at their recorded source times and are the
+  // ONLY frames delivered to storm science, Doppler or threat-cone analysis.
+  // Extra motion-warped 2-D images exist only on-screen during sequential
+  // playback; no scene opacity or whole-screen image crossfade is used.
+  const previousFrame = latestFrame;
+  motionTransition.cancel();
+  const motionGeneration=visualMotionGeneration;
+  const canAnimate=playback.isPlaying() &&
+    previousVisibleIndex>=0 && hybridFrameIndex===previousVisibleIndex+1 &&
+    canMotionInterpolateRadar(previousFrame,frame);
+  if(canAnimate){
+    try{
+      const motion=createRadarMotionTransition(previousFrame,frame);
+      const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
+      for(let i=1;i<=steps;i++){
+        if(renderToken!==hybridSceneRenderToken ||
+           motionGeneration!==visualMotionGeneration || !playback.isPlaying())break;
+        const displayFrame=motion.frame(i/(steps+1));
+        const shown=await renderSurface(displayFrame,renderToken,{timeoutMs:650});
+        if(!shown)break;
+        // A display-only morph, not another BoM measurement. The
+        // measurement timeline and all scientific overlays remain unchanged.
+        $("mapTruthLabel").textContent="MOTION-INTERPOLATED RAIN · DISPLAY ONLY";
+        await new Promise(resolve=>setTimeout(resolve,
+          Math.min(105,Math.round(playbackDelayForSpeed(selectedPlaybackSpeed())/(steps+1)/2))
+        ));
+      }
+    }catch{
+      // If motion estimation or an interim tile fails, go directly to the
+      // genuine next BoM observation, never leave a fabricated reading.
+    }
+  }
+  if(renderToken!==hybridSceneRenderToken)return;
 
   syncFrameSlider(
     $("hybridFrameSlider"),
@@ -3115,7 +3145,7 @@ async function showHybridFrame(index) {
       hybridFrameIndex = previousVisibleIndex;
       syncFrameSlider($("hybridFrameSlider"), hybridFrames.length, hybridFrameIndex);
     }
-    frameCrossfade.clear();
+    motionTransition.cancel();
     setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
     return;
   }
@@ -3176,9 +3206,8 @@ async function showHybridFrame(index) {
         ),
     "ok"
   );
-  if (snapshotReady) await frameCrossfade.play(
-    Math.min(200, playbackDelayForSpeed(selectedPlaybackSpeed()) * .5)
-  );
+  // No opacity fade. The last full observed frame is the final step of
+  // the spatially advected radar animation.
 }
 
 async function warmRadarHistoryCache(
@@ -3908,7 +3937,7 @@ async function loadHybridSequence(automatic = false) {
 
 async function runSourceLoad(loader, background = false) {
   if (sequenceLoading || !model) return;
-  if (!background) frameCrossfade.clear();
+  if (!background) motionTransition.cancel();
   sequenceLoading = true;
   $("loopDurationMinutes").disabled = true;
   $("radarSite").disabled = true;
@@ -4154,7 +4183,7 @@ async function initialise() {
 
 
 $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
-  frameCrossfade.clear();
+  motionTransition.cancel();
   ++independentDopplerRequest;
   independentDopplerFrames=[];
   independentDopplerIndexValue=0;
@@ -4203,7 +4232,7 @@ $("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSe
 $("basemapSelect").addEventListener(
   "change",
   event => {
-    frameCrossfade.clear();
+    motionTransition.cancel();
 
     try {
       const result =
@@ -4233,7 +4262,7 @@ $("basemapSelect").addEventListener(
 $("terrainEnabled").addEventListener(
   "change",
   async event => {
-    frameCrossfade.clear();
+    motionTransition.cancel();
 
     const requested =
       event.target.checked;
@@ -4254,7 +4283,7 @@ $("terrainEnabled").addEventListener(
 );
 
 $("loopDurationMinutes").addEventListener("change", () => {
-  frameCrossfade.clear();
+  motionTransition.cancel();
   // Apply the visible-mode boundary immediately, before the new radar
   // history finishes loading. Doppler's source cache remains untouched.
   renderDopplerOverlay();
@@ -4286,13 +4315,13 @@ for (const button of document.querySelectorAll("[data-detail-tab]")) {
   button.addEventListener("click", () => selectDetailsTab(button.dataset.detailTab));
 }
 $("hybridFrameSlider").addEventListener("input", async event => {
-  frameCrossfade.clear();
+  motionTransition.cancel();
   const index = Number(event.target.value);
   await playback.pause();
   showHybridFrame(index).catch(error => setStatus(error.message, "error"));
 });
 $("hybridPlayButton").addEventListener("click", () => {
-  frameCrossfade.clear();
+  motionTransition.cancel();
   if (playback.isPlaying()) playback.pause();
   else playback.play();
 });
@@ -4317,7 +4346,7 @@ $("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hyb
 // Doppler source is automatic; opacity 0 hides it without discarding its data.
 // Opacity changes only rendered colours, never decoded samples or tracking.
 $("radarOpacity").addEventListener("input", event => {
-  frameCrossfade.clear();
+  motionTransition.cancel();
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
   radarImageryHandover.setOpacity(opacity);
@@ -4325,7 +4354,7 @@ $("radarOpacity").addEventListener("input", event => {
   scene.requestRender();
 });
 $("dopplerOpacity").addEventListener("input", event => {
-  frameCrossfade.clear();
+  motionTransition.cancel();
   const opacity = Number(event.target.value) / 100;
   $("dopplerOpacityValue").textContent = `${event.target.value}%`;
   dopplerOverlayTransition.setOpacity(

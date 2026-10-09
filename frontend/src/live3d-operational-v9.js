@@ -1132,7 +1132,7 @@ async function prepareRadarSurfaceProvider(frame) {
   }
 }
 
-async function renderSurface(frame,renderToken=null,{timeoutMs=2200}={}) {
+async function renderSurface(frame,renderToken=null,{timeoutMs=2200,onBeforeReveal=null}={}) {
   const provider=await prepareRadarSurfaceProvider(frame);
   if (
     renderToken != null
@@ -1151,6 +1151,7 @@ async function renderSurface(frame,renderToken=null,{timeoutMs=2200}={}) {
       // prepareRadarSurfaceProvider only returns after source image decode.
       // Global terrain/basemap tile requests must not stall this handover.
       decodedSingleTile: true,
+      beforeReveal:onBeforeReveal,
       isCurrent: () => renderToken == null ||
         renderToken === hybridSceneRenderToken
     }
@@ -3227,9 +3228,13 @@ async function showHybridFrame(index) {
   );
   motionTransition.cancel();
   const motionGeneration=visualMotionGeneration;
-  // The dual-source timeline already adds Doppler-only events. Avoid an
-  // additional synthetic rain frame between measurements in combined mode.
-  const steps=hybridCombinedSchedule.length ? 0 :
+  // A display-only motion-warp rain image has NO matching measured 3-D
+  // geometry. Never show it when inferred volumetric structure is visible:
+  // otherwise the 2-D echo advances while the 3-D plume stays at the previous
+  // observed timestamp. At zero 3-D opacity, the original smooth rain preview
+  // remains available without affecting scientific tracks.
+  const hasVisibleVolume = Number($("volumeOpacity").value)>0;
+  const steps=(hybridCombinedSchedule.length || hasVisibleVolume) ? 0 :
     radarMotionStepsForSpeed(selectedPlaybackSpeed());
   const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
@@ -3272,10 +3277,25 @@ async function showHybridFrame(index) {
   }
   if(renderToken!==hybridSceneRenderToken)return;
   const radarStart=performance.now();
-  let surfaceApplied=false;
+  let surfaceApplied=false,geometryCommitted=false;
+  const commitMeasuredGeometry=()=>{
+    if(renderToken!==hybridSceneRenderToken)return;
+    const began=performance.now();
+    // Synchronously create/show the measured-frame inference and tracks
+    // BEFORE the newly decoded 2-D BoM surface becomes visible. Cesium then
+    // renders both together, never offset by a source observation.
+    renderInferredVolume(frame);
+    updateTrackDisplayControls(requestedIndex);
+    applyHybridVolumeMode(requestedIndex);
+    renderHybridTracks(requestedIndex);
+    syncSevereStormAlerts(requestedIndex);
+    volumeConstructionMs=performance.now()-began;
+    geometryCommitted=true;
+  };
   try {
     surfaceApplied=windOnlyStep ? true : await renderSurface(frame,renderToken,{
-      timeoutMs:playback.isPlaying() ? 1100 : 2200
+      timeoutMs:playback.isPlaying() ? 1100 : 2200,
+      onBeforeReveal:commitMeasuredGeometry
     });
   } catch(error) {
     // A corrupt/expired source tile is not a reason to freeze every cycle.
@@ -3306,15 +3326,10 @@ async function showHybridFrame(index) {
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
-  const volumeStart=performance.now();
-  if (!windOnlyStep) {
-    renderInferredVolume(frame);
-    volumeConstructionMs=performance.now()-volumeStart;
-    updateTrackDisplayControls(hybridFrameIndex);
-    applyHybridVolumeMode(hybridFrameIndex);
-    renderHybridTracks(hybridFrameIndex);
-    syncSevereStormAlerts(hybridFrameIndex);
-  }
+  // The handover has already presented the matching measured 3-D geometry
+  // in the same Cesium frame as this source raster. Wind-only events reuse it.
+  if(!windOnlyStep && !geometryCommitted)
+    throw Error("Measured radar volume was not committed with its 2-D frame");
   // Combined wind was committed synchronously above; no asynchronous
   // wind driver may overtake the now-visible radar/slider transaction.
 

@@ -93,6 +93,7 @@ import {
 
 import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./shared-product-timeline-v1.js?v=9.16-nearest-observation";
 import { createSceneCrossfade } from "./scene-crossfade-v1.js?v=operational-v9-6";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -214,6 +215,9 @@ const stormTrackLabelOverlay = createStormTrackLabelOverlay({
   container: $("mapPanel")
 });
 const frameCrossfade = createSceneCrossfade({ scene, container: $("mapPanel") });
+const radarImageryHandover = createRadarImageryHandover({
+  imageryLayers: viewer.imageryLayers, scene
+});
 // Keep every camera gesture and manual control immediate during a visual fade.
 for (const event of ["pointerdown", "pointermove", "wheel", "keydown"]) {
   document.addEventListener(event, () => frameCrossfade.clear(), { passive: true });
@@ -1127,33 +1131,22 @@ async function renderSurface(
     return false;
   }
 
-  if (surfaceLayer) {
-    viewer.imageryLayers.remove(
-      surfaceLayer,
-      true
-    );
-  }
-
-  surfaceLayer =
-    new Cesium.ImageryLayer(
-      provider
-    );
-
-  surfaceLayer.alpha =
-    Number($("radarOpacity").value) / 100;
-
-  viewer.imageryLayers.add(
-    surfaceLayer
+  // Retain the entire old radar surface until the replacement has actually
+  // rendered and Cesium confirms its imagery tiles are available.
+  const committed = await radarImageryHandover.replace(
+    new Cesium.ImageryLayer(provider),
+    {
+      alpha: Number($("radarOpacity").value) / 100,
+      timeoutMs: 2200,
+      isCurrent: () => renderToken == null ||
+        renderToken === hybridSceneRenderToken
+    }
   );
-
-  // Reflectivity is the primary weather layer. Doppler is display context below it.
-  viewer.imageryLayers.raiseToTop(
-    surfaceLayer
-  );
-
-
+  if (!committed) return false;
+  surfaceLayer = radarImageryHandover.currentLayer;
+  // Rain reflectivity always stays above independent Doppler context.
+  viewer.imageryLayers.raiseToTop(surfaceLayer);
   scene.requestRender();
-
   return true;
 }
 
@@ -3081,11 +3074,15 @@ async function showHybridFrame(index) {
       hybridFrameIndex
     ];
 
-  const animateFrame = playback.isPlaying() && latestFrame && latestFrame.observedUtc !== frame.observedUtc;
+  // Mask BOTH playing and manually scrubbed frame transitions with a
+  // snapshot of the complete previous map, until new data is fully ready.
+  const transitionFrame = Boolean(
+    latestFrame && latestFrame.observedUtc !== frame.observedUtc
+  );
   frameCrossfade.clear();
-  if (animateFrame) await frameCrossfade.capture();
+  const snapshotReady = transitionFrame
+    ? await frameCrossfade.capture() : false;
   if (renderToken !== hybridSceneRenderToken) return;
-  latestFrame = frame;
 
   syncFrameSlider(
     $("hybridFrameSlider"),
@@ -3107,8 +3104,11 @@ async function showHybridFrame(index) {
     );
 
   if (!surfaceApplied) {
+    frameCrossfade.clear();
+    setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
     return;
   }
+  latestFrame = frame;
 
   renderInferredVolume(
     frame
@@ -3165,7 +3165,9 @@ async function showHybridFrame(index) {
         ),
     "ok"
   );
-  if (animateFrame) await frameCrossfade.play(Math.min(200, playbackDelayForSpeed(selectedPlaybackSpeed()) * .5));
+  if (snapshotReady) await frameCrossfade.play(
+    Math.min(200, playbackDelayForSpeed(selectedPlaybackSpeed()) * .5)
+  );
 }
 
 async function warmRadarHistoryCache(
@@ -4158,7 +4160,8 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   lastSourceDiscoveryRegion = null;
   lastSourceDiscoveryAt = 0;
   lastSourceDiscoveryTimes = [];
-  if (surfaceLayer) { viewer.imageryLayers.remove(surfaceLayer, true); surfaceLayer = null; }
+  radarImageryHandover.reset();
+  surfaceLayer = null;
   if (inferredCollection) { scene.primitives.remove(inferredCollection); inferredCollection = null; }
   hybridFrames = []; hybridResults = []; hybridDopplerFrameStates = [];
   severeStormAlertOverlay.setFrame(); // Never carry alerts into a different radar region.
@@ -4306,7 +4309,8 @@ $("radarOpacity").addEventListener("input", event => {
   frameCrossfade.clear();
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
-  if (surfaceLayer) surfaceLayer.alpha = opacity;
+  radarImageryHandover.setOpacity(opacity);
+  surfaceLayer = radarImageryHandover.currentLayer;
   scene.requestRender();
 });
 $("dopplerOpacity").addEventListener("input", event => {

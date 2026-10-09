@@ -60,4 +60,28 @@ let oneRendered = false;
 const single = createContinuousPlayback({count:()=>1,currentIndex:()=>0,delay:()=>1,showFrame:async()=>{oneRendered=true;}});
 await single.play();
 assert.equal(oneRendered, false);
-console.log('9 continuous-playback checks passed.');
+// A single failed original-source imagery handover must not trap playback at
+// that index on every pass; the old visible scan is retained and the next
+// genuine scheduled source index is attempted.
+let cursor=0;
+const attempts=[];
+let finishAttempts;
+const sixAttempts=new Promise(resolve=>{finishAttempts=resolve;});
+const skipFailed=createContinuousPlayback({
+  count:()=>5,currentIndex:()=>cursor,delay:()=>1,
+  showFrame:async next=>{
+    attempts.push(next);
+    if(next!==2)cursor=next;
+    if(attempts.length>=6) {
+      skipFailed.pause();
+      finishAttempts();
+    }
+    return next!==2;
+  }
+});
+skipFailed.play();
+await sixAttempts;
+await skipFailed.pause();
+assert.deepEqual(attempts,[1,2,3,4,0,1],
+  "a transient failed source frame should not be retried forever");
+console.log('Continuous playback checks passed including skipped tile handovers and no overlapping renders.');

@@ -16,8 +16,10 @@ assert.match(js,/showTrackLabels/);
 
 assert.match(js,/function updateRenderedTrackLabels\(\)/,
   "Storm identifier pairs must refresh without advancing or replaying a frame.");
-assert.match(js,/stormTrackLabelOverlay\.setVisible\(Boolean\(\$\("showTrackLabels"\)\?\.checked\)\)/,
-  "The Labels checkbox must immediately hide or show both the point and the label.");
+assert.match(js,/stormTrackLabelOverlay\.setVisible\(show\)/,
+  "The Labels checkbox must immediately hide or show paired centroid markers and text.");
+assert.match(js,/setStormTrackTrailVisibility\(hybridSource\.entities, show\)/,
+  "The Labels checkbox must also immediately hide/show history trails on paused frames.");
 assert.match(js,/\$\("showTrackLabels"\)\.addEventListener\("change",updateRenderedTrackLabels\)/);
 
 assert.match(js,/showTrackThreatCone/);

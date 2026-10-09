@@ -28,6 +28,13 @@ page.on("pageerror",error=>{
   evidence.errors.push({kind:"pageerror",message:error.message});
   console.log("BROWSER_PAGE_ERROR",error.message.slice(0,250));
 });
+page.on("console",message=>{
+  if(["warning","error"].includes(message.type())){
+    const value=message.text();
+    if(/Additional BoM radar site unavailable|tile request|reprojection/i.test(value))
+      console.log("BROWSER_RADAR_SOURCE_WARNING",value.slice(0,650));
+  }
+});
 page.on("requestfailed",request=>{
   if(request.url().includes("/wmts")){
     evidence.errors.push({kind:"wmts-failed",url:request.url().slice(0,180),
@@ -138,7 +145,17 @@ try{
     throw Error("Real BoM source did not load in browser: "+
       JSON.stringify(state)+"; original failure: "+error.message);
   }
-  const loadedUtc=state.primaryUtc;
+  // Hold the current ORIGINAL measured scan stable while testing the slower
+  // extra-site WMTS areas; source images are never injected or manufactured.
+  const playButton=page.locator("#hybridPlayButton");
+  if(await playButton.getAttribute("aria-pressed")==="true"){
+    await playButton.click();
+    await page.waitForFunction(()=>
+      document.getElementById("hybridPlayButton")?.getAttribute("aria-pressed")==="false",
+      null,{timeout:12000});
+    note("paused-on-original-measured-frame",await inspect());
+  }
+  const loadedUtc=(await inspect()).primaryUtc;
   assert.match(loadedUtc,/^20\d\d-\d\d-\d\dT\d\d:/);
   await waitFor(()=>{
     const s=window.__stormtrackerMultiRadarDiagnostics?.();
@@ -167,9 +184,8 @@ try{
   try{
     await waitFor(()=>{
       const s=window.__stormtrackerMultiRadarDiagnostics?.();
-      return s?.visibleSupplemental?.includes("24") ||
-        /unavailable/.test(s?.addedStatus??"");
-    },70000);
+      return s?.visibleSupplemental?.includes("24");
+    },90000);
     state=await inspect();
     assert.ok(state.visibleSupplemental.includes("24"),
       "Actual distant rain image failed: "+state.addedStatus);

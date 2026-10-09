@@ -1130,7 +1130,8 @@ for(const site of Object.values(QLD_RADAR_SITES).sort((a,b)=>
   label.append(checkbox,name);
   $("multiRadarChecklist").append(label);
   checkbox.addEventListener("change",()=>{
-    if(sequenceLoading){refreshAdditionalRadarChoices();return;}
+    // New selections are valid even while the primary source history is
+    // loading. They are displayed as soon as a genuine measured scan commits.
     if(checkbox.checked && additionalRadarSiteIds.length>=MAX_DISPLAY_RADAR_SITES-1){
       checkbox.checked=false;
       $("multiRadarStatus").textContent=

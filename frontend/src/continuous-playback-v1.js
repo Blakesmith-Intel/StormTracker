@@ -17,9 +17,15 @@ export function createContinuousPlayback({ count, currentIndex, showFrame, delay
     // Queue behind a stopped render so rapid Pause/Play cannot overlap it.
     pending = pending.then(async () => {
       while (playing && token === generation && count() > 1) {
-        await new Promise(resolve => setTimeout(resolve, delay()));
-        if (!playing || token !== generation) return;
+        const startedAt = performance.now();
         await showFrame((currentIndex() + 1) % count());
+        if (!playing || token !== generation) return;
+        // Old player waited AFTER image loading. Account for rendering time
+        // in the interval so costly tiles don't add a second delay.
+        const remaining = Math.max(0, delay() - (performance.now() - startedAt));
+        if (remaining > 0) {
+          await new Promise(resolve => setTimeout(resolve, remaining));
+        }
       }
     }).catch(error => {
       if (token === generation) {

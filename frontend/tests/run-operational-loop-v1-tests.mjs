@@ -16,9 +16,10 @@ assert.equal(normaliseLoopMinutes(30), 30);
 assert.equal(normaliseLoopMinutes("180"), 180);
 assert.equal(frameCountForLoopMinutes(30), 6);
 assert.equal(frameCountForLoopMinutes(180), 36);
-assert.equal(playbackDelayForSpeed(0.5), 1300);
-assert.equal(playbackDelayForSpeed(1), 650);
-assert.equal(playbackDelayForSpeed(2), 325);
+assert.equal(playbackDelayForSpeed(1), 450);
+assert.equal(playbackDelayForSpeed(2), 225);
+assert.equal(playbackDelayForSpeed(3), 150);
+assert.throws(() => playbackDelayForSpeed(0.5), /Unsupported StormTracker playback speed/);
 
 assert.throws(
   () => normaliseLoopMinutes(45),

@@ -76,7 +76,7 @@ test("Radar and inferred volume controls are separate; native Doppler is fixed 1
 test("Slider updates only volume point collections without forcing radar reload",()=>{
   const script=read("../src/live3d-operational-v9.js");
   const start=script.indexOf('$("volumeOpacity").addEventListener("input"');
-  const end=script.indexOf('$("dopplerOverlayRadar")',start);
+  const end=script.indexOf("\n});",start)+4;
   assert.ok(start>=0&&end>start);
   const listener=script.slice(start,end);
   assert.match(listener,/setVolumeDisplayOpacity\(inferredCollection,percent\)/);

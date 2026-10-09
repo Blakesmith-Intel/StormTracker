@@ -110,8 +110,13 @@ try{
   try{
     state=await waitFor(()=>{
       const s=window.__stormtrackerMultiRadarDiagnostics?.();
-      return s?.primaryUtc && s?.primaryRegion==="66" && s?.frameCount>=2;
-    },120000);
+      return (s?.primaryUtc && s?.primaryRegion==="66" && s?.frameCount>=2) ||
+        /No recent readable BOM|No matching source history|unable to fetch readable BOM/i
+          .test(s?.sourceStatus??"");
+    },90000);
+    assert.ok(state.primaryUtc && state.frameCount>=2,
+      "Real BoM imagery unavailable (check actual upstream diagnostics): "+
+      state.sourceStatus);
     note("real-primary-radar-loaded",state);
   }catch(error){
     state=await inspect();
@@ -162,7 +167,11 @@ try{
   const slider=page.locator("#hybridFrameSlider");
   const sliderMax=Number(await slider.getAttribute("max"));
   if(sliderMax>1 && await slider.isEnabled()){
-    await slider.fill(String(Math.max(0,sliderMax-2)));
+    await slider.evaluate((input,value)=>{
+      input.value=String(value);
+      input.dispatchEvent(new Event("input",{bubbles:true}));
+      input.dispatchEvent(new Event("change",{bubbles:true}));
+    },Math.max(0,sliderMax-2));
     const stepped=await waitFor(()=>{
       const s=window.__stormtrackerMultiRadarDiagnostics?.();
       return s?.primaryUtc && s.primaryUtc!==loadedUtc;

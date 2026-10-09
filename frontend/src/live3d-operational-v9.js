@@ -55,7 +55,7 @@ import {
   paletteFromLatestDopplerImage
 } from "./bom-doppler-history-spatial-v1.js?v=operational-v9-7";
 
-import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.11-footer-clean";
+import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.11-exact-native";
 import { resolveRainHistoryWindow } from "./rain-history-recovery-v1.js?v=9.16.1-history";
 
 import {

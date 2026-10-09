@@ -1,0 +1,75 @@
+name: V10 Gympie historical radar replay
+on:
+  push:
+    branches: [feature/v10-severe-storm-candidates]
+    paths:
+      - "scripts/replay-gympie-v10.mjs"
+      - "scripts/extract-gympie-v10-radial.py"
+      - "scripts/measured-aura-to-stormtracker-2d.py"
+      - "scripts/summarize-aura-gympie-2025.py"
+      - "frontend/src/severe-storm-v10.js"
+      - ".github/workflows/v10-gympie-replay.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  observed-gympie-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check V10 detector contracts
+        run: |
+          npm test
+          node --check scripts/replay-gympie-v10.mjs
+      - name: Retrieve authentic 24 November 2025 Gympie AURA Level-1 radar scans
+        uses: actions/download-artifact@v4
+        with:
+          repository: Blakesmith-Intel/StormTracker
+          run-id: 37816134728
+          github-token: ${{ github.token }}
+          name: AURA-Gympie-08-2025-11-24-real-scans
+          path: ${{ runner.temp }}/gympie-measured-original
+      - name: Install historical AURA-only decode libraries
+        run: python -m pip install --quiet numpy h5py pillow
+      - name: Regrid observed 2-D reflectivity from actual gates
+        run: |
+          python scripts/measured-aura-to-stormtracker-2d.py \
+            "$RUNNER_TEMP/gympie-measured-original" "$RUNNER_TEMP/gympie-v10-grid"
+      - name: Produce timestamp-aligned measured Doppler samples
+        run: |
+          python scripts/extract-gympie-v10-radial.py \
+            "$RUNNER_TEMP/gympie-measured-original" "$RUNNER_TEMP/gympie-v10-doppler"
+      - name: Compare old experimental hook flags against full V10 candidates
+        run: |
+          node scripts/replay-gympie-v10.mjs \
+            "$RUNNER_TEMP/gympie-v10-grid" \
+            "$RUNNER_TEMP/v10-gympie-replay.json" \
+            "$RUNNER_TEMP/gympie-v10-doppler"
+      - name: Summarise evidence counts and archive accuracy
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/v10-gympie-replay.json","utf8"));
+            if(r.observed_scans_processed!==28 || r.time_inference_used) throw Error("Measured historical evidence contract failed");
+            console.log("GYMPIE_V10_VERDICT",JSON.stringify({
+              observed:r.observed_scans_processed,
+              oldHookFlags:r.experimental_two_scan_hook_candidates,
+              v10:r.v10_candidate_totals,
+              source:r.v10_radial_velocity_input
+            }));
+          '
+      - name: Archive reproducible V10 replay report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gympie-2025-V10-severe-signature-QC
+          path: ${{ runner.temp }}/v10-gympie-replay.json
+          retention-days: 10
+          if-no-files-found: error

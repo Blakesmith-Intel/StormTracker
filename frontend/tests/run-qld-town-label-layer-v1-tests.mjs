@@ -40,10 +40,12 @@ const scene={
   requestRender(){}
 };
 const viewer={scene,container:{parentElement:mapPanel}};
+let cameraPanPixelsX=0,cameraPanPixelsY=0;
 const CesiumRef={
   Cartesian3:fakeCartesian,Ellipsoid:{WGS84:ellipsoid},
   SceneTransforms:{worldToWindowCoordinates(_,p){
-    return {x:45+(p.x-138)*70,y:60+(-29-p.y)*-31};
+    return {x:45+(p.x-138)*70+cameraPanPixelsX,
+      y:60+(-29-p.y)*-31+cameraPanPixelsY};
   }},
   EllipsoidalOccluder:class {isPointVisible(){return true;}}
 };
@@ -75,6 +77,26 @@ assert.ok(layer.visibleCount>=12,
 assert.equal(mapPanel.children[0].childElementCount,layer.visibleCount,
   "Only actually visible labels get browser DOM nodes");
 assert.ok(layer.visibleLabels.some(p=>p.name.includes("locality")));
+// Screen-space positions must follow Cesium EACH frame rather than every
+// 170ms layout tick. Reproject immediately while the declutter set is stable.
+const tracked=mapPanel.children[0].children[0];
+const beforePan=parseFloat(tracked.style.left),beforePanY=parseFloat(tracked.style.top);
+const layoutBeforePan=layer.calculationCount;
+cameraPanPixelsX=18;
+cameraPanPixelsY=-7;
+scene.camera.positionWC.x+=1;
+scene.listener?.();
+assert.equal(parseFloat(tracked.style.left),beforePan+18,
+  "Pan must move DOM label precisely with geographic camera projection");
+assert.equal(parseFloat(tracked.style.top),beforePanY-7,
+  "Vertical pan must not leave place names lagging behind map features");
+assert.equal(layer.calculationCount,layoutBeforePan,
+  "Pan-follow positions should update without a costly decluttering pass");
+cameraPanPixelsX=0;
+cameraPanPixelsY=0;
+scene.listener?.();
+assert.equal(parseFloat(tracked.style.left),beforePan,
+  "Reverse pan returns label to its original geographic position");
 assert.ok(layer.visibleLabels.every(p=>p.x>=0&&p.x<=1200));
 assert.ok(statuses.some(s=>s.kind==="ok"));
 assert.ok(layer.visibleLabels.every(p=>["bold 15px sans-serif","bold 16px sans-serif"].includes(p.font)),

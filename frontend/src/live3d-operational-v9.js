@@ -4549,9 +4549,9 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   lastCombinedDopplerLatestUtc=null;
   windLastRadarDriveKey=null;
   windCycleCursor=-1;
-  configureRadarSite(); refreshAdditionalRadarChoices();
-  showSupplementalRadarSites(null);
-  resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();
+  configureRadarSite(); resetView(); clearDopplerOverlay();
+  refreshAdditionalRadarChoices(); showSupplementalRadarSites(null);
+  resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;

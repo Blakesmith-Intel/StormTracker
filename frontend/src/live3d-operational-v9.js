@@ -2266,18 +2266,27 @@ function dopplerStateForFrame(
   );
 }
 
-function syncSevereStormAlerts(index) {
-  // V10 is an explicit opt-in, observational radar-signature RESEARCH preview.
-  // It never changes the V9 storm model, velocity display, or playback source.
+function syncSevereStormAlerts(index, matchedWindRecord = null) {
+  // V10 research preview samples the ACTUAL independently decoded Doppler
+  // scan, never the obsolete/cleared V9 hybrid Doppler-analysis state.
+  // Analyses only source observations aligned by their authentic UTC clocks.
   if (!$("showV10ResearchAlerts")?.checked) return;
   const frame = hybridFrames[index];
   const result = hybridResults[index];
+  let previousIndex = index - 1;
+  while (previousIndex >= 0 && frame &&
+    Date.parse(hybridFrames[previousIndex]?.observedUtc) >=
+      Date.parse(frame.observedUtc)) previousIndex--;
+  const windRecord = matchedWindRecord ??
+    (shouldDisplayDopplerForSelectedWindow() &&
+      hybridCombinedSchedule.length && index === hybridFrameIndex
+      ? independentDopplerRecord : null);
   const detection = assessV10RadarFrame({
     frame,
     result,
-    previousFrame: hybridFrames[index - 1] ?? null,
-    previousResult: hybridResults[index - 1] ?? null,
-    dopplerState: dopplerStateForFrame(index)
+    previousFrame: hybridFrames[previousIndex] ?? null,
+    previousResult: hybridResults[previousIndex] ?? null,
+    dopplerState: windRecord ? { records: [windRecord] } : null
   });
   severeStormAlertOverlay.setFrame({
     alerts: detection.alerts,
@@ -3294,7 +3303,6 @@ async function showHybridFrame(index) {
     updateTrackDisplayControls(requestedIndex);
     applyHybridVolumeMode(requestedIndex);
     renderHybridTracks(requestedIndex);
-    syncSevereStormAlerts(requestedIndex);
     volumeConstructionMs=performance.now()-began;
     geometryCommitted=true;
   };
@@ -3331,6 +3339,9 @@ async function showHybridFrame(index) {
   // clocks finally advance together, never at the beginning of a render.
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
+  // Both source images are now committed. Evaluate experimental signatures
+  // without delaying or altering the measured BoM playback sequence.
+  syncSevereStormAlerts(requestedIndex, preparedWind?.record ?? null);
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
   // The handover has already presented the matching measured 3-D geometry
   // in the same Cesium frame as this source raster. Wind-only events reuse it.

@@ -2,6 +2,7 @@
 // original scan clock. Geometric inverse mapping is display-only; no velocity
 // measurements or temporal frames are estimated, and no colours are redrawn.
 import { historicalPanelLayout } from "./bom-doppler-history-spatial-v1.js";
+import { nearestPaletteMatch } from "./bom-doppler-display-v2.js";
 import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bom-doppler-georef-v1.js";
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
@@ -20,40 +21,27 @@ export function isNativeDopplerDisplayAnnotationRow(row) {
 }
 
 
-// BoM GIF/PNG velocity bins use discrete palette RGB values. Raster-printed
-// range rings, bearings and lettering have anti-aliased colours that may be
-// *near* a velocity swatch. Accepting "nearest" colours incorrectly renders
-// those annotations as wind. Use the same exact RGB contract as the native
-// science decoder, but ONLY on a fresh display copy.
-//
-// A single 19-swatch lookup per decoded image replaces ~5 million per-pixel
-// colour-distance comparisons and excludes annotation ink without inventing
-// missing measurements. Pixels occluded by original annotations are unknown.
-// This crop accepts both 524×564 BoM GIFs and bare 512×512 panels.
+// Accept only Bureau velocity palette pixels. Preserve their exact original
+// RGBA (not the nearest palette swatch), and exclude GUI text/background/legend.
+// This crop accepts both original 524 × 564 GIFs and bare 512 × 512 panels.
 export function extractNativeDopplerPanel(imageData, palette, { includeZero = false } = {}) {
   const layout = historicalPanelLayout(imageData.width, imageData.height);
   const size = layout.panelSize;
   const data = new Uint8ClampedArray(size * size * 4);
-  const source = imageData.data;
-  const velocities = new Map((palette?.swatches ?? []).map(swatch => [
-    ((swatch.rgb[0] << 16) | (swatch.rgb[1] << 8) | swatch.rgb[2]),
-    swatch.velocity_kmh
-  ]));
-  if (!velocities.size) throw new TypeError("Missing exact BoM Doppler velocity palette");
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
     if (isNativeDopplerDisplayAnnotationRow(row)) continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
-      const alpha = source[from + 3];
+      const alpha = imageData.data[from + 3];
       if (!alpha) continue;
-      const red = source[from], green = source[from + 1], blue = source[from + 2];
-      const key = (red << 16) | (green << 8) | blue;
-      if (!velocities.has(key) || (!includeZero && velocities.get(key) === 0)) continue;
+      const rgb = [imageData.data[from], imageData.data[from + 1], imageData.data[from + 2]];
+      const swatch = nearestPaletteMatch(rgb, palette);
+      if (!swatch || (!includeZero && swatch.velocity_kmh === 0)) continue;
       const to = (row * size + col) * 4;
-      data[to] = red;
-      data[to + 1] = green;
-      data[to + 2] = blue;
+      data[to] = rgb[0];
+      data[to + 1] = rgb[1];
+      data[to + 2] = rgb[2];
       data[to + 3] = alpha;
       nativePixelCount++;
     }

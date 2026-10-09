@@ -70,6 +70,12 @@ jobs:
           ref: feature/severe-storm-radar-alerts-v1
           path: preview-builds/v9.16
           persist-credentials: false
+      - name: Checkout V9.16.13 foreground label and fixed Doppler candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e
+          path: preview-builds/v9.16.13
+          persist-credentials: false
       - name: Checkout V9.16.12 foreground town label candidate
         uses: actions/checkout@v4
         with:
@@ -126,6 +132,11 @@ jobs:
           (cd preview-builds/v9.15.1 && npm test)
           (cd preview-builds/v9.16 && npm test)
 
+      - name: Validate V9.16.13 candidate independently
+        run: |
+          (cd preview-builds/v9.16.13 && npm test)
+          test "$(git -C preview-builds/v9.16.13 rev-parse HEAD)" = "2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e"
+          node --check preview-builds/v9.16.13/relay/worker.js
       - name: Validate V9.16.12 candidate independently
         run: |
           (cd preview-builds/v9.16.12 && npm test)
@@ -155,7 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1 frontend/preview/v9.16
-          mkdir -p frontend/preview/native-playback frontend/preview/v9.16.10 frontend/preview/v9.16.11 frontend/preview/v9.16.12 frontend/preview/playback-cone-fix
+          mkdir -p frontend/preview/native-playback frontend/preview/v9.16.10 frontend/preview/v9.16.11 frontend/preview/v9.16.12 frontend/preview/v9.16.13 frontend/preview/playback-cone-fix
           cp -a preview-builds/playback-cone-fix/frontend/. frontend/preview/playback-cone-fix/
           cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
           cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
@@ -165,6 +176,7 @@ jobs:
           cp -a preview-builds/v9.16.10/frontend/. frontend/preview/v9.16.10/
           cp -a preview-builds/v9.16.11/frontend/. frontend/preview/v9.16.11/
           cp -a preview-builds/v9.16.12/frontend/. frontend/preview/v9.16.12/
+          cp -a preview-builds/v9.16.13/frontend/. frontend/preview/v9.16.13/
           mkdir -p frontend/preview/v9.16/research-gympie
           cp -a preview-builds/gympie-observations/. frontend/preview/v9.16/research-gympie/
           test -f preview-builds/gympie-hook-audit/gympie-hook-replay.json
@@ -200,6 +212,11 @@ jobs:
           test -f frontend/preview/playback-cone-fix/src/combined-loop-playback-v1.js
           test -f frontend/preview/playback-cone-fix/tests/run-playback-stall-cone-v1-tests.mjs
           grep -Fq 'v8-perf-v9-recovery-v10' frontend/preview/playback-cone-fix/index.html
+          printf 'V9.16.13 pan-locked labels and opaque Doppler %s\n' "$(git -C preview-builds/v9.16.13 rev-parse HEAD)" > frontend/preview/v9.16.13/BUILD.txt
+          ! grep -q 'id="dopplerOpacity"' frontend/preview/v9.16.13/live3d-operational-v9.html
+          grep -Fq 'followCamera();' frontend/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
+          grep -Fq 'sameGeographicSettlement' frontend/preview/v9.16.13/src/context-layers/qld-town-label-declutter-v1.js
+          grep -Fq 'z-index:var(--stormtracker-geo-label-z)' frontend/preview/v9.16.13/src/operational-dashboard-v9-1.css
           printf 'V9.16.12 foreground place-label preview %s\n' "$(git -C preview-builds/v9.16.12 rev-parse HEAD)" > frontend/preview/v9.16.12/BUILD.txt
           grep -Fq 'qld-place-foreground' frontend/preview/v9.16.12/src/context-layers/qld-town-label-layer-v1.js
           grep -Fq 'qld-place-name' frontend/preview/v9.16.12/src/operational-dashboard-v9-1.css
@@ -234,6 +251,8 @@ jobs:
           cmp sealed-production/v9.15.1/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
           grep -Fq 'v=9.15.1-intensity40' published-site/index.html
           ! grep -Fq 'v8-perf-v9' published-site/index.html
+          test -f published-site/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
+          grep -Fq '2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e' published-site/preview/v9.16.13/BUILD.txt
           test -f published-site/preview/v9.16.12/src/context-layers/qld-town-label-layer-v1.js
           grep -Fq 'caa8bd7d6e460a5f5bf2b49edb53dae01690f4ad' published-site/preview/v9.16.12/BUILD.txt
           test -f published-site/preview/v9.16.11/src/doppler-layer-transition-v1.js
@@ -264,6 +283,23 @@ jobs:
         run: |
           EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
 
+      - name: Verify published V9.16.13 labels and native Doppler
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}/preview/v9.16.13"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          build="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq "2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e" <<< "$build"
+          labels="$(retry_curl "$base/src/context-layers/qld-town-label-layer-v1.js")"
+          grep -Fq 'followCamera();' <<< "$labels"
+          html="$(retry_curl "$base/live3d-operational-v9.html")"
+          if grep -Fq 'id="dopplerOpacity"' <<< "$html"; then exit 1; fi
+          css="$(retry_curl "$base/src/operational-dashboard-v9-1.css")"
+          grep -Fq 'z-index:var(--stormtracker-geo-label-z)' <<< "$css"
+          echo "Verified V9.16.13 new preview and 100% wind; sealed V9.15.1 root unchanged"
       - name: Verify published V9.16.12 foreground place labels
         shell: bash
         env:

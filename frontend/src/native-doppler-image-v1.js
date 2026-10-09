@@ -7,13 +7,22 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
-// BoM burns its own large UTC/range annotations INTO the last rows of the
-// source panel. They cannot be recovered as measured velocities. Remove
-// that source-annotation band only from the *display* raster rather than
-// displaying moving letter-shaped holes across the velocity colours.
-// The native decoded source and scientific samples are left untouched.
-// A single row comparison is less work than palette matching the excluded area.
-export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 472;
+// BoM's separately delivered weather PNGs exclude the optional Locations
+// and Range overlays, BUT the scan UTC/beam-angle/range footer is burnt into
+// the lower edge of even those historical weather images. The pixels beneath
+// the text are not recoverable velocity measurements. Taper a narrow display-
+// only strip to transparent once during image preparation, not per playback
+// frame, so there are no moving glyph-shaped holes or fabricated velocities.
+// Scientific geolocated sample records are decoded from ORIGINAL imageData.
+export const NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW = 438;
+export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 459;
+// Intentionally no extrapolation of Doppler velocities into the footer.
+export function nativeDopplerDisplayFooterOpacity(row) {
+  if(row < NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW) return 1;
+  if(row >= NATIVE_DOPPLER_ANNOTATION_START_ROW) return 0;
+  return Math.max(0,(NATIVE_DOPPLER_ANNOTATION_START_ROW-row)/
+    (NATIVE_DOPPLER_ANNOTATION_START_ROW-NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW));
+}
 export function isNativeDopplerDisplayAnnotationRow(row) {
   return Number.isInteger(row) &&
     row >= NATIVE_DOPPLER_ANNOTATION_START_ROW &&
@@ -26,8 +35,8 @@ export function isNativeDopplerDisplayAnnotationRow(row) {
 // This crop accepts both original 524 × 564 GIFs and bare 512 × 512 panels.
 export function extractNativeDopplerPanel(imageData, palette, {
   includeZero = false,
-  // Only BoM's composite latest GIF needs the in-panel annotation crop.
-  // The separate timestamped PNGs contain weather-only source pixels.
+  // Historical weather PNGs and latest GIF both carry source scan metadata
+  // in the bottom panel. Mask it in DISPLAY copies only.
   maskAnnotationRows = true
 } = {}) {
   const layout = historicalPanelLayout(imageData.width, imageData.height);
@@ -35,7 +44,8 @@ export function extractNativeDopplerPanel(imageData, palette, {
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
-    if (maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row)) continue;
+    const opacity=maskAnnotationRows?nativeDopplerDisplayFooterOpacity(row):1;
+    if(opacity<=0)continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
       const alpha = imageData.data[from + 3];
@@ -47,7 +57,7 @@ export function extractNativeDopplerPanel(imageData, palette, {
       data[to] = rgb[0];
       data[to + 1] = rgb[1];
       data[to + 2] = rgb[2];
-      data[to + 3] = alpha;
+      data[to + 3] = Math.round(alpha*opacity);
       nativePixelCount++;
     }
   }

@@ -41,29 +41,14 @@ export function frameCountForLoopMinutes(
   );
 }
 
-export function playbackDelayForSpeed(
-  value
-) {
-  const speed =
-    Number(
-      value
-    );
-
-  if (
-    ![
-      0.5,
-      1,
-      2
-    ].includes(
-      speed
-    )
-  ) {
-    throw new RangeError(
-      `Unsupported StormTracker playback speed: ${value}.`
-    );
+// BoM-style visual cadence target. The precise BoM website timer is not
+// published; this tuned target is intentionally not described as a measurement.
+// Delay is per observed scan, NOT an additional wait after Cesium renders it.
+export const RADAR_DEFAULT_INTERVAL_MS = 450;
+export function playbackDelayForSpeed(value) {
+  const speed=Number(value);
+  if (![1,2,3].includes(speed)) {
+    throw new RangeError(`Unsupported StormTracker playback speed: ${value}.`);
   }
-
-  return Math.round(
-    650 / speed
-  );
+  return Math.round(RADAR_DEFAULT_INTERVAL_MS/speed);
 }

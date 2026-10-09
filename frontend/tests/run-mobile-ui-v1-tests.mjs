@@ -8,7 +8,7 @@ const html=read('frontend/live3d-operational-v9.html');
 const css=read('frontend/src/operational-dashboard-v9-1.css');
 const js=read('frontend/src/live3d-operational-v9.js');
 assert.match(index,/live3d-operational-v9\.html\?v=9\.16-bom-native-rain30-v1/);
-assert.match(html,/V9\.16\.10 playback, motion cone and trail fixes/);
+assert.match(html,/V9\.16\.11 native Doppler smoothing preview/);
 assert.match(html,/<option value="1" selected>1× · Standard<\/option>/);
 assert.match(html,/<option value="2">2× · Fast<\/option>/);
 assert.match(html,/<option value="3">3× · Fastest<\/option>/);

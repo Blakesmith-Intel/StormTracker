@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { extractNativeDopplerPanel, reprojectNativeDopplerPanel,
-  NATIVE_DOPPLER_DISPLAY_SIZE } from "../src/native-doppler-image-v1.js";
+  NATIVE_DOPPLER_DISPLAY_SIZE, NATIVE_DOPPLER_ANNOTATION_START_ROW,
+  isNativeDopplerDisplayAnnotationRow } from "../src/native-doppler-image-v1.js";
 const source = {width:524, height:564, data:new Uint8ClampedArray(524*564*4)};
 const dot=(x,y,rgb)=>{const i=(y*source.width+x)*4;
   source.data.set([rgb[0],rgb[1],rgb[2],255],i);};
@@ -32,4 +33,19 @@ for(let i=0;i<projected.data.length;i+=4){
 assert.ok(seen.has("0,0,255")||seen.has("255,0,0"));
 assert.ok([...seen].every(rgb=>rgb==="0,0,255"||rgb==="255,0,0"),
   "raster contains only unchanged native BoM colours; no hybrid repaint");
-console.log("PASS native BoM pixel preservation, source mask, GIF footer crop, accurate geographic raster.");
+// Footer timestamp/range is printed INTO the Doppler image. The original
+// source stays byte-for-byte intact for scientific velocity analysis; display
+// excludes only the known lower annotation rows instead of inventing wind.
+assert.equal(NATIVE_DOPPLER_ANNOTATION_START_ROW,472);
+assert.equal(isNativeDopplerDisplayAnnotationRow(471),false);
+assert.equal(isNativeDopplerDisplayAnnotationRow(472),true);
+assert.equal(isNativeDopplerDisplayAnnotationRow(511),true);
+assert.equal(isNativeDopplerDisplayAnnotationRow(512),false);
+dot(6+300,6+470,[0,0,255]); // same measured velocity, outside text region
+dot(6+300,6+480,[255,0,0]); // text region: not recoverable as observed wind
+const cleaned=extractNativeDopplerPanel(source,palette);
+assert.deepEqual(Array.from(cleaned.data.slice((470*512+300)*4,(470*512+300)*4+4)),[0,0,255,255]);
+assert.equal(cleaned.data[(480*512+300)*4+3],0);
+assert.deepEqual(Array.from(source.data.slice(((6+480)*524+6+300)*4,((6+480)*524+6+300)*4+4)),
+  [255,0,0,255],"source decoded BoM pixels remain intact for later analysis");
+console.log("PASS source-faithful Doppler velocity mask, original imagery unchanged and embedded footer excluded without per-frame repaint.");

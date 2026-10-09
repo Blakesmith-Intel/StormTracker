@@ -61,7 +61,7 @@ jobs:
         with:
           # Pin to the exact 88-suite-tested source; later feature pushes cannot
           # silently change this published review build.
-          ref: 9749d299300b813697382d83f61811e38aa8a87e
+          ref: 651b9aaf6780f4efb6a6fada7462483ca20c4ed1
           path: preview-builds/native-playback
           persist-credentials: false
       - name: Download authentic Gympie 2025 measured radar research previews
@@ -91,7 +91,7 @@ jobs:
         run: |
           (cd preview-builds/native-playback && npm test)
           node --check preview-builds/native-playback/relay/worker.js
-          test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "9749d299300b813697382d83f61811e38aa8a87e"
+          test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "651b9aaf6780f4efb6a6fada7462483ca20c4ed1"
 
       - name: Stage isolated live previews without changing production
         shell: bash
@@ -139,7 +139,7 @@ jobs:
           test -f frontend/preview/native-playback/index.html
           test -f frontend/preview/native-playback/live3d-operational-v9.html
           test -f frontend/preview/native-playback/src/live3d-operational-v9.js
-          grep -Fq 'source-native-playback-review-v1' frontend/preview/native-playback/index.html
+          grep -Fq 'source-native-playback-review-v2' frontend/preview/native-playback/index.html
           grep -Fq 'Native BoM playback review build' frontend/preview/native-playback/live3d-operational-v9.html
           grep -Fq 'dopplerImageryHandover' frontend/preview/native-playback/src/live3d-operational-v9.js
           ! grep -Eq 'createRadarMotionTransition|interpolateRadarFrame\(' frontend/preview/native-playback/src/live3d-operational-v9.js
@@ -168,12 +168,12 @@ jobs:
           base="${PAGES_URL%/}/preview/native-playback"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           index="$(retry_curl "$base/index.html")"
-          grep -Fq 'source-native-playback-review-v1' <<< "$index"
+          grep -Fq 'source-native-playback-review-v2' <<< "$index"
           shell="$(retry_curl "$base/live3d-operational-v9.html")"
           grep -Fq 'Native BoM playback review build' <<< "$shell"
           js="$(retry_curl "$base/src/live3d-operational-v9.js")"
           grep -Fq 'dopplerImageryHandover' <<< "$js"
           ! grep -Eq 'createRadarMotionTransition|interpolateRadarFrame\(' <<< "$js"
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '9749d299300b813697382d83f61811e38aa8a87e' <<< "$build"
+          grep -Fq '651b9aaf6780f4efb6a6fada7462483ca20c4ed1' <<< "$build"
           echo "Verified isolated native playback preview at $base/; live production root unchanged."

@@ -86,7 +86,21 @@ assert.equal(ageing.evaluate(track(),observation(25,origin)).reason,"initial");
 ageing.clear();
 assert.equal(ageing.evaluate(track(),observation(30,origin)).reason,"initial");
 assert.equal(controller().evaluate(track(),observation(0,origin)).cone.track_id,"ST0014");
-console.log("PASS adaptive +90m motion cones: observed breach, projected escape, turning, 30m ageing, rewind, stability, missing motion and reset.");
+// A storm that has moved several kilometres can remain INSIDE a broad
+// 90-minute threat envelope. Its cone should still move forward on the next
+// source scan rather than leaving the origin visually stranded behind it.
+const moving=controller();
+const startMoving=moving.evaluate(track(),observation(0,origin));
+const small=moving.evaluate(track(),observation(5,step(origin,90,2)));
+assert.equal(small.reason,"inside-envelope");
+assert.equal(small.cone,startMoving.cone,"2 km jitter must not redraw the cone");
+const advanced=moving.evaluate(track(),observation(10,step(origin,90,5)));
+assert.equal(advanced.reason,"storm-advanced");
+assert.equal(advanced.rebased,true);
+assert.notEqual(advanced.cone,startMoving.cone);
+assert.ok(pointWithinIssuedThreatCone(startMoving.cone,step(origin,90,5)),
+  "a centroid can advance meaningfully even while still inside the original broad cone");
+console.log("PASS adaptive +90m motion cones: observed breach, projected escape, turning, 30m ageing, rewind, storm translation, stability, missing motion and reset.");
 
 // Regression: viewing 00:15, rewinding to 00:10 and replaying 00:15 must
 // produce identical source-time geometry. Never use the final track's

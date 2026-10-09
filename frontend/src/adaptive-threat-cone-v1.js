@@ -1,4 +1,5 @@
 import { distanceKm, initialBearingDegrees } from "./geo.js";
+import { geodesicMotion } from "./tracking.js";
 
 // This is a geometry-based motion envelope, not a calibrated probability
 // forecast. Check *observed positions* against the previously issued envelope,
@@ -110,4 +111,72 @@ export function createAdaptiveThreatConeController({
   }
 
   return { evaluate, clear };
+}
+
+
+// A display frame must have the same forecast regardless of the order in
+// which the operator plays, pauses, loops or scrubs the animation. Replay
+// genuine observations in SOURCE-time order and never consult a later frame.
+function observationsThrough(track, observation) {
+  const targetEpoch = Date.parse(observation?.observed_utc);
+  if (!Number.isFinite(targetEpoch)) return [];
+  const byEpoch = new Map();
+  for (const item of track?.history ?? []) {
+    const epoch = Date.parse(item?.observed_utc);
+    if (Number.isFinite(epoch) && epoch <= targetEpoch && !byEpoch.has(epoch)) {
+      byEpoch.set(epoch, item);
+    }
+  }
+  const chronological = [...byEpoch.entries()]
+    .sort((a,b) => a[0] - b[0])
+    .map(([,item]) => item);
+  // Never silently project from a different observation than the frame shown.
+  return Date.parse(chronological.at(-1)?.observed_utc) === targetEpoch
+    ? chronological : [];
+}
+
+export function measuredTrackMotionAtObservation(track, observation) {
+  const history = observationsThrough(track, observation);
+  return history.length >= 2
+    ? geodesicMotion(history.at(-2), history.at(-1))
+    : null;
+}
+
+export function evaluateChronologicalTrackThreatCone(
+  track,
+  observation,
+  buildCone,
+  buildOptions = {},
+  controllerOptions = {}
+) {
+  const history = observationsThrough(track, observation);
+  if (!history.length || !track?.track_id) {
+    return { cone:null, reason:"observation-unavailable", rebased:false };
+  }
+  const controller = createAdaptiveThreatConeController({
+    buildCone,
+    ...controllerOptions
+  });
+  let evaluation = {
+    cone:null,
+    reason:"insufficient-measured-motion",
+    rebased:false
+  };
+  for (let index=1; index<history.length; index++) {
+    const motion = geodesicMotion(history[index-1], history[index]);
+    if (!motion) continue;
+    // Restrict BOTH the heading calculation and directional smoothing to
+    // what had actually been measured at this scan.
+    const historicalTrack = {
+      ...track,
+      history:history.slice(0,index+1),
+      motion
+    };
+    evaluation=controller.evaluate(
+      historicalTrack,
+      history[index],
+      buildOptions
+    );
+  }
+  return evaluation;
 }

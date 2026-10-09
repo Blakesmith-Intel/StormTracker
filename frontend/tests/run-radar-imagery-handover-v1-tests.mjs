@@ -78,4 +78,22 @@ assert.ok(runtime.includes("renderSurface(displayFrame,renderToken"),"intermedia
 assert.ok(!runtime.includes("frameCrossfade.play("),"whole-scene opacity fade must never be used");
 assert.ok(runtime.includes("previousVisibleIndex"),"failed Cesium loads cannot falsely advance the frame indicator");
 assert.ok(!runtime.includes('"pointerdown", "pointermove", "wheel", "keydown"'),"hover must not interrupt radar transitions");
+// A native SingleTile image already decoded from BoM must not await every
+// unrelated map/terrain tile. Its outgoing image is still retained until
+// Cesium has had three render boundaries to composite the new source.
+const native=fixture();
+const oldNative={name:"old-native"};
+await native.api.replace(oldNative);
+native.scene.globe.tilesLoaded=false;
+const newNative={name:"decoded-native"};
+const nativeSwap=native.api.replace(newNative,{decodedSingleTile:true});
+native.fire();
+native.fire();
+assert.equal(native.api.currentLayer,oldNative,"do not unveil immediately");
+native.fire();
+assert.equal(await nativeSwap,true,
+  "decoded SingleTile image advances despite independently loading basemap");
+assert.equal(native.api.currentLayer,newNative);
+assert.equal(native.layers.length,1);
+native.api.reset();
 console.log("PASS radar imagery atomic swaps, tiled readiness, timeout rollback, rapid-frame cancellation, opacity and cleanup.");

@@ -43,6 +43,7 @@ export function createRadarImageryHandover({
     alpha = 1,
     timeoutMs = 2200,
     decodedSingleTile = false,
+    beforeReveal = null,
     isCurrent = () => true
   } = {}) {
     if (!layer) throw new TypeError("Replacement radar imagery is required");
@@ -54,8 +55,22 @@ export function createRadarImageryHandover({
     // First frame has no outgoing image to retain. All subsequent transitions
     // preserve the complete outgoing image until the new one is ready.
     if (!previous) {
-      layer.alpha = targetAlpha;
+      // Geometry and the first authentic radar scan appear in the SAME
+      // Cesium render transaction, not on successive frames.
+      layer.alpha = 0;
       imageryLayers.add(layer);
+      try {
+        if (beforeReveal) beforeReveal();
+      } catch (error) {
+        safeRemove(layer);
+        scene.requestRender();
+        throw error;
+      }
+      if (myGeneration !== generation || !isCurrent()) {
+        safeRemove(layer);
+        return false;
+      }
+      layer.alpha = targetAlpha;
       activeLayer = layer;
       scene.requestRender();
       return true;
@@ -114,7 +129,21 @@ export function createRadarImageryHandover({
       scene.requestRender();
       return false;
     }
-    // Transactional swap: only now uncover the fully loaded next image.
+    // Atomically advance dependent 3-D storm geometry and the underlying
+    // authentic 2-D raster: no browser frame should show mixed timestamps.
+    // This callback is synchronous, immediately before uncovering imagery.
+    try {
+      if (beforeReveal) beforeReveal();
+    } catch(error) {
+      safeRemove(layer);
+      scene.requestRender();
+      throw error;
+    }
+    if(myGeneration !== generation || !isCurrent()) {
+      safeRemove(layer);
+      scene.requestRender();
+      return false;
+    }
     layer.alpha = targetAlpha;
     imageryLayers.raiseToTop(layer);
     activeLayer = layer;

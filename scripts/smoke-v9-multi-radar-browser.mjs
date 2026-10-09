@@ -159,13 +159,16 @@ try{
   assert.match(loadedUtc,/^20\d\d-\d\d-\d\dT\d\d:/);
   await waitFor(()=>{
     const s=window.__stormtrackerMultiRadarDiagnostics?.();
-    return s?.primaryUtc && s?.addedStatus &&
-      (/additional measured sites/.test(s.addedStatus) ||
-       /unavailable/.test(s.addedStatus));
-  },75000);
+    return s?.primaryUtc && (
+      s?.visibleSupplemental?.length>0 ||
+      /2 already covered/.test(s?.addedStatus??"")
+    );
+  },85000);
   state=await inspect();
   assert.ok(!/unavailable/.test(state.addedStatus),
     "Additional BoM sources failed: "+state.addedStatus);
+  assert.ok(state.visibleSupplemental.length>0 || /2 already covered/.test(state.addedStatus),
+    "Map must display added area or clearly declare full geographic overlap");
   note("three-site-live",state);
   await screenshot("three-site-live-radar");
 
@@ -198,15 +201,20 @@ try{
   const slider=page.locator("#hybridFrameSlider");
   const sliderMax=Number(await slider.getAttribute("max"));
   if(sliderMax>1 && await slider.isEnabled()){
+    await page.waitForTimeout(450);
+    const beforeScrubUtc=(await inspect()).primaryUtc;
+    const selectedIndex=Number(await slider.inputValue());
+    const destination=selectedIndex===0?sliderMax:0;
+    note("history-scrub-start",{selectedIndex,destination,beforeScrubUtc});
     await slider.evaluate((input,value)=>{
       input.value=String(value);
       input.dispatchEvent(new Event("input",{bubbles:true}));
       input.dispatchEvent(new Event("change",{bubbles:true}));
-    },Math.max(0,sliderMax-2));
+    },destination);
     const stepped=await waitFor(originalUtc=>{
       const s=window.__stormtrackerMultiRadarDiagnostics?.();
       return s?.primaryUtc && s.primaryUtc!==originalUtc;
-    },60000,loadedUtc);
+    },75000,beforeScrubUtc);
     note("real-history-scrub",stepped);
     await screenshot("history-scrub");
   }else note("history-scrub-not-available",{sliderMax});

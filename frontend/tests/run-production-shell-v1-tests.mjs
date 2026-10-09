@@ -23,11 +23,13 @@ assert.doesNotMatch(html, /cameraCorrections|Historical Validation/);
 assert.match(js, /creditContainer:\s*\$\("cesiumCredits"\)/);
 assert.match(js, /creditViewport:\s*\$\("mapPanel"\)/);
 assert.doesNotMatch(js, /cameraCorrections|onUnexpectedCorrection/);
-assert.match(css, /#cesiumCredits[^}]*z-index:900/);
+assert.match(css, /#cesiumCredits[^}]*z-index:var\(--stormtracker-control-z\)/,
+  "Cesium attribution must remain above the permanent geographic names");
 assert.match(css, /\.frame-crossfade[^}]*z-index:400/);
 assert.match(css, /max-width:700px[\s\S]*#app[^}]*42dvh/);
 assert.match(html, /radarOpacityValue[^>]*>65%/);
-assert.match(html, /dopplerOpacityValue[^>]*>45%/);
+assert.doesNotMatch(html, /id="dopplerOpacity"/,
+  "Native wind is always fully opaque, without a slider");
 assert.match(html, /id="showTrackLabels"/);
 assert.match(html, /id="trackDisplayFilter"/);
 assert.match(html, /id="showTrackThreatCone"/);

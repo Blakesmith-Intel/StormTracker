@@ -1592,9 +1592,11 @@ function updateTrackDisplayControls(index) {
     : null;
   const cone = $("showTrackThreatCone");
   const status = $("trackThreatConeStatus");
+  const measuredMotion = observation && selectedTrack
+    ? measuredTrackMotionAtObservation(selectedTrack, observation) : null;
   const canProject = Boolean(
-    selectedTrackDisplayId && observation &&
-    measuredTrackMotionAtObservation(selectedTrack, observation)
+    selectedTrackDisplayId && observation && measuredMotion &&
+    measuredMotion.speed_kmh > 0 && measuredMotion.speed_kmh <= 160
   );
   cone.disabled = !canProject;
   if (!selectedTrackDisplayId) cone.checked = false;
@@ -2852,6 +2854,7 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
       "direction-change": "repositioned: storm changed direction",
       "steering-change": "reoriented: verified updated steering",
       "storm-advanced": "repositioned: measured storm advanced",
+      "measured-position": "anchored to current measured storm position",
       "rolling-refresh": "repositioned: 30-min refresh",
       "timeline-rewound": "rebuilt for earlier observation"
     }[projection.reason] ?? "within issued envelope";
@@ -2886,7 +2889,7 @@ function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
     const projection = evaluateChronologicalTrackThreatCone(
       track, observation, buildTrackThreatCone,
       { horizonMinutes:90, directionChangeThresholdDegrees:12 },
-      { rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5 }
+      { rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5, followMeasuredPosition:true }
     );
     if (projection.cone) return {track, projection, sourceUtc};
   }
@@ -3023,7 +3026,7 @@ function renderHybridTracks(index) {
         const projection = evaluateChronologicalTrackThreatCone(
           track, observation, buildTrackThreatCone,
           { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
-          { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5 }
+          { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5, followMeasuredPosition: true }
         );
         renderIssuedThreatCone(track, projection, null, observation);
       }

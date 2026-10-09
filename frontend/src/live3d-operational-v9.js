@@ -97,6 +97,7 @@ import {
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
+import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -569,6 +570,7 @@ function prewarmUpcomingFrames(index){
     }
   },0);
 }
+const playbackPerformanceMeter=createPlaybackPerformanceMeter({windowSize:24});
 const playback = createContinuousPlayback({
   count: () => hybridFrames.length,
   currentIndex: () => hybridFrameIndex,
@@ -3098,6 +3100,8 @@ function updateHybridSourceMetrics(frame) {
 async function showHybridFrame(index) {
   const renderToken =
     ++hybridSceneRenderToken;
+  const totalStart=performance.now();
+  let windPreparationMs=0,radarPresentationMs=0,volumeConstructionMs=0;
   const previousVisibleIndex = latestFrame
     ? hybridFrames.findIndex(item => item.observedUtc === latestFrame.observedUtc)
     : -1;
@@ -3146,13 +3150,17 @@ async function showHybridFrame(index) {
   // frame. Never announce a combined step that cannot display its real wind.
   let preparedWind=null;
   try{
+    const windStart=performance.now();
     preparedWind=await prepareWindForPlayback(requestedIndex);
+    windPreparationMs=performance.now()-windStart;
   }catch(error){
     setStatus("Combined observation held: "+error.message,"warning");
     return;
   }
   if(renderToken!==hybridSceneRenderToken)return;
+  const radarStart=performance.now();
   const surfaceApplied=await renderSurface(frame,renderToken);
+  radarPresentationMs=performance.now()-radarStart;
   if(renderToken!==hybridSceneRenderToken)return;
 
   if (!surfaceApplied) {
@@ -3176,9 +3184,9 @@ async function showHybridFrame(index) {
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
-  renderInferredVolume(
-    frame
-  );
+  const volumeStart=performance.now();
+  renderInferredVolume(frame);
+  volumeConstructionMs=performance.now()-volumeStart;
 
   updateTrackDisplayControls(
     hybridFrameIndex
@@ -3227,6 +3235,23 @@ async function showHybridFrame(index) {
   if(preparedWind)updateIndependentDopplerUi();
   else updateDualSourceTimes();
   prewarmUpcomingFrames(hybridFrameIndex);
+  const telemetry=playbackPerformanceMeter.record({
+    frameMs:performance.now()-totalStart,
+    targetMs:playbackDelayForSpeed(selectedPlaybackSpeed()),
+    windMs:windPreparationMs,
+    radarMs:radarPresentationMs,
+    volumeMs:volumeConstructionMs
+  });
+  const metricsNode=$("playbackPerformanceSummary");
+  if(metricsNode){
+    metricsNode.textContent=
+      `Actual ${telemetry.actualFps.toFixed(1)} fps · target ${telemetry.targetFps.toFixed(1)} fps · `+
+      `${telemetry.overruns}/${telemetry.samples} slow frames`;
+    metricsNode.title=
+      `Mean frame ${telemetry.averageMs.toFixed(0)}ms · radar ${telemetry.radarMs.toFixed(0)}ms · `+
+      `wind prep ${telemetry.windMs.toFixed(0)}ms · 3-D ${telemetry.volumeMs.toFixed(0)}ms. `+
+      "Slow means presentation exceeded the requested interval; no BoM observation was discarded.";
+  }
 
   const sceneFrame =
     $("hybridSceneFrame");
@@ -4009,6 +4034,7 @@ async function runSourceLoad(loader, background = false) {
     else setStatus(error.message, "error");
   } finally {
     sequenceLoading = false;
+    prewarmUpcomingFrames(hybridFrameIndex);
     $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
 
     $("radarSite").disabled = false;

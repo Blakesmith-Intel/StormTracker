@@ -2496,19 +2496,26 @@ function updateDualSourceTimes() {
   const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
   if(radar){
     radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
-    radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
+    radar.title=radarUtc
+      ? "BoM reflectivity observation: "+formatProductTime(radarUtc)+
+        ". Display clock changes after the raster is rendered, not when requested."
+      : "No BoM reflectivity observation displayed";
   }
   if(wind){
     wind.textContent=!shouldDisplayDopplerForSelectedWindow() ? "Rain only" :
       windUtc ? formatDualClock(windUtc) : "Loading";
-    wind.title=windUtc ? formatProductTime(windUtc) : "No measured Doppler frame displayed";
+    wind.title=windUtc
+      ? "BoM Doppler observation: "+formatProductTime(windUtc)+
+        ". This is the wind source timestamp, not a renderer delay."
+      : "No measured Doppler frame displayed";
   }
   if(gap){
     const delta=Math.abs(Date.parse(radarUtc)-Date.parse(windUtc))/60000;
     gap.hidden=!Number.isFinite(delta);
     if(!gap.hidden){
-      gap.textContent="Δ"+delta.toFixed(delta<10?1:0)+" min";
-      gap.title="These are independent observations "+delta.toFixed(1)+" minutes apart, not one measured radar scan";
+      gap.textContent="BoM scans Δ"+delta.toFixed(delta<10?1:0)+" min";
+      gap.title="Reflectivity and Doppler were observed "+delta.toFixed(1)+
+        " minutes apart at the source. This is source-time separation, NOT a playback or rendering delay.";
       gap.dataset.ageWarning=String(delta>15);
     }
   }
@@ -3235,23 +3242,15 @@ async function showHybridFrame(index) {
   if(preparedWind)updateIndependentDopplerUi();
   else updateDualSourceTimes();
   prewarmUpcomingFrames(hybridFrameIndex);
-  const telemetry=playbackPerformanceMeter.record({
+  // Internal diagnostic measurements only: never clutter the operational
+  // screen with FPS, frame budgets or timing counters.
+  playbackPerformanceMeter.record({
     frameMs:performance.now()-totalStart,
     targetMs:playbackDelayForSpeed(selectedPlaybackSpeed()),
     windMs:windPreparationMs,
     radarMs:radarPresentationMs,
     volumeMs:volumeConstructionMs
   });
-  const metricsNode=$("playbackPerformanceSummary");
-  if(metricsNode){
-    metricsNode.textContent=
-      `Actual ${telemetry.actualFps.toFixed(1)} fps · target ${telemetry.targetFps.toFixed(1)} fps · `+
-      `${telemetry.overruns}/${telemetry.samples} slow frames`;
-    metricsNode.title=
-      `Mean frame ${telemetry.averageMs.toFixed(0)}ms · radar ${telemetry.radarMs.toFixed(0)}ms · `+
-      `wind prep ${telemetry.windMs.toFixed(0)}ms · 3-D ${telemetry.volumeMs.toFixed(0)}ms. `+
-      "Slow means presentation exceeded the requested interval; no BoM observation was discarded.";
-  }
 
   const sceneFrame =
     $("hybridSceneFrame");

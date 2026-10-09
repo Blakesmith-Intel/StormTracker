@@ -37,9 +37,10 @@ assert.match(coneBlock,/const coneColour = colour\.withAlpha\(0\.30\)/);
 assert.match(coneBlock,/hybrid-threat-boundary-/);
 assert.match(coneBlock,/width:\s*4/);
 assert.match(coneBlock,/pixelSize:\s*8/);
-assert.match(js,/adaptiveThreatCones\.evaluate\(track, observation/);
+assert.match(js,/evaluateChronologicalTrackThreatCone\(/);
+assert.match(js,/measuredTrackMotionAtObservation\(selectedTrack, observation\)/);
 assert.match(coneBlock,/projected-track-outside/);
 assert.match(js,/Motion cone paused on inferred display frame; resumes at next measured observation/);
-assert.match(js,/adaptiveThreatCones\.clear\(\)/);
+assert.doesNotMatch(js,/adaptiveThreatCones\.clear\(\)/, "source-time replay eliminates mutable cone history");
 
 console.log("Track display controls, stronger threat-cone visibility and radar-over-Doppler transition layering checks passed.");

@@ -1,3 +1,5 @@
+import { severeAlertAppearance } from "./severe-storm-alert-appearance-v10.js";
+
 // Independently toggleable map-pin + alert dock. Never touches ST labels or Cesium weather.
 export function createSevereStormAlertOverlay({
   scene, CesiumRef, container, onFocus,
@@ -39,11 +41,26 @@ export function createSevereStormAlertOverlay({
   let markers = [];
   let destroyed = false;
 
+  function appendAlertIcon(target, appearance) {
+    if (!appearance.icon) return;
+    const graphic = documentRef.createElement("img");
+    graphic.className = "storm-v10-alert-icon";
+    graphic.src = "./assets/" + appearance.icon;
+    graphic.alt = "";
+    graphic.setAttribute("aria-hidden", "true");
+    graphic.setAttribute("draggable", "false");
+    target.appendChild(graphic);
+  }
+
   function reveal(alert) {
+    const appearance = severeAlertAppearance(alert);
     selectedId = alert.id;
     detail.replaceChildren();
+    detail.className = "storm-severe-alert-detail v10-" + appearance.kind;
     const title = documentRef.createElement("strong");
-    title.textContent = alert.title + " · " + alert.track_id;
+    title.className = "storm-v10-alert-detail-heading";
+    title.textContent = appearance.detailLabel + " · " + alert.track_id;
+    appendAlertIcon(title, appearance);
     const measured = documentRef.createElement("p");
     measured.textContent = alert.type === "wind"
       ? "Radial velocity " + Math.abs(alert.velocity_kmh).toFixed(0) +
@@ -118,26 +135,35 @@ export function createSevereStormAlertOverlay({
       status.append(documentRef.createElement("br"), note);
     }
     for (const alert of alerts.slice(0, 8)) {
+      const appearance = severeAlertAppearance(alert);
       const button = documentRef.createElement("button");
       button.type = "button";
       button.className = "storm-severe-alert-row " + alert.type +
+        " v10-" + appearance.kind +
         (alert.category === "tornadic_candidate" ? " tornadic" : "");
-      const prefix = alert.category === "tornadic_candidate" ? "TORNADO?" :
-        alert.type === "wind" ? "RADIAL WIND" : "HOOK?";
-      button.textContent = prefix + " · " + alert.track_id + " · " +
+      button.dataset.alertCategory = alert.category ?? "unknown";
+      button.textContent = appearance.shortLabel + " · " + alert.track_id + " · " +
         (alert.type === "wind"
           ? Math.abs(alert.velocity_kmh).toFixed(0) + " km/h radial"
           : alert.category === "tornadic_candidate" ? "hook + velocity couplet" :
             "possible curved echo");
+      appendAlertIcon(button, appearance);
       button.addEventListener("click", () => reveal(alert));
       rows.appendChild(button);
       const pin = documentRef.createElement("button");
       pin.type = "button";
       pin.className = "storm-severe-alert-pin " + alert.type +
+        " v10-" + appearance.kind +
         (alert.category === "tornadic_candidate" ? " tornadic" : "");
-      pin.textContent = alert.category === "tornadic_candidate" ? "T?" :
-        alert.type === "wind" ? "W" : "?";
-      pin.setAttribute("aria-label", alert.title + " " + alert.track_id);
+      pin.dataset.alertCategory = alert.category ?? "unknown";
+      if (appearance.icon) {
+        pin.textContent = "";
+        appendAlertIcon(pin, appearance);
+      } else {
+        pin.textContent = "?";
+      }
+      pin.setAttribute("aria-label", appearance.detailLabel + ", track " +
+        alert.track_id + ". Experimental radar candidate, not a BoM warning.");
       pin.addEventListener("click", () => reveal(alert));
       pinsRoot.appendChild(pin);
       markers.push({

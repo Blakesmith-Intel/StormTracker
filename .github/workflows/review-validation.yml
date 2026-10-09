@@ -1,0 +1,27 @@
+name: Validate StormTracker review changes
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "scripts/**"
+      - "package.json"
+      - ".github/workflows/review-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  browser-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate JavaScript and run all frontend regression suites
+        run: npm test
+      - name: Validate relay JavaScript without running external services
+        run: node --check relay/worker.js

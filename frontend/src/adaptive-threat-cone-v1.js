@@ -102,8 +102,8 @@ export function createAdaptiveThreatConeController({
       if (centreOutside) reason = "observed-outside";
       else if (prospectiveOutside) reason = "projected-track-outside";
       else if (turning) reason = "direction-change";
-      else if (translated) reason = "storm-advanced";
       else if (elapsed >= rolloverMinutes) reason = "rolling-refresh";
+      else if (translated) reason = "storm-advanced";
     }
 
     if (reason) {

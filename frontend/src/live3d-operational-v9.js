@@ -95,7 +95,7 @@ import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./
 import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.10-source-ready";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.11-atomic-volume";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";

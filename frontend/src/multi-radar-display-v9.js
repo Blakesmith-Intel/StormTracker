@@ -94,8 +94,8 @@ export function createSupplementalRadarDisplay({
   function show(utc,{enabled=true,alpha=1}={}){
     if(!enabled || !extras.length || !utc || !primary){
       reset();
-      onStatus(extras.length ? "Additional rain windows hidden in Doppler-only mode." :
-        "Primary radar only.");
+      onStatus(!extras.length ? "Primary radar only." :
+        "Additional rain windows paused until an original rain scan is displayed.");
       return Promise.resolve([]);
     }
     const key=primary+"|"+extras.join(",")+"|"+utc;
@@ -105,7 +105,10 @@ export function createSupplementalRadarDisplay({
     reset();lastKey=key;
     const mine=generation;
     const prior=[getWindow(primary)];
-    let success=0,fail=0;
+    let success=0,fail=0,covered=0;
+    const summary=()=>success+"/"+extras.length+" additional measured sites · "+
+      utc+(covered?" · "+covered+" already covered":"")+
+      (fail?" · "+fail+" unavailable":"");
     onStatus("Loading "+extras.length+" additional radar site"+(extras.length===1?"":"s")+
       " at original BoM "+utc+"…");
     // List is ordered so windows are masked against the primary AND each
@@ -119,7 +122,12 @@ export function createSupplementalRadarDisplay({
         const masked=maskPreviouslyDisplayedTiles(frame,earlier);
         if(masked.sourceMetadata.overlappingTilesMasked ===
             (getWindow(site).rowEnd-getWindow(site).rowStart+1)*
-            (getWindow(site).colEnd-getWindow(site).colStart+1))return null;
+            (getWindow(site).colEnd-getWindow(site).colStart+1)){
+          if(mine===generation){
+            covered++;onStatus(summary());
+          }
+          return null;
+        }
         const provider=await prepareProvider(masked);
         if(mine!==generation || key!==lastKey)return null;
         const layer=createLayer(provider);
@@ -128,15 +136,13 @@ export function createSupplementalRadarDisplay({
         layers.set(site,layer);
         success++;
         scene.requestRender();
-        onStatus(success+"/"+extras.length+" additional measured sites · "+
-          utc+(fail?" · "+fail+" unavailable":""));
+        onStatus(summary());
         return site;
       }catch(error){
         if(mine!==generation)return null;
         fail++;
         console.warn("Additional BoM radar site unavailable",site,utc,error);
-        onStatus(success+"/"+extras.length+" additional measured sites · "+utc+
-          " · "+fail+" unavailable");
+        onStatus(summary());
         return null;
       }
     });

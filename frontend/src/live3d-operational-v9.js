@@ -4201,7 +4201,7 @@ async function runSourceLoad(loader, background = false) {
   } finally {
     sequenceLoading = false;
     prewarmUpcomingFrames(hybridFrameIndex);
-    $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length;
+    $("loopDurationMinutes").disabled = !availableRadarHistoryTimes.length && independentDopplerFrames.length<2;
 
     $("radarSite").disabled = false;
     for (const id of ["loadButton", "jumpLatestButton"]) $(id).disabled = false;
@@ -4464,7 +4464,9 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   hybridSource.entities.removeAll(); clearHybridTrackVolumeCollection();
   // Both reloads run on independent source pathways and clocks.
   if(isDopplerSourceActive()) {
-    void refreshIndependentDopplerHistory(false).catch(error=>{
+    if(selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE)
+      await refreshIndependentDopplerHistory(false);
+    else void refreshIndependentDopplerHistory(false).catch(error=>{
       $("dopplerOverlayStatus").textContent=error.message;
     });
   }
@@ -4542,7 +4544,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { au
 $("jumpLatestButton").addEventListener("click", async () => {
   if (sequenceLoading) return;
   await playback.pause();
-  if (hybridFrames.length) {
+  if(isNativeDopplerPlayback()){
+    showDopplerOnlyFrame(windPlaybackFrames.length-1).catch(error=>setStatus(error.message,"error"));
+  } else if (hybridFrames.length) {
     showHybridFrame(hybridFrames.length - 1).catch(error => setStatus(error.message, "error"));
   } else {
     runSourceLoad(loadLatest);
@@ -4644,7 +4648,8 @@ $("dopplerOverlayRadar").addEventListener("change", async () => {
   }
 });
 
-$("loadButton").addEventListener("click", () => runSourceLoad(loadLatest));
+$("loadButton").addEventListener("click", () => runSourceLoad(
+  isNativeDopplerPlayback() ? ()=>loadDopplerSequence(false) : loadLatest));
 
 $("minimumDbzh").addEventListener(
   "input",

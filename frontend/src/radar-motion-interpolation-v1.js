@@ -83,4 +83,6 @@ export function createRadarMotionTransition(a,b,{blockSize=64,maxMotionPixels=12
   }
   return {frame,vectorGrid:flow};
 }
-export const radarMotionStepsForSpeed=speed=>Number(speed)>=2?1:Number(speed)<=.5?3:2;
+// Preserve 1× motion smoothing without forcing extra tile requests into
+// faster playback. At 2× and 3× go directly between real observed scans.
+export const radarMotionStepsForSpeed=speed=>Number(speed)>=2?0:1;

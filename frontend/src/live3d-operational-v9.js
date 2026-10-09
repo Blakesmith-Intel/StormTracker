@@ -3332,9 +3332,9 @@ async function showHybridFrame(index) {
   // Multiple radar windows show only source-measured frames. Do not warp the
   // primary image between scans while additional site images remain at a
   // measured timestamp; that would create inconsistent cross-site playback.
-  const steps=(hybridCombinedSchedule.length || hasVisibleVolume ||
-    additionalRadarSiteIds.length) ? 0 :
-    radarMotionStepsForSpeed(selectedPlaybackSpeed());
+  const steps=(hybridCombinedSchedule.length || hasVisibleVolume) ? 0 :
+    (additionalRadarSiteIds.length ? 0 :
+      radarMotionStepsForSpeed(selectedPlaybackSpeed()));
   const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
     canMotionInterpolateRadar(previousFrame,frame);

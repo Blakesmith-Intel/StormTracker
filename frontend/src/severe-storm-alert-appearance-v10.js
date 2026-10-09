@@ -22,7 +22,7 @@ export const V10_ALERT_APPEARANCES = Object.freeze({
     shortLabel: "TORNADIC CIRCULATION?",
     detailLabel: "Possible tornadic radar circulation",
     icon: "v10-tornado.svg",
-    color: "#FA5966",
+    color: "#D83045",
     meaning: "Experimental hook and nearby radar velocity couplet; not a confirmed tornado."
   })
 });

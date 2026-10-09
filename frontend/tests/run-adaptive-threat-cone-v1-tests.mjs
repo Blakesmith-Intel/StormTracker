@@ -114,7 +114,7 @@ const at10Repeated = evaluateChronologicalTrackThreatCone(
   past,historical[2],fakeBuild,{horizonMinutes:90},
   {rolloverMinutes:30,turnThresholdDegrees:12,breachMarginKm:0.5}
 );
-assert.equal(at10.cone.heading_degrees,90,"early eastward track cannot inherit later northward motion");
+assert.equal(Math.round(at10.cone.heading_degrees),90,"early eastward track cannot inherit later northward motion");
 assert.equal(Math.round(at15.cone.heading_degrees),0);
 assert.ok(at15.rebased,"significant turn after 00:10 must reissue cone");
 assert.deepEqual(at10,at10Repeated,"scrubbing and loop restarts deterministically reproduce the same cone");

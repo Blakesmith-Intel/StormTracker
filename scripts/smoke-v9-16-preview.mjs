@@ -54,7 +54,7 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock, men
     read("preview/v9.16/src/operational-window-choices-v1.js")
   ]);
 
-requireMatch(productionIndex, /live3d-operational-v9\\.html\\?v=9\\.15\\.1-intensity40/, "Sealed V9.15.1 production entry");
+requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.15\.1-intensity40/, "Sealed V9.15.1 production entry");
 const [productionHtml, productionRuntime] = await Promise.all([
   read("live3d-operational-v9.html"), read("src/live3d-operational-v9.js")
 ]);

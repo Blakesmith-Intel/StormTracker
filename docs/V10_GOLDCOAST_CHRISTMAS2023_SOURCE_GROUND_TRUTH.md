@@ -42,3 +42,36 @@ File `frontend/src/christmas-2023-derecho-scenario-v1.js` uses hand-authored syn
 3. Distinguish bowing reflectivity, concentrated radial wind, low-level paired rotation and possible hook echoes. A radar candidate cannot be deemed an actual surface gust or tornado without separate ground evidence.
 4. Compare candidate times/locations to BoM warnings, Gold Coast Seaway gust and documented Helensvale/Gold Coast Highway vegetation damage. Explicitly report misses, apparent false positives and source blind spots.
 5. No V10 production or severe-weather alert activation from retrospective replay alone.
+
+
+## External forensic reference — Weatherwatch Christmas 2023 analysis
+
+Source: https://www.weatherwatch.net.au/christmasderecho
+
+**Evidence category:** *independent meteorologist interpretation / qualitative validation*, **NOT** original instrument scans, signed BoM warnings, numerical HDF5 radial grids, proven surface gust estimates, or spatially surveyed tornado polygons. The available public page includes timestamped rendered MetCentre 3-D radar visuals and satellite damage imagery but no bulk machine-readable 2023 scan download. The MetCentre archive product may require a subscription; do not scrape or republish copyrighted images as raw source inputs without permission.
+
+### Time-indexed cross-checks (AEST, 25 December 2023)
+
+| Weatherwatch visual/report | Local time (AEST) | UTC | Validation question |
+| --- | --- | --- | --- |
+| 3-D bow echo radar | 20:20 | 10:20 | Does original Level-1 reflectivity show broad bowing and an advancing gust-front segment? |
+| Possible southern book-end vortex, no clearly supported deep updraft per Weatherwatch | 20:35 | 10:35 | Does V10 erroneously classify apparent large-scale bow-end curvature as a compact tornado? |
+| Coomera/Oxenford 3-D / possible rain foot | 20:45 | 10:45 | Does the geometry support a leading-edge wind-threat context rather than a false hook alarm? |
+| Rain-foot / low-level heavy rain ahead of stronger vertical echo | 20:50 | 10:50 | Is radar vertical structure available? If only lowest sweep, mark as unassessable. |
+| 3-D continuation | 20:55 | 10:55 | Does signature persist in measured consecutive scans? |
+| 3-D continuation | 21:00 | 11:00 | Does source time align with any measured wind or damage evidence? |
+| 3-D continuation | 21:05 | 11:05 | Does source evidence weaken or remain hazardous? |
+
+The article follows the bow echo from Amberley through Ripley/Jimboomba/Tamborine to the northern Gold Coast. Its key interpretation is that **widespread straight-line winds were likely the principal damage driver**, while smaller vortices/tornadoes cannot be categorically excluded. It considers 'derecho-like' the apt description while noting the commonly cited 385 km distance criterion was not conclusively established from the measured onshore 350 km track.
+
+### Ancillary weather and damage anchors
+- Weatherwatch reports stations Dalby 93 km/h, Oakey 96, Wellcamp 102, Toowoomba 91, and an *unverified private Mt Tamborine* 160 km/h gust. Check source provenance, observing intervals and station metadata before treating these as calibrated gust observations.
+- Satellite comparisons (citing Sentinel Hub) indicate defoliation concentrated on Mount Tamborine's western slopes in an approximately **3–4 km**-wide damage swath. These are useful *qualitative alignment targets*, not precise geospatial ground truth. Do not equate width alone with vortex absence or presence.
+- Described atmospheric setup (very large surface-based CAPE, dry mid-level air, cold-pool/outflow) is a potential explanation of downburst formation, **not** a numerical velocity input or ground truth for a browser detector.
+
+### Validation contract added from this source
+1. Evaluate bow-echo/straight-line candidate behaviour independently of tornado-hook criteria.
+2. Where available, compare original measured 66/50 source scans with the seven time anchors, preserving genuine UTC and independent radars' original timestamp differences.
+3. Record explicitly whether a hook/couplet tornado candidate occurred and its geographical alignment with Coomera / Helensvale; don't assume every treescarring line indicates tornado damage.
+4. Keep 3-D Weatherwatch observations as third-party interpretation. The current V10 inference is not guaranteed to reproduce proprietary MetCentre 3-D reconstructions.
+5. Treat **zero detections** as a possible detector sensitivity limitation, **not** proof no severe winds existed.

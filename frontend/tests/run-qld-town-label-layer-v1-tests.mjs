@@ -77,7 +77,8 @@ assert.equal(mapPanel.children[0].childElementCount,layer.visibleCount,
 assert.ok(layer.visibleLabels.some(p=>p.name.includes("locality")));
 assert.ok(layer.visibleLabels.every(p=>p.x>=0&&p.x<=1200));
 assert.ok(statuses.some(s=>s.kind==="ok"));
-assert.equal(layer.visibleLabels[0].font,"bold 15px sans-serif");
+assert.ok(layer.visibleLabels.every(p=>["bold 15px sans-serif","bold 16px sans-serif"].includes(p.font)),
+  "Major city and rural place names retain their own legible font sizes");
 const previous=layer.calculationCount;
 layer.draw();
 assert.equal(layer.calculationCount,previous,

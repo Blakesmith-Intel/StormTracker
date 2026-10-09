@@ -50,6 +50,21 @@ export function boxesOverlap(a, b, padding = 7) {
     a.bottom + padding > b.top;
 }
 
+// Identify the same physical settlement across the population-centre and
+// gazetteer feeds, even when their official point coordinates differ slightly.
+export function geographicPlaceNameKey(name) {
+  return String(name??"").normalize("NFKC").toLocaleLowerCase("en-AU")
+    .replace(/\\([^)]*(?:shire|regional|council)[^)]*\\)/gi,"")
+    .replace(/[^\\p{L}\\p{N}]+/gu," ").trim().replace(/\\s+/g," ");
+}
+export function sameGeographicSettlement(a,b,maximumDistanceKm=25) {
+  return !!geographicPlaceNameKey(a?.name) &&
+    geographicPlaceNameKey(a?.name)===geographicPlaceNameKey(b?.name) &&
+    Number.isFinite(a?.latitude)&&Number.isFinite(a?.longitude) &&
+    Number.isFinite(b?.latitude)&&Number.isFinite(b?.longitude) &&
+    greatCircleKm(a,b)<=maximumDistanceKm;
+}
+
 export function greatCircleKm(a, b) {
   const lat1 = a.latitude * Math.PI / 180;
   const lat2 = b.latitude * Math.PI / 180;
@@ -98,6 +113,7 @@ export function layoutTownLabels({
   const margin = 14;
   const boxes = [];
   const picked = [];
+  const pickedNames = new Map();
   // Sticky ranking reduces flicker during a slow pan in imagery mode.
   const sorted = [...candidates].sort((a,b) => {
     const rank=p=>(Number(p.priority)||0)+(prev.has(String(p.id))?10:0);
@@ -126,6 +142,16 @@ export function layoutTownLabels({
     if (rect.left < margin || rect.right > width - margin ||
         rect.top < margin || rect.bottom > height - margin) continue;
     if (boxes.some(other => boxesOverlap(rect, other, 9))) continue;
+    const nameKey=geographicPlaceNameKey(place.name);
+    // Labels with the same name and essentially the same geographic point
+    // are one town, not two text objects. Do not remove genuinely distinct
+    // same-name towns on opposite sides of Queensland.
+    if(nameKey && (pickedNames.get(nameKey)??[]).some(previous=>
+      sameGeographicSettlement(previous,place,25)))continue;
+    if(nameKey){
+      if(!pickedNames.has(nameKey))pickedNames.set(nameKey,[]);
+      pickedNames.get(nameKey).push(place);
+    }
     picked.push(place);
     boxes.push(rect);
   }

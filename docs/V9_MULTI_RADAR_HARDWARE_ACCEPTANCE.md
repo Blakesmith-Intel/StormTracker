@@ -14,6 +14,11 @@ Never infer a domain name or present this placeholder as a real deployed URL.
 
 The existing BoM relay may reject a newly created Pages origin due to CORS. Open Developer Tools > Network and verify that actual WMTS image requests from the preview are accepted (HTTP 200 PNG for currently published observation times, accessible to the browser). An outside-window HTTP 400 response for WMTS `TIME` is not the same as CORS failure. If CORS blocks the new preview origin, stop and record the blocker. Do **not** change the production Worker automatically or fake frames. A separate same-origin browser route or explicitly reviewed relay configuration would require separate approval.
 
+
+### Browser-only QA companion
+
+The preview ZIP also contains `v9-multi-radar-hardware-qa.html`. After the manual isolated static upload, open `https://<actual-preview-origin>/v9-multi-radar-hardware-qa.html` in desktop Chrome or Edge and select **Open V9.16.15 viewer in another tab**. Interact with the original app normally, return to the companion page to **Record observed state** for each milestone and export `v9-16-15-hardware-browser-evidence.json`. The page does not change the original application or radar sources. Its PASS/FAIL checkpoints are diagnostic; screenshot and GPU acceptance remain human decisions.
+
 ## Hardware-accelerated desktop acceptance
 
 Open the isolated preview in **desktop Chrome or Edge** with hardware acceleration enabled. First open `chrome://gpu` or `edge://gpu` and verify the **WebGL** rendering path is hardware accelerated (rather than SwiftShader/software). Record browser version, device type, OS and graphics status. `chrome://gpu` is a diagnostic page, not a benchmark; use normal playback to judge responsiveness.

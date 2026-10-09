@@ -85,78 +85,13 @@ export function continuousRadarHistoryTimes(
   return history.slice(startIndex);
 }
 
-function isoMinute(epoch) {
-  return new Date(epoch)
-    .toISOString()
-    .replace(".000Z", "Z");
-}
-
-export function buildRadarPlaybackPlan(
-  times = [],
-  {
-    cadenceMinutes = RADAR_PLAYBACK_CADENCE_MINUTES,
-    maxInterpolationGapMinutes =
-      MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES
-  } = {}
-) {
-  const observed = continuousRadarHistoryTimes(
-    times,
-    { maxInterpolationGapMinutes }
-  );
-
-  if (!observed.length) return [];
-
-  const entries = [];
-  const cadenceMs = cadenceMinutes * 60000;
-
-  for (let index = 0; index < observed.length; index++) {
-    const current = observed[index];
-
-    entries.push({
-      observedUtc: current,
-      kind: "observed",
-      beforeUtc: null,
-      afterUtc: null,
-      weight: 0
-    });
-
-    const next = observed[index + 1];
-    if (!next) continue;
-
-    const currentEpoch = Date.parse(current);
-    const nextEpoch = Date.parse(next);
-    const gapMinutes = (nextEpoch - currentEpoch) / 60000;
-
-    if (
-      !Number.isFinite(gapMinutes)
-      || gapMinutes <= cadenceMinutes
-      || gapMinutes > maxInterpolationGapMinutes
-    ) {
-      continue;
-    }
-
-    for (
-      let targetEpoch = currentEpoch + cadenceMs;
-      targetEpoch < nextEpoch;
-      targetEpoch += cadenceMs
-    ) {
-      entries.push({
-        observedUtc: isoMinute(targetEpoch),
-        kind: "inferred",
-        beforeUtc: current,
-        afterUtc: next,
-        weight:
-          (targetEpoch - currentEpoch)
-          / (nextEpoch - currentEpoch)
-      });
-    }
-  }
-
-  return entries.sort(
-    (left, right) =>
-      Date.parse(left.observedUtc)
-      - Date.parse(right.observedUtc)
-  );
+// A playback step is always an observation actually published by BoM.
+// The original UTC stamp is preserved; missing scans are not interpolated.
+export function buildRadarPlaybackPlan(times = [],{
+  maxInterpolationGapMinutes=MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES
+} = {}) {
+  return continuousRadarHistoryTimes(times,{maxInterpolationGapMinutes})
+    .map(observedUtc=>({observedUtc,kind:"observed"}));
 }
 
 export function availableRadarLoopMinutes(times) {

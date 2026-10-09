@@ -71,6 +71,9 @@ const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.j
 assert.ok(runtime.includes("radarImageryHandover.replace("),"live surface must use the atomic swap");
 assert.ok(!runtime.includes("viewer.imageryLayers.remove(\n      surfaceLayer"),"never remove outgoing radar before new imagery is ready");
 assert.ok(runtime.includes("createRadarMotionTransition(previousFrame,frame)"),"sequential radar transitions use source-measured spatial movement");
+assert.ok(runtime.includes("prepareRadarSurfaceProvider(frame)"),"native BoM raster providers are cached and reused");
+assert.ok(!runtime.includes("frameCrossfade"),"no compositor fade remains in the live weather runtime");
+assert.ok(runtime.includes("timeoutMs:Math.min(180"),"visual-only intermediate steps have a strict render budget");
 assert.ok(runtime.includes("renderSurface(displayFrame,renderToken"),"intermediate imagery is visual-only and never fed into storm science");
 assert.ok(!runtime.includes("frameCrossfade.play("),"whole-scene opacity fade must never be used");
 assert.ok(runtime.includes("previousVisibleIndex"),"failed Cesium loads cannot falsely advance the frame indicator");

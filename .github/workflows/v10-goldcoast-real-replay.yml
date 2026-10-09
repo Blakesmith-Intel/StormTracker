@@ -44,7 +44,7 @@ jobs:
             import {readFileSync} from "node:fs";
             const report=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/goldcoast-v10-observed-report.json","utf8"));
             const raw=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/goldcoast-v10-real/source_manifest.json","utf8"));
-            if(report.results.length!==2 || raw.length!==2 || report.data_kind.includes("synthetic")) {
+            if(report.results.length!==2 || raw.length!==2 || !report.data_kind.startsWith("original AURA")) {
               throw Error("Missing verified independent radar sources");
             }
             for(const radar of report.results){

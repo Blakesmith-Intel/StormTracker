@@ -56,6 +56,12 @@ jobs:
           ref: feature/severe-storm-radar-alerts-v1
           path: preview-builds/v9.16
           persist-credentials: false
+      - name: Checkout V9.16.10 playback/cone/trail candidate
+        uses: actions/checkout@v4
+        with:
+          ref: f54ca309348e95ada32deafe1709b1de97186c4f
+          path: preview-builds/v9.16.10
+          persist-credentials: false
       - name: Checkout validated native BoM playback review
         uses: actions/checkout@v4
         with:
@@ -94,6 +100,10 @@ jobs:
           (cd preview-builds/v9.15.1 && npm test)
           (cd preview-builds/v9.16 && npm test)
 
+      - name: Validate V9.16.10 candidate independently
+        run: |
+          (cd preview-builds/v9.16.10 && npm test)
+          test "$(git -C preview-builds/v9.16.10 rev-parse HEAD)" = "f54ca309348e95ada32deafe1709b1de97186c4f"
       - name: Validate native BoM playback preview independently
         run: |
           (cd preview-builds/native-playback && npm test)
@@ -110,13 +120,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1 frontend/preview/v9.16
-          mkdir -p frontend/preview/native-playback frontend/preview/playback-cone-fix
+          mkdir -p frontend/preview/native-playback frontend/preview/v9.16.10 frontend/preview/playback-cone-fix
           cp -a preview-builds/playback-cone-fix/frontend/. frontend/preview/playback-cone-fix/
           cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
           cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
           cp -a preview-builds/v9.15.1/frontend/. frontend/preview/v9.15.1/
           cp -a preview-builds/v9.16/frontend/. frontend/preview/v9.16/
           cp -a preview-builds/native-playback/frontend/. frontend/preview/native-playback/
+          cp -a preview-builds/v9.16.10/frontend/. frontend/preview/v9.16.10/
           mkdir -p frontend/preview/v9.16/research-gympie
           cp -a preview-builds/gympie-observations/. frontend/preview/v9.16/research-gympie/
           test -f preview-builds/gympie-hook-audit/gympie-hook-replay.json
@@ -152,6 +163,9 @@ jobs:
           test -f frontend/preview/playback-cone-fix/src/combined-loop-playback-v1.js
           test -f frontend/preview/playback-cone-fix/tests/run-playback-stall-cone-v1-tests.mjs
           grep -Fq 'v8-perf-v9-recovery-v10' frontend/preview/playback-cone-fix/index.html
+          printf 'V9.16.10 playback, cone and trail candidate %s\n' "$(git -C preview-builds/v9.16.10 rev-parse HEAD)" > frontend/preview/v9.16.10/BUILD.txt
+          test -f frontend/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
+          grep -Fq 'setStormTrackTrailVisibility(hybridSource.entities, show)' frontend/preview/v9.16.10/src/live3d-operational-v9.js
           printf 'Native source playback review %s\n' "$(git -C preview-builds/native-playback rev-parse HEAD)" > frontend/preview/native-playback/BUILD.txt
           test -f frontend/preview/native-playback/index.html
           test -f frontend/preview/native-playback/live3d-operational-v9.html
@@ -176,6 +190,19 @@ jobs:
         run: |
           EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
 
+      - name: Verify published V9.16.10 candidate
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}/preview/v9.16.10"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          build="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq "f54ca309348e95ada32deafe1709b1de97186c4f" <<< "$build"
+          js="$(retry_curl "$base/src/live3d-operational-v9.js")"
+          grep -Fq "setStormTrackTrailVisibility(hybridSource.entities, show)" <<< "$js"
+          echo "Isolated V9.16.10 candidate available at $base/; production source unchanged."
       - name: Verify published native BoM playback preview
         shell: bash
         env:

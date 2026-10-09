@@ -54,8 +54,8 @@ export function boxesOverlap(a, b, padding = 7) {
 // gazetteer feeds, even when their official point coordinates differ slightly.
 export function geographicPlaceNameKey(name) {
   return String(name??"").normalize("NFKC").toLocaleLowerCase("en-AU")
-    .replace(/\\([^)]*(?:shire|regional|council)[^)]*\\)/gi,"")
-    .replace(/[^\\p{L}\\p{N}]+/gu," ").trim().replace(/\\s+/g," ");
+    .replace(/\([^)]*(?:shire|regional|council)[^)]*\)/gi,"")
+    .replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/g," ");
 }
 export function sameGeographicSettlement(a,b,maximumDistanceKm=25) {
   return !!geographicPlaceNameKey(a?.name) &&

@@ -4565,7 +4565,8 @@ $("hybridFrameSlider").addEventListener("input", async event => {
   motionTransition.cancel();
   const index = Number(event.target.value);
   await playback.pause();
-  showHybridFrame(index).catch(error => setStatus(error.message, "error"));
+  (isNativeDopplerPlayback() ? showDopplerOnlyFrame(index) : showHybridFrame(index))
+    .catch(error => setStatus(error.message, "error"));
 });
 $("hybridPlayButton").addEventListener("click", () => {
   motionTransition.cancel();
@@ -4576,7 +4577,7 @@ $("hybridPlayButton").addEventListener("click", () => {
 // Toggle BOTH tracking points and their labels on the CURRENT (even paused)
 // frame, without updating radar, volume primitives or the playback position.
 function updateRenderedTrackLabels() {
-  const show = Boolean($("showTrackLabels")?.checked);
+  const show = Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
   stormTrackLabelOverlay.setVisible(show);
   setStormTrackTrailVisibility(hybridSource.entities, show);
   scene.requestRender();
@@ -4587,11 +4588,15 @@ $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStorm
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
-  updateTrackDisplayControls(hybridFrameIndex);
-  applyHybridVolumeMode(hybridFrameIndex);
-  renderHybridTracks(hybridFrameIndex);
+  if(!isNativeDopplerPlayback()) {
+    updateTrackDisplayControls(hybridFrameIndex);
+    applyHybridVolumeMode(hybridFrameIndex);
+    renderHybridTracks(hybridFrameIndex);
+  }
 });
-$("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hybridFrameIndex));
+$("showTrackThreatCone").addEventListener("change", () => {
+  if(!isNativeDopplerPlayback()) renderHybridTracks(hybridFrameIndex);
+});
 
 // Doppler source is automatic; opacity 0 hides it without discarding its data.
 // Opacity changes only rendered colours, never decoded samples or tracking.
@@ -4599,7 +4604,7 @@ $("radarOpacity").addEventListener("input", event => {
   motionTransition.cancel();
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
-  radarImageryHandover.setOpacity(opacity);
+  radarImageryHandover.setOpacity(isNativeDopplerPlayback() ? 0 : opacity);
   surfaceLayer = radarImageryHandover.currentLayer;
   scene.requestRender();
 });
@@ -4648,7 +4653,7 @@ $("minimumDbzh").addEventListener(
       .textContent =
         event.target.value;
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );
@@ -4675,7 +4680,7 @@ $("occupancyThreshold").addEventListener(
           event.target.value
         ).toFixed(2);
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );
@@ -4702,7 +4707,7 @@ $("verticalScale").addEventListener(
           event.target.value
         ).toFixed(1);
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );
@@ -4727,7 +4732,7 @@ $("pointSize").addEventListener(
       .textContent =
         event.target.value;
 
-    if (latestFrame) {
+    if (latestFrame && !isNativeDopplerPlayback()) {
       renderInferredVolume(
         latestFrame
       );

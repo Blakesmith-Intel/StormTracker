@@ -2351,7 +2351,7 @@ async function prepareWindObservation(index) {
   const provider=await prepareNativeDopplerProvider(radarId,record);
   return {radarId,index,frame,record,provider};
 }
-function commitWindObservation(prepared) {
+function commitWindObservation(prepared,{updateUi=true}={}) {
   if(!prepared || $("dopplerOverlayRadar").value!==prepared.radarId)
     throw Error("Doppler site changed while preparing wind scan");
   const {radarId,index,record,provider}=prepared;
@@ -2364,12 +2364,14 @@ function commitWindObservation(prepared) {
       onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
     });
   }
+  dopplerOverlayRenderToken++; // Invalidate a superseded pending async overlay.
+  independentDopplerRequest++; // Invalidate older wind-frame preparations.
   independentDopplerIndexValue=index;
   independentDopplerSourceId=radarId;
   independentDopplerRecord=record;
   windCycleCursor=index;
   windLastRadarDriveKey=null;
-  updateIndependentDopplerUi();
+  if(updateUi) updateIndependentDopplerUi();
   $("dopplerOverlayCount").textContent=record.nativePanel.nativePixelCount.toLocaleString();
   $("dopplerOverlayStatus").textContent=radarId+" · "+
     formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
@@ -3108,7 +3110,7 @@ async function showHybridFrame(index) {
     return;
   }
   if(preparedWind){
-    try{commitWindObservation(preparedWind);}
+    try{commitWindObservation(preparedWind,{updateUi:false});}
     catch(error){
       // Report a missing partner explicitly, rather than announcing the
       // combination as one measured radar+wind state.
@@ -3121,11 +3123,6 @@ async function showHybridFrame(index) {
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
-  syncFrameSlider($("hybridFrameSlider"),hybridFrames.length,hybridFrameIndex);
-  $("hybridFrameLabel").textContent=
-    `${hybridFrameIndex+1}/${hybridFrames.length}${temporalInferred?" · inferred":""}`;
-  updateDualSourceTimes();
-
   renderInferredVolume(
     frame
   );
@@ -3154,6 +3151,28 @@ async function showHybridFrame(index) {
     frame,
     "sequence"
   );
+
+  // A postRender boundary is the first point at which the Cesium surface,
+  // native wind imagery and regenerated 3-D/context layers are display-ready.
+  // Keep the slider and the two clocks on the PREVIOUS observation until then.
+  await new Promise(resolve=>{
+    let completed=false;
+    let remove=()=>{};
+    let timeout;
+    const finish=()=>{
+      if(completed)return;
+      completed=true;remove();clearTimeout(timeout);resolve();
+    };
+    remove=scene.postRender.addEventListener(finish);
+    timeout=setTimeout(finish,250);
+    scene.requestRender();
+  });
+  if(renderToken!==hybridSceneRenderToken)return;
+  syncFrameSlider($("hybridFrameSlider"),hybridFrames.length,hybridFrameIndex);
+  $("hybridFrameLabel").textContent=
+    `${hybridFrameIndex+1}/${hybridFrames.length}${temporalInferred?" · inferred":""}`;
+  if(preparedWind)updateIndependentDopplerUi();
+  else updateDualSourceTimes();
 
   const sceneFrame =
     $("hybridSceneFrame");

@@ -73,7 +73,7 @@ jobs:
       - name: Checkout V9.16.11 native Doppler-only candidate
         uses: actions/checkout@v4
         with:
-          ref: 3780e1c0a00f82357dcfe9d75159c61f8ba86b75
+          ref: 96bb19192765c8a07345a08de1600b491840fb5f
           path: preview-builds/v9.16.11
           persist-credentials: false
       - name: Checkout V9.16.10 playback/cone/trail candidate
@@ -123,7 +123,7 @@ jobs:
       - name: Validate V9.16.11 candidate independently
         run: |
           (cd preview-builds/v9.16.11 && npm test)
-          test "$(git -C preview-builds/v9.16.11 rev-parse HEAD)" = "3780e1c0a00f82357dcfe9d75159c61f8ba86b75"
+          test "$(git -C preview-builds/v9.16.11 rev-parse HEAD)" = "96bb19192765c8a07345a08de1600b491840fb5f"
       - name: Validate V9.16.10 candidate independently
         run: |
           (cd preview-builds/v9.16.10 && npm test)
@@ -255,7 +255,7 @@ jobs:
           base="${PAGES_URL%/}/preview/v9.16.11"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq "3780e1c0a00f82357dcfe9d75159c61f8ba86b75" <<< "$build"
+          grep -Fq "96bb19192765c8a07345a08de1600b491840fb5f" <<< "$build"
           menu="$(retry_curl "$base/src/operational-window-choices-v1.js")"
           grep -Fq 'Doppler — All available' <<< "$menu"
           js="$(retry_curl "$base/src/live3d-operational-v9.js")"

@@ -150,7 +150,12 @@ export function assessV10RadarFrame({
   for (const group of groups.values()) {
     const rotation = closeRotationCouplet(group);
     const hook = hookByTrack.get(group.trackId);
-    if (rotation && hook) {
+    // The velocity couplet must be close to the hook, not merely somewhere
+    // inside a potentially sprawling storm footprint.
+    const coupletNearHook = rotation && hook &&
+      distanceKm(rotation.towards, hook) <= 10 &&
+      distanceKm(rotation.away, hook) <= 10;
+    if (coupletNearHook) {
       rotatedTracks.add(group.trackId);
       alerts.push({
         id: "v10:tornadic:" + group.radarId + ":" + group.trackId,

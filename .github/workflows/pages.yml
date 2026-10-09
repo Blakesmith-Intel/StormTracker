@@ -61,7 +61,7 @@ jobs:
         with:
           # Pin to the exact 88-suite-tested source; later feature pushes cannot
           # silently change this published review build.
-          ref: fcea00c86c6805aa57582cda8aeb9727fe57a7f7
+          ref: 9749d299300b813697382d83f61811e38aa8a87e
           path: preview-builds/native-playback
           persist-credentials: false
       - name: Download authentic Gympie 2025 measured radar research previews
@@ -91,7 +91,7 @@ jobs:
         run: |
           (cd preview-builds/native-playback && npm test)
           node --check preview-builds/native-playback/relay/worker.js
-          test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "fcea00c86c6805aa57582cda8aeb9727fe57a7f7"
+          test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "9749d299300b813697382d83f61811e38aa8a87e"
 
       - name: Stage isolated live previews without changing production
         shell: bash
@@ -175,5 +175,5 @@ jobs:
           grep -Fq 'dopplerImageryHandover' <<< "$js"
           ! grep -Eq 'createRadarMotionTransition|interpolateRadarFrame\(' <<< "$js"
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq 'fcea00c86c6805aa57582cda8aeb9727fe57a7f7' <<< "$build"
+          grep -Fq '9749d299300b813697382d83f61811e38aa8a87e' <<< "$build"
           echo "Verified isolated native playback preview at $base/; live production root unchanged."

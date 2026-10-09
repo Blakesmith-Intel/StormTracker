@@ -92,12 +92,8 @@ import {
 } from "./storage.js?v=9.8.3";
 
 import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./shared-product-timeline-v1.js?v=9.16-nearest-observation";
-import {
-  canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
-} from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
-import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -172,7 +168,6 @@ import {
 } from "./volume-display-threshold-v1.js?v=9.15.1-intensity40";
 
 import {
-  DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
 } from "./doppler-layer-transition-v1.js?v=9.9.1";
@@ -218,26 +213,13 @@ const stormTrackLabelOverlay = createStormTrackLabelOverlay({
   CesiumRef: Cesium,
   container: $("mapPanel")
 });
-// Cancels interim weather motion when camera, settings or source selection
-// changes. No compositor opacity animation, and no observed-frame alteration.
-let visualMotionGeneration=0;
-const motionTransition={cancel(){visualMotionGeneration++;}};
 const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
-// Keep every camera gesture and manual control immediate during a visual fade.
-// Mere hover/pointer movement must not cancel a weather-frame fade.
-// An actual drag begins with pointerdown, which still cancels instantly.
-for (const event of ["pointerdown", "wheel", "keydown"]) {
-  document.addEventListener(event, () => motionTransition.cancel(), { passive: true });
-}
+// Camera controls never depend on imagery animation or transition state.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    motionTransition.cancel();
-    cameraPerformance.restore();
-  }
+  if (document.hidden) cameraPerformance.restore();
 });
-window.addEventListener("resize", () => motionTransition.cancel());
 window.addEventListener("pagehide", () => touchCameraGestures.destroy(), { once:true });
 
 scene.fog.enabled = false;
@@ -293,7 +275,7 @@ const touchCameraGestures =
     container: $("cesiumContainer"),
     getController: () => mapCamera,
     onGesture: () => {
-      motionTransition.cancel();
+      
       cameraPerformance.pulse();
     }
   });
@@ -570,7 +552,6 @@ function prewarmUpcomingFrames(index){
     }
   },0);
 }
-const playbackPerformanceMeter=createPlaybackPerformanceMeter({windowSize:24});
 const playback = createContinuousPlayback({
   count: () => hybridFrames.length,
   currentIndex: () => hybridFrameIndex,
@@ -580,7 +561,7 @@ const playback = createContinuousPlayback({
     $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
     $("hybridPlayButton").setAttribute("aria-pressed", String(playing));
   },
-  onError: error => { motionTransition.cancel(); setStatus(error.message, "error"); }
+  onError: error => {  setStatus(error.message, "error"); }
 });
 
 let hybridTrackVolumes = [];
@@ -1752,37 +1733,10 @@ function dopplerDisplayColour(
     );
 }
 
-function dopplerCrossfadeDurationMs() {
-  const playbackDelay =
-    playbackDelayForSpeed(
-      selectedPlaybackSpeed()
-    );
-
-  return Math.max(
-    100,
-    Math.min(
-      180,
-      Math.round(
-        playbackDelay * 0.45
-      )
-    )
-  );
-}
-
-function clearDopplerOverlay({
-  smooth = false
-} = {}) {
+function clearDopplerOverlay() {
   dopplerOverlayRenderToken++;
-
-  dopplerOverlayTransition.clear({
-    durationMs:
-      smooth
-        ? Math.min(
-            DEFAULT_DOPPLER_FADE_OUT_MS,
-            dopplerCrossfadeDurationMs()
-          )
-        : 0
-  });
+  // Immediate clear; no fade-out and no background animation.
+  dopplerOverlayTransition.clear({durationMs:0});
 
   const count =
     $("dopplerOverlayCount");
@@ -2481,7 +2435,7 @@ function renderDopplerOverlay() {
     });
   }).catch(error=>{
     if(token!==dopplerOverlayRenderToken)return;
-    dopplerOverlayTransition.clear({durationMs:DEFAULT_DOPPLER_FADE_OUT_MS});
+    dopplerOverlayTransition.clear({durationMs:0});
     if(status)status.textContent=radarId+" · wind imagery failed";
     console.warn("Independent Doppler imagery failed",error);
   });
@@ -3100,8 +3054,6 @@ function updateHybridSourceMetrics(frame) {
 async function showHybridFrame(index) {
   const renderToken =
     ++hybridSceneRenderToken;
-  const totalStart=performance.now();
-  let windPreparationMs=0,radarPresentationMs=0,volumeConstructionMs=0;
   const previousVisibleIndex = latestFrame
     ? hybridFrames.findIndex(item => item.observedUtc === latestFrame.observedUtc)
     : -1;
@@ -3110,63 +3062,26 @@ async function showHybridFrame(index) {
     Math.max(0,Math.min(hybridFrames.length-1,Number(index)));
   const frame=hybridFrames[requestedIndex];
 
-  // Actual BoM frames remain at their recorded source times and are the
-  // ONLY frames delivered to storm science, Doppler or threat-cone analysis.
-  // Extra motion-warped 2-D images exist only on-screen during sequential
-  // playback; no scene opacity or whole-screen image crossfade is used.
-  const previousFrame = latestFrame;
-  motionTransition.cancel();
-  const motionGeneration=visualMotionGeneration;
-  const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
-  const canAnimate=steps>0 && playback.isPlaying() &&
-    previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
-    canMotionInterpolateRadar(previousFrame,frame);
-  if(canAnimate){
-    try{
-      const motion=createRadarMotionTransition(previousFrame,frame);
-      const morphStarted=performance.now();
-      for(let i=1;i<=steps;i++){
-        if(performance.now()-morphStarted>
-            playbackDelayForSpeed(selectedPlaybackSpeed())*.5)break;
-        if(renderToken!==hybridSceneRenderToken ||
-           motionGeneration!==visualMotionGeneration || !playback.isPlaying())break;
-        const displayFrame=motion.frame(i/(steps+1));
-        const shown=await renderSurface(displayFrame,renderToken,{
-          timeoutMs:Math.min(180,Math.round(playbackDelayForSpeed(selectedPlaybackSpeed())*.4))
-        });
-        if(!shown)break;
-        // A display-only morph, not another BoM measurement. The
-        // measurement timeline and all scientific overlays remain unchanged.
-        $("mapTruthLabel").textContent="MOTION-INTERPOLATED RAIN · DISPLAY ONLY";
-        // No additional sleep: rendering itself occupies the playback budget.
-      }
-    }catch{
-      // If motion estimation or an interim tile fails, go directly to the
-      // genuine next BoM observation, never leave a fabricated reading.
-    }
-  }
-  if(renderToken!==hybridSceneRenderToken)return;
+  // The screen plays genuine BoM scans only. No fabricated 2-D image,
+  // opacity crossfade, motion warping or supplemental animation timer.
+  if (renderToken !== hybridSceneRenderToken) return;
   // Prepare the original-source wind texture BEFORE committing a new radar
   // frame. Never announce a combined step that cannot display its real wind.
   let preparedWind=null;
   try{
-    const windStart=performance.now();
     preparedWind=await prepareWindForPlayback(requestedIndex);
-    windPreparationMs=performance.now()-windStart;
   }catch(error){
     setStatus("Combined observation held: "+error.message,"warning");
     return;
   }
   if(renderToken!==hybridSceneRenderToken)return;
-  const radarStart=performance.now();
   const surfaceApplied=await renderSurface(frame,renderToken);
-  radarPresentationMs=performance.now()-radarStart;
   if(renderToken!==hybridSceneRenderToken)return;
 
   if (!surfaceApplied) {
     // A rejected tile handover must not leave the UI claiming an undrawn
     // observation. Keep the previous scan and retry normally on the next cycle.
-    motionTransition.cancel();
+    
     setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
     return;
   }
@@ -3183,10 +3098,8 @@ async function showHybridFrame(index) {
   // clocks finally advance together, never at the beginning of a render.
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
-  const temporalInferred=isTemporallyInferredRadarFrame(frame);
-  const volumeStart=performance.now();
+  const temporalInferred=false; // Playback contains source-observed frames only.
   renderInferredVolume(frame);
-  volumeConstructionMs=performance.now()-volumeStart;
 
   updateTrackDisplayControls(
     hybridFrameIndex
@@ -3235,23 +3148,6 @@ async function showHybridFrame(index) {
   if(preparedWind)updateIndependentDopplerUi();
   else updateDualSourceTimes();
   prewarmUpcomingFrames(hybridFrameIndex);
-  const telemetry=playbackPerformanceMeter.record({
-    frameMs:performance.now()-totalStart,
-    targetMs:playbackDelayForSpeed(selectedPlaybackSpeed()),
-    windMs:windPreparationMs,
-    radarMs:radarPresentationMs,
-    volumeMs:volumeConstructionMs
-  });
-  const metricsNode=$("playbackPerformanceSummary");
-  if(metricsNode){
-    metricsNode.textContent=
-      `Actual ${telemetry.actualFps.toFixed(1)} fps · target ${telemetry.targetFps.toFixed(1)} fps · `+
-      `${telemetry.overruns}/${telemetry.samples} slow frames`;
-    metricsNode.title=
-      `Mean frame ${telemetry.averageMs.toFixed(0)}ms · radar ${telemetry.radarMs.toFixed(0)}ms · `+
-      `wind prep ${telemetry.windMs.toFixed(0)}ms · 3-D ${telemetry.volumeMs.toFixed(0)}ms. `+
-      "Slow means presentation exceeded the requested interval; no BoM observation was discarded.";
-  }
 
   const sceneFrame =
     $("hybridSceneFrame");
@@ -3280,8 +3176,7 @@ async function showHybridFrame(index) {
         ),
     "ok"
   );
-  // No opacity fade. The last full observed frame is the final step of
-  // the spatially advected radar animation.
+  // One genuine observed frame is displayed at each playback step.
 }
 
 async function warmRadarHistoryCache(
@@ -3464,12 +3359,12 @@ async function loadHybridSequence(automatic = false) {
   const requestedPlan = isCombined
     ? [...new Set(combinedRequested.map(entry=>entry.radarObservedUtc))]
         .map(observedUtc=>({kind:"observed",observedUtc}))
-    : rainWindow.plan;
+    : rainWindow.plan.filter(entry => entry.kind === "observed");
   const times =
     requestedPlan
       .filter(entry => entry.kind === "observed")
       .map(entry => entry.observedUtc);
-  const requestedInferred = requestedPlan.filter(entry => entry.kind === "inferred").length;
+  const requestedInferred = 0; // Genuine BoM scans only.
 
   if (!automatic) {
     setStatus("Loading independent reflectivity history: " + times.length + " observed frames…");
@@ -3694,7 +3589,7 @@ async function loadHybridSequence(automatic = false) {
     displayPlan = resolveRainHistoryWindow(
       frames.map(frame => frame.observedUtc),
       loopSelection
-    ).plan;
+    ).plan.filter(entry => entry.kind === "observed");
   }
 
   const displayFrames = [];
@@ -3731,31 +3626,8 @@ async function loadHybridSequence(automatic = false) {
 
     if (!before || !after) continue;
 
-    const inferredFrame =
-      interpolateRadarFrame(
-        before,
-        after,
-        entry.observedUtc,
-        entry.weight
-      );
-
-    displayFrames.push(inferredFrame);
-    displayResults.push(null);
-    displayStates.push({
-      reflectivityUtc:
-        entry.observedUtc,
-      pairings:
-        selectedSourceRadars()
-          .map(radarId => ({
-            radarId,
-            matched: false,
-            candidate: null,
-            deltaMinutes: null
-          })),
-      records: [],
-      sourceFailures: 0,
-      inferredDisplayOnly: true
-    });
+    // Never create temporal fill images. Missing BoM scans remain gaps in
+    // the source timeline, not synthetic frame positions or extra analysis.
   }
 
   if (!displayFrames.length) {
@@ -4011,7 +3883,7 @@ async function loadHybridSequence(automatic = false) {
 
 async function runSourceLoad(loader, background = false) {
   if (sequenceLoading || !model) return;
-  if (!background) motionTransition.cancel();
+  if (!background) 
   sequenceLoading = true;
   $("loopDurationMinutes").disabled = true;
   $("radarSite").disabled = true;
@@ -4258,7 +4130,7 @@ async function initialise() {
 
 
 $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
-  motionTransition.cancel();
+  
   ++independentDopplerRequest;
   independentDopplerFrames=[];
   independentDopplerIndexValue=0;
@@ -4307,7 +4179,7 @@ $("loadHybridButton").addEventListener("click", () => runSourceLoad(loadHybridSe
 $("basemapSelect").addEventListener(
   "change",
   event => {
-    motionTransition.cancel();
+    
 
     try {
       const result =
@@ -4337,7 +4209,7 @@ $("basemapSelect").addEventListener(
 $("terrainEnabled").addEventListener(
   "change",
   async event => {
-    motionTransition.cancel();
+    
 
     const requested =
       event.target.checked;
@@ -4358,7 +4230,7 @@ $("terrainEnabled").addEventListener(
 );
 
 $("loopDurationMinutes").addEventListener("change", () => {
-  motionTransition.cancel();
+  
   // Apply the visible-mode boundary immediately, before the new radar
   // history finishes loading. Doppler's source cache remains untouched.
   renderDopplerOverlay();
@@ -4390,13 +4262,13 @@ for (const button of document.querySelectorAll("[data-detail-tab]")) {
   button.addEventListener("click", () => selectDetailsTab(button.dataset.detailTab));
 }
 $("hybridFrameSlider").addEventListener("input", async event => {
-  motionTransition.cancel();
+  
   const index = Number(event.target.value);
   await playback.pause();
   showHybridFrame(index).catch(error => setStatus(error.message, "error"));
 });
 $("hybridPlayButton").addEventListener("click", () => {
-  motionTransition.cancel();
+  
   if (playback.isPlaying()) playback.pause();
   else playback.play();
 });
@@ -4421,7 +4293,7 @@ $("showTrackThreatCone").addEventListener("change", () => renderHybridTracks(hyb
 // Doppler source is automatic; opacity 0 hides it without discarding its data.
 // Opacity changes only rendered colours, never decoded samples or tracking.
 $("radarOpacity").addEventListener("input", event => {
-  motionTransition.cancel();
+  
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
   radarImageryHandover.setOpacity(opacity);
@@ -4429,7 +4301,7 @@ $("radarOpacity").addEventListener("input", event => {
   scene.requestRender();
 });
 $("dopplerOpacity").addEventListener("input", event => {
-  motionTransition.cancel();
+  
   const opacity = Number(event.target.value) / 100;
   $("dopplerOpacityValue").textContent = `${event.target.value}%`;
   dopplerOverlayTransition.setOpacity(

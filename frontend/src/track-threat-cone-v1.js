@@ -201,6 +201,6 @@ export function buildTrackThreatCone(
       ...samples.slice().reverse().map(item => item.right)
     ],
     interpretation:
-      "Motion extrapolation from measured ST centroids, not movement of individual rain cells. Routine jitter is smoothed; significant turns or independently verified steering divergence orient the cone to the latest measured heading. Width reflects current footprint and historical heading variability; not a calibrated probability forecast."
+      "Motion extrapolation from measured ST centroids, not movement of individual rain cells. Routine jitter is smoothed; significant turns or independently verified steering divergence orient the cone to the latest measured heading. Width reflects current footprint and historical heading variability; not a forecast probability."
   };
 }

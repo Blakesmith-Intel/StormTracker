@@ -232,7 +232,7 @@ const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
 let additionalRadarSiteIds=[];
-let previousPrimaryRadarId=DEFAULT_RADAR_SITE_ID;
+let previousPrimaryRadarId=null;
 const supplementalRadarDisplay=createSupplementalRadarDisplay({
   imageryLayers:viewer.imageryLayers,scene,
   loadFrame:loadBomReflectivityMosaicAtTime,
@@ -271,6 +271,7 @@ const cameraPerformance =
   });
 
 const DEFAULT_RADAR_SITE_ID = "66"; // Brisbane (Mt Stapylton)
+previousPrimaryRadarId=DEFAULT_RADAR_SITE_ID;
 
 const CORE_HOME =
   Object.freeze({

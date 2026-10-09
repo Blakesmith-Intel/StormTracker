@@ -79,7 +79,7 @@ try{
   let state=await inspect();
   assert.deepEqual(state.secondary,["50","08"]);
   assert.equal(await page.locator("#multiRadarCount").textContent(),"3");
-  assert.match(state.addedStatus,/loading|measured sites|paused|original/i);
+  assert.match(state.addedStatus,/loading|measured sites|paused|original|next measured rain scan/i);
   note("three-radar-selection",state);
   await screenshot("three-site-selection");
   await page.locator("#closeMultiRadarPanel").click();

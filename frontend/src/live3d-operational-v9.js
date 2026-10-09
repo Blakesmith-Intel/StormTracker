@@ -112,6 +112,7 @@ import {
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
+import { createAdaptiveThreatConeController } from "./adaptive-threat-cone-v1.js?v=9.16.2-adaptive";
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
@@ -624,6 +625,15 @@ let dopplerOverlayRenderToken =
 
 let selectedTrackDisplayId =
   "";
+
+// A single issued envelope per selected ST track, reassessed against every
+// subsequent *measured* observation rather than merely repainted per frame.
+const adaptiveThreatCones = createAdaptiveThreatConeController({
+  buildCone: buildTrackThreatCone,
+  rolloverMinutes: 30,
+  turnThresholdDegrees: 12,
+  breachMarginKm: 0.5
+});
 
 // Independent alert markers render above 3-D weather and storm-ID labels.
 // Clicking a real candidate focuses its ST track without touching playback.
@@ -1541,13 +1551,14 @@ function updateTrackDisplayControls(index) {
     select.disabled = true;
     const cone = $("showTrackThreatCone");
     if (cone) {
-      cone.checked = false;
+      // Preserve the user's cone preference through inferred display-only
+      // gap-fill; it resumes on the next genuinely observed radar frame.
       cone.disabled = true;
     }
     const status = $("trackThreatConeStatus");
     if (status) {
       status.textContent =
-        "Track analysis is paused on temporally inferred display frames.";
+        "Motion cone paused on inferred display frame; resumes at next measured observation.";
     }
     return;
   }
@@ -1593,6 +1604,7 @@ function updateTrackDisplayControls(index) {
 }
 
 function resetTrackDisplaySelection() {
+  adaptiveThreatCones.clear(); // Never carry an issued envelope into another radar site.
   selectedTrackDisplayId = "";
   if ($("trackDisplayFilter")) $("trackDisplayFilter").value = "";
   if ($("showTrackThreatCone")) {
@@ -2834,10 +2846,14 @@ function renderHybridTracks(index) {
       }
 
       if (wanted === track.track_id && $("showTrackThreatCone")?.checked) {
-        const cone = buildTrackThreatCone(track, observation, {
+        // Compare genuine observations and the updated 30/60-minute motion
+        // projection against the previously issued cone. Reanchor when the
+        // path breaches, turns, or the envelope is due for renewal.
+        const projection = adaptiveThreatCones.evaluate(track, observation, {
           horizonMinutes: 90,
           directionChangeThresholdDegrees: 12
         });
+        const cone = projection.cone;
         if (cone) {
           const coneAltitude = displayAltitude(350);
           const coneColour = colour.withAlpha(0.30);
@@ -2913,13 +2929,18 @@ function renderHybridTracks(index) {
 
           const status = $("trackThreatConeStatus");
           if (status) {
-            const turnText = cone.direction_change_detected
-              ? `direction updated ${cone.direction_change_degrees.toFixed(0)}°`
-              : `${cone.direction_change_threshold_degrees.toFixed(0)}° turn tolerance`;
+            const reason = {
+              initial: "issued",
+              "observed-outside": "repositioned: observed storm left earlier cone",
+              "projected-track-outside": "repositioned: updated motion leaves earlier cone",
+              "direction-change": "repositioned: storm changed direction",
+              "rolling-refresh": "repositioned: 30-min refresh",
+              "timeline-rewound": "rebuilt for earlier observation"
+            }[projection.reason] ?? "within issued envelope";
             status.textContent =
               `${track.track_id}: +90m motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ` +
               `heading ${cone.heading_degrees.toFixed(0)}° · ±${cone.heading_half_angle_degrees.toFixed(0)}° spread · ` +
-              `${turnText}. Not a forecast probability.`;
+              `${reason}. Reassessed on every measured scan; not a forecast probability.`;
           }
         }
       }
@@ -4230,6 +4251,7 @@ $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
 $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {
+  adaptiveThreatCones.clear(); // New explicit selection begins a fresh motion envelope.
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
   updateTrackDisplayControls(hybridFrameIndex);

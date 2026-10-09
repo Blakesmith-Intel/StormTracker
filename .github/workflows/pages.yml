@@ -56,6 +56,14 @@ jobs:
           ref: feature/severe-storm-radar-alerts-v1
           path: preview-builds/v9.16
           persist-credentials: false
+      - name: Checkout validated native BoM playback review
+        uses: actions/checkout@v4
+        with:
+          # Pin to the exact 88-suite-tested source; later feature pushes cannot
+          # silently change this published review build.
+          ref: fcea00c86c6805aa57582cda8aeb9727fe57a7f7
+          path: preview-builds/native-playback
+          persist-credentials: false
       - name: Download authentic Gympie 2025 measured radar research previews
         uses: actions/download-artifact@v4
         with:
@@ -79,15 +87,23 @@ jobs:
           (cd preview-builds/v9.15.1 && npm test)
           (cd preview-builds/v9.16 && npm test)
 
+      - name: Validate native BoM playback preview independently
+        run: |
+          (cd preview-builds/native-playback && npm test)
+          node --check preview-builds/native-playback/relay/worker.js
+          test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "fcea00c86c6805aa57582cda8aeb9727fe57a7f7"
+
       - name: Stage isolated live previews without changing production
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1 frontend/preview/v9.16
+          mkdir -p frontend/preview/native-playback
           cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
           cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
           cp -a preview-builds/v9.15.1/frontend/. frontend/preview/v9.15.1/
           cp -a preview-builds/v9.16/frontend/. frontend/preview/v9.16/
+          cp -a preview-builds/native-playback/frontend/. frontend/preview/native-playback/
           mkdir -p frontend/preview/v9.16/research-gympie
           cp -a preview-builds/gympie-observations/. frontend/preview/v9.16/research-gympie/
           test -f preview-builds/gympie-hook-audit/gympie-hook-replay.json
@@ -119,6 +135,14 @@ jobs:
           grep -q 'id="sourceTimeGap"' frontend/preview/v9.16/live3d-operational-v9.html
           ! grep -q 'id="dopplerPlayButton"' frontend/preview/v9.16/live3d-operational-v9.html
           test -f frontend/preview/v9.16/src/independent-doppler-loop-v1.js
+          printf 'Native source playback review %s\n' "$(git -C preview-builds/native-playback rev-parse HEAD)" > frontend/preview/native-playback/BUILD.txt
+          test -f frontend/preview/native-playback/index.html
+          test -f frontend/preview/native-playback/live3d-operational-v9.html
+          test -f frontend/preview/native-playback/src/live3d-operational-v9.js
+          grep -Fq 'source-native-playback-review-v1' frontend/preview/native-playback/index.html
+          grep -Fq 'Native BoM playback review build' frontend/preview/native-playback/live3d-operational-v9.html
+          grep -Fq 'dopplerImageryHandover' frontend/preview/native-playback/src/live3d-operational-v9.js
+          ! grep -Eq 'createRadarMotionTransition|interpolateRadarFrame\(' frontend/preview/native-playback/src/live3d-operational-v9.js
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 
@@ -134,3 +158,22 @@ jobs:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
+
+      - name: Verify published native BoM playback preview
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}/preview/native-playback"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          index="$(retry_curl "$base/index.html")"
+          grep -Fq 'source-native-playback-review-v1' <<< "$index"
+          shell="$(retry_curl "$base/live3d-operational-v9.html")"
+          grep -Fq 'Native BoM playback review build' <<< "$shell"
+          js="$(retry_curl "$base/src/live3d-operational-v9.js")"
+          grep -Fq 'dopplerImageryHandover' <<< "$js"
+          ! grep -Eq 'createRadarMotionTransition|interpolateRadarFrame\(' <<< "$js"
+          build="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq 'fcea00c86c6805aa57582cda8aeb9727fe57a7f7' <<< "$build"
+          echo "Verified isolated native playback preview at $base/; live production root unchanged."

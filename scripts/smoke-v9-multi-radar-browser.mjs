@@ -149,7 +149,10 @@ try{
   // extra-site WMTS areas; source images are never injected or manufactured.
   const playButton=page.locator("#hybridPlayButton");
   if(await playButton.getAttribute("aria-pressed")==="true"){
-    await playButton.click();
+    // Keyboard-equivalent DOM activation avoids Playwright's stability wait
+    // against a busy headless software-WebGL canvas; the app's real listener
+    // and source transaction are still exercised without synthetic weather.
+    await playButton.dispatchEvent("click");
     await page.waitForFunction(()=>
       document.getElementById("hybridPlayButton")?.getAttribute("aria-pressed")==="false",
       null,{timeout:12000});

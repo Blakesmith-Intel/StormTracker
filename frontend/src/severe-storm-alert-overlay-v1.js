@@ -32,6 +32,7 @@ export function createSevereStormAlertOverlay({
   let hasObservedFrame = false;
   let windSourceSupported = false;
   let hookExperimental = false;
+  let researchV10 = false;
   let displayedUtc = null;
   let atNewestFrame = false;
   let selectedId = "";
@@ -48,8 +49,12 @@ export function createSevereStormAlertOverlay({
       ? "Radial velocity " + Math.abs(alert.velocity_kmh).toFixed(0) +
         " km/h (" + (alert.velocity_kmh < 0 ? "toward" : "away") + " radar) · " +
         alert.sample_count + " high-speed samples · radar " + alert.radar_id
-      : "Connected low-reflectivity arc " + alert.arc_degrees.toFixed(0) +
-        "° · seen in two consecutive measured scans";
+      : "Connected lower-reflectivity arc " + alert.arc_degrees.toFixed(0) +
+        "° · seen in two consecutive measured scans" +
+        (Number.isFinite(alert.radial_shear_kmh)
+          ? " · local radial velocity difference " +
+            alert.radial_shear_kmh.toFixed(0) + " km/h (NOT a surface gust)"
+          : "");
     const source = documentRef.createElement("p");
     source.textContent = "Reflectivity " + alert.observed_utc +
       (alert.source_utc ? " · Doppler " + alert.source_utc : "");
@@ -83,6 +88,10 @@ export function createSevereStormAlertOverlay({
     markers = [];
     if (!hasObservedFrame) {
       status.textContent = "Load an observed storm loop for radar evidence.";
+    } else if (researchV10) {
+      status.textContent = alerts.length
+        ? "Experimental signatures only · BoM 90/125 km/h surface gust thresholds are NOT measured by this radar image."
+        : "No qualifying signatures. BoM 90/125 km/h surface gust thresholds cannot be measured from this ±70 km/h image.";
     } else if (!windSourceSupported) {
       status.textContent = "90 km/h Doppler: unsupported by current ±70 km/h image scale.";
     } else {
@@ -111,18 +120,23 @@ export function createSevereStormAlertOverlay({
     for (const alert of alerts.slice(0, 8)) {
       const button = documentRef.createElement("button");
       button.type = "button";
-      button.className = "storm-severe-alert-row " + alert.type;
-      const prefix = alert.type === "wind" ? "WIND" : "HOOK?";
+      button.className = "storm-severe-alert-row " + alert.type +
+        (alert.category === "tornadic_candidate" ? " tornadic" : "");
+      const prefix = alert.category === "tornadic_candidate" ? "TORNADO?" :
+        alert.type === "wind" ? "RADIAL WIND" : "HOOK?";
       button.textContent = prefix + " · " + alert.track_id + " · " +
         (alert.type === "wind"
           ? Math.abs(alert.velocity_kmh).toFixed(0) + " km/h radial"
-          : "possible curved echo");
+          : alert.category === "tornadic_candidate" ? "hook + velocity couplet" :
+            "possible curved echo");
       button.addEventListener("click", () => reveal(alert));
       rows.appendChild(button);
       const pin = documentRef.createElement("button");
       pin.type = "button";
-      pin.className = "storm-severe-alert-pin " + alert.type;
-      pin.textContent = alert.type === "wind" ? "W" : "?";
+      pin.className = "storm-severe-alert-pin " + alert.type +
+        (alert.category === "tornadic_candidate" ? " tornadic" : "");
+      pin.textContent = alert.category === "tornadic_candidate" ? "T?" :
+        alert.type === "wind" ? "W" : "?";
       pin.setAttribute("aria-label", alert.title + " " + alert.track_id);
       pin.addEventListener("click", () => reveal(alert));
       pinsRoot.appendChild(pin);
@@ -160,12 +174,13 @@ export function createSevereStormAlertOverlay({
   return {
     setEnabled(value) { enabled = Boolean(value); draw(); scene.requestRender(); },
     setFrame({ alerts: next = [], observedFrame = false,
-      windSupported = false, experimentalHook = false,
+      windSupported = false, experimentalHook = false, researchV10: isV10 = false,
       displayedUtc: utc = null, atNewestFrame: isNewestFrame = false } = {}) {
       alerts = next;
       hasObservedFrame = observedFrame;
       windSourceSupported = windSupported;
       hookExperimental = experimentalHook;
+      researchV10 = Boolean(isV10);
       displayedUtc = utc;
       atNewestFrame = Boolean(isNewestFrame);
       selectedId = "";

@@ -2729,7 +2729,7 @@ function formatSignedKmh(
 // Render the same source-measured polygon on both observed frames and
 // intervening display-only interpolation. Holding is purely visual; the cone
 // is NEVER advanced, re-timestamped or re-scored from an inferred image.
-function renderIssuedThreatCone(track, projection, heldObservedUtc = null) {
+function renderIssuedThreatCone(track, projection, heldObservedUtc = null, currentObservation = null) {
   const cone = projection?.cone;
   if (!cone) return false;
   const colour = trackColour(track.track_id);
@@ -2808,16 +2808,20 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null) {
       "observed-outside": "repositioned: observed storm left earlier cone",
       "projected-track-outside": "repositioned: updated motion leaves earlier cone",
       "direction-change": "repositioned: storm changed direction",
+      "steering-change": "reoriented: verified updated steering",
       "storm-advanced": "repositioned: measured storm advanced",
       "rolling-refresh": "repositioned: 30-min refresh",
       "timeline-rewound": "rebuilt for earlier observation"
     }[projection.reason] ?? "within issued envelope";
+    const latestMotion = currentObservation && !heldObservedUtc
+      ? measuredTrackMotionAtObservation(track, currentObservation) : null;
     status.textContent = heldObservedUtc
       ? `${track.track_id}: holding last measured +90m cone from ${formatProductTime(heldObservedUtc, {compact:true})} · inferred radar frame, no new storm motion calculated.`
       :
       `${track.track_id}: +90m motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ` +
-      `heading ${cone.heading_degrees.toFixed(0)}° · ±${cone.heading_half_angle_degrees.toFixed(0)}° spread · ` +
-      `${reason}. Reassessed on every measured scan; not a forecast probability.`;
+      `cone heading ${cone.heading_degrees.toFixed(0)}° · latest measured ${latestMotion?.heading_degrees?.toFixed(0) ?? "—"}° · ` +
+      `±${cone.heading_half_angle_degrees.toFixed(0)}° spread · ${reason}. ` +
+      `Reassessed on every measured scan; not a forecast probability.`;
   }
   return true;
 }
@@ -2979,7 +2983,7 @@ function renderHybridTracks(index) {
           { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
           { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5 }
         );
-        renderIssuedThreatCone(track, projection);
+        renderIssuedThreatCone(track, projection, null, observation);
       }
 
       const top40Text = volume?.high_support_top_40_m_amsl != null

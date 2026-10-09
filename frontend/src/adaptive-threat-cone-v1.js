@@ -32,6 +32,9 @@ export function createAdaptiveThreatConeController({
   buildCone,
   rolloverMinutes = 30,
   turnThresholdDegrees = 12,
+  steeringChangeThresholdDegrees = 8,
+  minimumSteeringSpeedKmh = 12,
+  minimumSteeringMotionKm = 1.25,
   breachMarginKm = 0.5,
   minimumTranslationKm = 4,
   minimumTranslationMinutes = 5
@@ -53,7 +56,7 @@ export function createAdaptiveThreatConeController({
     if (!id || !Number.isFinite(observedEpoch)) {
       return { cone:null, reason:"unavailable", rebased:false };
     }
-    const proposed = buildCone(track, observation, buildOptions);
+    let proposed = buildCone(track, observation, buildOptions);
     if (!proposed) {
       clear(id);
       return { cone:null, reason:"motion-unavailable", rebased:false };
@@ -83,7 +86,24 @@ export function createAdaptiveThreatConeController({
       const turning = bearingDelta(
         Number(proposed.measured_heading_degrees),
         Number(previous.cone.measured_heading_degrees)
-      ) >= turnThresholdDegrees;
+      ) >= turnThresholdDegrees
+        && Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh
+        && (!Number.isFinite(Number(track?.motion?.distance_km))
+          || Number(track.motion.distance_km) >= minimumSteeringMotionKm);
+      // A storm can gradually turn through a sequence of sub-12° changes.
+      // The old rule compared only the last issued heading and allowed a
+      // lagging three-segment mean to keep aiming along the previous course.
+      // Compare the NEWEST genuinely observed movement to the actual
+      // displayed centreline. Require both an observed displacement and
+      // meaningful speed before treating the heading as reliable steering.
+      const latestMotion = track?.motion;
+      const steeringEvidence = Number(latestMotion?.distance_km) >= minimumSteeringMotionKm
+        && Number(latestMotion?.speed_kmh) >= minimumSteeringSpeedKmh;
+      const steeringErrorDegrees = bearingDelta(
+        Number(proposed.measured_heading_degrees), Number(previous.cone.heading_degrees)
+      );
+      const steeringChanged = steeringEvidence
+        && steeringErrorDegrees >= steeringChangeThresholdDegrees;
       // A broad 90-minute envelope can contain many successive storm cores,
       // leaving its original starting point visually stranded. Advance the
       // forecast with a meaningfully displaced measured centroid even when
@@ -102,11 +122,21 @@ export function createAdaptiveThreatConeController({
       if (centreOutside) reason = "observed-outside";
       else if (prospectiveOutside) reason = "projected-track-outside";
       else if (turning) reason = "direction-change";
+      else if (steeringChanged) reason = "steering-change";
       else if (elapsed >= rolloverMinutes) reason = "rolling-refresh";
       else if (translated) reason = "storm-advanced";
     }
 
     if (reason) {
+      // Reissuing with the same smoothed heading leaves the cone pointed in
+      // the wrong direction even when a measured turn is recognised.
+      // Only force the actual heading with sufficient displacement/speed.
+      if (reason === "steering-change" || (reason === "direction-change" &&
+          Number(track?.motion?.distance_km) >= minimumSteeringMotionKm)) {
+        proposed = buildCone(track, observation, {
+          ...buildOptions, forceMeasuredHeading:true
+        }) ?? proposed;
+      }
       issued.set(id,{
         cone:proposed,
         issueEpoch:observedEpoch,

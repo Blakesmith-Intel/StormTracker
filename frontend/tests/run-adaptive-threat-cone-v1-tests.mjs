@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { directPoint } from "../src/geo.js";
+import { geodesicMotion } from "../src/tracking.js";
+import { buildTrackThreatCone } from "../src/track-threat-cone-v1.js";
 import {
   createAdaptiveThreatConeController, pointWithinIssuedThreatCone,
   evaluateChronologicalTrackThreatCone,
@@ -156,3 +158,53 @@ assert.equal(
 );
 assert.ok(Math.abs(measuredTrackMotionAtObservation(past,historical[3]).heading_degrees)<1);
 console.log("PASS threat cone playback determinism, historical motion, future-data isolation, observed-only snapshots and scrubbing.");
+
+// Confirm cumulative, individually sub-12-degree motion changes cause the
+// actual displayed cone to change heading, not simply register a reissue.
+const q=(minute,pt)=>({...observation(minute,pt),sampled_area_km2:300});
+const slowTurn=[
+  q(0,origin)
+];
+slowTurn.push(q(5,step(origin,90,1.5)));
+slowTurn.push(q(10,step({longitude:slowTurn[1].centroid_longitude,latitude:slowTurn[1].centroid_latitude},90,1.5)));
+slowTurn.push(q(15,step({longitude:slowTurn[2].centroid_longitude,latitude:slowTurn[2].centroid_latitude},84,1.5)));
+slowTurn.push(q(20,step({longitude:slowTurn[3].centroid_longitude,latitude:slowTurn[3].centroid_latitude},81,1.5)));
+const trackAt=index=>{
+  const hist=slowTurn.slice(0,index+1);
+  return {track_id:"ST0055",history:hist,
+    motion:geodesicMotion(hist.at(-2),hist.at(-1))};
+};
+const steeringController=createAdaptiveThreatConeController({
+  buildCone:buildTrackThreatCone,rolloverMinutes:30,turnThresholdDegrees:12,
+  steeringChangeThresholdDegrees:8,minimumSteeringSpeedKmh:12,
+  minimumSteeringMotionKm:1.25,breachMarginKm:0.5,
+  minimumTranslationKm:4
+});
+const eastIssue=steeringController.evaluate(trackAt(1),slowTurn[1]);
+assert.equal(eastIssue.reason,"initial");
+const smallTurn=steeringController.evaluate(trackAt(3),slowTurn[3]);
+assert.equal(smallTurn.reason,"inside-envelope","small, supported steering should not jitter the cone");
+const accumulatedTurn=steeringController.evaluate(trackAt(4),slowTurn[4]);
+assert.equal(accumulatedTurn.reason,"steering-change");
+assert.ok(accumulatedTurn.rebased);
+assert.equal(accumulatedTurn.cone.steering_heading_applied,true);
+assert.ok(Math.abs(accumulatedTurn.cone.heading_degrees-81)<0.2,
+  "a reissued cone must face measured ~81-degree steering, not its old east heading");
+assert.ok(accumulatedTurn.cone.heading_degrees<eastIssue.cone.heading_degrees-7);
+const deterministic= evaluateChronologicalTrackThreatCone(
+  trackAt(4),slowTurn[4],buildTrackThreatCone,
+  {horizonMinutes:90,directionChangeThresholdDegrees:12},
+  {rolloverMinutes:30,turnThresholdDegrees:12,
+    steeringChangeThresholdDegrees:8,minimumSteeringMotionKm:1.25,
+    minimumSteeringSpeedKmh:12,breachMarginKm:0.5}
+);
+assert.equal(deterministic.reason,"steering-change");
+assert.ok(Math.abs(deterministic.cone.heading_degrees-81)<0.2);
+const lastPoint={longitude:slowTurn[4].centroid_longitude,latitude:slowTurn[4].centroid_latitude};
+const jitter=q(25,step(lastPoint,0,0.2));
+const lowSpeed={track_id:"ST0055",history:[...slowTurn,jitter],
+  motion:geodesicMotion(slowTurn.at(-1),jitter)};
+const jitterResult=steeringController.evaluate(lowSpeed,jitter);
+assert.equal(jitterResult.reason,"inside-envelope","tiny slow centroid jitter must not swing cone north");
+assert.equal(jitterResult.cone.heading_degrees,accumulatedTurn.cone.heading_degrees);
+console.log("PASS cumulative sub-12-degree steering, actual reorientation, deterministic rewind and low-speed jitter suppression.");

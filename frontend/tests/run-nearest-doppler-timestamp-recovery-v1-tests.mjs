@@ -49,7 +49,8 @@ assert.match(script,/playback = createContinuousPlayback\(/);
 assert.match(script,/independentDopplerRefresh = createLiveLoopRefresh\(/);
 assert.match(script,/function driveWindFromCommonPlayback\(/);
 assert.match(script,/preparedWind=await prepareWindForPlayback\(requestedIndex\)/);
-assert.match(script,/await commitWindObservation\(preparedWind,\{updateUi:false,renderToken\}\)/,\n  "wind imagery must be prepared and committed before the source timeline advances");
+assert.match(script,/await commitWindObservation\(preparedWind,\{updateUi:false,renderToken\}\)/,
+  "wind imagery must be prepared and committed before the source timeline advances");
 assert.doesNotMatch(script,/driveWindFromCommonPlayback\(hybridFrameIndex\)/,
   "radar timeline must not dispatch wind asynchronously after slider commit");
 assert.match(script,/nextNativeDopplerIndex\(windCycleCursor, independentDopplerFrames.length\)/);

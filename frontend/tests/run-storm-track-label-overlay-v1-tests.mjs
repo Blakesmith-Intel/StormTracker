@@ -115,6 +115,6 @@ assert.match(javascript, /stormTrackLabelOverlay\.setVisible\(Boolean\(\$\("show
 assert.match(javascript, /stormTrackMarkers\.push\(\{/);
 assert.doesNotMatch(javascript, /id: \`hybrid-\$\{index\}-\$\{track\.track_id\}\`/);
 assert.match(html, /id="showTrackLabels" type="checkbox" checked/);
-assert.match(html, /v=9\.16-window-menu-v2/);
-assert.match(iframe, /v=9\.16-window-menu-v2/);
+assert.match(html, /v=9\.16-bom-native-rain30-v1/);
+assert.match(iframe, /v=9\.16-bom-native-rain30-v1/);
 console.log("Foreground storm marker overlay tests passed: opacity-independent, paired dots and labels; paused toggle; camera updates; horizon; frame swap; cache bust.");

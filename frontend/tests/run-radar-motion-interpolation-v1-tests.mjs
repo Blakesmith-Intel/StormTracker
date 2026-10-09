@@ -17,7 +17,7 @@ assert.ok(x1>x0+.8&&x1<x2-.8,"echo moves spatially: "+[x0,x1,x2]);
 assert.equal(mid.sourceMetadata.temporalInference.method,"motion-compensated-category-warp");
 assert.equal(mid.sourceMetadata.temporalInference.displayOnly,true);
 assert.deepEqual(before.categories,make(before.observedUtc,0).categories);
-assert.deepEqual([.5,1,2].map(radarMotionStepsForSpeed),[3,2,1]);
+assert.deepEqual([1,2,3].map(radarMotionStepsForSpeed),[1,0,0]);
 assert.equal(canMotionInterpolateRadar(before,{...after,observedUtc:"2026-10-09T00:20:00Z"}),false);
 assert.throws(()=>t.frame(1),RangeError);
 console.log("PASS moving radar echoes, unchanged observed scans, display-only provenance, speed selection, invalid source guards.");

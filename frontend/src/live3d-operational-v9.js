@@ -1047,22 +1047,23 @@ function resetView() {
   else mapCamera.setView(REGIONAL_HOME);
 }
 function configureRadarSite() {
-  const ids = selectedSourceRadars();
-  const selector = $("dopplerOverlayRadar");
-  selector.replaceChildren(...ids.map(id => {
-    const option = document.createElement("option"); option.value = id;
-    option.textContent = `${id} · ${QLD_RADAR_SITES[id].name}`; return option;
-  }));
-  selector.disabled = ids.length === 0;
-  $("radarSite").title = selectedRadarRegion() === "SEQ" ? "Regional mosaic: Mt Stapylton, Marburg and Gympie" :
-    `${QLD_RADAR_SITES[selectedRadarRegion()].name}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
+  const selected=selectedRadarRegion();
+  const ids=selectedSourceRadars();
+  // The single primary radar selector owns the wind-source site too.
+  // Internal hidden input preserves existing verified loading/science paths
+  // without an independently user-selectable Doppler radar.
+  $("dopplerOverlayRadar").value=ids[0]??"";
+  const site=QLD_RADAR_SITES[selected];
+  $("radarSite").title=selected==="SEQ"
+    ? "Legacy south-east region (not exposed as an operational option)"
+    : `${site?.name??"Radar"}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
 }
 for (const site of Object.values(QLD_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
   const option = document.createElement("option"); option.value = site.id;
   option.textContent = `${site.name}${site.dopplerProduct ? "" : " · radar only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
-// Start with a real single-radar site; SEQ remains selectable, never the default.
+// Operational map uses one original BoM radar site at a time; legacy SEQ is not offered.
 $("radarSite").value = DEFAULT_RADAR_SITE_ID;
 configureRadarSite();
 
@@ -2537,6 +2538,9 @@ function updateDualSourceTimes() {
     hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
   const windUtc=shouldDisplayDopplerForSelectedWindow() ? independentDopplerRecord?.observedUtc : null;
   const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
+  const windOnly=isNativeDopplerPlayback();
+  $("radarClockGroup").hidden=windOnly;
+  $("windClockGroup").hidden=!windOnly;
   if(radar){
     radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
     radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
@@ -2546,24 +2550,15 @@ function updateDualSourceTimes() {
       windUtc ? formatDualClock(windUtc) : "Loading";
     wind.title=windUtc ? formatProductTime(windUtc) : "No measured Doppler frame displayed";
   }
-  if(gap){
-    const delta=Math.abs(Date.parse(radarUtc)-Date.parse(windUtc))/60000;
-    gap.hidden=!Number.isFinite(delta);
-    if(!gap.hidden){
-      gap.textContent="Δ"+delta.toFixed(delta<10?1:0)+" min";
-      gap.title="These are independent observations "+delta.toFixed(1)+" minutes apart, not one measured radar scan";
-      gap.dataset.ageWarning=String(delta>15);
-    }
-  }
+  // No combined visual timeline remains: one clock belongs to the active
+  // rain-only OR wind-only playback, never a misleading source-time delta.
+  if(gap)gap.hidden=true;
 }
 function updateIndependentDopplerUi() {
   const active=shouldDisplayDopplerForSelectedWindow();
   const total=independentDopplerFrames.length;
   const item=independentDopplerFrames[independentDopplerIndexValue];
-  const label=total ? (independentDopplerIndexValue+1)+"/"+total : "—";
   const timestamp=item ? formatDopplerUtc(item.observedUtc) : "No source frames";
-  $("operationalDoppler").textContent=active
-    ? (total ? label+" · "+timestamp : "loading wind history") : "hidden";
   updateDualSourceTimes();
   $("dopplerFrameTime").textContent=active&&independentDopplerRecord?formatDopplerUtc(independentDopplerRecord.observedUtc):"—";
   $("dopplerRadarsLoaded").textContent=active&&independentDopplerRecord?"1":"0";
@@ -4646,28 +4641,6 @@ $("volumeOpacity").addEventListener("input", event => {
   setVolumeDisplayOpacity(inferredCollection,percent);
   setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
   scene.requestRender();
-});
-
-$("dopplerOverlayRadar").addEventListener("change", async () => {
-  const windMode=isNativeDopplerPlayback();
-  ++hybridSceneRenderToken;
-  ++independentDopplerRequest;
-  if(windMode) await playback.pause();
-  independentDopplerFrames=[];
-  independentDopplerIndexValue=0;
-  independentDopplerRecord=null;
-  independentDopplerSourceId=null;
-  windPlaybackFrames=[];
-  clearDopplerOverlay();
-  updateIndependentDopplerUi();
-  if(isDopplerSourceActive()){
-    try {
-      await refreshIndependentDopplerHistory(false);
-      if(windMode) await runSourceLoad(()=>loadDopplerSequence(false));
-    } catch(error) {
-      $("dopplerOverlayStatus").textContent=error.message;
-    }
-  }
 });
 
 $("loadButton").addEventListener("click", () => runSourceLoad(

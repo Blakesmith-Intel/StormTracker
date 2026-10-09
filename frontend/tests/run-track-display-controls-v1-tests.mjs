@@ -21,7 +21,8 @@ assert.match(js,/stormTrackLabelOverlay\.setVisible\(Boolean\(\$\("showTrackLabe
 assert.match(js,/\$\("showTrackLabels"\)\.addEventListener\("change",updateRenderedTrackLabels\)/);
 
 assert.match(js,/showTrackThreatCone/);
-assert.match(js,/dopplerOverlayTransition/);
+assert.match(js,/dopplerImageryHandover = createRadarImageryHandover/);
+assert.doesNotMatch(js,/dopplerOverlayTransition/);
 assert.match(js,/viewer\.imageryLayers\.raiseToTop\(\s*surfaceLayer\s*\)/);
 const d0=js.indexOf("function renderDopplerOverlay()");
 const d1=js.indexOf("function updateDopplerUiForFrame",d0);

@@ -164,7 +164,6 @@ dialog::backdrop { background:#0009; }
   .opacity-controls input[type="range"] { height:14px; margin:1px 0; }
 }
 
-.frame-crossfade { position:absolute; inset:0; width:100%; height:100%; z-index:400; pointer-events:none; }
 #cesiumCredits { position:absolute; right:4px; bottom:2px; z-index:900; pointer-events:auto; }
 
 #radarSite { width:180px; min-width:0; font-size:11px; }

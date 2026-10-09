@@ -48,7 +48,10 @@ const css=readFileSync(fileURLToPath(new URL("../src/operational-dashboard-v9-1.
 assert.match(script,/playback = createContinuousPlayback\(/);
 assert.match(script,/independentDopplerRefresh = createLiveLoopRefresh\(/);
 assert.match(script,/function driveWindFromCommonPlayback\(/);
-assert.match(script,/driveWindFromCommonPlayback\(hybridFrameIndex\)/);
+assert.match(script,/preparedWind=await prepareWindForPlayback\(requestedIndex\)/);
+assert.match(script,/commitWindObservation\(preparedWind,\{updateUi:false\}\)/);
+assert.doesNotMatch(script,/driveWindFromCommonPlayback\(hybridFrameIndex\)/,
+  "radar timeline must not dispatch wind asynchronously after slider commit");
 assert.match(script,/nextNativeDopplerIndex\(windCycleCursor, independentDopplerFrames.length\)/);
 assert.match(script,/nearestIndependentDopplerFrameIndex\(/);
 assert.match(script,/windRenderPending/);

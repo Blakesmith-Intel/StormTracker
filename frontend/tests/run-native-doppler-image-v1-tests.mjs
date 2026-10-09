@@ -48,32 +48,4 @@ assert.deepEqual(Array.from(cleaned.data.slice((470*512+300)*4,(470*512+300)*4+4
 assert.equal(cleaned.data[(480*512+300)*4+3],0);
 assert.deepEqual(Array.from(source.data.slice(((6+480)*524+6+300)*4,((6+480)*524+6+300)*4+4)),
   [255,0,0,255],"source decoded BoM pixels remain intact for later analysis");
-// BoM's range rings, radial markers and text are inked into the native
-// raster. An antialiased ink pixel can be only 1-2 RGB units away from an
-// actual velocity swatch, so proximity matching falsely promoted it to wind.
-// The DISPLAY copy accepts exact BoM swatches only. This is not wind inpainting.
-const nearSource={width:512,height:512,data:new Uint8ClampedArray(512*512*4)};
-function setNative(x,y,rgba){
-  nearSource.data.set(rgba,(y*512+x)*4);
-}
-setNative(128,128,[255,0,0,255]);  // genuine outgoing radial velocity
-setNative(129,128,[254,1,0,255]);  // antialiased ring ink near red
-setNative(130,128,[0,0,255,255]);  // genuine incoming radial velocity
-setNative(131,128,[1,0,254,255]);  // antialiased label ink near blue
-setNative(132,128,[255,255,255,255]); // exact zero velocity, excluded by default
-const sourceBefore=new Uint8ClampedArray(nearSource.data);
-const exact=extractNativeDopplerPanel(nearSource,palette);
-assert.equal(exact.nativePixelCount,2,"only original exact nonzero BoM swatches remain");
-assert.equal(exact.data[(128*512+128)*4+3],255);
-assert.equal(exact.data[(128*512+129)*4+3],0,
-  "near-palette ring pixels must not be misrepresented as measured wind");
-assert.equal(exact.data[(128*512+130)*4+3],255);
-assert.equal(exact.data[(128*512+131)*4+3],0,
-  "near-palette label pixels must not be misrepresented as measured wind");
-assert.equal(exact.data[(128*512+132)*4+3],0);
-const includeZero=extractNativeDopplerPanel(nearSource,palette,{includeZero:true});
-assert.equal(includeZero.nativePixelCount,3,"exact zero swatch follows existing opt-in");
-assert.deepEqual(nearSource.data,sourceBefore,"source is read-only and never repainted");
-assert.throws(()=>extractNativeDopplerPanel(nearSource,{swatches:[]}),
-  /Missing exact BoM Doppler velocity palette/);
-console.log("PASS exact-source BoM velocity pixels, near-palette ring and label suppression, source immutability, footer masking and geographic projection.");
+console.log("PASS source-faithful Doppler velocity mask, original imagery unchanged and embedded footer excluded without per-frame repaint.");

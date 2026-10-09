@@ -98,6 +98,7 @@ import {
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
+import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -575,7 +576,7 @@ const playback = createContinuousPlayback({
   count: () => hybridFrames.length,
   currentIndex: () => hybridFrameIndex,
   showFrame: showHybridFrame,
-  delay: () => playbackDelayForSpeed(selectedPlaybackSpeed()),
+  delay: () => effectivePlaybackDelayMs(),
   onPlayingChange: playing => {
     $("hybridPlayButton").textContent = playing ? "Pause" : "Play";
     $("hybridPlayButton").setAttribute("aria-pressed", String(playing));
@@ -805,6 +806,13 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   updateLoopButtonLabel();
 }
 
+function effectivePlaybackDelayMs() {
+  return sourceAlignedPlaybackDelayMs(
+    playbackDelayForSpeed(selectedPlaybackSpeed()),
+    hybridCombinedSchedule,
+    hybridCombinedSchedule.length > 0 && isCombinedDopplerWindowSelected()
+  );
+}
 function selectedPlaybackSpeed() {
   return Number(
     $("playbackSpeed")
@@ -3115,9 +3123,17 @@ async function showHybridFrame(index) {
   // Extra motion-warped 2-D images exist only on-screen during sequential
   // playback; no scene opacity or whole-screen image crossfade is used.
   const previousFrame = latestFrame;
+  // Native wind may advance without a new radar scan. Preserve the genuine
+  // visible radar image and its expensive inferred/track geometry.
+  const windOnlyStep = isDopplerOnlyPlaybackStep(
+    previousFrame, frame, hybridCombinedSchedule.length > 0, Boolean(surfaceLayer)
+  );
   motionTransition.cancel();
   const motionGeneration=visualMotionGeneration;
-  const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
+  // The dual-source timeline already adds Doppler-only events. Avoid an
+  // additional synthetic rain frame between measurements in combined mode.
+  const steps=hybridCombinedSchedule.length ? 0 :
+    radarMotionStepsForSpeed(selectedPlaybackSpeed());
   const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
     canMotionInterpolateRadar(previousFrame,frame);
@@ -3155,11 +3171,13 @@ async function showHybridFrame(index) {
     windPreparationMs=performance.now()-windStart;
   }catch(error){
     setStatus("Combined observation held: "+error.message,"warning");
-    return;
+    return false;
   }
   if(renderToken!==hybridSceneRenderToken)return;
   const radarStart=performance.now();
-  const surfaceApplied=await renderSurface(frame,renderToken);
+  const surfaceApplied=windOnlyStep ? true : await renderSurface(frame,renderToken,{
+    timeoutMs:playback.isPlaying() ? 1100 : 2200
+  });
   radarPresentationMs=performance.now()-radarStart;
   if(renderToken!==hybridSceneRenderToken)return;
 
@@ -3168,7 +3186,7 @@ async function showHybridFrame(index) {
     // observation. Keep the previous scan and retry normally on the next cycle.
     motionTransition.cancel();
     setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
-    return;
+    return false;
   }
   if(preparedWind){
     try{commitWindObservation(preparedWind,{updateUi:false});}
@@ -3176,7 +3194,7 @@ async function showHybridFrame(index) {
       // Report a missing partner explicitly, rather than announcing the
       // combination as one measured radar+wind state.
       setStatus("Rain loaded; Doppler could not commit: "+error.message,"warning");
-      return;
+      return false;
     }
   }
   // All requested imagery is now staged/committed. The UI cursor and source
@@ -3185,22 +3203,14 @@ async function showHybridFrame(index) {
   latestFrame=frame;
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
   const volumeStart=performance.now();
-  renderInferredVolume(frame);
-  volumeConstructionMs=performance.now()-volumeStart;
-
-  updateTrackDisplayControls(
-    hybridFrameIndex
-  );
-
-  applyHybridVolumeMode(
-    hybridFrameIndex
-  );
-
-  renderHybridTracks(
-    hybridFrameIndex
-  );
-
-  syncSevereStormAlerts(hybridFrameIndex);
+  if (!windOnlyStep) {
+    renderInferredVolume(frame);
+    volumeConstructionMs=performance.now()-volumeStart;
+    updateTrackDisplayControls(hybridFrameIndex);
+    applyHybridVolumeMode(hybridFrameIndex);
+    renderHybridTracks(hybridFrameIndex);
+    syncSevereStormAlerts(hybridFrameIndex);
+  }
   // Combined wind was committed synchronously above; no asynchronous
   // wind driver may overtake the now-visible radar/slider transaction.
 
@@ -3234,10 +3244,10 @@ async function showHybridFrame(index) {
     `${hybridFrameIndex+1}/${hybridFrames.length}${temporalInferred?" · inferred":""}`;
   if(preparedWind)updateIndependentDopplerUi();
   else updateDualSourceTimes();
-  prewarmUpcomingFrames(hybridFrameIndex);
+  if (!windOnlyStep) prewarmUpcomingFrames(hybridFrameIndex);
   const telemetry=playbackPerformanceMeter.record({
     frameMs:performance.now()-totalStart,
-    targetMs:playbackDelayForSpeed(selectedPlaybackSpeed()),
+    targetMs:effectivePlaybackDelayMs(),
     windMs:windPreparationMs,
     radarMs:radarPresentationMs,
     volumeMs:volumeConstructionMs
@@ -3282,6 +3292,7 @@ async function showHybridFrame(index) {
   );
   // No opacity fade. The last full observed frame is the final step of
   // the spatially advected radar animation.
+  return true;
 }
 
 async function warmRadarHistoryCache(

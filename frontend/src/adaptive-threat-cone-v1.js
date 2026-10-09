@@ -32,7 +32,9 @@ export function createAdaptiveThreatConeController({
   buildCone,
   rolloverMinutes = 30,
   turnThresholdDegrees = 12,
-  breachMarginKm = 0.5
+  breachMarginKm = 0.5,
+  minimumTranslationKm = 4,
+  minimumTranslationMinutes = 5
 } = {}) {
   if (typeof buildCone !== "function") {
     throw new TypeError("Adaptive cone controller requires a cone builder");
@@ -82,9 +84,25 @@ export function createAdaptiveThreatConeController({
         Number(proposed.measured_heading_degrees),
         Number(previous.cone.measured_heading_degrees)
       ) >= turnThresholdDegrees;
+      // A broad 90-minute envelope can contain many successive storm cores,
+      // leaving its original starting point visually stranded. Advance the
+      // forecast with a meaningfully displaced measured centroid even when
+      // the old broad geometry has not technically been breached.
+      const issuedCentre = previous.cone.samples[0].centre;
+      const observedTranslationKm = distanceKm(
+        issuedCentre.longitude, issuedCentre.latitude,
+        Number(observation.centroid_longitude), Number(observation.centroid_latitude)
+      );
+      const translationThresholdKm = Math.max(
+        minimumTranslationKm,
+        Math.min(10, Number(previous.cone.footprint_radius_km) * 0.8)
+      );
+      const translated = elapsed >= minimumTranslationMinutes &&
+        observedTranslationKm >= translationThresholdKm;
       if (centreOutside) reason = "observed-outside";
       else if (prospectiveOutside) reason = "projected-track-outside";
       else if (turning) reason = "direction-change";
+      else if (translated) reason = "storm-advanced";
       else if (elapsed >= rolloverMinutes) reason = "rolling-refresh";
     }
 

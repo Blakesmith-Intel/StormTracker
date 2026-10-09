@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>StormTracker — V9.16.14 streamlined operational sidebar</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography-sidebar-v14">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography-sidebar-v14-v10-preview-icons-r1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -62,6 +62,8 @@
       <div class="layer-row track-details-row"><button id="openDetailsButton" type="button">Tracks / details</button></div>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label><input id="showSevereRadarAlerts" type="checkbox" disabled> Radar alerts ≥90 km/h — research preview only</label></div>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label title="Unvalidated scientific research"><input id="showExperimentalHookAlerts" type="checkbox" disabled> Hook-shape candidates (research preview only)</label></div>
+       <div class="layer-row storm-v10-layer-row"><label title="Opt-in, unvalidated radar-signature research; not an official warning"><input id="showV10ResearchAlerts" type="checkbox"> V10 storm signatures (experimental)</label></div>
+       <div class="note storm-v10-research-note">Hook shape, possible rotation, strong Doppler radial winds. Not surface gust forecasts or BoM warnings.</div>
       <div class="track-display-controls">
         <label title="Show or hide both storm-track points and labels"><input id="showTrackLabels" type="checkbox" checked> Labels</label>
         <select id="trackDisplayFilter" aria-label="Displayed storm track"><option value="">All tracks</option></select>
@@ -273,6 +275,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.16-bom-native-rain30-v1-cone-v2-time-v3-hold-v4-steer-v5-smooth-v6-warp-v7-synced-v8-perf-v9-trails-v10-recovery-v10-doppler-footer-rain3d-v2-bom-raw-png-v4-place-labels-v12-footer-fullwind-v13-sidebar-hardcut-v14"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.16-bom-native-rain30-v1-cone-v2-time-v3-hold-v4-steer-v5-smooth-v6-warp-v7-synced-v8-perf-v9-trails-v10-recovery-v10-doppler-footer-rain3d-v2-bom-raw-png-v4-place-labels-v12-footer-fullwind-v13-sidebar-hardcut-v14-v10-preview-icons-r1"></script>
 </body>
 </html>

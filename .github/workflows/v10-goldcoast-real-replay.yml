@@ -1,0 +1,69 @@
+name: V10 Christmas 2023 original Gold Coast radar replay
+on:
+  push:
+    branches: [feature/v10-severe-storm-candidates]
+    paths:
+      - ".github/workflows/v10-goldcoast-real-replay.yml"
+      - "scripts/extract-goldcoast-aura-v10.py"
+      - "scripts/replay-goldcoast-v10.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-level1-2023:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate existing storm detection contracts and replay entry
+        run: |
+          npm test
+          node --check scripts/replay-goldcoast-v10.mjs
+          python -m py_compile scripts/extract-goldcoast-aura-v10.py
+      - name: Install historical read-only AURA dependencies
+        run: python -m pip install --quiet numpy h5py pillow requests remotezip
+      - name: Download only the original Christmas event scans by ZIP HTTP range
+        run: |
+          python scripts/extract-goldcoast-aura-v10.py \
+            "$RUNNER_TEMP/goldcoast-v10-real" 66 50
+      - name: Run real measured radar V10 detection on both sources independently
+        run: |
+          node scripts/replay-goldcoast-v10.mjs \
+            "$RUNNER_TEMP/goldcoast-v10-real" \
+            "$RUNNER_TEMP/goldcoast-v10-observed-report.json" 66 50
+      - name: Verify radar identity source clocks and no fabricated observation
+        shell: bash
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const report=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/goldcoast-v10-observed-report.json","utf8"));
+            const raw=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/goldcoast-v10-real/source_manifest.json","utf8"));
+            if(report.results.length!==2 || raw.length!==2 || !report.data_kind.startsWith("original AURA")) {
+              throw Error("Missing verified independent radar sources");
+            }
+            for(const radar of report.results){
+              if(radar.observed_scans <8 ||
+                 radar.observation_window_utc[0].slice(0,10)!=="2023-12-25" ||
+                 radar.observation_window_utc[1].slice(0,10)!=="2023-12-25"){
+                throw Error("Failed original 2023 archive observation gate "+radar.source_radar);
+              }
+            }
+            console.log("GOLDCOAST_TWO_RADAR_REPLAY_VERIFIED",JSON.stringify(report.results.map(x=>({
+              radar:x.source_radar,measuredScans:x.observed_scans,candidates:x.v10_totals
+            }))));
+          '
+      - name: Upload scientific report and original-source manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoldCoast-Christmas2023-V10-real-AURA-66-50
+          path: |
+            ${{ runner.temp }}/goldcoast-v10-observed-report.json
+            ${{ runner.temp }}/goldcoast-v10-real/source_manifest.json
+          retention-days: 14
+          if-no-files-found: error

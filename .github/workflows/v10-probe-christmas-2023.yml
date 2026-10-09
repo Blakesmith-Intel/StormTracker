@@ -1,0 +1,39 @@
+name: Probe AURA Christmas 2023 Gold Coast radar archives
+on:
+  push:
+    branches: [feature/v10-severe-storm-candidates]
+    paths:
+      - ".github/workflows/v10-probe-christmas-2023.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe-historical-radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check NCI archives for both independent nearby radars
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' | tee christmas-2023-source-probe.txt
+          import urllib.request,urllib.error,json
+          for radar in ("66","50"):
+              url=f"https://dapds00.nci.org.au/thredds/fileServer/rq0/{radar}/2023/vol/{radar}_20231225.pvol.zip"
+              try:
+                  request=urllib.request.Request(url,method="HEAD",headers={"User-Agent":"StormTracker research v10 / historical radar source audit"})
+                  with urllib.request.urlopen(request,timeout=22) as response:
+                      print(json.dumps({"radar":radar,"url":url,"http":response.status,
+                        "size_bytes":response.headers.get("Content-Length"),
+                        "modified":response.headers.get("Last-Modified"),
+                        "range_supported":response.headers.get("Accept-Ranges"),
+                        "source_type":response.headers.get("Content-Type")}),flush=True)
+              except Exception as e:
+                  print(json.dumps({"radar":radar,"url":url,"error":str(e)}),flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Christmas-2023-GoldCoast-AURA-source-probe
+          path: christmas-2023-source-probe.txt
+          retention-days: 14

@@ -101,7 +101,7 @@ import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
 import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
-import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
+import { assessV10RadarFrame } from "./severe-storm-v10.js?v=10.0-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
@@ -2266,24 +2266,34 @@ function dopplerStateForFrame(
   );
 }
 
-function syncSevereStormAlerts(index) {
-  // Preserve the research implementation for isolated previews, but do not
-  // calculate or display experimental classifications in production.
-  return;
+function syncSevereStormAlerts(index, matchedWindRecord = null) {
+  // V10 research preview samples the ACTUAL independently decoded Doppler
+  // scan, never the obsolete/cleared V9 hybrid Doppler-analysis state.
+  // Analyses only source observations aligned by their authentic UTC clocks.
+  if (!$("showV10ResearchAlerts")?.checked) return;
   const frame = hybridFrames[index];
   const result = hybridResults[index];
-  const previousFrame = hybridFrames[index - 1] ?? null;
-  const previousResult = hybridResults[index - 1] ?? null;
-  const detection = buildSevereStormFrameAlerts({
-    frame, result, previousFrame, previousResult,
-    dopplerState: dopplerStateForFrame(index),
-    enableExperimentalHook: Boolean($("showExperimentalHookAlerts")?.checked)
+  let previousIndex = index - 1;
+  while (previousIndex >= 0 && frame &&
+    Date.parse(hybridFrames[previousIndex]?.observedUtc) >=
+      Date.parse(frame.observedUtc)) previousIndex--;
+  const windRecord = matchedWindRecord ??
+    (shouldDisplayDopplerForSelectedWindow() &&
+      hybridCombinedSchedule.length && index === hybridFrameIndex
+      ? independentDopplerRecord : null);
+  const detection = assessV10RadarFrame({
+    frame,
+    result,
+    previousFrame: hybridFrames[previousIndex] ?? null,
+    previousResult: hybridResults[previousIndex] ?? null,
+    dopplerState: windRecord ? { records: [windRecord] } : null
   });
   severeStormAlertOverlay.setFrame({
     alerts: detection.alerts,
     observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
-    windSupported: detection.windSourceSupported,
-    experimentalHook: Boolean($("showExperimentalHookAlerts")?.checked),
+    windSupported: false,
+    experimentalHook: true,
+    researchV10: true,
     displayedUtc: frame?.observedUtc ?? null,
     atNewestFrame: index === hybridFrames.length - 1
   });
@@ -3293,7 +3303,6 @@ async function showHybridFrame(index) {
     updateTrackDisplayControls(requestedIndex);
     applyHybridVolumeMode(requestedIndex);
     renderHybridTracks(requestedIndex);
-    syncSevereStormAlerts(requestedIndex);
     volumeConstructionMs=performance.now()-began;
     geometryCommitted=true;
   };
@@ -3330,6 +3339,9 @@ async function showHybridFrame(index) {
   // clocks finally advance together, never at the beginning of a render.
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
+  // Both source images are now committed. Evaluate experimental signatures
+  // without delaying or altering the measured BoM playback sequence.
+  syncSevereStormAlerts(requestedIndex, preparedWind?.record ?? null);
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
   // The handover has already presented the matching measured 3-D geometry
   // in the same Cesium frame as this source raster. Wind-only events reuse it.
@@ -4607,6 +4619,11 @@ function updateRenderedTrackLabels() {
   scene.requestRender();
 }
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
+$("showV10ResearchAlerts").addEventListener("change", event => {
+  if (!event.target.checked) severeStormAlertOverlay.setFrame();
+  severeStormAlertOverlay.setEnabled(event.target.checked);
+  if (event.target.checked) syncSevereStormAlerts(hybridFrameIndex);
+});
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
 $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {

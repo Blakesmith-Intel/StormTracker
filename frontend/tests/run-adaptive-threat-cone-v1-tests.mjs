@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { directPoint } from "../src/geo.js";
 import {
-  createAdaptiveThreatConeController, pointWithinIssuedThreatCone
+  createAdaptiveThreatConeController, pointWithinIssuedThreatCone,
+  evaluateChronologicalTrackThreatCone,
+  measuredTrackMotionAtObservation
 } from "../src/adaptive-threat-cone-v1.js";
 
 const origin={longitude:153,latitude:-27};
@@ -85,3 +87,58 @@ ageing.clear();
 assert.equal(ageing.evaluate(track(),observation(30,origin)).reason,"initial");
 assert.equal(controller().evaluate(track(),observation(0,origin)).cone.track_id,"ST0014");
 console.log("PASS adaptive +90m motion cones: observed breach, projected escape, turning, 30m ageing, rewind, stability, missing motion and reset.");
+
+// Regression: viewing 00:15, rewinding to 00:10 and replaying 00:15 must
+// produce identical source-time geometry. Never use the final track's
+// current motion for an earlier radar observation.
+const historical=[
+  observation(0,origin),
+  observation(5,step(origin,90,3.33)),
+  observation(10,step(origin,90,6.66)),
+  observation(15,step(step(origin,90,6.66),0,3.33))
+];
+const past={
+  track_id:"ST0014",
+  history:historical,
+  motion:{ heading_degrees:0, speed_kmh:140 }
+};
+const at10 = evaluateChronologicalTrackThreatCone(
+  past,historical[2],fakeBuild,{horizonMinutes:90},
+  {rolloverMinutes:30,turnThresholdDegrees:12,breachMarginKm:0.5}
+);
+const at15 = evaluateChronologicalTrackThreatCone(
+  past,historical[3],fakeBuild,{horizonMinutes:90},
+  {rolloverMinutes:30,turnThresholdDegrees:12,breachMarginKm:0.5}
+);
+const at10Repeated = evaluateChronologicalTrackThreatCone(
+  past,historical[2],fakeBuild,{horizonMinutes:90},
+  {rolloverMinutes:30,turnThresholdDegrees:12,breachMarginKm:0.5}
+);
+assert.equal(Math.round(at10.cone.heading_degrees),90,"early eastward track cannot inherit later northward motion");
+assert.equal(Math.round(at15.cone.heading_degrees),0);
+assert.ok(at15.rebased,"significant turn after 00:10 must reissue cone");
+assert.deepEqual(at10,at10Repeated,"scrubbing and loop restarts deterministically reproduce the same cone");
+assert.equal(at10.issue_observed_utc,historical[1].observed_utc);
+const truncated={...past,history:historical.slice(0,3),motion:{heading_degrees:180,speed_kmh:900}};
+assert.deepEqual(
+  evaluateChronologicalTrackThreatCone(truncated,historical[2],fakeBuild,{horizonMinutes:90},
+    {rolloverMinutes:30,turnThresholdDegrees:12,breachMarginKm:0.5}),
+  at10,
+  "future observations and latest-motion metadata have no effect on earlier cone"
+);
+assert.equal(
+  evaluateChronologicalTrackThreatCone(past,historical[0],fakeBuild).cone,
+  null,
+  "single source observation is insufficient to infer storm motion"
+);
+assert.equal(
+  evaluateChronologicalTrackThreatCone(past,observation(12,step(origin,90,7)),fakeBuild).cone,
+  null,
+  "must not invent a forecast at a timestamp without a genuine track observation"
+);
+assert.equal(
+  Math.round(measuredTrackMotionAtObservation(past,historical[2]).heading_degrees),
+  90
+);
+assert.ok(Math.abs(measuredTrackMotionAtObservation(past,historical[3]).heading_degrees)<1);
+console.log("PASS threat cone playback determinism, historical motion, future-data isolation, observed-only snapshots and scrubbing.");

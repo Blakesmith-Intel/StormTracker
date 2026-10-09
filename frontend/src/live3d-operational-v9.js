@@ -112,7 +112,10 @@ import {
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=operational-v9-1";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=threat-cone-v1-1";
-import { createAdaptiveThreatConeController } from "./adaptive-threat-cone-v1.js?v=9.16.2-adaptive";
+import {
+  evaluateChronologicalTrackThreatCone,
+  measuredTrackMotionAtObservation
+} from "./adaptive-threat-cone-v1.js?v=9.16.3-chronological";
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
@@ -626,14 +629,9 @@ let dopplerOverlayRenderToken =
 let selectedTrackDisplayId =
   "";
 
-// A single issued envelope per selected ST track, reassessed against every
-// subsequent *measured* observation rather than merely repainted per frame.
-const adaptiveThreatCones = createAdaptiveThreatConeController({
-  buildCone: buildTrackThreatCone,
-  rolloverMinutes: 30,
-  turnThresholdDegrees: 12,
-  breachMarginKm: 0.5
-});
+// Cone rendering is intentionally stateless: the source-time sequence of
+// real observed track positions completely determines each frame's cone.
+// A replayed frame cannot inherit geometry from a later displayed frame.
 
 // Independent alert markers render above 3-D weather and storm-ID labels.
 // Clicking a real candidate focuses its ST track without touching playback.
@@ -1591,7 +1589,10 @@ function updateTrackDisplayControls(index) {
     : null;
   const cone = $("showTrackThreatCone");
   const status = $("trackThreatConeStatus");
-  const canProject = Boolean(selectedTrackDisplayId && selectedTrack?.motion && observation);
+  const canProject = Boolean(
+    selectedTrackDisplayId && observation &&
+    measuredTrackMotionAtObservation(selectedTrack, observation)
+  );
   cone.disabled = !canProject;
   if (!selectedTrackDisplayId) cone.checked = false;
   if (status) {
@@ -1604,7 +1605,6 @@ function updateTrackDisplayControls(index) {
 }
 
 function resetTrackDisplaySelection() {
-  adaptiveThreatCones.clear(); // Never carry an issued envelope into another radar site.
   selectedTrackDisplayId = "";
   if ($("trackDisplayFilter")) $("trackDisplayFilter").value = "";
   if ($("showTrackThreatCone")) {
@@ -2846,13 +2846,14 @@ function renderHybridTracks(index) {
       }
 
       if (wanted === track.track_id && $("showTrackThreatCone")?.checked) {
-        // Compare genuine observations and the updated 30/60-minute motion
-        // projection against the previously issued cone. Reanchor when the
-        // path breaches, turns, or the envelope is due for renewal.
-        const projection = adaptiveThreatCones.evaluate(track, observation, {
-          horizonMinutes: 90,
-          directionChangeThresholdDegrees: 12
-        });
+        // Reconstruct the source-time envelope history through THIS measured
+        // scan only. Scrubbing and repeat loops cannot carry a forecast from
+        // a later frame back into an earlier one.
+        const projection = evaluateChronologicalTrackThreatCone(
+          track, observation, buildTrackThreatCone,
+          { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
+          { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5 }
+        );
         const cone = projection.cone;
         if (cone) {
           const coneAltitude = displayAltitude(350);
@@ -4251,7 +4252,6 @@ $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
 $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {
-  adaptiveThreatCones.clear(); // New explicit selection begins a fresh motion envelope.
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
   updateTrackDisplayControls(hybridFrameIndex);

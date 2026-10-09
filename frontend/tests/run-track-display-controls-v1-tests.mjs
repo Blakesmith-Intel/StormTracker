@@ -35,7 +35,7 @@ assert.ok(c0>=0&&c1>c0,"threat cone render block missing");
 const coneBlock=js.slice(c0,c1);
 assert.match(coneBlock,/const coneColour = colour\.withAlpha\(heldObservedUtc \? 0\.20 : 0\.30\)/);
 assert.match(coneBlock,/hybrid-threat-boundary-/);
-assert.match(coneBlock,/width:\s*4/);
+assert.match(coneBlock,/width:\s*heldObservedUtc \? 3 : 4/);
 assert.match(coneBlock,/pixelSize:\s*8/);
 assert.match(js,/evaluateChronologicalTrackThreatCone\(/);
 assert.match(js,/measuredTrackMotionAtObservation\(selectedTrack, observation\)/);

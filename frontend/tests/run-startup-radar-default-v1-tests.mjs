@@ -11,7 +11,8 @@ const runtime = read("../src/live3d-operational-v9.js");
 // Match the actual initial DOM selection before runtime JS loads.
 assert.match(html,
   /<select id="radarSite"[^>]*><option value="66" selected>Brisbane \(Mt Stapylton\)<\/option>/);
-assert.match(html, /<option value="SEQ">South-east Queensland \(regional\)<\/option>/);
+assert.doesNotMatch(html, /<option value="SEQ">/,
+  "Retired SEQ multi-radar selector is no longer offered");
 assert.doesNotMatch(html, /<option value="SEQ" selected>/);
 
 // Runtime must use the same physical radar for the source, camera and metadata,
@@ -34,4 +35,8 @@ assert.ok(Math.abs(stapylton.latitude + 27.718) < 0.01);
 assert.deepEqual(dopplerRadarsForRegion("66"), ["66"]);
 assert.notDeepEqual(reflectivityWindowForRegion("66"), reflectivityWindowForRegion("SEQ"));
 assert.equal(QLD_RADAR_SITES["66"].analysisGeorefVerified, true);
-console.log("Startup radar contract passed: Mt Stapylton 66 selected, centred and source-scoped, SEQ retained as option.");
+assert.match(html,/type="hidden" id="dopplerOverlayRadar"/,
+  "Primary radar selection must own Doppler behind the scenes");
+assert.match(runtime,/\$\("dopplerOverlayRadar"\)\.value=ids\[0\]\?\?""/,
+  "Internal Doppler source always follows the selected physical radar");
+console.log("Startup radar contract passed: one primary radar selection, no SEQ mosaic or separate Doppler site control.");

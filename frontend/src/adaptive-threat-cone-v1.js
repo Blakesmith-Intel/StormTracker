@@ -86,7 +86,10 @@ export function createAdaptiveThreatConeController({
       const turning = bearingDelta(
         Number(proposed.measured_heading_degrees),
         Number(previous.cone.measured_heading_degrees)
-      ) >= turnThresholdDegrees;
+      ) >= turnThresholdDegrees
+        && Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh
+        && (!Number.isFinite(Number(track?.motion?.distance_km))
+          || Number(track.motion.distance_km) >= minimumSteeringMotionKm);
       // A storm can gradually turn through a sequence of sub-12° changes.
       // The old rule compared only the last issued heading and allowed a
       // lagging three-segment mean to keep aiming along the previous course.

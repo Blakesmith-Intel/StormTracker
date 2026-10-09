@@ -47,22 +47,21 @@ const html=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",im
 const css=readFileSync(fileURLToPath(new URL("../src/operational-dashboard-v9-1.css",import.meta.url)),"utf8");
 assert.match(script,/playback = createContinuousPlayback\(/);
 assert.match(script,/independentDopplerRefresh = createLiveLoopRefresh\(/);
-assert.match(script,/function driveWindFromCommonPlayback\(/);
 assert.match(script,/preparedWind=await prepareWindForPlayback\(requestedIndex\)/);
-assert.match(script,/commitWindObservation\(preparedWind,\{updateUi:false\}\)/);
-assert.doesNotMatch(script,/driveWindFromCommonPlayback\(hybridFrameIndex\)/,
-  "radar timeline must not dispatch wind asynchronously after slider commit");
-assert.match(script,/nextNativeDopplerIndex\(windCycleCursor, independentDopplerFrames.length\)/);
-assert.match(script,/nearestIndependentDopplerFrameIndex\(/);
-assert.match(script,/windRenderPending/);
-assert.match(script,/showIndependentDopplerFrame\(next\)\.catch/);
+assert.match(script,/\? commitWindObservation\(preparedWind/);
+assert.match(script,/await dopplerImageryHandover\.replace\(/);
+assert.doesNotMatch(script,/showIndependentDopplerFrame\(/,
+  "Doppler source polling cannot independently paint an unmatched wind frame.");
+assert.match(script,/const \[surfaceApplied,windApplied\]=await Promise\.all\(\[/,
+  "Rain and Doppler image handovers must be concurrent.");
+assert.match(script,/\[surfaceApplied,windApplied\]=await Promise\.all\(\[\s*renderSurface\(frame,renderToken\)/);
+assert.doesNotMatch(script,/driveWindFromCommonPlayback\(/);
+assert.doesNotMatch(script,/interpolateRadarFrame\(|createRadarMotionTransition/);
+assert.doesNotMatch(script,/dopplerOverlayTransition|createDopplerLayerTransition/);
 assert.match(script,/const withDoppler = false/);
-assert.match(script,/const requestedInferred = requestedPlan.filter/);
 assert.match(script,/const timeline = radarHistoryTimeline\(radarTimes, shared\)/);
-assert.doesNotMatch(script,/independentDopplerPlayback/);
-assert.doesNotMatch(script,/dopplerFrameSlider/);
+assert.doesNotMatch(script,/independentDopplerPlayback|dopplerFrameSlider/);
 assert.doesNotMatch(script,/RADAR ONLY — Doppler unavailable/);
-assert.doesNotMatch(script,/buildRadarPrimaryProductTimeline\(\s*times, sources.histories/);
 assert.match(html,/id="hybridPlayButton"/);
 assert.match(html,/id="hybridFrameSlider"/);
 assert.match(html,/id="radarPlaybackTime"/);

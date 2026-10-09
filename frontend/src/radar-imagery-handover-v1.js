@@ -1,8 +1,8 @@
 // Browser-only, source-faithful Cesium radar imagery handover.
 //
-// Keep the previous measured/inferred image visible until the incoming image
-// has been added to the globe AND its queued imagery tiles have rendered.
-// Never expose the bare basemap between successive radar observations.
+// The prepared original BoM image is staged before the old image is removed.
+// Two Cesium render passes complete the swap; unrelated map and terrain tile
+// activity must never freeze weather playback.
 export function createRadarImageryHandover({
   imageryLayers, scene, setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout
@@ -69,7 +69,6 @@ export function createRadarImageryHandover({
     const ready = await new Promise(resolve => {
       let done = false;
       let frames = 0;
-      let consecutiveReady = 0;
       let detach = () => {};
       let deadline;
       const finish = ok => {
@@ -88,16 +87,11 @@ export function createRadarImageryHandover({
           return;
         }
         frames++;
-        // Cesium's documented signal covers queued terrain and imagery
-        // for this view. Two consecutive rendered frames avoid a single
-        // stale true immediately after the layer was inserted.
-        consecutiveReady = scene.globe?.tilesLoaded === true
-          ? consecutiveReady + 1 : 0;
-        if (frames >= 2 && consecutiveReady >= 2) {
-          finish(true);
-        } else {
-          scene.requestRender();
-        }
+        // SingleTileImageryProvider.fromUrl has already prepared this image.
+        // globe.tilesLoaded also waits for unrelated street/terrain imagery
+        // and previously froze the weather loop at a repeatable frame.
+        if (frames >= 2) finish(true);
+        else scene.requestRender();
       });
       deadline = setTimeoutImpl(() => finish(false), timeoutMs);
       scene.requestRender();

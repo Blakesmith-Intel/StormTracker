@@ -32,8 +32,8 @@ const tenMinuteCadence =
 
 assert.equal(radarHistoryCadenceMinutes(tenMinuteCadence), 10);
 const tenMinutePlan = buildRadarPlaybackPlan(tenMinuteCadence);
-assert.equal(tenMinutePlan.filter(entry => entry.kind === "inferred").length, 9);
-assert.equal(tenMinutePlan.length, 19);
+assert.equal(tenMinutePlan.filter(entry => entry.kind === "inferred").length, 0);
+assert.equal(tenMinutePlan.length, 10);
 assert.deepEqual(
   availableRadarLoopMinutes(tenMinuteCadence),
   [30, 60, 90]
@@ -43,13 +43,13 @@ const threeHourSparse =
   Array.from({ length: 19 }, (_, index) => stamp(index * 10));
 const threeHourPlan =
   buildRadarPlaybackPlan(threeHourSparse);
-assert.equal(threeHourPlan.length, 37);
+assert.equal(threeHourPlan.length, 19);
 assert.equal(threeHourPlan[0].observedUtc, stamp(0));
 assert.equal(threeHourPlan.at(-1).observedUtc, stamp(180));
 assert.ok(availableRadarLoopMinutes(threeHourSparse).includes(180));
 assert.equal(
   selectRadarHistoryPlan(threeHourSparse, 180).length,
-  36
+  18
 );
 
 const oneMissingScan = [
@@ -61,15 +61,8 @@ const oneMissingScan = [
   stamp(30)
 ];
 const oneMissingPlan = buildRadarPlaybackPlan(oneMissingScan);
-assert.ok(
-  oneMissingPlan.some(
-    entry =>
-      entry.kind === "inferred"
-      && entry.observedUtc === stamp(10)
-      && entry.beforeUtc === stamp(5)
-      && entry.afterUtc === stamp(15)
-  )
-);
+assert.deepEqual(oneMissingPlan.map(entry=>entry.observedUtc),oneMissingScan,
+  "An unpublished BoM observation remains absent.");
 
 const gappy = [
   stamp(0), stamp(5), stamp(10),
@@ -86,10 +79,7 @@ const maximumBridge = [
   stamp(0), stamp(MAX_TEMPORAL_INTERPOLATION_GAP_MINUTES),
   stamp(35), stamp(40), stamp(45)
 ];
-assert.ok(
-  buildRadarPlaybackPlan(maximumBridge)
-    .some(entry => entry.kind === "inferred")
-);
+assert.ok(buildRadarPlaybackPlan(maximumBridge).every(entry=>entry.kind==="observed"));
 
 const tooLargeGap = [stamp(0), stamp(35), stamp(40), stamp(45)];
 assert.deepEqual(
@@ -112,5 +102,5 @@ assert.deepEqual(
 );
 
 console.log(
-  "Radar-history checks passed: 3-hour-capable windows, bounded gap interpolation plans, cadence handling and large-gap rejection."
+  "Radar-history checks passed: 3-hour-capable windows, source-only observation plans, cadence handling and large-gap rejection."
 );

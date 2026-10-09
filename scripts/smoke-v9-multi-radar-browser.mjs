@@ -67,8 +67,8 @@ await page.route(/^https:\/\/stormtracker-bom-relay\.stormtracker-bom-relay\.wor
   }
 });
 const inspect=()=>page.evaluate(()=>window.__stormtrackerMultiRadarDiagnostics?.());
-async function waitFor(predicate,timeout=75000){
-  await page.waitForFunction(predicate,null,{timeout,polling:350});
+async function waitFor(predicate,timeout=75000,arg=null){
+  await page.waitForFunction(predicate,arg,{timeout,polling:350});
   return inspect();
 }
 async function screenshot(name){
@@ -187,10 +187,10 @@ try{
       input.dispatchEvent(new Event("input",{bubbles:true}));
       input.dispatchEvent(new Event("change",{bubbles:true}));
     },Math.max(0,sliderMax-2));
-    const stepped=await waitFor(()=>{
+    const stepped=await waitFor(originalUtc=>{
       const s=window.__stormtrackerMultiRadarDiagnostics?.();
-      return s?.primaryUtc && s.primaryUtc!==loadedUtc;
-    },60000);
+      return s?.primaryUtc && s.primaryUtc!==originalUtc;
+    },60000,loadedUtc);
     note("real-history-scrub",stepped);
     await screenshot("history-scrub");
   }else note("history-scrub-not-available",{sliderMax});

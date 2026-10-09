@@ -38,7 +38,10 @@ assert.match(runtime,/return isDopplerSourceActive\(\) && isCombinedDopplerWindo
 assert.doesNotMatch(runtime,/driveWindFromCommonPlayback\(/,
   "Removed a competing asynchronous wind advancement mechanism.");
 assert.match(runtime,/function renderDopplerOverlay\(\)[\s\S]*?if\(!shouldDisplayDopplerForSelectedWindow\(\)\)/);
-assert.match(runtime,/isCurrent:\(\)=>token===dopplerOverlayRenderToken/);
+assert.match(runtime,/isCurrent:\(\)=>renderToken===hybridSceneRenderToken/);
+assert.match(runtime,/shouldDisplayDopplerForSelectedWindow\(\) &&/);
+assert.doesNotMatch(runtime,/showIndependentDopplerFrame\(/,
+  "Background wind discovery never draws unmatched Doppler images.");
 assert.match(runtime,/await dopplerImageryHandover\.replace\(/);
 assert.match(runtime,/renderDopplerOverlay\(\);\s*updateIndependentDopplerUi\(\);\s*updateLoopButtonLabel\(\)/);
 assert.match(runtime,/independentDopplerRefresh = createLiveLoopRefresh\(/);

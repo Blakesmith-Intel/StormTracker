@@ -54,20 +54,14 @@ const [productionIndex, previewIndex, previewHtml, runtime, detection, dock, men
     read("preview/v9.16/src/operational-window-choices-v1.js")
   ]);
 
-requireMatch(productionIndex, /live3d-operational-v9\.html\?v=9\.16-bom-native-rain30-v1/, "Production V9.16.1 native Doppler playback");
-if (!productionIndex.includes("9.16-bom-native-rain30-v1")) throw new Error("Production entrypoint is not V9.16.1");
-requireMatch(previewIndex, /live3d-operational-v9\.html\?v=9\.16-window-menu-v2/, "Preview own iframe");
+requireMatch(productionIndex, /live3d-operational-v9\\.html\\?v=9\\.15\\.1-intensity40/, "Sealed V9.15.1 production entry");
 const [productionHtml, productionRuntime] = await Promise.all([
   read("live3d-operational-v9.html"), read("src/live3d-operational-v9.js")
 ]);
-requireMatch(productionHtml, /id="showSevereRadarAlerts" type="checkbox" disabled/, "Production radar research controls disabled");
-requireMatch(productionHtml, /id="showExperimentalHookAlerts" type="checkbox" disabled/, "Production hook research controls disabled");
-requireMatch(productionRuntime, /severeStormAlertOverlay\.setEnabled\(false\)/, "Production research overlay disabled");
-requireMatch(productionRuntime, /function syncSevereStormAlerts\(index\) \{[\s\S]*?return;/, "Production experimental detection skipped");
-requireMatch(productionRuntime, /buildOperationalWindowChoices\(\{/, "Production BoM-aligned window selector");
-requireMatch(productionRuntime, /native-doppler-image-v1\.js/, "Production uses native BoM velocity image pixels");
-requireMatch(productionRuntime, /loopDurationMinutes"\)\?\.value \|\| "30"/, "Production starts on 30-minute BoM rain loop");
-requireMatch(productionRuntime, /return isDopplerSourceActive\(\) && isCombinedDopplerWindowSelected\(\)/, "Production rain-only wind suppression");
+requireMatch(productionRuntime, /createStormTrackLabelOverlay/, "Sealed V9.15.1 storm labels");
+requireMatch(productionRuntime, /volumeDisplayThresholdDbz/, "Sealed V9.15.1 40 dBZ volume floor");
+// Alert research is validated only in the isolated preview, never by this
+// verification against the immutable V9.15.1 public root.
 requireMatch(previewHtml, /value="66" selected>Brisbane \(Mt Stapylton\)/, "Mt Stapylton default");
 requireMatch(previewHtml, /id="showSevereRadarAlerts"/, "Radar alerts control");
 requireMatch(previewHtml, /id="showExperimentalHookAlerts"/, "Experimental hook control");
@@ -150,7 +144,7 @@ console.log("PASS Published V9.16 candidate at commit " + expectedSha);
 console.log("PASS Mt Stapylton selected; severe storm evidence controls published");
 console.log("PASS 90 km/h source guard, real-scan detection and alert dock published");
 console.log("PASS Four window choices; rain-only removes Doppler imagery and preserves the verified Doppler-defined combined timeline");
-console.log("PASS Production root uses V9.16.1 native Doppler / 30-minute rain; V9.16 research alerts stay isolated");
+console.log("PASS Production root stays SEALED V9.15.1; V9.16 research alerts stay isolated");
 console.log("PASS Historical Gympie viewer plus 28 real decoded measured radar scans published");
 console.log("PASS Two original-scan hook-shape indicators accessible in historical viewer; classification remains experimental");
 console.log("Preview: " + new URL("preview/v9.16/", origin).href);

@@ -228,6 +228,12 @@ export function createDopplerLayerTransition({
       layer
     );
 
+    // Prepared wind imagery is staged UNDER the previous native scan.
+    // At presentation time it must move ABOVE that scan so a top-only
+    // fade can preserve 100% combined coverage across the transition.
+    if(previousLayer && nextAlpha===1 && typeof imageryLayers.raiseToTop==="function")
+      imageryLayers.raiseToTop(layer);
+
     currentLayer =
       layer;
 
@@ -294,9 +300,10 @@ export function createDopplerLayerTransition({
         * progress;
 
       previousLayer.alpha =
-        previousStartAlpha
-        * (1 - progress);
+        nextAlpha===1 ? 1 : previousStartAlpha*(1-progress);
 
+      // Full-opacity standalone wind frames composite OVER the existing
+      // fully opaque source. The basemap never shines through at mid-fade.
       requestRender();
 
       if (progress < 1) {

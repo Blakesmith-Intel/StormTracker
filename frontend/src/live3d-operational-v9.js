@@ -100,6 +100,7 @@ import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-pe
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
+import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
@@ -3015,6 +3016,7 @@ function renderHybridTracks(index) {
       if (trail.length >= 2) {
         hybridSource.entities.add({
           id: `hybrid-trail-${track.track_id}`,
+          show: Boolean($("showTrackLabels")?.checked),
           polyline: {
             positions: trail.map(item => Cesium.Cartesian3.fromDegrees(
               item.longitude, item.latitude, displayAltitude(item.altitude)
@@ -4431,7 +4433,10 @@ $("hybridPlayButton").addEventListener("click", () => {
 // Toggle BOTH tracking points and their labels on the CURRENT (even paused)
 // frame, without updating radar, volume primitives or the playback position.
 function updateRenderedTrackLabels() {
-  stormTrackLabelOverlay.setVisible(Boolean($("showTrackLabels")?.checked));
+  const show = Boolean($("showTrackLabels")?.checked);
+  stormTrackLabelOverlay.setVisible(show);
+  setStormTrackTrailVisibility(hybridSource.entities, show);
+  scene.requestRender();
 }
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));

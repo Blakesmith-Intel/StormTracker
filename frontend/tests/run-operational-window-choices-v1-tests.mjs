@@ -13,7 +13,7 @@ const choices=buildOperationalWindowChoices({
 assert.equal(choices.length,5,"one combined window, four BoM-aligned rain windows");
 assert.deepEqual(choices.map(x=>x.value),[DOPPLER_AVAILABLE_LOOP_VALUE,"30","60","120","180"]);
 assert.deepEqual(choices.map(x=>x.label),[
-  "Radar + Doppler — All available",
+  "Doppler — All available",
   "30 min — Rain radar (BoM standard)",
   "60 min — Rain radar (browser archive)",
   "120 min — Rain radar (browser archive)",

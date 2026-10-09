@@ -3329,7 +3329,11 @@ async function showHybridFrame(index) {
   // observed timestamp. At zero 3-D opacity, the original smooth rain preview
   // remains available without affecting scientific tracks.
   const hasVisibleVolume = Number($("volumeOpacity").value)>0;
-  const steps=(hybridCombinedSchedule.length || hasVisibleVolume) ? 0 :
+  // Multiple radar windows show only source-measured frames. Do not warp the
+  // primary image between scans while additional site images remain at a
+  // measured timestamp; that would create inconsistent cross-site playback.
+  const steps=(hybridCombinedSchedule.length || hasVisibleVolume ||
+    additionalRadarSiteIds.length) ? 0 :
     radarMotionStepsForSpeed(selectedPlaybackSpeed());
   const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&

@@ -2329,6 +2329,63 @@ function independentDopplerCanvas(radarId, record) {
   return record.nativeOverlay;
 }
 
+// Once decoded and projected, the same native BoM Doppler scan is reused
+// across every playback cycle. Provider preparation never changes UI state.
+function prepareNativeDopplerProvider(radarId,record) {
+  if(record.nativeProvider) return record.nativeProvider;
+  const raster=independentDopplerCanvas(radarId,record);
+  const promise=Cesium.SingleTileImageryProvider.fromUrl(
+    raster.canvas.toDataURL("image/png"),{rectangle:raster.rectangle}
+  );
+  record.nativeProvider=promise;
+  return promise;
+}
+async function prepareWindObservation(index) {
+  const radarId=$("dopplerOverlayRadar").value;
+  const frame=independentDopplerFrames[index];
+  if(!radarId || !frame)throw Error("No genuine Doppler observation for this shared step");
+  const record=frame.source_kind==="latest"
+    ? dopplerLatestRecords.get(radarId)
+    : await decodeHistoricalDopplerFrame(radarId,frame);
+  if(!record?.nativePanel?.data)throw Error("Native BoM Doppler image unavailable at "+frame.observedUtc);
+  const provider=await prepareNativeDopplerProvider(radarId,record);
+  return {radarId,index,frame,record,provider};
+}
+function commitWindObservation(prepared) {
+  if(!prepared || $("dopplerOverlayRadar").value!==prepared.radarId)
+    throw Error("Doppler site changed while preparing wind scan");
+  const {radarId,index,record,provider}=prepared;
+  const key=dopplerOverlayFrameKey(radarId,record);
+  if(dopplerOverlayTransition.currentKey!==key){
+    dopplerOverlayTransition.replace({
+      layer:new Cesium.ImageryLayer(provider),key,
+      alpha:Number($("dopplerOpacity").value)/100,
+      durationMs:0,
+      onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
+    });
+  }
+  independentDopplerIndexValue=index;
+  independentDopplerSourceId=radarId;
+  independentDopplerRecord=record;
+  windCycleCursor=index;
+  windLastRadarDriveKey=null;
+  updateIndependentDopplerUi();
+  $("dopplerOverlayCount").textContent=record.nativePanel.nativePixelCount.toLocaleString();
+  $("dopplerOverlayStatus").textContent=radarId+" · "+
+    formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
+  scene.requestRender();
+}
+async function prepareWindForPlayback(index) {
+  if(!shouldDisplayDopplerForSelectedWindow() || !hybridCombinedSchedule.length)
+    return null;
+  const scheduled=hybridCombinedSchedule[index];
+  if(!scheduled?.dopplerObservedUtc)throw Error("Combined window has no measured Doppler at frame "+index);
+  const next=independentDopplerFrames.findIndex(frame=>
+    frame.observedUtc===scheduled.dopplerObservedUtc);
+  if(next<0)throw Error("Combined wind scan is missing at "+scheduled.dopplerObservedUtc);
+  return prepareWindObservation(next);
+}
+
 function renderDopplerOverlay() {
   const radarId=$("dopplerOverlayRadar").value;
   renderDopplerVelocityLegend(radarId);
@@ -2357,14 +2414,12 @@ function renderDopplerOverlay() {
   const raster=independentDopplerCanvas(radarId,record);
   $("dopplerOverlayCount").textContent=raster.rendered.toLocaleString();
   if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
-  Cesium.SingleTileImageryProvider.fromUrl(raster.canvas.toDataURL("image/png"),{
-    rectangle:raster.rectangle
-  }).then(provider=>{
+  prepareNativeDopplerProvider(radarId,record).then(provider=>{
     if(token!==dopplerOverlayRenderToken||!shouldDisplayDopplerForSelectedWindow()||
        independentDopplerSourceId!==radarId)return;
     dopplerOverlayTransition.replace({
       layer:new Cesium.ImageryLayer(provider),key,alpha:opacity,
-      durationMs:dopplerCrossfadeDurationMs(),
+      durationMs:0,
       onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
     });
   }).catch(error=>{
@@ -2421,30 +2476,12 @@ function updateIndependentDopplerUi() {
 }
 
 async function showIndependentDopplerFrame(nextIndex) {
-  const radarId=$("dopplerOverlayRadar").value;
   const generation=++independentDopplerRequest;
-  if(!isDopplerSourceActive()||!independentDopplerFrames.length)return;
+  if(!isDopplerSourceActive() || !independentDopplerFrames.length)return;
   const index=Math.max(0,Math.min(independentDopplerFrames.length-1,Number(nextIndex)));
-  const frame=independentDopplerFrames[index];
-  let record;
-  try {
-    record=frame.source_kind==="latest"
-      ? dopplerLatestRecords.get(radarId)
-      : await decodeHistoricalDopplerFrame(radarId,frame);
-    if(!record?.nativePanel?.data)throw Error("Native BoM Doppler image unavailable");
-  } catch(error) {
-    if(generation===independentDopplerRequest){
-      $("dopplerOverlayStatus").textContent="Doppler "+frame.observedUtc+" unreadable: "+error.message;
-    }
-    throw error;
-  }
-  if(generation!==independentDopplerRequest || !isDopplerSourceActive()||
-     radarId!==$("dopplerOverlayRadar").value)return;
-  independentDopplerIndexValue=index;
-  independentDopplerSourceId=radarId;
-  independentDopplerRecord=record;
-  updateIndependentDopplerUi();
-  renderDopplerOverlay();
+  const prepared=await prepareWindObservation(index);
+  if(generation!==independentDopplerRequest || !isDopplerSourceActive())return;
+  commitWindObservation(prepared);
 }
 
 async function refreshIndependentDopplerHistory(automatic=false) {
@@ -3010,19 +3047,9 @@ async function showHybridFrame(index) {
     ? hybridFrames.findIndex(item => item.observedUtc === latestFrame.observedUtc)
     : -1;
 
-  hybridFrameIndex =
-    Math.max(
-      0,
-      Math.min(
-        hybridFrames.length - 1,
-        Number(index)
-      )
-    );
-
-  const frame =
-    hybridFrames[
-      hybridFrameIndex
-    ];
+  const requestedIndex =
+    Math.max(0,Math.min(hybridFrames.length-1,Number(index)));
+  const frame=hybridFrames[requestedIndex];
 
   // Actual BoM frames remain at their recorded source times and are the
   // ONLY frames delivered to storm science, Doppler or threat-cone analysis.
@@ -3033,7 +3060,7 @@ async function showHybridFrame(index) {
   const motionGeneration=visualMotionGeneration;
   const steps=radarMotionStepsForSpeed(selectedPlaybackSpeed());
   const canAnimate=steps>0 && playback.isPlaying() &&
-    previousVisibleIndex>=0 && hybridFrameIndex===previousVisibleIndex+1 &&
+    previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
     canMotionInterpolateRadar(previousFrame,frame);
   if(canAnimate){
     try{
@@ -3060,38 +3087,44 @@ async function showHybridFrame(index) {
     }
   }
   if(renderToken!==hybridSceneRenderToken)return;
-
-  syncFrameSlider(
-    $("hybridFrameSlider"),
-    hybridFrames.length,
-    hybridFrameIndex
-  );
-
-  const temporalInferred =
-    isTemporallyInferredRadarFrame(frame);
-
-  $("hybridFrameLabel").textContent =
-    `${hybridFrameIndex + 1}/${hybridFrames.length}${temporalInferred ? " · inferred" : ""}`;
-  updateDualSourceTimes();
-
-  const surfaceApplied =
-    await renderSurface(
-      frame,
-      renderToken
-    );
+  // Prepare the original-source wind texture BEFORE committing a new radar
+  // frame. Never announce a combined step that cannot display its real wind.
+  let preparedWind=null;
+  try{
+    preparedWind=await prepareWindForPlayback(requestedIndex);
+  }catch(error){
+    setStatus("Combined observation held: "+error.message,"warning");
+    return;
+  }
+  if(renderToken!==hybridSceneRenderToken)return;
+  const surfaceApplied=await renderSurface(frame,renderToken);
+  if(renderToken!==hybridSceneRenderToken)return;
 
   if (!surfaceApplied) {
     // A rejected tile handover must not leave the UI claiming an undrawn
     // observation. Keep the previous scan and retry normally on the next cycle.
-    if (previousVisibleIndex >= 0) {
-      hybridFrameIndex = previousVisibleIndex;
-      syncFrameSlider($("hybridFrameSlider"), hybridFrames.length, hybridFrameIndex);
-    }
     motionTransition.cancel();
     setStatus("New radar imagery is still loading. Retaining the previous radar frame.", "warning");
     return;
   }
-  latestFrame = frame;
+  if(preparedWind){
+    try{commitWindObservation(preparedWind);}
+    catch(error){
+      // Report a missing partner explicitly, rather than announcing the
+      // combination as one measured radar+wind state.
+      setStatus("Rain loaded; Doppler could not commit: "+error.message,"warning");
+      return;
+    }
+  }
+  // All requested imagery is now staged/committed. The UI cursor and source
+  // clocks finally advance together, never at the beginning of a render.
+  hybridFrameIndex=requestedIndex;
+  latestFrame=frame;
+  const temporalInferred=isTemporallyInferredRadarFrame(frame);
+  syncFrameSlider($("hybridFrameSlider"),hybridFrames.length,hybridFrameIndex);
+  $("hybridFrameLabel").textContent=
+    `${hybridFrameIndex+1}/${hybridFrames.length}${temporalInferred?" · inferred":""}`;
+  updateDualSourceTimes();
 
   renderInferredVolume(
     frame
@@ -3110,7 +3143,8 @@ async function showHybridFrame(index) {
   );
 
   syncSevereStormAlerts(hybridFrameIndex);
-  driveWindFromCommonPlayback(hybridFrameIndex);
+  // Combined wind was committed synchronously above; no asynchronous
+  // wind driver may overtake the now-visible radar/slider transaction.
 
   updateHybridSourceMetrics(
     frame

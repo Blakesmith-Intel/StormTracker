@@ -95,7 +95,7 @@ import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./
 import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.6-atomic";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.10-source-ready";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -1138,6 +1138,9 @@ async function renderSurface(frame,renderToken=null,{timeoutMs=2200}={}) {
     {
       alpha: Number($("radarOpacity").value) / 100,
       timeoutMs,
+      // prepareRadarSurfaceProvider only returns after source image decode.
+      // Global terrain/basemap tile requests must not stall this handover.
+      decodedSingleTile: true,
       isCurrent: () => renderToken == null ||
         renderToken === hybridSceneRenderToken
     }

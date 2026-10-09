@@ -1,14 +1,15 @@
 import { DOPPLER_AVAILABLE_LOOP_VALUE } from "./doppler-available-window-v1.js";
 
-export const RAIN_ONLY_LOOP_MINUTES = Object.freeze([60,120,180]);
+// The conventional BoM radar animation covers approximately 30 minutes.
+// Extended windows are StormTracker's browser-backed observation history.
+export const RAIN_ONLY_LOOP_MINUTES = Object.freeze([30,60,120,180]);
 
-// Exactly four visible selections, always in this order.
-// Source-dependent availability disables an option; it never adds extra modes.
 export function buildOperationalWindowChoices({
   combinedAvailable = false,
-  rainAvailableMinutes = []
+  rainAvailableMinutes = [],
+  rainHasFrames = false
 } = {}) {
-  const enabledMinutes = new Set(rainAvailableMinutes.map(Number));
+  const available = new Set(rainAvailableMinutes.map(Number));
   return [
     {
       value: DOPPLER_AVAILABLE_LOOP_VALUE,
@@ -17,8 +18,12 @@ export function buildOperationalWindowChoices({
     },
     ...RAIN_ONLY_LOOP_MINUTES.map(minutes => ({
       value: String(minutes),
-      label: minutes + " min — Rain radar only",
-      disabled: !enabledMinutes.has(minutes)
+      label: minutes === 30
+        ? "30 min — Rain radar (BoM standard)"
+        : minutes + " min — Rain radar (browser archive)",
+      disabled: minutes === 30
+        ? !(rainHasFrames || available.has(30))
+        : !available.has(minutes)
     }))
   ];
 }

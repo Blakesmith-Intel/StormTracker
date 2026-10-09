@@ -55,9 +55,8 @@ import {
   paletteFromLatestDopplerImage
 } from "./bom-doppler-history-spatial-v1.js?v=operational-v9-7";
 
-import {
-  geolocatedDopplerDisplaySamples
-} from "./bom-doppler-display-v2.js?v=operational-v9-7";
+import { extractNativeDopplerPanel, reprojectNativeDopplerPanel } from "./native-doppler-image-v1.js?v=9.16.1-native";
+import { resolveRainHistoryWindow } from "./rain-history-recovery-v1.js?v=9.16.1-history";
 
 import {
   buildTrackDopplerContexts
@@ -101,7 +100,7 @@ import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
 import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule } from "./doppler-available-window-v1.js?v=9.16-doppler-window";
 import { buildOperationalWindowChoices } from "./operational-window-choices-v1.js?v=9.16-four-windows";
-import { dopplerMapCoordinateToLonLat } from "./bom-doppler-georef-v1.js?v=9.16-independent";
+
 import { formatProductTime, formatProductTimeRange } from "./product-time-display-v1.js?v=operational-v9-3";
 import {
   radarHistoryTimeline,
@@ -662,7 +661,7 @@ function setStatus(message, kind = "normal") {
 }
 
 function selectedLoopSelection() {
-  return $("loopDurationMinutes")?.value || "60";
+  return $("loopDurationMinutes")?.value || "30";
 }
 
 function selectedLoopMinutes() {
@@ -714,9 +713,13 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   const selector = $("loopDurationMinutes");
   const previous = preserveSelection ? selector.value : "";
   const window = dopplerAvailableWindow(availableRadarHistoryTimes, independentDopplerFrames);
+  const rainAvailable = availableRadarLoopMinutes(availableRadarHistoryTimes);
+  // Native BoM rain playback starts at 30 minutes. Longer durations must be
+  // backed by published source history or this browser's rolling archive.
   const choices = buildOperationalWindowChoices({
     combinedAvailable: Boolean(window && isDopplerSourceActive()),
-    rainAvailableMinutes: availableRadarLoopMinutes(availableRadarHistoryTimes)
+    rainAvailableMinutes: rainAvailable,
+    rainHasFrames: availableRadarHistoryTimes.length > 0
   });
   const options = choices.map(choice => {
     const option = document.createElement("option");
@@ -730,8 +733,12 @@ function updateRadarHistoryOptions(times, { preserveSelection = true } = {}) {
   selector.disabled = sequenceLoading || !enabled.length;
   // Never silently switch a user's rain-only mode to combined Doppler just
   // because its requested duration is temporarily unavailable.
-  const selected = choices.some(choice => choice.value === previous)
-    ? previous : enabled[0]?.value ?? "";
+  const selected = choices.some(choice => choice.value === previous && !choice.disabled)
+    ? previous
+    : previous === DOPPLER_AVAILABLE_LOOP_VALUE && preserveSelection
+      ? previous
+      : enabled.some(choice => choice.value === "30")
+        ? "30" : enabled[0]?.value ?? "";
   if (selected) selector.value = selected;
   else selector.selectedIndex = -1;
   updateLoopButtonLabel();
@@ -1874,22 +1881,7 @@ async function decodeHistoricalDopplerFrame(
             }
           );
 
-        const displayDecoded =
-          geolocatedDopplerDisplaySamples(
-            radarId,
-            sourceImageData,
-            palette,
-            {
-              stride:
-                1,
-
-              includeZero:
-                false,
-
-              relaxedDistance:
-                24
-            }
-          );
+        const nativePanel = extractNativeDopplerPanel(sourceImageData, palette);
 
         return {
           radarId:
@@ -1920,11 +1912,8 @@ async function decodeHistoricalDopplerFrame(
           samples:
             decoded.samples,
 
-          displayPixelCount:
-            displayDecoded.displayPixelCount,
-
-          displaySamples:
-            displayDecoded.samples
+          displayPixelCount: nativePanel.nativePixelCount,
+          nativePanel
         };
       }
     )();
@@ -1990,22 +1979,7 @@ async function loadDopplerHistoriesAndPalettes() {
               }
             );
 
-          const displayLatest =
-            geolocatedDopplerDisplaySamples(
-              radarId,
-              latestImageData,
-              palette,
-              {
-                stride:
-                  1,
-
-                includeZero:
-                  false,
-
-                relaxedDistance:
-                  24
-              }
-            );
+          const nativePanel = extractNativeDopplerPanel(latestImageData, palette);
 
           return {
             radarId,
@@ -2042,11 +2016,8 @@ async function loadDopplerHistoriesAndPalettes() {
               samples:
                 decodedLatest.samples,
 
-              displayPixelCount:
-                displayLatest.displayPixelCount,
-
-              displaySamples:
-                displayLatest.samples
+              displayPixelCount: nativePanel.nativePixelCount,
+              nativePanel
             }
           };
         }
@@ -2379,35 +2350,31 @@ function renderDopplerVelocityLegend(
 
 }
 
-// The independent Doppler overlay has its own source-native geographic extent.
-// These observed Doppler pixels are never re-timestamped as reflectivity scans.
-function independentDopplerCanvas(radarId, samples) {
-  const boundary = [0,128,256,384,512].flatMap(t => [
-    dopplerMapCoordinateToLonLat(radarId,0,t),
-    dopplerMapCoordinateToLonLat(radarId,512,t),
-    dopplerMapCoordinateToLonLat(radarId,t,0),
-    dopplerMapCoordinateToLonLat(radarId,t,512)
-  ]);
-  const lons=boundary.map(p=>p.longitude),lats=boundary.map(p=>p.latitude);
-  const west=Math.min(...lons),east=Math.max(...lons);
-  const south=Math.min(...lats),north=Math.max(...lats);
-  const width=512,height=512;
-  const canvas=document.createElement("canvas");
-  canvas.width=width;canvas.height=height;
-  const context=canvas.getContext("2d");
-  if(!context)throw Error("No 2-D canvas available for independent Doppler display");
-  let rendered=0;
-  for(const point of samples){
-    const x=(point.longitude-west)/(east-west)*width;
-    const y=(north-point.latitude)/(north-south)*height;
-    if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>=width||y>=height)continue;
-    const rgb=point.palette_rgb;
-    context.fillStyle=rgb
-      ? "rgb("+rgb.join(" ")+")" : dopplerDisplayColour(point.velocity_kmh).toCssColorString();
-    context.fillRect(Math.round(x)-1,Math.round(y)-1,2,2);
-    rendered++;
-  }
-  return {canvas,rendered,rectangle:Cesium.Rectangle.fromDegrees(west,south,east,north)};
+// The original 512 × 512 BoM velocity panel supplies EVERY displayed RGB
+// pixel. Only the native velocity mask is retained; map/footer decoration is
+// excluded, and the original pixels are inverse-warped onto the map without
+// synthesising velocities or painting 2 × 2 decoded point squares.
+function independentDopplerCanvas(radarId, record) {
+  if (record.nativeOverlay) return record.nativeOverlay;
+  const projected = reprojectNativeDopplerPanel(radarId, record.nativePanel);
+  const canvas = document.createElement("canvas");
+  canvas.width = projected.width;
+  canvas.height = projected.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw Error("No 2-D canvas available for native BoM Doppler image");
+  context.putImageData(
+    new ImageData(projected.data, projected.width, projected.height),
+    0, 0
+  );
+  record.nativeOverlay = {
+    canvas,
+    rendered: record.nativePanel.nativePixelCount,
+    rectangle: Cesium.Rectangle.fromDegrees(
+      projected.bounds.west, projected.bounds.south,
+      projected.bounds.east, projected.bounds.north
+    )
+  };
+  return record.nativeOverlay;
 }
 
 function renderDopplerOverlay() {
@@ -2435,9 +2402,9 @@ function renderDopplerOverlay() {
     if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · independent Doppler";
     return;
   }
-  const raster=independentDopplerCanvas(radarId,record.displaySamples??record.samples??[]);
+  const raster=independentDopplerCanvas(radarId,record);
   $("dopplerOverlayCount").textContent=raster.rendered.toLocaleString();
-  if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · independent Doppler";
+  if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · native BoM Doppler imagery";
   Cesium.SingleTileImageryProvider.fromUrl(raster.canvas.toDataURL("image/png"),{
     rectangle:raster.rectangle
   }).then(provider=>{
@@ -2512,7 +2479,7 @@ async function showIndependentDopplerFrame(nextIndex) {
     record=frame.source_kind==="latest"
       ? dopplerLatestRecords.get(radarId)
       : await decodeHistoricalDopplerFrame(radarId,frame);
-    if(!record||!Array.isArray(record.displaySamples))throw Error("Decoded Doppler pixels unavailable");
+    if(!record?.nativePanel?.data)throw Error("Native BoM Doppler image unavailable");
   } catch(error) {
     if(generation===independentDopplerRequest){
       $("dopplerOverlayStatus").textContent="Doppler "+frame.observedUtc+" unreadable: "+error.message;
@@ -3312,11 +3279,14 @@ async function loadHybridSequence(automatic = false) {
   if (isCombined && !combinedRequested.length) {
     throw new Error("Radar + Doppler window requires published wind history and at least one readable radar observation in the window.");
   }
+  const rainWindow = isCombined ? null
+    : resolveRainHistoryWindow(availableRadarHistoryTimes, loopSelection);
+  const rainHistoryIncomplete = Boolean(rainWindow?.partial);
   const withDoppler = false; // Never gate measurements on identical timestamps.
   const requestedPlan = isCombined
     ? [...new Set(combinedRequested.map(entry=>entry.radarObservedUtc))]
         .map(observedUtc=>({kind:"observed",observedUtc}))
-    : selectRadarHistoryPlan(availableRadarHistoryTimes,loopSelection);
+    : rainWindow.plan;
   const times =
     requestedPlan
       .filter(entry => entry.kind === "observed")
@@ -3543,11 +3513,10 @@ async function loadHybridSequence(automatic = false) {
       kind:"observed",observedUtc:entry.radarObservedUtc
     }));
   } else {
-    try {
-      displayPlan = selectRadarHistoryPlan(frames.map(frame=>frame.observedUtc),loopSelection);
-    } catch {
-      displayPlan = selectRadarHistoryPlan(frames.map(frame=>frame.observedUtc),ALL_AVAILABLE_LOOP_VALUE);
-    }
+    displayPlan = resolveRainHistoryWindow(
+      frames.map(frame => frame.observedUtc),
+      loopSelection
+    ).plan;
   }
 
   const displayFrames = [];
@@ -3656,13 +3625,17 @@ async function loadHybridSequence(automatic = false) {
   $("operationalLoopWindow").textContent =
     isCombined
       ? `Radar + Doppler · ${Math.round(loopMinutes)} min / ${hybridCombinedSchedule.length} steps`
-      : loopSelection === ALL_AVAILABLE_LOOP_VALUE
-        ? `${Math.round(sharedTimeline.spanMinutes)} min available`
-        : `${loopMinutes} min loop`;
+      : rainHistoryIncomplete
+        ? `${Math.round(sharedTimeline.spanMinutes)} min available · collecting BoM scans`
+        : loopSelection === ALL_AVAILABLE_LOOP_VALUE
+          ? `${Math.round(sharedTimeline.spanMinutes)} min available`
+          : `${loopMinutes} min loop`;
   $("operationalLoopWindow").title =
     isCombined
       ? `${Math.round(loopMinutes)} min actual Doppler source window; both streams restart together`
-      : `${Math.round(sharedTimeline.spanMinutes)} min actual reflectivity span`;
+      : rainHistoryIncomplete
+        ? `Only ${Math.round(sharedTimeline.spanMinutes)} min of genuine recent reflectivity is currently available. Original BoM scan times are preserved.`
+        : `${Math.round(sharedTimeline.spanMinutes)} min actual reflectivity span`;
   $("sharedHistoryNote").title =
     `${formatProductTime(sharedTimeline.startUtc)} → ${formatProductTime(sharedTimeline.endUtc)}`;
   const inferredLoaded =
@@ -3679,6 +3652,7 @@ async function loadHybridSequence(automatic = false) {
       (frameFailures.summary ? ` · ${frameFailures.summary}` : "")
     : `${availableHistorySummary()} · Loaded ${observedLoaded} observed` +
       " reflectivity frames" +
+      (rainHistoryIncomplete ? ` · source history shorter than ${loopMinutes} min; showing available scans only` : "") +
       (inferredLoaded ? ` + ${inferredLoaded} inferred display frames` : "") +
       ` (${range})` +
       (shared.unavailableRadarIds.length ? ` · Doppler unavailable: ${shared.unavailableRadarIds.join(" / ")}` : "") +

@@ -16,12 +16,26 @@ export function createContinuousPlayback({ count, currentIndex, showFrame, delay
     onPlayingChange(true);
     // Queue behind a stopped render so rapid Pause/Play cannot overlap it.
     pending = pending.then(async () => {
+      // A rejected image handover must not trap us endlessly on the same
+      // unrenderable source frame. The last successfully displayed observation
+      // stays visible; the next attempt advances to the next genuine frame.
+      let cursor = currentIndex();
+      let failedSteps = 0;
       while (playing && token === generation && count() > 1) {
         const startedAt = performance.now();
-        await showFrame((currentIndex() + 1) % count());
+        const target = (cursor + 1) % count();
+        const presented = await showFrame(target);
         if (!playing || token !== generation) return;
-        // Old player waited AFTER image loading. Account for rendering time
-        // in the interval so costly tiles don't add a second delay.
+        if (presented === false) {
+          cursor = target;
+          failedSteps++;
+          if (failedSteps >= count() * 2)
+            throw new Error("Playback stopped: consecutive radar/Doppler frames could not be presented.");
+        } else {
+          cursor = currentIndex();
+          failedSteps = 0;
+        }
+        // Account for render time; never introduce an extra full-frame wait.
         const remaining = Math.max(0, delay() - (performance.now() - startedAt));
         if (remaining > 0) {
           await new Promise(resolve => setTimeout(resolve, remaining));

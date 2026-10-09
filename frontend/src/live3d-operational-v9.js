@@ -2726,6 +2726,127 @@ function formatSignedKmh(
   }${Number(value).toFixed(0)} km/h`;
 }
 
+// Render the same source-measured polygon on both observed frames and
+// intervening display-only interpolation. Holding is purely visual; the cone
+// is NEVER advanced, re-timestamped or re-scored from an inferred image.
+function renderIssuedThreatCone(track, projection, heldObservedUtc = null) {
+  const cone = projection?.cone;
+  if (!cone) return false;
+  const colour = trackColour(track.track_id);
+  const coneAltitude = displayAltitude(350);
+  const coneColour = colour.withAlpha(heldObservedUtc ? 0.20 : 0.30);
+  hybridSource.entities.add({
+    id: `hybrid-threat-cone-${track.track_id}`,
+    polygon: {
+      hierarchy: new Cesium.PolygonHierarchy(
+        cone.polygon.map(point => Cesium.Cartesian3.fromDegrees(
+          point.longitude, point.latitude, coneAltitude
+        ))
+      ),
+      perPositionHeight: true,
+      material: coneColour
+    }
+  });
+   const boundary = [...cone.polygon, cone.polygon[0]];
+  hybridSource.entities.add({
+    id: `hybrid-threat-boundary-${track.track_id}`,
+    polyline: {
+      positions: boundary.map(point => Cesium.Cartesian3.fromDegrees(
+        point.longitude, point.latitude, coneAltitude + 25
+      )),
+      width: heldObservedUtc ? 3 : 4,
+      material: colour.withAlpha(1.0),
+      depthFailMaterial: Cesium.Color.WHITE.withAlpha(0.85),
+      clampToGround: false
+    }
+  });
+   hybridSource.entities.add({
+    id: `hybrid-threat-centreline-${track.track_id}`,
+    polyline: {
+      positions: cone.centreline.map(point => Cesium.Cartesian3.fromDegrees(
+        point.longitude, point.latitude, coneAltitude + 35
+      )),
+      width: 3,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: colour.withAlpha(1.0),
+        dashLength: 12
+      }),
+      depthFailMaterial: colour.withAlpha(0.95),
+      clampToGround: false
+    }
+  });
+   for (const sample of cone.samples.filter(item => item.minutes_ahead > 0)) {
+    hybridSource.entities.add({
+      id: `hybrid-threat-marker-${track.track_id}-${sample.minutes_ahead}`,
+      position: Cesium.Cartesian3.fromDegrees(
+        sample.centre.longitude,
+        sample.centre.latitude,
+        coneAltitude + 45
+      ),
+      point: {
+        pixelSize: 8,
+        color: colour,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      },
+      label: {
+        text: `+${sample.minutes_ahead}m`,
+        font: "12px sans-serif",
+        pixelOffset: new Cesium.Cartesian2(0, -16),
+        fillColor: Cesium.Color.WHITE,
+        showBackground: true,
+        backgroundColor: Cesium.Color.BLACK.withAlpha(0.72),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      }
+    });
+  }
+   const status = $("trackThreatConeStatus");
+  if (status) {
+    const reason = {
+      initial: "issued",
+      "observed-outside": "repositioned: observed storm left earlier cone",
+      "projected-track-outside": "repositioned: updated motion leaves earlier cone",
+      "direction-change": "repositioned: storm changed direction",
+      "storm-advanced": "repositioned: measured storm advanced",
+      "rolling-refresh": "repositioned: 30-min refresh",
+      "timeline-rewound": "rebuilt for earlier observation"
+    }[projection.reason] ?? "within issued envelope";
+    status.textContent = heldObservedUtc
+      ? `${track.track_id}: holding last measured +90m cone from ${formatProductTime(heldObservedUtc, {compact:true})} · inferred radar frame, no new storm motion calculated.`
+      :
+      `${track.track_id}: +90m motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ` +
+      `heading ${cone.heading_degrees.toFixed(0)}° · ±${cone.heading_half_angle_degrees.toFixed(0)}° spread · ` +
+      `${reason}. Reassessed on every measured scan; not a forecast probability.`;
+  }
+  return true;
+}
+
+function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
+  const at = Date.parse(hybridFrames[index]?.observedUtc);
+  if (!Number.isFinite(at) || !trackId) return null;
+  for (let earlier = index - 1; earlier >= 0; earlier--) {
+    const sourceUtc = hybridFrames[earlier]?.observedUtc;
+    const sourceEpoch = Date.parse(sourceUtc);
+    if (!Number.isFinite(sourceEpoch) || sourceEpoch > at) continue;
+    const ageMinutes = (at - sourceEpoch) / 60000;
+    if (ageMinutes > maximumHoldMinutes) break;
+    const result = hybridResults[earlier];
+    if (!result) continue;
+    const track = (result.tracks ?? []).find(item => item.track_id === trackId);
+    if (!track) continue;
+    const observation = trackObservationForFrame(track, earlier);
+    if (!observation) continue;
+    const projection = evaluateChronologicalTrackThreatCone(
+      track, observation, buildTrackThreatCone,
+      { horizonMinutes:90, directionChangeThresholdDegrees:12 },
+      { rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5 }
+    );
+    if (projection.cone) return {track, projection, sourceUtc};
+  }
+  return null;
+}
+
 function renderHybridTracks(index) {
   const stormTrackMarkers = [];
   hybridSource.entities.suspendEvents();
@@ -2742,6 +2863,12 @@ function renderHybridTracks(index) {
       $("hybridPersistentCount").textContent = "0";
       $("hybridRows").innerHTML =
         '<div class="hybrid-muted">Temporally inferred radar display frame. Track identity, Doppler analysis and scoring use observed frames only.</div>';
+      if (selectedTrackId() && $("showTrackThreatCone")?.checked) {
+        const held = precedingMeasuredThreatCone(index, selectedTrackId());
+        if (held) renderIssuedThreatCone(held.track, held.projection, held.sourceUtc);
+        else $("trackThreatConeStatus").textContent =
+          "No recent measured motion cone available to hold at this inferred frame.";
+      }
       scene.requestRender();
       return;
     }
@@ -2846,104 +2973,13 @@ function renderHybridTracks(index) {
       }
 
       if (wanted === track.track_id && $("showTrackThreatCone")?.checked) {
-        // Reconstruct the source-time envelope history through THIS measured
-        // scan only. Scrubbing and repeat loops cannot carry a forecast from
-        // a later frame back into an earlier one.
+        // Deterministic cone from actual observations through this exact scan.
         const projection = evaluateChronologicalTrackThreatCone(
           track, observation, buildTrackThreatCone,
           { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
           { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5 }
         );
-        const cone = projection.cone;
-        if (cone) {
-          const coneAltitude = displayAltitude(350);
-          const coneColour = colour.withAlpha(0.30);
-          hybridSource.entities.add({
-            id: `hybrid-threat-cone-${track.track_id}`,
-            polygon: {
-              hierarchy: new Cesium.PolygonHierarchy(
-                cone.polygon.map(point => Cesium.Cartesian3.fromDegrees(
-                  point.longitude, point.latitude, coneAltitude
-                ))
-              ),
-              perPositionHeight: true,
-              material: coneColour
-            }
-          });
-
-          const boundary = [...cone.polygon, cone.polygon[0]];
-          hybridSource.entities.add({
-            id: `hybrid-threat-boundary-${track.track_id}`,
-            polyline: {
-              positions: boundary.map(point => Cesium.Cartesian3.fromDegrees(
-                point.longitude, point.latitude, coneAltitude + 25
-              )),
-              width: 4,
-              material: colour.withAlpha(1.0),
-              depthFailMaterial: Cesium.Color.WHITE.withAlpha(0.85),
-              clampToGround: false
-            }
-          });
-
-          hybridSource.entities.add({
-            id: `hybrid-threat-centreline-${track.track_id}`,
-            polyline: {
-              positions: cone.centreline.map(point => Cesium.Cartesian3.fromDegrees(
-                point.longitude, point.latitude, coneAltitude + 35
-              )),
-              width: 3,
-              material: new Cesium.PolylineDashMaterialProperty({
-                color: colour.withAlpha(1.0),
-                dashLength: 12
-              }),
-              depthFailMaterial: colour.withAlpha(0.95),
-              clampToGround: false
-            }
-          });
-
-          for (const sample of cone.samples.filter(item => item.minutes_ahead > 0)) {
-            hybridSource.entities.add({
-              id: `hybrid-threat-marker-${track.track_id}-${sample.minutes_ahead}`,
-              position: Cesium.Cartesian3.fromDegrees(
-                sample.centre.longitude,
-                sample.centre.latitude,
-                coneAltitude + 45
-              ),
-              point: {
-                pixelSize: 8,
-                color: colour,
-                outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 2,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-              },
-              label: {
-                text: `+${sample.minutes_ahead}m`,
-                font: "12px sans-serif",
-                pixelOffset: new Cesium.Cartesian2(0, -16),
-                fillColor: Cesium.Color.WHITE,
-                showBackground: true,
-                backgroundColor: Cesium.Color.BLACK.withAlpha(0.72),
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-              }
-            });
-          }
-
-          const status = $("trackThreatConeStatus");
-          if (status) {
-            const reason = {
-              initial: "issued",
-              "observed-outside": "repositioned: observed storm left earlier cone",
-              "projected-track-outside": "repositioned: updated motion leaves earlier cone",
-              "direction-change": "repositioned: storm changed direction",
-              "rolling-refresh": "repositioned: 30-min refresh",
-              "timeline-rewound": "rebuilt for earlier observation"
-            }[projection.reason] ?? "within issued envelope";
-            status.textContent =
-              `${track.track_id}: +90m motion cone · ${cone.speed_kmh.toFixed(0)} km/h · ` +
-              `heading ${cone.heading_degrees.toFixed(0)}° · ±${cone.heading_half_angle_degrees.toFixed(0)}° spread · ` +
-              `${reason}. Reassessed on every measured scan; not a forecast probability.`;
-          }
-        }
+        renderIssuedThreatCone(track, projection);
       }
 
       const top40Text = volume?.high_support_top_40_m_amsl != null

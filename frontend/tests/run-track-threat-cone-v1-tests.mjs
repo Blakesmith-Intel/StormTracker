@@ -37,4 +37,25 @@ assert.equal(turningCone.direction_change_detected, true);
 assert.ok(turningCone.direction_change_degrees >= 12);
 assert.equal(Math.round(turningCone.heading_degrees), 45);
 
+
+// The normal 3-segment smoother can lag a real small turn. When the
+// controller verifies steering, forced heading must point at the latest
+// geodesic motion, not the older weighted average.
+const shallowTurnTrack={
+  track_id:"ST0142",
+  history:[
+    {...history[0]},
+    {...history[1]},
+    { ...history[2], centroid_longitude:153.16, centroid_latitude:-26.995}
+  ],
+  motion:{speed_kmh:48,heading_degrees:85}
+};
+const smoothed=buildTrackThreatCone(shallowTurnTrack,shallowTurnTrack.history.at(-1));
+const steered=buildTrackThreatCone(shallowTurnTrack,shallowTurnTrack.history.at(-1),{
+  forceMeasuredHeading:true
+});
+assert.ok(Math.abs(smoothed.heading_degrees-85)>1,"test requires demonstrable smoothing lag");
+assert.equal(steered.heading_degrees,85,"a verified steering reissue must use the real measured heading");
+assert.equal(steered.steering_heading_applied,true);
+assert.equal(smoothed.steering_heading_applied,false);
 console.log("Track threat-cone checks passed: 90-minute motion extrapolation, 12-degree direction-change response and footprint/heading-spread widening.");

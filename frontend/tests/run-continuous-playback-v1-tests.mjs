@@ -60,4 +60,14 @@ let oneRendered = false;
 const single = createContinuousPlayback({count:()=>1,currentIndex:()=>0,delay:()=>1,showFrame:async()=>{oneRendered=true;}});
 await single.play();
 assert.equal(oneRendered, false);
-console.log('9 continuous-playback checks passed.');
+let stalledMessages=[];
+const stalled=createContinuousPlayback({
+  count:()=>6,currentIndex:()=>3,delay:()=>1,
+  showFrame:async()=>false,
+  onError:error=>stalledMessages.push(error.message)
+});
+await stalled.play();
+assert.equal(stalled.isPlaying(),false);
+assert.equal(stalledMessages.length,1,"failed frame must not be retried indefinitely");
+assert.match(stalledMessages[0],/paused rather than retrying/);
+console.log('10 continuous-playback checks passed.');

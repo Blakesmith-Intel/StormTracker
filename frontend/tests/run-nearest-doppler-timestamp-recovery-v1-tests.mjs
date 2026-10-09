@@ -50,6 +50,10 @@ assert.match(script,/independentDopplerRefresh = createLiveLoopRefresh\(/);
 assert.match(script,/preparedWind=await prepareWindForPlayback\(requestedIndex\)/);
 assert.match(script,/await commitWindObservation\(preparedWind/);
 assert.match(script,/await dopplerImageryHandover\.replace\(/);
+assert.doesNotMatch(script,/showIndependentDopplerFrame\(/,
+  "Doppler source polling cannot independently paint an unmatched wind frame.");
+assert.match(script,/const \[surfaceApplied,windApplied\]=await Promise\.all\(\[/,
+  "Rain and Doppler image handovers must be concurrent.");
 assert.match(script,/await renderSurface\(frame,renderToken\)/);
 assert.doesNotMatch(script,/driveWindFromCommonPlayback\(/);
 assert.doesNotMatch(script,/interpolateRadarFrame\(|createRadarMotionTransition/);

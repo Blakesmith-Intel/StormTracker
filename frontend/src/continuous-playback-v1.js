@@ -18,8 +18,11 @@ export function createContinuousPlayback({ count, currentIndex, showFrame, delay
     pending = pending.then(async () => {
       while (playing && token === generation && count() > 1) {
         const startedAt = performance.now();
-        await showFrame((currentIndex() + 1) % count());
+        const displayed = await showFrame((currentIndex() + 1) % count());
         if (!playing || token !== generation) return;
+        if (displayed === false) {
+          throw new Error("Radar frame could not be displayed. Playback paused rather than retrying the same frame forever.");
+        }
         // Old player waited AFTER image loading. Account for rendering time
         // in the interval so costly tiles don't add a second delay.
         const remaining = Math.max(0, delay() - (performance.now() - startedAt));

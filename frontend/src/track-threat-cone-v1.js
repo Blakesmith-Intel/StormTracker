@@ -76,6 +76,7 @@ export function buildTrackThreatCone(
     maximumFootprintRadiusKm = 25,
     directionChangeThresholdDegrees = 12,
     smoothingSegments = 3,
+    maximumCredibleSpeedKmh = 160,
     forceMeasuredHeading = false
   } = {}
 ) {
@@ -87,6 +88,9 @@ export function buildTrackThreatCone(
 
   if (
     !(speedKmh > 0)
+    // A sudden track-ID centroid jump must not generate a statewide cone.
+    // Withhold the extrapolation instead of silently clamping measured motion.
+    || speedKmh > maximumCredibleSpeedKmh
     || !Number.isFinite(measuredHeadingDegrees)
     || !Number.isFinite(longitude)
     || !Number.isFinite(latitude)

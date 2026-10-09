@@ -2424,6 +2424,10 @@ async function prepareWindObservation(index) {
   return {radarId,index,frame,record,provider};
 }
 function commitWindObservation(prepared,{updateUi=true}={}) {
+  // Never restore wind from a stale asynchronous render after rain-only
+  // selection has already removed the combined Doppler layer.
+  if (!shouldDisplayDopplerForSelectedWindow())
+    throw Error("Combined Doppler display was disabled during wind preparation");
   if(!prepared || $("dopplerOverlayRadar").value!==prepared.radarId)
     throw Error("Doppler site changed while preparing wind scan");
   const {radarId,index,record,provider}=prepared;
@@ -4388,6 +4392,10 @@ $("terrainEnabled").addEventListener(
 
 $("loopDurationMinutes").addEventListener("change", () => {
   motionTransition.cancel();
+  // Invalidate any pending combined-frame handover BEFORE clearing Doppler.
+  // Otherwise an awaiting native BoM image can resurrect the outgoing wind.
+  ++hybridSceneRenderToken;
+  ++independentDopplerRequest;
   // Apply the visible-mode boundary immediately, before the new radar
   // history finishes loading. Doppler's source cache remains untouched.
   renderDopplerOverlay();

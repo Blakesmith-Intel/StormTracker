@@ -177,7 +177,7 @@ import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
-} from "./doppler-layer-transition-v1.js?v=9.9.1";
+} from "./doppler-layer-transition-v1.js?v=9.16.13-opaque-crossfade";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";

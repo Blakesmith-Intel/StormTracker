@@ -4634,17 +4634,24 @@ $("volumeOpacity").addEventListener("input", event => {
 });
 
 $("dopplerOverlayRadar").addEventListener("change", async () => {
+  const windMode=isNativeDopplerPlayback();
+  ++hybridSceneRenderToken;
   ++independentDopplerRequest;
+  if(windMode) await playback.pause();
   independentDopplerFrames=[];
   independentDopplerIndexValue=0;
   independentDopplerRecord=null;
   independentDopplerSourceId=null;
+  windPlaybackFrames=[];
   clearDopplerOverlay();
   updateIndependentDopplerUi();
   if(isDopplerSourceActive()){
-    refreshIndependentDopplerHistory(false).catch(error=>{
+    try {
+      await refreshIndependentDopplerHistory(false);
+      if(windMode) await runSourceLoad(()=>loadDopplerSequence(false));
+    } catch(error) {
       $("dopplerOverlayStatus").textContent=error.message;
-    });
+    }
   }
 });
 

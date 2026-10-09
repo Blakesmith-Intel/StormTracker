@@ -57,7 +57,7 @@ function recentMotions(track, observation, maximumSegments = 5) {
     );
 
     if (Number.isFinite(speed) && Number.isFinite(heading)) {
-      motions.push({ speed_kmh: speed, heading_degrees: heading });
+      motions.push({ speed_kmh: speed, heading_degrees: heading, distance_km: distance });
     }
   }
 
@@ -100,18 +100,30 @@ export function buildTrackThreatCone(
   }
 
   const recent = recentMotions(track, observation);
+  // When a radar centroid barely moves, its bearing is numerically unstable.
+  // Tiny positions must not carry the same steering weight as a real 3 km
+  // measured shift; do not invent a heading from display-interpolated data.
+  const stableDirections = recent.filter(item =>
+    item.speed_kmh >= 12 && item.distance_km >= 1.25
+  );
+  const headingHistory = stableDirections.length ? stableDirections : recent;
   const smoothingCount = Math.max(1, Math.floor(Number(smoothingSegments) || 3));
   const previousHeadingDegrees = circularMeanDegrees(
-    recent.slice(0, -1).slice(-smoothingCount).map(item => item.heading_degrees)
+    headingHistory.slice(0, -1).slice(-smoothingCount).map(item => item.heading_degrees)
   );
   const directionChangeDegrees = previousHeadingDegrees == null
     ? 0
     : angularDifferenceDegrees(measuredHeadingDegrees, previousHeadingDegrees);
+  // Legacy measured-motion fixtures omit displacement; measured live tracks
+  // always include geodesic distance and must pass this evidence check.
+  const sourceMotionDistance = Number(motion?.distance_km);
+  const measuredSteeringSupported = !Number.isFinite(sourceMotionDistance) ||
+    (speedKmh >= 12 && sourceMotionDistance >= 1.25);
   const directionChangeDetected =
-    previousHeadingDegrees != null
-    && directionChangeDegrees >= Number(directionChangeThresholdDegrees);
+    previousHeadingDegrees != null && measuredSteeringSupported &&
+    directionChangeDegrees >= Number(directionChangeThresholdDegrees);
   const smoothedHeadingDegrees = circularMeanDegrees(
-    recent.slice(-smoothingCount).map(item => item.heading_degrees)
+    headingHistory.slice(-smoothingCount).map(item => item.heading_degrees)
   ) ?? measuredHeadingDegrees;
   // A verified new steering heading must be allowed to overrule the
   // three-segment smoother. The smoother remains for ordinary noisy frames.
@@ -119,9 +131,9 @@ export function buildTrackThreatCone(
     ? measuredHeadingDegrees
     : smoothedHeadingDegrees;
 
-  const recentHeadingDeviation = recent.length
+  const recentHeadingDeviation = headingHistory.length
     ? Math.max(
-        ...recent.map(item =>
+        ...headingHistory.map(item =>
           angularDifferenceDegrees(item.heading_degrees, headingDegrees)
         )
       )

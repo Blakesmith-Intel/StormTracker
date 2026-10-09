@@ -2610,6 +2610,13 @@ async function refreshIndependentDopplerHistory(automatic=false) {
       // layer to newest and desynchronise an already playing shared cycle.
       return;
     }
+    if (!shouldDisplayDopplerForSelectedWindow()) {
+      // Keep genuine source history fresh in rain-only mode, but don't decode
+      // or commit wind imagery until a combined window is explicitly selected.
+      // This avoids unnecessary CPU work and a stale wind-layer resurrection.
+      windCycleCursor=nextIndex;
+      return;
+    }
     // A single bad historical PNG cannot prevent the remainder from playing.
     let loaded=false;
     for(let offset=0;offset<frames.length;offset++){

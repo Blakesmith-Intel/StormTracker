@@ -2452,7 +2452,7 @@ async function commitWindObservation(prepared,{updateUi=true,renderToken=null}={
     // and allowed to render before the short display-only blend begins.
     const handover=await dopplerOverlayTransition.replacePrepared({
       layer:new Cesium.ImageryLayer(provider),key,
-      alpha:Number($("dopplerOpacity").value)/100,
+      alpha:1, // native standalone Doppler is always fully opaque
       durationMs:dopplerCrossfadeDurationMs(),
       onAdded:()=>{if(surfaceLayer)viewer.imageryLayers.raiseToTop(surfaceLayer);}
     });
@@ -2504,7 +2504,7 @@ function renderDopplerOverlay() {
     return;
   }
   const key=dopplerOverlayFrameKey(radarId,record);
-  const opacity=Number($("dopplerOpacity").value)/100;
+  const opacity=1; // standalone Doppler is fixed at 100%
   if(key&&dopplerOverlayTransition.currentKey===key){
     dopplerOverlayTransition.setOpacity(opacity);
     if(status)status.textContent=radarId+" · "+formatDopplerUtc(record.observedUtc)+" · independent Doppler";
@@ -4627,8 +4627,8 @@ $("showTrackThreatCone").addEventListener("change", () => {
   if(!isNativeDopplerPlayback()) renderHybridTracks(hybridFrameIndex);
 });
 
-// Doppler source is automatic; opacity 0 hides it without discarding its data.
-// Opacity changes only rendered colours, never decoded samples or tracking.
+// Doppler is a separate native display with fixed 100% opacity.
+// Radar and inferred 3-D opacity remain independent.
 $("radarOpacity").addEventListener("input", event => {
   motionTransition.cancel();
   const opacity = Number(event.target.value) / 100;
@@ -4637,19 +4637,9 @@ $("radarOpacity").addEventListener("input", event => {
   surfaceLayer = radarImageryHandover.currentLayer;
   scene.requestRender();
 });
-$("dopplerOpacity").addEventListener("input", event => {
-  motionTransition.cancel();
-  const opacity = Number(event.target.value) / 100;
-  $("dopplerOpacityValue").textContent = `${event.target.value}%`;
-  dopplerOverlayTransition.setOpacity(
-    opacity
-  );
-  scene.requestRender();
-});
-
 // Display-only point transparency: retained measured source reflectivity and
 // empirical 3-D intensity calculations do not change. No radar/2-D surface
-// opacity or Doppler opacity is altered.
+// opacity is altered; standalone Doppler always stays fully opaque.
 $("volumeOpacity").addEventListener("input", event => {
   const percent=Number(event.target.value);
   $("volumeOpacityValue").textContent=`${percent}%`;

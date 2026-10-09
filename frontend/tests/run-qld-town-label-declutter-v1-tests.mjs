@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {labelBudget,townLabelBox,boxesOverlap,greatCircleKm,
-  rankQueenslandTowns,layoutTownLabels,townLabelTypography}
+  rankQueenslandTowns,layoutTownLabels,townLabelTypography,
+  geographicPlaceNameKey,sameGeographicSettlement}
   from "../src/context-layers/qld-town-label-declutter-v1.js";
 
 assert.equal(labelBudget(390,350,4_000_000,"street"),0);
@@ -73,4 +74,22 @@ const sticky=layoutTownLabels({
   previousVisible:["a"]
 });
 assert.equal(sticky[0].id,"a");
+// Pentland can arrive from both QLD population centres and gazetteer
+// under different official IDs and slightly different coordinates.
+const pentlandA={id:"town:pentland",name:"Pentland",latitude:-20.525,longitude:145.400};
+const pentlandB={id:"gazetteer:pentland",name:"PENTLAND (Charters Towers Shire)",latitude:-20.545,longitude:145.425};
+assert.equal(geographicPlaceNameKey(pentlandB.name),"pentland");
+assert.ok(sameGeographicSettlement(pentlandA,pentlandB));
+assert.ok(!sameGeographicSettlement(pentlandA,{...pentlandB,longitude:151}),
+  "A genuinely distant same-name locality is NOT discarded");
+const duplicates=layoutTownLabels({
+  candidates:[
+    {...pentlandA,x:220,y:225,priority:150,population:200},
+    {...pentlandB,x:400,y:225,priority:120,population:200},
+    {id:"other",name:"Hughenden",x:600,y:225,priority:110,population:800}
+  ],width:1000,height:600,cameraHeight:900000,mode:"qld-imagery"
+});
+assert.equal(duplicates.filter(p=>geographicPlaceNameKey(p.name)==="pentland").length,1,
+  "Two geographic feeds must never produce duplicate Pentland names even when their screen anchors are apart");
+assert.equal(duplicates.length,2);
 console.log("PASS adaptive rural Queensland label density, statewide desktop distribution, Street+imagery, collisions and mobile bounds.");

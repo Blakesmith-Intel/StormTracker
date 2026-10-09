@@ -446,6 +446,12 @@ export function createDopplerLayerTransition({
         typeof imageryLayers.indexOf!=="function")
       return replace({layer,key,alpha,durationMs,onAdded});
     cancelStage();
+    // On a rapid playback step, finish the outgoing scan at the selected
+    // opacity before preparing another transition. Otherwise cancelling a
+    // half-finished blend can expose the basemap through both wind layers.
+    cancelAnimation();
+    removeStaleLayers(currentLayer);
+    if(currentLayer) currentLayer.alpha=targetAlpha;
     const token=stageGeneration;
     stagedLayer=layer;
     layer.alpha=0.001;

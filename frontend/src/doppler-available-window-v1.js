@@ -47,3 +47,11 @@ export function buildDopplerAvailableSchedule(radarTimes,dopplerFrames) {
     isRadarObservation:radar.includes(t)
   }));
 }
+
+// Dedicated Doppler playback: one actual BoM wind observation per UI step.
+// Reflectivity continues to be processed independently for measured science,
+// but its timestamps never add frames to the displayed wind loop.
+export function buildDopplerOnlySchedule(radarTimes, dopplerFrames) {
+  return buildDopplerAvailableSchedule(radarTimes,dopplerFrames)
+    .filter(step=>step.isDopplerObservation);
+}

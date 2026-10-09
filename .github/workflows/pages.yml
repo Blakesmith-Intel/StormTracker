@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # Required only to create the immutable release tag after verified Pages deployment
   actions: read
   pages: write
   id-token: write
@@ -29,20 +29,24 @@ jobs:
           node-version: "24"
       - name: Validate current development source
         run: npm test
-      - name: Checkout sealed V9.15.1 production source
+      - name: Checkout sealed V9.16.14 production source
         uses: actions/checkout@v4
         with:
-          # Immutable accepted production reference. Never deploy main/frontend
-          # as the production root while experimental branches are under review.
-          ref: 7e4315754baae55aa288306cd05ecd39ae22ff75
-          path: sealed-production/v9.15.1
+          # Exact, green-reviewed release merge commit. Never deploy unpinned main.
+          ref: fd0e4bdfe294004338624475ba4bfaeea5e5f1e0
+          path: sealed-production/v9.16.14
           persist-credentials: false
-      - name: Verify and test sealed production source
+      - name: Verify and test V9.16.14 release source
         run: |
           set -euo pipefail
-          (cd sealed-production/v9.15.1 && npm test)
-          test "$(git -C sealed-production/v9.15.1 rev-parse HEAD)" = "7e4315754baae55aa288306cd05ecd39ae22ff75"
-          grep -Fq 'v=9.15.1-intensity40' sealed-production/v9.15.1/frontend/index.html
+          (cd sealed-production/v9.16.14 && npm test)
+          node --check sealed-production/v9.16.14/relay/worker.js
+          test "$(git -C sealed-production/v9.16.14 rev-parse HEAD)" = "fd0e4bdfe294004338624475ba4bfaeea5e5f1e0"
+          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.16.14/frontend/index.html
+          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.16.14/frontend/live3d-operational-v9.html
+          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.16.14/frontend/live3d-operational-v9.html
+          test -f sealed-production/v9.16.14/frontend/src/storm-track-trail-visibility-v1.js
+          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.16.14/frontend/src/live3d-operational-v9.js
 
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
@@ -239,18 +243,20 @@ jobs:
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 
-      - name: Construct published site from SEALED production plus isolated previews
+      - name: Construct published site from V9.16.14 SEALED production plus isolated previews
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p published-site
-          cp -a sealed-production/v9.15.1/frontend/. published-site/
+          cp -a sealed-production/v9.16.14/frontend/. published-site/
+          printf 'StormTracker V9.16.14 release %s\n' 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' > published-site/BUILD.txt
           mkdir -p published-site/preview
           cp -a frontend/preview/. published-site/preview/
-          cmp sealed-production/v9.15.1/frontend/index.html published-site/index.html
-          cmp sealed-production/v9.15.1/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
-          grep -Fq 'v=9.15.1-intensity40' published-site/index.html
-          ! grep -Fq 'v8-perf-v9' published-site/index.html
+          cmp sealed-production/v9.16.14/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.16.14/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
+          grep -Fq 'sidebar-hardcut-v14' published-site/index.html
+          ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
+          grep -Fq 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' published-site/BUILD.txt
           test -f published-site/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
           grep -Fq '2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e' published-site/preview/v9.16.13/BUILD.txt
           test -f published-site/preview/v9.16.12/src/context-layers/qld-town-label-layer-v1.js
@@ -258,31 +264,58 @@ jobs:
           test -f published-site/preview/v9.16.11/src/doppler-layer-transition-v1.js
           test -f published-site/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
           grep -Fq 'f4927fea810833230bce1af65df80ee2e3b59661' published-site/preview/v9.16.10/BUILD.txt
-          echo "Deployment payload: SEALED V9.15.1 root + immutable V9.16.10 preview only"
+          echo "Deployment payload: SEALED V9.16.14 production root + original previews"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: published-site
-      - name: Deploy sealed V9.15.1 root and isolated previews
+      - name: Deploy sealed V9.16.14 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify immutable production root after Pages deployment
+      - name: Verify V9.16.14 publicly served production root
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           set -euo pipefail
           base="${PAGES_URL%/}"
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$base/index.html" | grep -Fq 'v=9.15.1-intensity40'
-          echo "Verified sealed V9.15.1 public root; development source never published there"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          build="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' <<< "$build"
+          index="$(retry_curl "$base/index.html")"
+          grep -Fq 'sidebar-hardcut-v14' <<< "$index"
+          html="$(retry_curl "$base/live3d-operational-v9.html")"
+          grep -Fq 'V9.16.14 streamlined operational sidebar' <<< "$html"
+          if grep -Fq 'id="dopplerOpacity"' <<< "$html"; then exit 1; fi
+          if grep -Fq 'id="operationalDoppler"' <<< "$html"; then exit 1; fi
+          wind="$(retry_curl "$base/src/native-doppler-image-v1.js")"
+          grep -Fq 'NATIVE_DOPPLER_ANNOTATION_START_ROW = 438' <<< "$wind"
+          echo "Verified original BoM Doppler hard crop, cleaned live production UI and commit fd0e4bdfe294004338624475ba4bfaeea5e5f1e0"
 
-      - name: Verify published V9.16 and stable V9.15.1 URLs
+      - name: Verify published V9.16 research preview and current sealed production
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
+          PRODUCTION_MARKER="sidebar-hardcut-v14" EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
 
+      - name: Seal verified production tag v9.16.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="fd0e4bdfe294004338624475ba4bfaeea5e5f1e0"
+          git fetch --tags origin
+          if git rev-parse -q --verify "refs/tags/v9.16.14" >/dev/null; then
+            actual="$(git rev-list -n1 refs/tags/v9.16.14)"
+            test "$actual" = "$release_sha"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a v9.16.14 "$release_sha" -m "Sealed StormTracker production V9.16.14 · verified GitHub Pages deployment"
+            git push origin refs/tags/v9.16.14
+          fi
+          test "$(git rev-list -n1 refs/tags/v9.16.14)" = "$release_sha"
+          echo "SEALED v9.16.14 to exact commit $release_sha"
       - name: Verify published V9.16.13 labels and native Doppler
         shell: bash
         env:

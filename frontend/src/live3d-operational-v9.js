@@ -3,7 +3,8 @@ import {
   loadLatestBomReflectivityMosaic,
   findLatestBomReflectivityTime,
   discoverBomReflectivityHistory,
-  loadBomReflectivityMosaicAtTime
+  loadBomReflectivityMosaicAtTime,
+  reflectivityWindowForRegion
 } from "./bom-wmts-loop-v2.js?v=operational-v9-7";
 
 import {
@@ -96,6 +97,9 @@ import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.11-atomic-volume";
+import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
+  fitSelectedRadarSites,createSupplementalRadarDisplay
+} from "./multi-radar-display-v9.js?v=9.16.15-display-preview";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -227,6 +231,19 @@ const motionTransition={cancel(){visualMotionGeneration++;}};
 const radarImageryHandover = createRadarImageryHandover({
   imageryLayers: viewer.imageryLayers, scene
 });
+let additionalRadarSiteIds=[];
+let previousPrimaryRadarId=null;
+const supplementalRadarDisplay=createSupplementalRadarDisplay({
+  imageryLayers:viewer.imageryLayers,scene,
+  loadFrame:loadBomReflectivityMosaicAtTime,
+  prepareProvider:prepareRadarSurfaceProvider,
+  createLayer:provider=>new Cesium.ImageryLayer(provider),
+  getWindow:reflectivityWindowForRegion,
+  onStatus:message=>{
+    const status=$("multiRadarStatus");
+    if(status)status.textContent=message;
+  }
+});
 // Keep every camera gesture and manual control immediate during a visual fade.
 // Mere hover/pointer movement must not cancel a weather-frame fade.
 // An actual drag begins with pointerdown, which still cancels instantly.
@@ -254,6 +271,7 @@ const cameraPerformance =
   });
 
 const DEFAULT_RADAR_SITE_ID = "66"; // Brisbane (Mt Stapylton)
+previousPrimaryRadarId=DEFAULT_RADAR_SITE_ID;
 
 const CORE_HOME =
   Object.freeze({
@@ -1063,9 +1081,106 @@ for (const site of Object.values(QLD_RADAR_SITES).sort((a,b) => a.name.localeCom
   option.textContent = `${site.name}${site.dopplerProduct ? "" : " · radar only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
-// Operational map uses one original BoM radar site at a time; legacy SEQ is not offered.
+// The primary site alone drives Doppler, storm tracks and inferred 3-D.
+// Extra checked sites show source-time-matched original 2-D BoM images only.
 $("radarSite").value = DEFAULT_RADAR_SITE_ID;
 configureRadarSite();
+function refreshAdditionalRadarChoices(){
+  const primary=selectedRadarRegion();
+  additionalRadarSiteIds=chooseSupplementalRadarSites(primary,
+    additionalRadarSiteIds,QLD_RADAR_SITES);
+  for(const input of $("multiRadarChecklist").querySelectorAll("input[type=checkbox]")){
+    const isPrimary=input.value===primary;
+    input.checked=isPrimary || additionalRadarSiteIds.includes(input.value);
+    input.disabled=isPrimary;
+    input.parentElement.dataset.primary=String(isPrimary);
+  }
+  $("multiRadarCount").textContent=String(1+additionalRadarSiteIds.length);
+  $("multiRadarSelectButton").title=
+    (1+additionalRadarSiteIds.length)+" BoM radar sites selected";
+  supplementalRadarDisplay.configure(primary,additionalRadarSiteIds);
+}
+function showSupplementalRadarSites(frame){
+  // No obsolete source area or stale rain inside Doppler-only playback.
+  if(!frame || frame.sourceMetadata?.region!==selectedRadarRegion() ||
+     frame.sourceMetadata?.temporalInference || isNativeDopplerPlayback()){
+    // Supplemental sites never inherit interpolated source timestamps.
+    void supplementalRadarDisplay.show(null,{enabled:false});
+    return;
+  }
+  void supplementalRadarDisplay.show(frame.observedUtc,{
+    enabled:true,alpha:Number($("radarOpacity").value)/100
+  });
+}
+function setAdditionalRadarSelection(next){
+  additionalRadarSiteIds=chooseSupplementalRadarSites(
+    selectedRadarRegion(),next,QLD_RADAR_SITES);
+  refreshAdditionalRadarChoices();
+  if(latestFrame)showSupplementalRadarSites(latestFrame);
+  else $("multiRadarStatus").textContent=additionalRadarSiteIds.length
+    ? "Additional radar windows appear with the next measured rain scan."
+    : "Primary radar only.";
+}
+for(const site of Object.values(QLD_RADAR_SITES).sort((a,b)=>
+  a.name.localeCompare(b.name))){
+  const label=document.createElement("label");
+  const checkbox=document.createElement("input");
+  checkbox.type="checkbox";checkbox.value=site.id;
+  const name=document.createElement("span");name.textContent=site.name;
+  label.append(checkbox,name);
+  $("multiRadarChecklist").append(label);
+  checkbox.addEventListener("change",()=>{
+    // New selections are valid even while the primary source history is
+    // loading. They are displayed as soon as a genuine measured scan commits.
+    if(checkbox.checked && additionalRadarSiteIds.length>=MAX_DISPLAY_RADAR_SITES-1){
+      checkbox.checked=false;
+      $("multiRadarStatus").textContent=
+        "Up to "+MAX_DISPLAY_RADAR_SITES+" sites including the primary radar.";
+      return;
+    }
+    setAdditionalRadarSelection(checkbox.checked
+      ? [...additionalRadarSiteIds,site.id]
+      : additionalRadarSiteIds.filter(id=>id!==site.id));
+  });
+}
+refreshAdditionalRadarChoices();
+// Opt-in, read-only browser diagnostics for verifying actual Cesium layers,
+// native BoM timestamps, selector state, and latest observed source frame.
+if(new URLSearchParams(window.location.search).has("qaMultiRadar")){
+  window.__stormtrackerMultiRadarDiagnostics=()=>({
+    primary:selectedRadarRegion(),
+    secondary:[...additionalRadarSiteIds],
+    visibleSupplemental:supplementalRadarDisplay.visibleSites,
+    primaryUtc:latestFrame?.observedUtc??null,
+    primaryRegion:latestFrame?.sourceMetadata?.region??null,
+    primaryInferred:Boolean(latestFrame?.sourceMetadata?.temporalInference),
+    dopplerOnly:isNativeDopplerPlayback(),
+    frameCount:hybridFrames.length,
+    sourceStatus:$("status")?.textContent??"",
+    addedStatus:$("multiRadarStatus")?.textContent??"",
+    mapWidth:$("cesiumContainer")?.clientWidth??0,
+    mapHeight:$("cesiumContainer")?.clientHeight??0,
+    radarAlpha:radarImageryHandover.currentLayer?.alpha??null,
+    extraAlpha:viewer.imageryLayers?.length??0,
+    openPanel:!$("multiRadarPanel").hidden,
+    cameraTarget:mapCamera?.getState?.()??null
+  });
+}
+$("multiRadarSelectButton").addEventListener("click",()=>{
+  const panel=$("multiRadarPanel");panel.hidden=!panel.hidden;
+  $("multiRadarSelectButton").setAttribute("aria-expanded",String(!panel.hidden));
+});
+$("closeMultiRadarPanel").addEventListener("click",()=>{
+  $("multiRadarPanel").hidden=true;
+  $("multiRadarSelectButton").setAttribute("aria-expanded","false");
+  $("multiRadarSelectButton").focus();
+});
+$("clearMultiRadars").addEventListener("click",()=>setAdditionalRadarSelection([]));
+$("fitMultiRadars").addEventListener("click",()=>{
+  const bounds=fitSelectedRadarSites(
+    selectedRadarRegion(),additionalRadarSiteIds,QLD_RADAR_SITES);
+  mapCamera.setView({...CORE_HOME,...bounds});
+});
 
 function displayRgb(category) {
   return (
@@ -3239,8 +3354,12 @@ async function showHybridFrame(index) {
   // observed timestamp. At zero 3-D opacity, the original smooth rain preview
   // remains available without affecting scientific tracks.
   const hasVisibleVolume = Number($("volumeOpacity").value)>0;
+  // Multiple radar windows show only source-measured frames. Do not warp the
+  // primary image between scans while additional site images remain at a
+  // measured timestamp; that would create inconsistent cross-site playback.
   const steps=(hybridCombinedSchedule.length || hasVisibleVolume) ? 0 :
-    radarMotionStepsForSpeed(selectedPlaybackSpeed());
+    (additionalRadarSiteIds.length ? 0 :
+      radarMotionStepsForSpeed(selectedPlaybackSpeed()));
   const canAnimate=steps>0 && playback.isPlaying() &&
     previousVisibleIndex>=0 && requestedIndex===previousVisibleIndex+1 &&
     canMotionInterpolateRadar(previousFrame,frame);
@@ -3330,6 +3449,7 @@ async function showHybridFrame(index) {
   // clocks finally advance together, never at the beginning of a render.
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
+  showSupplementalRadarSites(frame);
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
   // The handover has already presented the matching measured 3-D geometry
   // in the same Cesium frame as this source raster. Wind-only events reuse it.
@@ -3520,6 +3640,8 @@ async function loadDopplerSequence(automatic=false) {
   const recovered=automatic ? windPlaybackFrames.findIndex(frame=>
     frame.observedUtc===oldTime) : 0;
   independentDopplerIndexValue=Math.max(0,recovered);
+  // Additional rain windows never remain in Doppler-only playback.
+  showSupplementalRadarSites(null);
   // Hide radar display, inferred 3-D and storm annotations, NOT their
   // underlying measured analysis or caches. Rain-only restores the controls.
   radarImageryHandover.setOpacity(0);
@@ -4279,6 +4401,7 @@ async function loadLatest() {
   if (!surfaceApplied) {
     return;
   }
+  showSupplementalRadarSites(frame);
 
   renderInferredVolume(
     frame
@@ -4456,7 +4579,18 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   lastCombinedDopplerLatestUtc=null;
   windLastRadarDriveKey=null;
   windCycleCursor=-1;
-  configureRadarSite(); resetView(); clearDopplerOverlay(); resetTrackDisplaySelection();
+  // A user changing the primary within an active multi-site selection
+  // should not silently lose the radar they were viewing previously.
+  // Single-site V9 switching keeps its original one-radar behaviour.
+  const nextPrimary=selectedRadarRegion();
+  if(additionalRadarSiteIds.length && nextPrimary!==previousPrimaryRadarId){
+    additionalRadarSiteIds=chooseSupplementalRadarSites(nextPrimary,
+      [...additionalRadarSiteIds,previousPrimaryRadarId],QLD_RADAR_SITES);
+  }
+  previousPrimaryRadarId=nextPrimary;
+  configureRadarSite(); resetView(); clearDopplerOverlay();
+  refreshAdditionalRadarChoices(); showSupplementalRadarSites(null);
+  resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;
@@ -4629,6 +4763,7 @@ $("radarOpacity").addEventListener("input", event => {
   const opacity = Number(event.target.value) / 100;
   $("radarOpacityValue").textContent = `${event.target.value}%`;
   radarImageryHandover.setOpacity(isNativeDopplerPlayback() ? 0 : opacity);
+  supplementalRadarDisplay.setOpacity(isNativeDopplerPlayback() ? 0 : opacity);
   surfaceLayer = radarImageryHandover.currentLayer;
   scene.requestRender();
 });

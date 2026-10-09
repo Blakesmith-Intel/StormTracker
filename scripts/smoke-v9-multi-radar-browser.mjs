@@ -1,0 +1,247 @@
+// V9.16.15: real-browser acceptance on the actual branch build. No fake
+// radar frames, no image substitution, and no production Pages deployment.
+// When testing localhost, forward the REAL Cloudflare WMTS response through
+// Playwright solely to bypass the deployment-origin CORS restriction.
+import assert from "node:assert/strict";
+import {mkdirSync,writeFileSync} from "node:fs";
+import {chromium,webkit} from "playwright";
+
+const engine=process.env.BROWSER_ENGINE==="webkit"?"webkit":"chromium";
+const browserType=engine==="webkit"?webkit:chromium;
+const args=engine==="chromium"?["--no-sandbox","--disable-gpu-sandbox",
+  "--use-gl=angle","--use-angle=swiftshader","--enable-webgl",
+  "--ignore-gpu-blocklist"]:[];
+const browser=await browserType.launch({headless:true,args});
+const mobile=engine==="webkit";
+const page=await browser.newPage({
+  viewport:mobile?{width:390,height:844}:{width:1440,height:900},
+  deviceScaleFactor:1,isMobile:mobile,hasTouch:mobile
+});
+page.setDefaultTimeout(18000);
+mkdirSync("qa-screenshots",{recursive:true});
+const evidence={engine,startedAt:new Date().toISOString(),events:[],errors:[]};
+const note=(name,details={})=>{
+  evidence.events.push({name,time:new Date().toISOString(),...details});
+  console.log("V9_MULTIRADAR_BROWSER",JSON.stringify(evidence.events.at(-1)));
+};
+page.on("pageerror",error=>{
+  evidence.errors.push({kind:"pageerror",message:error.message});
+  console.log("BROWSER_PAGE_ERROR",error.message.slice(0,250));
+});
+page.on("console",message=>{
+  if(["warning","error"].includes(message.type())){
+    const value=message.text();
+    if(/Additional BoM radar site unavailable|tile request|reprojection/i.test(value))
+      console.log("BROWSER_RADAR_SOURCE_WARNING",value.slice(0,650));
+  }
+});
+page.on("requestfailed",request=>{
+  if(request.url().includes("/wmts")){
+    evidence.errors.push({kind:"wmts-failed",url:request.url().slice(0,180),
+      failure:request.failure()?.errorText});
+  }
+});
+let wmtsResponses=0,wmtsFailures=0;
+await page.route(/^https:\/\/stormtracker-bom-relay\.stormtracker-bom-relay\.workers\.dev\/wmts(?:\?|$)/,
+  async route=>{
+  // Download the authentic public WMTS response without localhost Origin/
+  // Referer headers: production Pages is approved but preview localhost is
+  // not. Only the CORS *response header* changes. Source bytes are unchanged.
+  try{
+    const source=await fetch(route.request().url(),{
+      signal:AbortSignal.timeout(45000),
+      headers:{"accept":"image/png,image/*;q=0.8,*/*;q=0.1"}
+    });
+    const bytes=Buffer.from(await source.arrayBuffer());
+    wmtsResponses++;
+    if(source.status!==200 || !source.headers.get("content-type")?.includes("image")){
+      wmtsFailures++;
+      if(wmtsFailures<=12)console.log("LIVE_WMTS_PROBE",JSON.stringify({
+        http:source.status,contentType:source.headers.get("content-type"),
+        bytes:bytes.length,url:route.request().url().slice(0,250),
+        preview:bytes.toString("utf8",0,Math.min(120,bytes.length))
+      }));
+    }
+    await route.fulfill({status:source.status,
+      headers:{"access-control-allow-origin":"*",
+        "content-type":source.headers.get("content-type")??"application/octet-stream",
+        "cache-control":"no-store"},
+      body:bytes});
+  }catch(error){
+    wmtsFailures++;
+    console.log("LIVE_WMTS_PREVIEW_FETCH_ERROR",String(error).slice(0,350));
+    await route.abort();
+  }
+});
+const inspect=()=>page.evaluate(()=>window.__stormtrackerMultiRadarDiagnostics?.());
+async function waitFor(predicate,timeout=75000,arg=null){
+  await page.waitForFunction(predicate,arg,{timeout,polling:350});
+  return inspect();
+}
+async function screenshot(name){
+  // In headless CI, software WebGL screenshot capture can stall Cesium's GPU
+  // render queue and block subsequent real interaction tests. Preserve DOM
+  // layout metrics and source diagnostics instead; screenshots remain
+  // available outside CI on a hardware-accelerated browser.
+  if(process.env.CI){
+    note("software-WebGL-screenshot-skipped",{name});
+    return;
+  }
+  try{
+    await page.screenshot({path:"qa-screenshots/"+engine+"-"+name+".png",
+      timeout:6500,captureBeyondViewport:false,animations:"disabled"});
+  }catch(error){note("screenshot-unavailable",{name,error:String(error).slice(0,200)})}
+}
+try{
+  await page.goto("http://127.0.0.1:8765/live3d-operational-v9.html?qaMultiRadar=1",
+    {waitUntil:"domcontentloaded",timeout:75000});
+  await waitFor(()=>Boolean(window.__stormtrackerMultiRadarDiagnostics),75000);
+  const initial=await inspect();
+  assert.equal(initial.primary,"66");
+  assert.deepEqual(initial.secondary,[]);
+  assert.equal(initial.openPanel,false);
+  assert.ok(initial.mapWidth>300 && initial.mapHeight>200,
+    "Real Cesium container should fit screen");
+  note("viewer-started",initial);
+  await screenshot("initial-cesium");
+  await page.locator("#multiRadarSelectButton").click();
+  assert.equal(await page.locator("#multiRadarPanel").isVisible(),true);
+  assert.equal(await page.locator("#multiRadarSelectButton").getAttribute("aria-expanded"),"true");
+  const panelBounds=await page.locator("#multiRadarPanel").boundingBox();
+  const viewport=page.viewportSize();
+  assert.ok(panelBounds && panelBounds.x>=0 && panelBounds.y>=0 &&
+    panelBounds.x+panelBounds.width<=viewport.width+1 &&
+    panelBounds.y+panelBounds.height<=viewport.height+1,
+    "Additional radar menu must not be clipped outside the browser viewport");
+  note("radar-panel-layout",{bounds:panelBounds,viewport});
+  assert.equal(await page.locator('#multiRadarChecklist input[value="66"]').isDisabled(),true);
+  // Preserve fully functional checkbox toggles on a real rendered DOM.
+  await page.locator('#multiRadarChecklist input[value="50"]').check();
+  await page.locator('#multiRadarChecklist input[value="08"]').check();
+  let state=await inspect();
+  assert.deepEqual(state.secondary,["50","08"]);
+  assert.equal(await page.locator("#multiRadarCount").textContent(),"3");
+  assert.match(state.addedStatus,/loading|measured sites|paused|original|next measured rain scan/i);
+  note("three-radar-selection",state);
+  await screenshot("three-site-selection");
+  await page.locator("#closeMultiRadarPanel").click();
+  assert.equal(await page.locator("#multiRadarPanel").isVisible(),false);
+
+  // Fail honestly if source is not available. The test should NOT pass by
+  // testing only the checkbox UI while real weather never loads.
+  try{
+    state=await waitFor(()=>{
+      const s=window.__stormtrackerMultiRadarDiagnostics?.();
+      return (s?.primaryUtc && s?.primaryRegion==="66" && s?.frameCount>=2) ||
+        /No recent readable BOM|No matching source history|unable to fetch readable BOM/i
+          .test(s?.sourceStatus??"");
+    },90000);
+    assert.ok(state.primaryUtc && state.frameCount>=2,
+      "Real BoM imagery unavailable (check actual upstream diagnostics): "+
+      state.sourceStatus);
+    note("real-primary-radar-loaded",state);
+  }catch(error){
+    state=await inspect();
+    throw Error("Real BoM source did not load in browser: "+
+      JSON.stringify(state)+"; original failure: "+error.message);
+  }
+  // Hold the current ORIGINAL measured scan stable while testing the slower
+  // extra-site WMTS areas; source images are never injected or manufactured.
+  const playButton=page.locator("#hybridPlayButton");
+  if(await playButton.getAttribute("aria-pressed")==="true"){
+    // Keyboard-equivalent DOM activation avoids Playwright's stability wait
+    // against a busy headless software-WebGL canvas; the app's real listener
+    // and source transaction are still exercised without synthetic weather.
+    await playButton.dispatchEvent("click");
+    await page.waitForFunction(()=>
+      document.getElementById("hybridPlayButton")?.getAttribute("aria-pressed")==="false",
+      null,{timeout:12000});
+    note("paused-on-original-measured-frame",await inspect());
+  }
+  const loadedUtc=(await inspect()).primaryUtc;
+  assert.match(loadedUtc,/^20\d\d-\d\d-\d\dT\d\d:/);
+  await waitFor(()=>{
+    const s=window.__stormtrackerMultiRadarDiagnostics?.();
+    return s?.primaryUtc && (
+      s?.visibleSupplemental?.length>0 ||
+      /2 already covered/.test(s?.addedStatus??"")
+    );
+  },85000);
+  state=await inspect();
+  assert.ok(!/unavailable/.test(state.addedStatus),
+    "Additional BoM sources failed: "+state.addedStatus);
+  assert.ok(state.visibleSupplemental.length>0 || /2 already covered/.test(state.addedStatus),
+    "Map must display added area or clearly declare full geographic overlap");
+  note("three-site-live",state);
+  await screenshot("three-site-live-radar");
+
+  // One distant site proves we can extend coverage beyond overlapping SEQ.
+  await page.locator("#multiRadarSelectButton").click();
+  await page.locator("#clearMultiRadars").click();
+  await page.locator('#multiRadarChecklist input[value="24"]').check();
+  state=await inspect();
+  assert.deepEqual(state.secondary,["24"]);
+  await page.locator("#fitMultiRadars").click();
+  const fit=await inspect();
+  assert.ok(fit.cameraTarget?.latitude>-26.5,
+    "Fit selected must include Bowen instead of remaining centred on Brisbane");
+  assert.ok(fit.cameraTarget?.range>300000);
+  note("distant-site-map-fit",fit);
+  try{
+    await waitFor(()=>{
+      const s=window.__stormtrackerMultiRadarDiagnostics?.();
+      return s?.visibleSupplemental?.includes("24");
+    },90000);
+    state=await inspect();
+    assert.ok(state.visibleSupplemental.includes("24"),
+      "Actual distant rain image failed: "+state.addedStatus);
+    note("distant-original-rain-visible",state);
+  }catch(error){throw Error("Distant site source/readiness: "+error.message)}
+  await screenshot("fit-distant-radars");
+
+  // Actual frame slider: remove the older layer and only show the selected
+  // observed timestamp, not a retained 2D source from a prior scan.
+  const slider=page.locator("#hybridFrameSlider");
+  const sliderMax=Number(await slider.getAttribute("max"));
+  if(sliderMax>1 && await slider.isEnabled()){
+    await page.waitForTimeout(450);
+    const beforeScrubUtc=(await inspect()).primaryUtc;
+    const selectedIndex=Number(await slider.inputValue());
+    const destination=selectedIndex===0?sliderMax:0;
+    note("history-scrub-start",{selectedIndex,destination,beforeScrubUtc});
+    await slider.evaluate((input,value)=>{
+      input.value=String(value);
+      input.dispatchEvent(new Event("input",{bubbles:true}));
+      input.dispatchEvent(new Event("change",{bubbles:true}));
+    },destination);
+    const stepped=await waitFor(originalUtc=>{
+      const s=window.__stormtrackerMultiRadarDiagnostics?.();
+      return s?.primaryUtc && s.primaryUtc!==originalUtc;
+    },75000,beforeScrubUtc);
+    note("real-history-scrub",stepped);
+    await screenshot("history-scrub");
+  }else note("history-scrub-not-available",{sliderMax});
+
+  await page.locator("#clearMultiRadars").click();
+  state=await inspect();
+  assert.deepEqual(state.secondary,[]);
+  assert.deepEqual(state.visibleSupplemental,[]);
+  note("primary-only-reset",state);
+  await page.locator("#closeMultiRadarPanel").click();
+  await screenshot("primary-only-after-clear");
+
+  assert.equal(await page.locator("#dopplerOverlayRadar").inputValue(),"66",
+    "Multi-site display must never take control of primary Doppler selection");
+  note("passed",{
+    browser:engine,primaryUtc:state.primaryUtc,
+    passedChecks:evidence.events.map(x=>x.name)
+  });
+}finally{
+  evidence.endedAt=new Date().toISOString();
+  evidence.wmtsResponses=wmtsResponses;
+  evidence.wmtsFailures=wmtsFailures;
+  writeFileSync("qa-screenshots/"+engine+"-browser-report.json",
+    JSON.stringify(evidence,null,2)+"\n");
+  await page.close();
+  await browser.close();
+}

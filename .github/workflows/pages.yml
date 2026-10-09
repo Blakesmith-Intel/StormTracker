@@ -64,6 +64,13 @@ jobs:
           ref: 651b9aaf6780f4efb6a6fada7462483ca20c4ed1
           path: preview-builds/native-playback
           persist-credentials: false
+      - name: Checkout isolated playback/cone repair review
+        uses: actions/checkout@v4
+        with:
+          # Exact, immutable PR #57 candidate. Production root stays protected.
+          ref: 202c212cd8dc1558b4b8788d01fa71001bc18fdc
+          path: preview-builds/playback-cone-fix
+          persist-credentials: false
       - name: Download authentic Gympie 2025 measured radar research previews
         uses: actions/download-artifact@v4
         with:
@@ -93,12 +100,18 @@ jobs:
           node --check preview-builds/native-playback/relay/worker.js
           test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "651b9aaf6780f4efb6a6fada7462483ca20c4ed1"
 
+      - name: Validate playback/cone repair in isolation
+        run: |
+          (cd preview-builds/playback-cone-fix && npm test)
+          test "$(git -C preview-builds/playback-cone-fix rev-parse HEAD)" = "202c212cd8dc1558b4b8788d01fa71001bc18fdc"
+
       - name: Stage isolated live previews without changing production
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p frontend/preview/v9.14.0 frontend/preview/v9.15.0 frontend/preview/v9.15.1 frontend/preview/v9.16
-          mkdir -p frontend/preview/native-playback
+          mkdir -p frontend/preview/native-playback frontend/preview/playback-cone-fix
+          cp -a preview-builds/playback-cone-fix/frontend/. frontend/preview/playback-cone-fix/
           cp -a preview-builds/v9.14.0/frontend/. frontend/preview/v9.14.0/
           cp -a preview-builds/v9.15.0/frontend/. frontend/preview/v9.15.0/
           cp -a preview-builds/v9.15.1/frontend/. frontend/preview/v9.15.1/
@@ -135,6 +148,10 @@ jobs:
           grep -q 'id="sourceTimeGap"' frontend/preview/v9.16/live3d-operational-v9.html
           ! grep -q 'id="dopplerPlayButton"' frontend/preview/v9.16/live3d-operational-v9.html
           test -f frontend/preview/v9.16/src/independent-doppler-loop-v1.js
+          printf 'Playback/cone repair review %s\n' "$(git -C preview-builds/playback-cone-fix rev-parse HEAD)" > frontend/preview/playback-cone-fix/BUILD.txt
+          test -f frontend/preview/playback-cone-fix/src/combined-loop-playback-v1.js
+          test -f frontend/preview/playback-cone-fix/tests/run-playback-stall-cone-v1-tests.mjs
+          grep -Fq 'v8-perf-v9-recovery-v10' frontend/preview/playback-cone-fix/index.html
           printf 'Native source playback review %s\n' "$(git -C preview-builds/native-playback rev-parse HEAD)" > frontend/preview/native-playback/BUILD.txt
           test -f frontend/preview/native-playback/index.html
           test -f frontend/preview/native-playback/live3d-operational-v9.html
@@ -177,3 +194,22 @@ jobs:
           build="$(retry_curl "$base/BUILD.txt")"
           grep -Fq '651b9aaf6780f4efb6a6fada7462483ca20c4ed1' <<< "$build"
           echo "Verified isolated native playback preview at $base/; live production root unchanged."
+
+      - name: Verify deployed playback/cone repair preview (root unchanged)
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}/preview/playback-cone-fix"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          index="$(retry_curl "$base/index.html")"
+          grep -Fq 'v8-perf-v9-recovery-v10' <<< "$index"
+          shell="$(retry_curl "$base/live3d-operational-v9.html")"
+          grep -Fq 'v8-perf-v9-recovery-v10' <<< "$shell"
+          js="$(retry_curl "$base/src/live3d-operational-v9.js")"
+          grep -Fq 'isDopplerOnlyPlaybackStep' <<< "$js"
+          grep -Fq 'followMeasuredPosition' <<< "$js"
+          build="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq '202c212cd8dc1558b4b8788d01fa71001bc18fdc' <<< "$build"
+          echo "Verified isolated repair preview at $base/; production root unchanged."

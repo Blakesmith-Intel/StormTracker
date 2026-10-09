@@ -4,9 +4,31 @@ import {fileURLToPath} from "node:url";
 import {buildDopplerOnlySchedule} from "../src/doppler-available-window-v1.js";
 import {buildOperationalWindowChoices} from "../src/operational-window-choices-v1.js";
 import {createDopplerLayerTransition} from "../src/doppler-layer-transition-v1.js";
+import {buildIndependentDopplerFrames} from "../src/independent-doppler-loop-v1.js";
 const read=path=>readFileSync(fileURLToPath(new URL(path,import.meta.url)),"utf8");
 const runtime=read("../src/live3d-operational-v9.js");
 const wind=[15,20,25,30,35,40,45].map(m=>({observedUtc:new Date(Date.UTC(2026,9,10,2,m)).toISOString()}));
+// The BoM "locations"/"range" GUI layers are separate from the
+// timestamped transparent PNG velocity frames. Latest GIF is a COMPOSITE
+// and is never an animation source, even if newer than the PNGs.
+const pngFrames=wind.map((frame,index)=>({
+  ...frame,filename:`IDR66I.T.2026101002${String(15+index*5).padStart(2,"0")}.png`
+}));
+const compositeGif={observedUtc:new Date(Date.UTC(2026,9,10,2,58)).toISOString(),
+  filename:"IDR66I.gif"};
+const rawOnly=buildIndependentDopplerFrames({frames:pngFrames},null);
+assert.equal(rawOnly.length,pngFrames.length);
+assert.ok(rawOnly.every(frame=>frame.source_kind==="history" &&
+  frame.filename.endsWith(".png")));
+assert.ok(!rawOnly.some(frame=>frame.filename==="IDR66I.gif"));
+assert.equal(buildIndependentDopplerFrames({frames:pngFrames},compositeGif).length,
+  pngFrames.length+1,"source module still supports independently timestamped composite for other callers");
+assert.match(runtime,/const frames=buildIndependentDopplerFrames\(\s*sources\.histories\.get\(radarId\),null\)/,
+  "animated Doppler source MUST NOT append the latest composite GIF");
+assert.match(runtime,/maskAnnotationRows:false/,
+  "transparent velocity PNG's bottom 40 rows must no longer be discarded");
+assert.match(runtime,/frame\.source_kind==="latest"/,
+  "original latest composite remains accessible only to legacy science/source metadata");
 assert.deepEqual(buildDopplerOnlySchedule(wind).map(step=>step.dopplerObservedUtc),
   wind.map(frame=>frame.observedUtc),"every observed Doppler scan must appear exactly once");
 assert.equal(buildDopplerOnlySchedule([]).length,0);

@@ -8,7 +8,7 @@ import {
 
 import {
   RadarWorkerClient
-} from "./worker-client.js?v=core-v6";
+} from "./worker-client.js?v=core-v6-pixeltrack-prod-r1";
 
 import {
   SOURCE_PALETTES
@@ -99,7 +99,7 @@ import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.1
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
-import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
+import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
 import { stormTrackPresentation } from "./storm-track-presentation-v1.js?v=40dbz-v1";
 import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";

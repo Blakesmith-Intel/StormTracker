@@ -3,7 +3,7 @@ import {
   segmentCategoryFrame,
   segmentWebMercatorCategoryFrame,
   valuesForLabel
-} from "../segmentation.js?v=live-bom-v1";
+} from "../segmentation.js?v=live-bom-v1-pixeltrack-prod-r1";
 import {
   cellsToRadarObservations,
   deduplicateRadarCells,

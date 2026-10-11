@@ -68,6 +68,58 @@ function thresholdCounts(values) {
   };
 }
 
+
+// Link nearby measured ≥40 dBZ components across short gaps. Never add gap
+// pixels to the measured footprint or attribute synthetic reflectivity to them.
+// Do not join two independently sized strong cores.
+export function groupNearbyComponents(raw,categories,width,height,rowAreaM2,{
+  maxGapPixels=0,maxGapKm=0,strongCoreCategory=11,independentCoreMinPixels=24
+}={}){
+  if(!(maxGapPixels>0) || !(maxGapKm>0) || raw.components.length<2)return raw.components;
+  const parents=raw.components.map((_,i)=>i);
+  const strong=raw.components.map(pixels=>
+    pixels.length>=independentCoreMinPixels &&
+    pixels.some(index=>categories[index]>=strongCoreCategory) ? 1 : 0);
+  const find=i=>{
+    while(parents[i]!==i){parents[i]=parents[parents[i]];i=parents[i];}
+    return i;
+  };
+  const link=(a,b)=>{
+    a=find(a);b=find(b);
+    if(a===b || (strong[a] && strong[b]))return;
+    if(strong[b] && !strong[a])[a,b]=[b,a];
+    parents[b]=a;
+    strong[a]+=strong[b];
+  };
+  const reach=Math.max(2,Math.min(3,Math.floor(maxGapPixels)+1));
+  const offsets=[];
+  for(let dr=0;dr<=reach;dr++)for(let dc=-reach;dc<=reach;dc++){
+    if(dr===0 && dc<=1)continue;
+    if(Math.max(dr,Math.abs(dc))<=1 || Math.hypot(dr,dc)>reach)continue;
+    offsets.push([dr,dc]);
+  }
+  for(let index=0;index<raw.labels.length;index++){
+    const label=raw.labels[index];
+    if(!label)continue;
+    const row=Math.floor(index/width),col=index-row*width;
+    const kmPerPixel=Math.sqrt(rowAreaM2(row))/1000;
+    for(const [dr,dc] of offsets){
+      if((Math.hypot(dr,dc)-1)*kmPerPixel>maxGapKm)continue;
+      const rr=row+dr,cc=col+dc;
+      if(rr>=height || cc<0 || cc>=width)continue;
+      const other=raw.labels[rr*width+cc];
+      if(other && other!==label)link(label-1,other-1);
+    }
+  }
+  const grouped=new Map();
+  raw.components.forEach((pixels,i)=>{
+    const root=find(i);
+    if(!grouped.has(root))grouped.set(root,[]);
+    grouped.get(root).push(...pixels);
+  });
+  return [...grouped.values()];
+}
+
 function buildSegmentation({
   categories,
   width,
@@ -75,7 +127,12 @@ function buildSegmentation({
   sourceId,
   thresholdCategory,
   minPixels,
+  minAreaKm2,
   connectivity,
+  maxGapPixels,
+  maxGapKm,
+  strongCoreCategory,
+  independentCoreMinPixels,
   pixelPosition,
   rowAreaM2,
   limitations
@@ -92,11 +149,14 @@ function buildSegmentation({
   }
 
   const raw = connectedComponents(mask, width, height, connectivity);
+  const groups = groupNearbyComponents(raw, categories, width, height, rowAreaM2, {
+    maxGapPixels, maxGapKm, strongCoreCategory, independentCoreMinPixels
+  });
   const labels = new Uint16Array(categories.length);
   const cells = [];
   let nextCellId = 1;
 
-  for (const pixels of raw.components) {
+  for (const pixels of groups) {
     if (pixels.length < minPixels) continue;
 
     let totalArea = 0;
@@ -133,6 +193,11 @@ function buildSegmentation({
 
       cellCategories[k] = category;
       labels[index] = nextCellId;
+    }
+
+    if (totalArea / 1_000_000 < minAreaKm2) {
+      for (const index of pixels) labels[index] = 0;
+      continue;
     }
 
     const [dbzLower, dbzUpper] =
@@ -176,9 +241,14 @@ function buildSegmentation({
       threshold_category: thresholdCategory,
       threshold_interpretation: "Category 7 and above: definite >=40 dBZ.",
       min_pixels: minPixels,
+      min_area_km2: minAreaKm2,
+      max_gap_pixels: maxGapPixels,
+      max_gap_km: maxGapKm,
+      strong_core_category: strongCoreCategory,
       connectivity
     },
     raw_component_count: raw.components.length,
+    grouped_component_count: groups.length,
     retained_cell_count: cells.length,
     cells,
     labels,
@@ -193,7 +263,12 @@ export function segmentCategoryFrame({
   radar,
   thresholdCategory = 7,
   minPixels = 8,
-  connectivity = 8
+  minAreaKm2 = 0,
+  connectivity = 8,
+  maxGapPixels = 0,
+  maxGapKm = 0,
+  strongCoreCategory = 11,
+  independentCoreMinPixels = 24
 }) {
   const rowAreas = new Float64Array(height);
 
@@ -213,7 +288,12 @@ export function segmentCategoryFrame({
     sourceId: radar.id,
     thresholdCategory,
     minPixels,
+    minAreaKm2,
     connectivity,
+    maxGapPixels,
+    maxGapKm,
+    strongCoreCategory,
+    independentCoreMinPixels,
     pixelPosition: (row, col) =>
       gnomonicPixelToLonLat({
         row,
@@ -248,7 +328,12 @@ export function segmentWebMercatorCategoryFrame({
   sourceId = "BOM-MOSAIC",
   thresholdCategory = 7,
   minPixels = 8,
-  connectivity = 8
+  minAreaKm2 = 0,
+  connectivity = 8,
+  maxGapPixels = 0,
+  maxGapKm = 0,
+  strongCoreCategory = 11,
+  independentCoreMinPixels = 24
 }) {
   if (georef?.projection !== "EPSG:3857") {
     throw new Error("Web Mercator segmentation requires EPSG:3857 georef.");
@@ -284,7 +369,12 @@ export function segmentWebMercatorCategoryFrame({
     sourceId,
     thresholdCategory,
     minPixels,
+    minAreaKm2,
     connectivity,
+    maxGapPixels,
+    maxGapKm,
+    strongCoreCategory,
+    independentCoreMinPixels,
     pixelPosition: (row, col) => {
       const x = minX + (col + 0.5) * dx;
       const y = maxY - (row + 0.5) * dy;

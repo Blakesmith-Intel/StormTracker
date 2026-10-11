@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StormTracker V9.16.15 — Isolated hardware browser QA</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+    body{margin:0;background:#111822;color:#f5f7fb;line-height:1.5}
+    main{max-width:970px;margin:auto;padding:24px}
+    h1{font-size:1.6rem;margin:0 0 6px}
+    h2{font-size:1.12rem}
+    small,.muted{color:#aebccc}
+    .panel{background:#1d2936;border:1px solid #344455;border-radius:12px;padding:16px;margin:18px 0}
+    button,select,textarea{background:#253649;color:#fff;border:1px solid #73849b;border-radius:8px;padding:10px;font:inherit}
+    button{cursor:pointer}
+    button:hover{background:#36506a}
+    button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #72b7ff}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    select{max-width:100%}
+    pre{max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#101820;padding:14px;border-radius:8px;font-size:12px}
+    table{width:100%;border-collapse:collapse}
+    td,th{padding:8px;border-bottom:1px solid #344455;text-align:left;vertical-align:top}
+    td{overflow-wrap:anywhere}
+    .pass{color:#84eab3}.fail{color:#ffb3a5}.warn{color:#ffde88}
+    textarea{width:100%;box-sizing:border-box;min-height:80px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>StormTracker V9.16.15 — hardware browser QA</h1>
+  <p class="muted">Branch-only acceptance companion for PR #63. No changes to the live V9 application, production deployment, BoM imagery or analysis logic.</p>
+  <section class="panel">
+    <h2>1. Open the original application</h2>
+    <div class="row"><button id="openViewer">Open V9.16.15 viewer in another tab</button>
+      <button id="readNow">Read current viewer state</button>
+      <span id="viewerStatus" role="status">Not connected</span></div>
+    <p><small>Keep this page and the viewer on the <strong>same preview origin</strong>. Use the actual viewer tab for interaction. This tool reads the existing diagnostic API only. If the connection is lost, reopen the viewer using the button above.</small></p>
+  </section>
+  <section class="panel">
+    <h2>2. Verify hardware rendering</h2>
+    <p>In desktop Chrome open <code>chrome://gpu</code> (Edge: <code>edge://gpu</code>) and confirm WebGL is hardware accelerated, <strong>not SwiftShader/software</strong>. Record this separately; reported renderer details below may be masked.</p>
+    <p id="renderer" class="muted">No renderer captured</p>
+  </section>
+  <section class="panel">
+    <h2>3. Record actual radar tests</h2>
+    <div class="row">
+      <label for="testStep">Milestone</label>
+      <select id="testStep">
+        <option value="startup">Primary 66 source startup</option>
+        <option value="seq">66 + 50 + 08 measured coverage</option>
+        <option value="distant">66 + 24 Bowen and Fit selected</option>
+        <option value="scrubBefore">Before observed frame change</option>
+        <option value="scrubAfter">After observed frame change</option>
+        <option value="primaryOnly">Primary only / stale cleanup</option>
+        <option value="doppler">Native Doppler-only cleanup</option>
+        <option value="rain">Rain-only playback restored</option>
+        <option value="visual">Visual / pan / pitch / playback manual check</option>
+      </select>
+      <button id="record">Record observed state</button>
+    </div>
+    <p id="status" class="muted" role="status">No measurements yet</p>
+    <label for="notes">Human observations, screenshots and timing notes</label>
+    <textarea id="notes" placeholder="Example: No flicker at 1×; labels above imagery; selected UTC matches; browser responds after pan/zoom."></textarea>
+    <pre id="statePreview">No live state captured.</pre>
+    <div class="row"><button id="export">Export acceptance evidence JSON</button>
+      <small>Include screenshots separately; this page does not capture or alter radar images.</small></div>
+  </section>
+  <section class="panel">
+    <h2>Recorded checks</h2>
+    <div style="overflow:auto"><table><thead><tr><th>UTC captured</th><th>Test</th><th>Result</th><th>Original BoM UTC</th></tr></thead><tbody id="records"></tbody></table></div>
+  </section>
+</main>
+<script>
+(() => {
+  "use strict";
+  let viewer=null;
+  let beforeUtc="";
+  const observations=[];
+  const $=id=>document.getElementById(id);
+  const stepLabels=Object.fromEntries([...$("testStep").options].map(o=>[o.value,o.textContent]));
+  $("openViewer").addEventListener("click",()=>{
+    viewer=window.open("./live3d-operational-v9.html?qaMultiRadar=1",
+      "stormtracker-v9-16-15-acceptance");
+    $("viewerStatus").textContent=viewer?"Viewer opened (same-origin diagnostics pending)":"Viewer popup blocked";
+  });
+  function rendererDetails(){
+    try{
+      const canvas=viewer?.document?.querySelector("#cesiumContainer canvas");
+      const gl=canvas?.getContext("webgl2")||canvas?.getContext("webgl");
+      if(!gl)return "No existing readable Cesium WebGL context; use chrome://gpu to verify hardware acceleration.";
+      const ext=gl.getExtension("WEBGL_debug_renderer_info");
+      const renderer=ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
+      const vendor=ext?gl.getParameter(ext.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR);
+      return String(vendor)+" — "+String(renderer)+
+        (/swiftshader|software|llvmpipe/i.test(String(renderer))?
+        " [SOFTWARE: NOT HARDWARE ACCEPTED]":" [also confirm chrome://gpu]");
+    }catch(error){return "GPU read unavailable: "+String(error).slice(0,160)}
+  }
+  function sample(){
+    if(!viewer||viewer.closed)throw Error("Viewer window is not connected; use Open viewer.");
+    const f=viewer.__stormtrackerMultiRadarDiagnostics;
+    if(typeof f!=="function")throw Error("Diagnostics unavailable; check preview URL and allow the map to load.");
+    const state=f();
+    if(!state||typeof state!=="object")throw Error("No current diagnostic state.");
+    $("viewerStatus").textContent="Connected to original V9 viewer";
+    $("renderer").textContent=rendererDetails();
+    $("statePreview").textContent=JSON.stringify(state,null,2);
+    return state;
+  }
+  function check(step,s){
+    const extras=s.secondary||[],visible=s.visibleSupplemental||[];
+    const validSource=typeof s.primaryUtc==="string" && /^20\d\d-\d\d-\d\dT/.test(s.primaryUtc);
+    switch(step){
+      case "startup":
+        return [s.primary==="66"&&validSource&&s.frameCount>=2,
+          "Expected measured 66 primary and 2+ original observation frames"];
+      case "seq":
+        return [s.primary==="66"&&extras.includes("50")&&extras.includes("08")&&
+          validSource&&(visible.length>0||/already covered/.test(s.addedStatus||"")),
+          "Three sites selected; original measured extra coverage or explicit tile overlap"];
+      case "distant":
+        return [s.primary==="66"&&extras.includes("24")&&visible.includes("24")&&
+          validSource&&s.cameraTarget?.latitude>-26.5&&s.cameraTarget?.range>300000,
+          "Bowen original imagery visible and camera fits distant site"];
+      case "scrubBefore":
+        beforeUtc=s.primaryUtc||"";
+        return [validSource,"Original measured frame before change recorded"];
+      case "scrubAfter":
+        return [validSource&&Boolean(beforeUtc)&&s.primaryUtc!==beforeUtc&&
+          (visible.length===0||String(s.addedStatus||"").includes(s.primaryUtc)),
+          "New source UTC; extra windows either cleared or match new source UTC"];
+      case "primaryOnly":
+        return [extras.length===0&&visible.length===0,
+          "Additional sites and visible imagery cleared"];
+      case "doppler":
+        return [s.dopplerOnly===true&&visible.length===0,
+          "Native Doppler only; no added rain windows"];
+      case "rain":
+        return [s.dopplerOnly===false&&validSource,"Original rain timeline restored"];
+      case "visual":
+        return [null,"Human approval only: screenshots, smooth playback, labels, camera movement"];
+      default:return [false,"Unrecognized QA milestone"];
+    }
+  }
+  $("readNow").addEventListener("click",()=>{
+    try{sample();$("status").textContent="State read without changing application."}
+    catch(error){$("status").textContent=String(error)}
+  });
+  $("record").addEventListener("click",()=>{
+    try{
+      const state=sample(),step=$("testStep").value,[passed,criterion]=check(step,state);
+      const record={
+        capturedAt:new Date().toISOString(),step,label:stepLabels[step],
+        result:passed===null?"MANUAL":passed?"PASS":"FAIL",
+        criterion,notes:$("notes").value,
+        sourceUtc:state.primaryUtc??null,
+        sourceStatus:state.sourceStatus??null,
+        addedStatus:state.addedStatus??null,
+        primary:state.primary,secondary:state.secondary,
+        visibleSupplemental:state.visibleSupplemental,
+        dopplerOnly:state.dopplerOnly,frameCount:state.frameCount,
+        cameraTarget:state.cameraTarget,renderer:rendererDetails()
+      };
+      observations.push(record);
+      const tr=document.createElement("tr");
+      for(const value of [record.capturedAt,record.label,record.result,record.sourceUtc||"—"]){
+        const td=document.createElement("td");td.textContent=value;tr.appendChild(td);
+      }
+      tr.children[2].className=record.result==="PASS"?"pass":record.result==="FAIL"?"fail":"warn";
+      $("records").appendChild(tr);
+      $("status").textContent=record.result+": "+criterion;
+    }catch(error){$("status").textContent="ERROR: "+String(error)}
+  });
+  $("export").addEventListener("click",()=>{
+    const payload={
+      product:"StormTracker V9.16.15 preview",source:"PR #63 feature/v9-multi-radar-display",
+      browser:navigator.userAgent,renderingNote:$("renderer").textContent,
+      gpuChromePageMustBeVerifiedByHuman:true,
+      measurements:observations,
+      hardwareAccepted:false,
+      note:"This evidence is not a signed visual acceptance. Human GPU/status and screenshots required."
+    };
+    const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)+"\n"],{type:"application/json"}));
+    const a=document.createElement("a");a.href=url;a.download="v9-16-15-hardware-browser-evidence.json";
+    a.click();setTimeout(()=>URL.revokeObjectURL(url),15000);
+  });
+})();
+</script>
+</body>
+</html>

@@ -87,16 +87,25 @@ try {
   flush();
   assert.equal(paintCount,4,"canceled paint does not overwrite new camera");
 
+  // Mobile pinch target updates use the same bounded rendering queue.
+  for(let i=0;i<80;i++) {
+    controller.setGestureView({range:85000*Math.pow(0.98,i+1)});
+  }
+  assert.equal(frames.size,1,"80 pinch positions share one RAF");
+  assert.equal(paintCount,4,"pinch updates must not redraw synchronously");
+  flush();
+  assert.equal(paintCount,5,"one final paint for 80 pinch positions");
+
   wheel({deltaY:-100,deltaMode:0,preventDefault(){},stopPropagation(){}});
   assert.equal(frames.size,1);
   controller.destroy();
   controller=null;
   assert.equal(frames.size,0,"destroy cancels pending camera paint");
   flush();
-  assert.equal(paintCount,4);
-  assert.ok(renderCount>=4);
+  assert.equal(paintCount,5);
+  assert.ok(renderCount>=5);
 
-  console.log("Rapid wheel zoom: 90 events per burst collapse into one camera render, state and teardown remain correct.");
+  console.log("Rapid wheel and pinch zoom: 90 wheel events / 80 pinch updates each collapse into one camera render; state and teardown remain correct.");
 } finally {
   controller?.destroy();
   globalThis.window=oldWindow;

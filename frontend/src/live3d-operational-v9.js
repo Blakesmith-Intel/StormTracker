@@ -100,6 +100,7 @@ import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-pe
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1";
+import { stormTrackPresentation } from "./storm-track-presentation-v1.js?v=40dbz-v1";
 import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -2979,6 +2980,7 @@ function renderHybridTracks(index) {
     for (const track of frameTracks) {
       if (wanted && track.track_id !== wanted) continue;
       const observation = trackObservationForFrame(track, index);
+      const presentation = stormTrackPresentation(track, observation, hybridFrames[index]?.observedUtc, wanted === track.track_id);
       const volumeRecord = volumeMap?.get(track.track_id) ?? null;
       const volume = volumeRecord?.volume ?? null;
       const trend = volumeRecord?.trend ?? null;
@@ -2993,11 +2995,12 @@ function renderHybridTracks(index) {
       // Present track ID and centroid as one paired overlay above the 3-D
       // volume. The Labels checkbox controls the complete marker, not just
       // the text, and does not rebuild or change any measured/inferred data.
-      stormTrackMarkers.push({
+      if (presentation.show) stormTrackMarkers.push({
         position,
         text: `${track.track_id}  ≥${Number(observation.maximum_dbzh_lower_bound).toFixed(0)} dBZ`,
         colour: colour.toCssColorString(),
-        size: active.has(track.track_id) ? 12 : 8
+        size: active.has(track.track_id) ? 12 : 8,
+        priority: presentation.priority
       });
 
       if (showTrackVolumes && volume && hybridTrackVolumeCollection) {
@@ -3055,7 +3058,7 @@ function renderHybridTracks(index) {
       const trail = history
         .filter(item => item.frameIndex <= index)
         .sort((a, b) => a.frameIndex - b.frameIndex);
-      if (trail.length >= 2) {
+      if (presentation.show && trail.length >= 2) {
         hybridSource.entities.add({
           id: `hybrid-trail-${track.track_id}`,
           show: Boolean($("showTrackLabels")?.checked),

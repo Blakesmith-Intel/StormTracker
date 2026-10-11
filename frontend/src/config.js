@@ -33,8 +33,12 @@ export const RADARS = Object.freeze({
 export const SEGMENTATION_DEFAULTS = Object.freeze({
   thresholdCategory: 7,
   thresholdInterpretation: "Category 7 and above: definite >=40 dBZ.",
-  minPixels: 8,
-  connectivity: 8
+  // All 2-D tracking remains grounded in measured ≥40 dBZ source pixels.
+  minPixels: 16,
+  connectivity: 8,
+  maxGapPixels: 2,
+  strongCoreCategory: 11,
+  independentCoreMinPixels: 16
 });
 
 export const TRACKING_DEFAULTS = Object.freeze({

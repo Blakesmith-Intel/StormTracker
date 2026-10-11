@@ -410,16 +410,16 @@ jobs:
           set -euo pipefail
           release_sha="ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
           git fetch --tags origin
-          if git rev-parse -q --verify "refs/tags/v9.16.14.1.1" >/dev/null; then
-            actual="$(git rev-list -n1 refs/tags/v9.16.14.1.1)"
+          if git rev-parse -q --verify "refs/tags/v9.16.14.1" >/dev/null; then
+            actual="$(git rev-list -n1 refs/tags/v9.16.14.1)"
             test "$actual" = "$release_sha"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a v9.16.14.1 "$release_sha" -m "Sealed StormTracker production V9.16.14 · verified GitHub Pages deployment"
-            git push origin refs/tags/v9.16.14.1.1
+            git tag -a v9.16.14.1 "$release_sha" -m "Sealed StormTracker production V9.16.14.1 connected-pixel storm tracks · verified GitHub Pages deployment"
+            git push origin refs/tags/v9.16.14.1
           fi
-          test "$(git rev-list -n1 refs/tags/v9.16.14.1.1)" = "$release_sha"
+          test "$(git rev-list -n1 refs/tags/v9.16.14.1)" = "$release_sha"
           echo "SEALED v9.16.14.1 to exact commit $release_sha"
       - name: Verify published V9.16.13 labels and native Doppler
         shell: bash

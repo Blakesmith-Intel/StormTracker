@@ -40,7 +40,7 @@ export const SEGMENTATION_DEFAULTS = Object.freeze({
   maxGapPixels: 2,
   maxGapKm: 1.5,
   strongCoreCategory: 11,
-  independentCoreMinPixels: 24
+  independentCoreMinPixels: 16
 });
 
 export const TRACKING_DEFAULTS = Object.freeze({

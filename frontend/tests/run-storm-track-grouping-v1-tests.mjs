@@ -7,6 +7,8 @@ import { createStormTrackLabelOverlay } from "../src/storm-track-label-overlay-v
 assert.equal(SEGMENTATION_DEFAULTS.thresholdCategory,7,"Never lower the observed 40 dBZ cutoff");
 assert.equal(SEGMENTATION_DEFAULTS.minPixels,16);
 assert.equal(SEGMENTATION_DEFAULTS.maxGapPixels,2);
+assert.equal('minAreaKm2' in SEGMENTATION_DEFAULTS,false);
+assert.equal('maxGapKm' in SEGMENTATION_DEFAULTS,false);
 
 const width=60,height=60;
 const make=()=>new Uint8Array(width*height);
@@ -42,17 +44,27 @@ assert.equal(result.retained_cell_count,1,"Below-40 pixels never create cells or
 
 c=make();fill(c,10,10,4,7);
 result=segmentWebMercatorCategoryFrame({
-  categories:c,width,height,georef,sourceId:"BOM-MOSAIC",
-  ...SEGMENTATION_DEFAULTS,minAreaKm2:5000
+  categories:c,width,height,
+  georef:{projection:"EPSG:3857",minX:17000000,maxX:17006000,minY:-3500000,maxY:-3494000},
+  sourceId:"BOM-MOSAIC",...SEGMENTATION_DEFAULTS
 });
-assert.equal(result.retained_cell_count,0,"Area filter uses physical km² rather than unqualified pixels");
+assert.equal(result.retained_cell_count,1,"16 connected pixels are retained even when projected area is far below 6 km²");
+assert.ok(result.cells[0].sampled_area_km2 < 6,"Area remains metadata, never a cutoff");
+c=make();fill(c,10,10,3,7);
+result=segment(c);
+assert.equal(result.retained_cell_count,0,"Fewer than 16 observed strong pixels never create a track");
 
 const t0="2026-10-01T00:00:00Z",t1="2026-10-01T00:05:00Z";
-const obs=(observed_utc,dbz=40,area=12)=>({observed_utc,maximum_dbzh_lower_bound:dbz,sampled_area_km2:area});
+const obs=(observed_utc,dbz=40,pixels=16)=>({observed_utc,maximum_dbzh_lower_bound:dbz,pixel_count:pixels,sampled_area_km2:1000});
 const history=[obs(t0),obs(t1)];
 assert.equal(stormTrackPresentation({history},history[0],t0).show,false,"First ordinary observation is not labelled");
 assert.equal(stormTrackPresentation({history},history[1],t1).show,true,"Second observed scan establishes label");
 assert.equal(stormTrackPresentation({history:[obs(t0,55)]},obs(t0,55),t0).show,true,"New intense cores appear immediately");
+assert.equal(stormTrackPresentation({history:[obs(t0,50,79)]},obs(t0,50,79),t0).show,false,"79 connected pixels do not promote 50 dBZ track");
+assert.equal(stormTrackPresentation({history:[obs(t0,50,80)]},obs(t0,50,80),t0).show,true,"80 connected pixels promote 50 dBZ track regardless of estimated area");
+const small=stormTrackPresentation({history},obs(t1,50,20),t1).priority;
+const large=stormTrackPresentation({history},obs(t1,50,81),t1).priority;
+assert.ok(large>small,"Priority is based on observed pixel count");
 assert.equal(stormTrackPresentation({history:[obs(t0)]},obs(t0),t0,true).show,true,"Manually selected tracks remain visible");
 
 function element(){

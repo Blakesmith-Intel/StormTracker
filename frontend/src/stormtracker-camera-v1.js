@@ -262,6 +262,18 @@ export function createStormTrackerCameraController({
   let activePointer = null;
   let wheelGestureOpen = false;
   let wheelQuietTimer = null;
+  let wheelRenderFrame = null;
+
+  // A hardware mouse wheel can emit dozens of events between WebGL frames.
+  // Keep every requested change to state, but redraw the Cesium camera only
+  // once per animation frame. Never queue an unbounded backlog of renders.
+  function scheduleWheelRender() {
+    if (destroyed || wheelRenderFrame !== null) return;
+    wheelRenderFrame = window.requestAnimationFrame(() => {
+      wheelRenderFrame = null;
+      if (!destroyed) applyState();
+    });
+  }
 
   function snapshotCamera() {
     stableCamera = {
@@ -344,6 +356,11 @@ export function createStormTrackerCameraController({
   }
 
   function applyState() {
+    // A programmatic view change supersedes any unpainted wheel view.
+    if (wheelRenderFrame !== null) {
+      window.cancelAnimationFrame(wheelRenderFrame);
+      wheelRenderFrame = null;
+    }
     applyingState = true;
 
     try {
@@ -682,7 +699,7 @@ export function createStormTrackerCameraController({
           );
       }
 
-      applyState();
+      scheduleWheelRender();
 
       wheelGestureOpen =
         false;
@@ -701,13 +718,15 @@ export function createStormTrackerCameraController({
       return;
     }
 
+    // Every smooth event renews the terrain interaction grace period.
+    // Previously only the first event did, forcing detail back up while
+    // the gesture was still active and increasing tile churn.
+    onInteraction();
     if (
       !wheelGestureOpen
     ) {
       wheelGestureOpen =
         true;
-
-      onInteraction();
 
       zoomDirection(
         wheel.steps
@@ -786,6 +805,10 @@ export function createStormTrackerCameraController({
     destroy() {
       destroyed = true;
       clearInterval(correctionTimer);
+      if (wheelRenderFrame !== null) {
+        window.cancelAnimationFrame(wheelRenderFrame);
+        wheelRenderFrame = null;
+      }
 
       if (wheelQuietTimer) {
         clearTimeout(wheelQuietTimer);

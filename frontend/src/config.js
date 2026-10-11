@@ -35,10 +35,8 @@ export const SEGMENTATION_DEFAULTS = Object.freeze({
   thresholdInterpretation: "Category 7 and above: definite >=40 dBZ.",
   // All 2-D tracking remains grounded in measured ≥40 dBZ source pixels.
   minPixels: 16,
-  minAreaKm2: 6,
   connectivity: 8,
   maxGapPixels: 2,
-  maxGapKm: 1.5,
   strongCoreCategory: 11,
   independentCoreMinPixels: 16
 });

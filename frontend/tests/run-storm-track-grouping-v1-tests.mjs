@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { segmentWebMercatorCategoryFrame } from "../src/segmentation.js";
 import { SEGMENTATION_DEFAULTS } from "../src/config.js";
+import { cellsToRadarObservations, deduplicateRadarCells, updateTracks, trackToDict } from "../src/tracking.js";
 import { stormTrackPresentation } from "../src/storm-track-presentation-v1.js";
 import { createStormTrackLabelOverlay } from "../src/storm-track-label-overlay-v1.js";
 
@@ -29,6 +30,15 @@ assert.equal(result.grouped_component_count,1,"Short real-world gap between weak
 assert.equal(result.retained_cell_count,1);
 assert.equal(result.cells[0].pixel_count,32,"No synthetic pixels may be counted");
 assert.equal(result.labels[15*width+19],0,"Below-40 gap remains unmeasured");
+// Measured connected-pixel quantities must survive the worker tracking handoff.
+const trackedCells=cellsToRadarObservations("66","2026-10-01T00:00:00Z",result.cells);
+assert.equal(trackedCells[0].pixel_count,32);
+const globalCells=deduplicateRadarCells(trackedCells);
+assert.equal(globalCells[0].pixel_count,32);
+const measuredTracks=[];
+updateTracks(measuredTracks,globalCells,1);
+assert.equal(trackToDict(measuredTracks[0]).latest.pixel_count,32);
+
 
 c=make();fill(c,15,15,4,11);fill(c,20,15,4,11);
 result=segment(c);

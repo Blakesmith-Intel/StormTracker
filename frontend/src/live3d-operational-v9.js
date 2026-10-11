@@ -8,7 +8,7 @@ import {
 
 import {
   RadarWorkerClient
-} from "./worker-client.js?v=core-v6";
+} from "./worker-client.js?v=core-v6-pixeltrack-prod-r1";
 
 import {
   SOURCE_PALETTES

@@ -115,7 +115,7 @@ export function groupNearbyComponents(raw,categories,width,height,rowAreaM2,{
   raw.components.forEach((pixels,i)=>{
     const root=find(i);
     if(!grouped.has(root))grouped.set(root,[]);
-    grouped.get(root).push(...pixels);
+    for (const pixel of pixels) grouped.get(root).push(pixel);
   });
   return [...grouped.values()];
 }

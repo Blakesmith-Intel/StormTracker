@@ -187,9 +187,13 @@ export function createStormTrackerTouchCameraGestures({
               / 180;
         }
 
-        controller.setView(
-          next
-        );
+        // Use the coalesced camera path for rapid pinch/twist input.
+        // Older/mock controllers retain their existing direct setView API.
+        if (typeof controller.setGestureView === "function") {
+          controller.setGestureView(next);
+        } else {
+          controller.setView(next);
+        }
       }
       pairLast = current;
       singleLast = null;

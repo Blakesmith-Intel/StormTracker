@@ -49,6 +49,9 @@ function globalFromMembers(members) {
     centroid_longitude,
     centroid_latitude,
     sampled_area_km2: Math.max(...members.map(m => m.sampled_area_km2)),
+    // Do not double-count pixels seen by overlapping radar sites.
+    pixel_count: Math.max(...members.map(m => Number(m.pixel_count) || 0)),
+    definite_ge_50_pixel_count: Math.max(...members.map(m => Number(m.definite_ge_50_pixel_count) || 0)),
     maximum_category: strongest.maximum_category,
     maximum_dbzh_lower_bound: strongest.maximum_dbzh_lower_bound,
     maximum_dbzh_upper_bound: strongest.maximum_dbzh_upper_bound,
@@ -170,6 +173,8 @@ export function cellsToRadarObservations(radarId, observedUtc, cells) {
     centroid_longitude: cell.centroid_longitude,
     centroid_latitude: cell.centroid_latitude,
     sampled_area_km2: cell.sampled_area_km2,
+    pixel_count: cell.pixel_count,
+    definite_ge_50_pixel_count: cell.definite_ge_50_pixel_count,
     maximum_category: cell.maximum_category,
     maximum_dbzh_lower_bound: cell.maximum_dbzh_lower_bound,
     maximum_dbzh_upper_bound: cell.maximum_dbzh_upper_bound,

@@ -10,6 +10,16 @@ Persistent identifiers such as `ST0001` are algorithmic associations between obs
 
 Motion is calculated from geodesic centroid displacement. Doppler velocity is not used as horizontal translation speed.
 
+## Pixel-based 40 dBZ grouping and operational display
+
+The StormTracker live cell segmentation threshold is **40 dBZ** (reflectivity category 7). A detected cell must consist of at least **16 observed above-threshold pixels**, including when nearby components are joined over no more than **two raster pixels** of below-threshold separation. Gap pixels are not assigned reflectivity, counted as part of the storm, or included in measured footprints. A distinct connected 16-pixel core containing ≥50 dBZ reflectivity is protected from joining another independent strong core.
+
+Storm detection eligibility, storm-core separation, map label significance and display priority are based on **actual measured connected pixels, not estimated physical area**. Ordinary storm IDs become visible after two measured observations, while new ≥55 dBZ peaks or ≥50 dBZ cells containing at least 80 connected above-threshold pixels may be labelled immediately. These are internal display rules, not official Bureau severe thunderstorm warning criteria.
+
+Georeferenced sampled area (km²) can still be reported for descriptive diagnostics and inherited track-motion modelling, but **must not become a minimum-size criterion** for newly implemented storm identification and classification logic without an explicit future design decision. Existing geographic distance and movement calculations are separate from raster-connected-pixel thresholds.
+
+These parameter values are initial operational heuristics; compare them against historical Gympie, Cooloola and Christmas 2023 Gold Coast storms before production acceptance.
+
 ## Historical true-3-D mode
 
 Historical AURA Level-1 multi-elevation data may be processed separately to verify true volumetric geometry, echo tops and browser rendering. That workflow is deliberately excluded from the live browser runtime.

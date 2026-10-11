@@ -74,6 +74,11 @@ function segmentFrame(frame, categories) {
         frame.thresholdCategory ?? SEGMENTATION_DEFAULTS.thresholdCategory,
       minPixels:
         frame.minPixels ?? SEGMENTATION_DEFAULTS.minPixels,
+      minAreaKm2: frame.minAreaKm2 ?? SEGMENTATION_DEFAULTS.minAreaKm2,
+      maxGapPixels: frame.maxGapPixels ?? SEGMENTATION_DEFAULTS.maxGapPixels,
+      maxGapKm: frame.maxGapKm ?? SEGMENTATION_DEFAULTS.maxGapKm,
+      strongCoreCategory: SEGMENTATION_DEFAULTS.strongCoreCategory,
+      independentCoreMinPixels: SEGMENTATION_DEFAULTS.independentCoreMinPixels,
       connectivity:
         frame.connectivity ?? SEGMENTATION_DEFAULTS.connectivity
     });
@@ -94,6 +99,11 @@ function segmentFrame(frame, categories) {
       frame.thresholdCategory ?? SEGMENTATION_DEFAULTS.thresholdCategory,
     minPixels:
       frame.minPixels ?? SEGMENTATION_DEFAULTS.minPixels,
+    minAreaKm2: frame.minAreaKm2 ?? SEGMENTATION_DEFAULTS.minAreaKm2,
+    maxGapPixels: frame.maxGapPixels ?? SEGMENTATION_DEFAULTS.maxGapPixels,
+    maxGapKm: frame.maxGapKm ?? SEGMENTATION_DEFAULTS.maxGapKm,
+    strongCoreCategory: SEGMENTATION_DEFAULTS.strongCoreCategory,
+    independentCoreMinPixels: SEGMENTATION_DEFAULTS.independentCoreMinPixels,
     connectivity:
       frame.connectivity ?? SEGMENTATION_DEFAULTS.connectivity
   });

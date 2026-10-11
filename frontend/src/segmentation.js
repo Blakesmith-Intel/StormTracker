@@ -72,10 +72,10 @@ function thresholdCounts(values) {
 // Link nearby measured ≥40 dBZ components across short gaps. Never add gap
 // pixels to the measured footprint or attribute synthetic reflectivity to them.
 // Do not join two independently sized strong cores.
-export function groupNearbyComponents(raw,categories,width,height,rowAreaM2,{
-  maxGapPixels=0,maxGapKm=0,strongCoreCategory=11,independentCoreMinPixels=24
+export function groupNearbyComponents(raw,categories,width,height,{
+  maxGapPixels=0,strongCoreCategory=11,independentCoreMinPixels=24
 }={}){
-  if(!(maxGapPixels>0) || !(maxGapKm>0) || raw.components.length<2)return raw.components;
+  if(!(maxGapPixels>0) || raw.components.length<2)return raw.components;
   const parents=raw.components.map((_,i)=>i);
   const strong=raw.components.map(pixels=>
     pixels.length>=independentCoreMinPixels &&
@@ -102,9 +102,7 @@ export function groupNearbyComponents(raw,categories,width,height,rowAreaM2,{
     const label=raw.labels[index];
     if(!label)continue;
     const row=Math.floor(index/width),col=index-row*width;
-    const kmPerPixel=Math.sqrt(rowAreaM2(row))/1000;
     for(const [dr,dc] of offsets){
-      if((Math.hypot(dr,dc)-1)*kmPerPixel>maxGapKm)continue;
       const rr=row+dr,cc=col+dc;
       if(rr>=height || cc<0 || cc>=width)continue;
       const other=raw.labels[rr*width+cc];
@@ -127,10 +125,8 @@ function buildSegmentation({
   sourceId,
   thresholdCategory,
   minPixels,
-  minAreaKm2,
   connectivity,
   maxGapPixels,
-  maxGapKm,
   strongCoreCategory,
   independentCoreMinPixels,
   pixelPosition,
@@ -149,8 +145,8 @@ function buildSegmentation({
   }
 
   const raw = connectedComponents(mask, width, height, connectivity);
-  const groups = groupNearbyComponents(raw, categories, width, height, rowAreaM2, {
-    maxGapPixels, maxGapKm, strongCoreCategory, independentCoreMinPixels
+  const groups = groupNearbyComponents(raw, categories, width, height, {
+    maxGapPixels, strongCoreCategory, independentCoreMinPixels
   });
   const labels = new Uint16Array(categories.length);
   const cells = [];
@@ -195,11 +191,6 @@ function buildSegmentation({
       labels[index] = nextCellId;
     }
 
-    if (totalArea / 1_000_000 < minAreaKm2) {
-      for (const index of pixels) labels[index] = 0;
-      continue;
-    }
-
     const [dbzLower, dbzUpper] =
       REFLECTIVITY_CLASSES[maxCategory] ?? [null, null];
 
@@ -228,7 +219,7 @@ function buildSegmentation({
   cells.sort(
     (a, b) =>
       b.maximum_category - a.maximum_category ||
-      b.sampled_area_km2 - a.sampled_area_km2 ||
+      b.pixel_count - a.pixel_count ||
       a.local_cell_id - b.local_cell_id
   );
 
@@ -241,9 +232,7 @@ function buildSegmentation({
       threshold_category: thresholdCategory,
       threshold_interpretation: "Category 7 and above: definite >=40 dBZ.",
       min_pixels: minPixels,
-      min_area_km2: minAreaKm2,
       max_gap_pixels: maxGapPixels,
-      max_gap_km: maxGapKm,
       strong_core_category: strongCoreCategory,
       connectivity
     },
@@ -263,10 +252,8 @@ export function segmentCategoryFrame({
   radar,
   thresholdCategory = 7,
   minPixels = 8,
-  minAreaKm2 = 0,
   connectivity = 8,
   maxGapPixels = 0,
-  maxGapKm = 0,
   strongCoreCategory = 11,
   independentCoreMinPixels = 24
 }) {
@@ -288,10 +275,8 @@ export function segmentCategoryFrame({
     sourceId: radar.id,
     thresholdCategory,
     minPixels,
-    minAreaKm2,
     connectivity,
     maxGapPixels,
-    maxGapKm,
     strongCoreCategory,
     independentCoreMinPixels,
     pixelPosition: (row, col) =>
@@ -328,10 +313,8 @@ export function segmentWebMercatorCategoryFrame({
   sourceId = "BOM-MOSAIC",
   thresholdCategory = 7,
   minPixels = 8,
-  minAreaKm2 = 0,
   connectivity = 8,
   maxGapPixels = 0,
-  maxGapKm = 0,
   strongCoreCategory = 11,
   independentCoreMinPixels = 24
 }) {
@@ -369,10 +352,8 @@ export function segmentWebMercatorCategoryFrame({
     sourceId,
     thresholdCategory,
     minPixels,
-    minAreaKm2,
     connectivity,
     maxGapPixels,
-    maxGapKm,
     strongCoreCategory,
     independentCoreMinPixels,
     pixelPosition: (row, col) => {

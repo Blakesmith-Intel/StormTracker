@@ -144,6 +144,16 @@ const html=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",im
 const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
 assert.match(html,/id="multiRadarSelectButton"/);
 assert.match(html,/id="multiRadarChecklist"/);
+assert.match(html,/id="multiRadarStatus"[^>]*role="alert"[^>]*hidden/,
+  "Limit warning is hidden by default, not a persistent selected-site footer");
+assert.match(runtime,/checkbox\.checked=false;\s*const warning=\$\("multiRadarStatus"\);\s*warning\.textContent="You can select a maximum of three additional radars/,
+  "Attempting a fourth extra radar must reject the selection and show the warning");
+assert.match(runtime,/warning\.hidden=false;\s*return;/,
+  "Limit warning is revealed only by rejecting an extra selection");
+assert.match(runtime,/function clearMultiRadarSelectionWarning\(\)/);
+assert.doesNotMatch(runtime,/onStatus:message=>[\s\S]{0,110}multiRadarStatus/,
+  "Normal radar loading counters must not repopulate the footer");
+
 assert.match(html,/id="fitMultiRadars"/);
 assert.match(html,/id="clearMultiRadars"/);
 assert.match(runtime,/function showSupplementalRadarSites\(frame\)/);

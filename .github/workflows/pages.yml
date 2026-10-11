@@ -29,29 +29,36 @@ jobs:
           node-version: "24"
       - name: Validate current development source
         run: npm test
-      - name: Checkout sealed V9.16.14.1 pixel-tracking production source
+      - name: Checkout sealed V9.16.15 pixel-tracking production source
         uses: actions/checkout@v4
         with:
           # Exact, green-reviewed release merge commit. Never deploy unpinned main.
-          ref: ea8ce46cb7df2c33c1888af46d836d41c75af1c7
-          path: sealed-production/v9.16.14.1
+          ref: ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5
+          path: sealed-production/v9.16.15
           persist-credentials: false
-      - name: Verify and test V9.16.14.1 release source
+      - name: Verify and test V9.16.15 release source
         run: |
           set -euo pipefail
-          (cd sealed-production/v9.16.14.1 && npm test)
-          node --check sealed-production/v9.16.14.1/relay/worker.js
-          test "$(git -C sealed-production/v9.16.14.1 rev-parse HEAD)" = "ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
-          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.16.14.1/frontend/index.html
-          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html
-          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html
-          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.16.14.1/frontend/index.html
-          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html
-          grep -Fq 'minPixels: 16' sealed-production/v9.16.14.1/frontend/src/config.js
-          ! grep -Fq 'minAreaKm2' sealed-production/v9.16.14.1/frontend/src/config.js
-          test -f sealed-production/v9.16.14.1/frontend/src/storm-track-presentation-v1.js
-          test -f sealed-production/v9.16.14.1/frontend/src/storm-track-trail-visibility-v1.js
-          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.16.14.1/frontend/src/live3d-operational-v9.js
+          (cd sealed-production/v9.16.15 && npm test)
+          node --check sealed-production/v9.16.15/relay/worker.js
+          test "$(git -C sealed-production/v9.16.15 rev-parse HEAD)" = "ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5"
+          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.16.15/frontend/index.html
+          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.16.15/frontend/live3d-operational-v9.html
+          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.16.15/frontend/live3d-operational-v9.html
+          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.16.15/frontend/index.html
+          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.16.15/frontend/live3d-operational-v9.html
+          grep -Fq 'minPixels: 16' sealed-production/v9.16.15/frontend/src/config.js
+          ! grep -Fq 'minAreaKm2' sealed-production/v9.16.15/frontend/src/config.js
+          test -f sealed-production/v9.16.15/frontend/src/storm-track-presentation-v1.js
+          test -f sealed-production/v9.16.15/frontend/src/multi-radar-display-v9.js
+          grep -Fq 'id="multiRadarSelectButton"' sealed-production/v9.16.15/frontend/live3d-operational-v9.html
+          grep -Fq 'id="multiRadarStatus"' sealed-production/v9.16.15/frontend/live3d-operational-v9.html
+          grep -Fq 'role="alert" aria-live="assertive" hidden' sealed-production/v9.16.15/frontend/live3d-operational-v9.html
+          grep -Fq 'maximum of three additional radars' sealed-production/v9.16.15/frontend/src/live3d-operational-v9.js
+          grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' sealed-production/v9.16.15/frontend/src/multi-radar-display-v9.js
+          grep -Fq 'multiradar-v15' sealed-production/v9.16.15/frontend/index.html
+          test -f sealed-production/v9.16.15/frontend/src/storm-track-trail-visibility-v1.js
+          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.16.15/frontend/src/live3d-operational-v9.js
 
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
@@ -300,15 +307,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p published-site
-          cp -a sealed-production/v9.16.14.1/frontend/. published-site/
-          printf 'StormTracker V9.16.14.1 release %s\n' 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' > published-site/BUILD.txt
+          cp -a sealed-production/v9.16.15/frontend/. published-site/
+          printf 'StormTracker V9.16.15 release %s\n' 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' > published-site/BUILD.txt
           mkdir -p published-site/preview
           cp -a frontend/preview/. published-site/preview/
-          cmp sealed-production/v9.16.14.1/frontend/index.html published-site/index.html
-          cmp sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
+          cmp sealed-production/v9.16.15/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.16.15/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
-          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' published-site/BUILD.txt
+          grep -Fq 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' published-site/BUILD.txt
           test -f published-site/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
           grep -Fq '2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e' published-site/preview/v9.16.13/BUILD.txt
           test -f published-site/preview/v9.16.12/src/context-layers/qld-town-label-layer-v1.js
@@ -320,17 +327,17 @@ jobs:
           grep -Fq 'ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903' published-site/preview/multi-radar/BUILD.txt
           test -f published-site/preview/track-grouping/src/storm-track-presentation-v1.js
           grep -Fq "a5f2d3658d738c52b209256751315ec00482d246" published-site/preview/track-grouping/BUILD.txt
-          cmp sealed-production/v9.16.14.1/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.16.15/frontend/index.html published-site/index.html
           echo "Deployment payload: SEALED V9.16.14 production root + original previews"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: published-site
-      - name: Deploy sealed V9.16.14.1 root and isolated previews
+      - name: Deploy sealed V9.16.15 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify V9.16.14.1 publicly served production root
+      - name: Verify V9.16.15 publicly served production root
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -339,7 +346,7 @@ jobs:
           base="${PAGES_URL%/}"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' <<< "$build"
+          grep -Fq 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' <<< "$build"
           index="$(retry_curl "$base/index.html")"
           grep -Fq 'sidebar-hardcut-v14' <<< "$index"
           html="$(retry_curl "$base/live3d-operational-v9.html")"
@@ -355,7 +362,14 @@ jobs:
           ! grep -Fq 'minAreaKm2' <<< "$config"
           index="$(retry_curl "$base/index.html")"
           grep -Fq 'pixeltrack-prod-r1' <<< "$index"
-          echo "Verified original BoM Doppler hard crop, cleaned live production UI and commit ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
+          grep -Fq 'multiradar-v15' <<< "$index"
+          selection="$(retry_curl "$base/src/live3d-operational-v9.js")"
+          grep -Fq 'maximum of three additional radars' <<< "$selection"
+          html="$(retry_curl "$base/live3d-operational-v9.html")"
+          grep -Fq 'role="alert" aria-live="assertive" hidden' <<< "$html"
+          grep -Fq 'id="multiRadarSelectButton"' <<< "$html"
+          ! grep -Fq '>Primary radar only.</div>' <<< "$html"
+          echo "Verified BoM Doppler and accepted multiple-radar selection in production commit ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5"
 
       - name: Verify published V9.16 research preview and current sealed production
         env:
@@ -381,7 +395,7 @@ jobs:
           display="$(retry_curl "$base/preview/track-grouping/src/storm-track-presentation-v1.js")"
           grep -Fq 'observation.pixel_count' <<< "$display"
           production="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' <<< "$production"
+          grep -Fq 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' <<< "$production"
           echo "Verified PR #64 isolated browser preview with unchanged sealed production root."
 
       - name: Verify publicly served multi-radar site preview and sealed production
@@ -399,28 +413,30 @@ jobs:
           previewJs="$(retry_curl "$base/preview/multi-radar/src/multi-radar-display-v9.js")"
           grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' <<< "$previewJs"
           productionBuild="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' <<< "$productionBuild"
+          grep -Fq 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' <<< "$productionBuild"
           productionHtml="$(retry_curl "$base/live3d-operational-v9.html")"
-          ! grep -Fq 'id="multiRadarSelectButton"' <<< "$productionHtml"
-          echo "Verified multi-radar isolated live preview; production source is the accepted pixel-tracking build."
+          grep -Fq 'id="multiRadarSelectButton"' <<< "$productionHtml"
+          grep -Fq 'role="alert" aria-live="assertive" hidden' <<< "$productionHtml"
+          ! grep -Fq '>Primary radar only.</div>' <<< "$productionHtml"
+          echo "Verified multi-radar V9.16.15 production and retained isolated pre-release preview; storm pixel-tracking intact."
 
-      - name: Seal verified production tag v9.16.14.1
+      - name: Seal verified production tag v9.16.15
         shell: bash
         run: |
           set -euo pipefail
-          release_sha="ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
+          release_sha="ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5"
           git fetch --tags origin
-          if git rev-parse -q --verify "refs/tags/v9.16.14.1" >/dev/null; then
-            actual="$(git rev-list -n1 refs/tags/v9.16.14.1)"
+          if git rev-parse -q --verify "refs/tags/v9.16.15" >/dev/null; then
+            actual="$(git rev-list -n1 refs/tags/v9.16.15)"
             test "$actual" = "$release_sha"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a v9.16.14.1 "$release_sha" -m "Sealed StormTracker production V9.16.14.1 connected-pixel storm tracks · verified GitHub Pages deployment"
-            git push origin refs/tags/v9.16.14.1
+            git tag -a v9.16.15 "$release_sha" -m "Sealed StormTracker production V9.16.15 accepted multi-radar and connected-pixel tracking · verified GitHub Pages deployment"
+            git push origin refs/tags/v9.16.15
           fi
-          test "$(git rev-list -n1 refs/tags/v9.16.14.1)" = "$release_sha"
-          echo "SEALED v9.16.14.1 to exact commit $release_sha"
+          test "$(git rev-list -n1 refs/tags/v9.16.15)" = "$release_sha"
+          echo "SEALED v9.16.15 to exact commit $release_sha"
       - name: Verify published V9.16.13 labels and native Doppler
         shell: bash
         env:

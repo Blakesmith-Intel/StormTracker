@@ -262,15 +262,15 @@ export function createStormTrackerCameraController({
   let activePointer = null;
   let wheelGestureOpen = false;
   let wheelQuietTimer = null;
-  let wheelRenderFrame = null;
+  let gestureRenderFrame = null;
 
-  // A hardware mouse wheel can emit dozens of events between WebGL frames.
-  // Keep every requested change to state, but redraw the Cesium camera only
-  // once per animation frame. Never queue an unbounded backlog of renders.
-  function scheduleWheelRender() {
-    if (destroyed || wheelRenderFrame !== null) return;
-    wheelRenderFrame = window.requestAnimationFrame(() => {
-      wheelRenderFrame = null;
+  // Mouse wheels and touch pinches can emit dozens of input events between
+  // WebGL frames. Update target state immediately, but redraw the Cesium
+  // camera only once per animation frame. Never accumulate a render backlog.
+  function scheduleGestureRender() {
+    if (destroyed || gestureRenderFrame !== null) return;
+    gestureRenderFrame = window.requestAnimationFrame(() => {
+      gestureRenderFrame = null;
       if (!destroyed) applyState();
     });
   }
@@ -357,9 +357,9 @@ export function createStormTrackerCameraController({
 
   function applyState() {
     // A programmatic view change supersedes any unpainted wheel view.
-    if (wheelRenderFrame !== null) {
-      window.cancelAnimationFrame(wheelRenderFrame);
-      wheelRenderFrame = null;
+    if (gestureRenderFrame !== null) {
+      window.cancelAnimationFrame(gestureRenderFrame);
+      gestureRenderFrame = null;
     }
     applyingState = true;
 
@@ -414,7 +414,7 @@ export function createStormTrackerCameraController({
     );
   }
 
-  function setView(next) {
+  function updateViewState(next) {
     state = cloneState({
       ...state,
       ...next,
@@ -424,8 +424,18 @@ export function createStormTrackerCameraController({
         maximumRange
       )
     });
+  }
 
+  function setView(next) {
+    updateViewState(next);
     applyState();
+  }
+
+  // Touch pinch events arrive at display-independent pointer frequency.
+  // Keep target state current, while deferring expensive WebGL work to RAF.
+  function setGestureView(next) {
+    updateViewState(next);
+    scheduleGestureRender();
   }
 
   function reset() {
@@ -470,7 +480,7 @@ export function createStormTrackerCameraController({
         maximumRange
       }
     );
-    applyState();
+    scheduleGestureRender();
   }
 
   function panByFraction(horizontal, vertical) {
@@ -699,7 +709,7 @@ export function createStormTrackerCameraController({
           );
       }
 
-      scheduleWheelRender();
+      scheduleGestureRender();
 
       wheelGestureOpen =
         false;
@@ -788,6 +798,7 @@ export function createStormTrackerCameraController({
 
   return {
     setView,
+    setGestureView,
     reset,
     panByFraction,
     zoomDirection,
@@ -805,9 +816,9 @@ export function createStormTrackerCameraController({
     destroy() {
       destroyed = true;
       clearInterval(correctionTimer);
-      if (wheelRenderFrame !== null) {
-        window.cancelAnimationFrame(wheelRenderFrame);
-        wheelRenderFrame = null;
+      if (gestureRenderFrame !== null) {
+        window.cancelAnimationFrame(gestureRenderFrame);
+        gestureRenderFrame = null;
       }
 
       if (wheelQuietTimer) {

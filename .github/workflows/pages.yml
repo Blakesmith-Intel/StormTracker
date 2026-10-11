@@ -29,24 +29,29 @@ jobs:
           node-version: "24"
       - name: Validate current development source
         run: npm test
-      - name: Checkout sealed V9.16.14 production source
+      - name: Checkout sealed V9.16.14.1 pixel-tracking production source
         uses: actions/checkout@v4
         with:
           # Exact, green-reviewed release merge commit. Never deploy unpinned main.
-          ref: fd0e4bdfe294004338624475ba4bfaeea5e5f1e0
-          path: sealed-production/v9.16.14
+          ref: ea8ce46cb7df2c33c1888af46d836d41c75af1c7
+          path: sealed-production/v9.16.14.1
           persist-credentials: false
-      - name: Verify and test V9.16.14 release source
+      - name: Verify and test V9.16.14.1 release source
         run: |
           set -euo pipefail
-          (cd sealed-production/v9.16.14 && npm test)
-          node --check sealed-production/v9.16.14/relay/worker.js
-          test "$(git -C sealed-production/v9.16.14 rev-parse HEAD)" = "fd0e4bdfe294004338624475ba4bfaeea5e5f1e0"
-          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.16.14/frontend/index.html
-          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.16.14/frontend/live3d-operational-v9.html
-          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.16.14/frontend/live3d-operational-v9.html
-          test -f sealed-production/v9.16.14/frontend/src/storm-track-trail-visibility-v1.js
-          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.16.14/frontend/src/live3d-operational-v9.js
+          (cd sealed-production/v9.16.14.1 && npm test)
+          node --check sealed-production/v9.16.14.1/relay/worker.js
+          test "$(git -C sealed-production/v9.16.14.1 rev-parse HEAD)" = "ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
+          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.16.14.1/frontend/index.html
+          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html
+          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html
+          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.16.14.1/frontend/index.html
+          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html
+          grep -Fq 'minPixels: 16' sealed-production/v9.16.14.1/frontend/src/config.js
+          ! grep -Fq 'minAreaKm2' sealed-production/v9.16.14.1/frontend/src/config.js
+          test -f sealed-production/v9.16.14.1/frontend/src/storm-track-presentation-v1.js
+          test -f sealed-production/v9.16.14.1/frontend/src/storm-track-trail-visibility-v1.js
+          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.16.14.1/frontend/src/live3d-operational-v9.js
 
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
@@ -121,6 +126,13 @@ jobs:
           ref: a5f2d3658d738c52b209256751315ec00482d246
           path: preview-builds/track-grouping
           persist-credentials: false
+      # Pinned PR #63: multi-radar site selection visual preview, not production.
+      - name: Checkout V9.16.15 multiple radar display candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903
+          path: preview-builds/multi-radar
+          persist-credentials: false
       - name: Download authentic Gympie 2025 measured radar research previews
         uses: actions/download-artifact@v4
         with:
@@ -184,10 +196,26 @@ jobs:
           ! grep -Fq 'minAreaKm2' preview-builds/track-grouping/frontend/src/config.js
           test -f preview-builds/track-grouping/frontend/src/storm-track-presentation-v1.js
 
+      - name: Validate multi-radar preview independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd preview-builds/multi-radar && npm test)
+          node --check preview-builds/multi-radar/relay/worker.js
+          test "$(git -C preview-builds/multi-radar rev-parse HEAD)" = "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903"
+          test -f preview-builds/multi-radar/frontend/src/multi-radar-display-v9.js
+          grep -Fq 'id="multiRadarSelectButton"' preview-builds/multi-radar/frontend/live3d-operational-v9.html
+          grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' preview-builds/multi-radar/frontend/src/multi-radar-display-v9.js
+
       - name: Stage isolated live previews without changing production
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p frontend/preview/multi-radar
+          cp -a preview-builds/multi-radar/frontend/. frontend/preview/multi-radar/
+          printf 'V9.16.15 multi-radar preview candidate %s\n' "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903" > frontend/preview/multi-radar/BUILD.txt
+          test -f frontend/preview/multi-radar/src/multi-radar-display-v9.js
+          test -f frontend/preview/multi-radar/v9-multi-radar-hardware-qa.html
           mkdir -p frontend/preview/track-grouping
           cp -a preview-builds/track-grouping/frontend/. frontend/preview/track-grouping/
           printf 'Track grouping PR64 candidate %s\n' "a5f2d3658d738c52b209256751315ec00482d246" > frontend/preview/track-grouping/BUILD.txt
@@ -272,15 +300,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p published-site
-          cp -a sealed-production/v9.16.14/frontend/. published-site/
-          printf 'StormTracker V9.16.14 release %s\n' 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' > published-site/BUILD.txt
+          cp -a sealed-production/v9.16.14.1/frontend/. published-site/
+          printf 'StormTracker V9.16.14.1 release %s\n' 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' > published-site/BUILD.txt
           mkdir -p published-site/preview
           cp -a frontend/preview/. published-site/preview/
-          cmp sealed-production/v9.16.14/frontend/index.html published-site/index.html
-          cmp sealed-production/v9.16.14/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
+          cmp sealed-production/v9.16.14.1/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.16.14.1/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
-          grep -Fq 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' published-site/BUILD.txt
+          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' published-site/BUILD.txt
           test -f published-site/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
           grep -Fq '2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e' published-site/preview/v9.16.13/BUILD.txt
           test -f published-site/preview/v9.16.12/src/context-layers/qld-town-label-layer-v1.js
@@ -288,19 +316,21 @@ jobs:
           test -f published-site/preview/v9.16.11/src/doppler-layer-transition-v1.js
           test -f published-site/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
           grep -Fq 'f4927fea810833230bce1af65df80ee2e3b59661' published-site/preview/v9.16.10/BUILD.txt
+          test -f published-site/preview/multi-radar/src/multi-radar-display-v9.js
+          grep -Fq 'ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903' published-site/preview/multi-radar/BUILD.txt
           test -f published-site/preview/track-grouping/src/storm-track-presentation-v1.js
           grep -Fq "a5f2d3658d738c52b209256751315ec00482d246" published-site/preview/track-grouping/BUILD.txt
-          cmp sealed-production/v9.16.14/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.16.14.1/frontend/index.html published-site/index.html
           echo "Deployment payload: SEALED V9.16.14 production root + original previews"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: published-site
-      - name: Deploy sealed V9.16.14 root and isolated previews
+      - name: Deploy sealed V9.16.14.1 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify V9.16.14 publicly served production root
+      - name: Verify V9.16.14.1 publicly served production root
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -309,7 +339,7 @@ jobs:
           base="${PAGES_URL%/}"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' <<< "$build"
+          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' <<< "$build"
           index="$(retry_curl "$base/index.html")"
           grep -Fq 'sidebar-hardcut-v14' <<< "$index"
           html="$(retry_curl "$base/live3d-operational-v9.html")"
@@ -318,7 +348,14 @@ jobs:
           if grep -Fq 'id="operationalDoppler"' <<< "$html"; then exit 1; fi
           wind="$(retry_curl "$base/src/native-doppler-image-v1.js")"
           grep -Fq 'NATIVE_DOPPLER_ANNOTATION_START_ROW = 438' <<< "$wind"
-          echo "Verified original BoM Doppler hard crop, cleaned live production UI and commit fd0e4bdfe294004338624475ba4bfaeea5e5f1e0"
+          render="$(retry_curl "$base/src/storm-track-presentation-v1.js")"
+          grep -Fq 'observation.pixel_count' <<< "$render"
+          config="$(retry_curl "$base/src/config.js")"
+          grep -Fq 'minPixels: 16' <<< "$config"
+          ! grep -Fq 'minAreaKm2' <<< "$config"
+          index="$(retry_curl "$base/index.html")"
+          grep -Fq 'pixeltrack-prod-r1' <<< "$index"
+          echo "Verified original BoM Doppler hard crop, cleaned live production UI and commit ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
 
       - name: Verify published V9.16 research preview and current sealed production
         env:
@@ -344,26 +381,46 @@ jobs:
           display="$(retry_curl "$base/preview/track-grouping/src/storm-track-presentation-v1.js")"
           grep -Fq 'observation.pixel_count' <<< "$display"
           production="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq 'fd0e4bdfe294004338624475ba4bfaeea5e5f1e0' <<< "$production"
+          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' <<< "$production"
           echo "Verified PR #64 isolated browser preview with unchanged sealed production root."
 
-      - name: Seal verified production tag v9.16.14
+      - name: Verify publicly served multi-radar site preview and sealed production
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          previewBuild="$(retry_curl "$base/preview/multi-radar/BUILD.txt")"
+          grep -Fq "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903" <<< "$previewBuild"
+          previewHtml="$(retry_curl "$base/preview/multi-radar/live3d-operational-v9.html")"
+          grep -Fq 'id="multiRadarSelectButton"' <<< "$previewHtml"
+          previewJs="$(retry_curl "$base/preview/multi-radar/src/multi-radar-display-v9.js")"
+          grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' <<< "$previewJs"
+          productionBuild="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq 'ea8ce46cb7df2c33c1888af46d836d41c75af1c7' <<< "$productionBuild"
+          productionHtml="$(retry_curl "$base/live3d-operational-v9.html")"
+          ! grep -Fq 'id="multiRadarSelectButton"' <<< "$productionHtml"
+          echo "Verified multi-radar isolated live preview; production source is the accepted pixel-tracking build."
+
+      - name: Seal verified production tag v9.16.14.1
         shell: bash
         run: |
           set -euo pipefail
-          release_sha="fd0e4bdfe294004338624475ba4bfaeea5e5f1e0"
+          release_sha="ea8ce46cb7df2c33c1888af46d836d41c75af1c7"
           git fetch --tags origin
-          if git rev-parse -q --verify "refs/tags/v9.16.14" >/dev/null; then
-            actual="$(git rev-list -n1 refs/tags/v9.16.14)"
+          if git rev-parse -q --verify "refs/tags/v9.16.14.1" >/dev/null; then
+            actual="$(git rev-list -n1 refs/tags/v9.16.14.1)"
             test "$actual" = "$release_sha"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a v9.16.14 "$release_sha" -m "Sealed StormTracker production V9.16.14 · verified GitHub Pages deployment"
-            git push origin refs/tags/v9.16.14
+            git tag -a v9.16.14.1 "$release_sha" -m "Sealed StormTracker production V9.16.14.1 connected-pixel storm tracks · verified GitHub Pages deployment"
+            git push origin refs/tags/v9.16.14.1
           fi
-          test "$(git rev-list -n1 refs/tags/v9.16.14)" = "$release_sha"
-          echo "SEALED v9.16.14 to exact commit $release_sha"
+          test "$(git rev-list -n1 refs/tags/v9.16.14.1)" = "$release_sha"
+          echo "SEALED v9.16.14.1 to exact commit $release_sha"
       - name: Verify published V9.16.13 labels and native Doppler
         shell: bash
         env:

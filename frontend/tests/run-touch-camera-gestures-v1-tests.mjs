@@ -54,4 +54,29 @@ container.send('pointerup',{pointerId:1,clientX:70,clientY:60});
 assert.equal(touch.activeTouchCount(),0);assert.equal(gestures,2,'only actual pan/pinch movement should count as camera interaction');
 touch.destroy();
 assert.equal((container.listeners.get('pointerdown')??[]).length,0);
-console.log('Touch camera gesture checks passed: taps stay inert, one-finger pan and batched pinch/rotate/pitch update only on real movement.');
+
+// When the real camera provides an animation-frame coalesced gesture path,
+// pinch/twist must select it rather than triggering one WebGL update per move.
+const pinchContainer=new FakeContainer();
+const pinchCalls=[];
+let pinchState={range:100000,heading:0,pitch:-1.2};
+const pinchController={
+  getState:()=>({...pinchState}),
+  setView:()=>{throw new Error("Immediate view update bypassed gesture queue");},
+  setGestureView:next=>{
+    pinchState={...pinchState,...next};
+    pinchCalls.push(next);
+  }
+};
+const pinchTouch=createStormTrackerTouchCameraGestures({
+  container:pinchContainer,getController:()=>pinchController
+});
+pinchContainer.send('pointerdown',{pointerId:1,clientX:20,clientY:40});
+pinchContainer.send('pointerdown',{pointerId:2,clientX:80,clientY:40});
+for(let i=0;i<40;i++)
+  pinchContainer.send('pointermove',{pointerId:2,clientX:81+i,clientY:40});
+assert.equal(pinchCalls.length,40,"all pinch changes update controller target state");
+assert.ok(pinchState.range<100000,"pinch target follows the finger positions");
+pinchTouch.destroy();
+
+console.log('Touch camera gesture checks passed: taps inert, pan and pinch direction correct, and high-frequency pinch uses coalesced view path.');

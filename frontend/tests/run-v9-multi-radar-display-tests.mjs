@@ -165,6 +165,8 @@ console.log("PASS QLD/NSW supplemental images retain prior source through decode
 const slow=deferred();
 sources.set("secondary",slow.promise);
 const oldTask=controller.show("2026-10-10T01:07:00Z");
+await Promise.resolve(); // Start the old in-flight BoM source request.
+sources.delete("secondary"); // Next request returns a genuine newer frame.
 const freshTask=controller.show("2026-10-10T01:08:00Z");
 slow.resolve(frame("secondary","2026-10-10T01:07:00Z"));
 await Promise.all([oldTask,freshTask]);

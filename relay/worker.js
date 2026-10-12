@@ -1,4 +1,4 @@
-import { QLD_DOPPLER_PRODUCTS } from "../frontend/src/qld-radar-sites-v1.js";
+import { BORDER_RADAR_DOPPLER_PRODUCTS } from "../frontend/src/border-radar-sites-v1.js";
 import {
   parseBomReceivedAtUtc
 } from "./doppler-time-v1.js";
@@ -62,7 +62,8 @@ const ALLOWED_LAYERS = new Set([
   "atm_surf_air_precip_reflectivity_dbz",
 ]);
 
-const ALLOWED_DOPPLER_PRODUCTS = new Set(Object.values(QLD_DOPPLER_PRODUCTS));
+// Explicit QLD catalogue plus Brewarrina IDR93I only. Never permit arbitrary NSW or user-supplied BoM products.
+const ALLOWED_DOPPLER_PRODUCTS = new Set(Object.values(BORDER_RADAR_DOPPLER_PRODUCTS));
 
 const ALLOWED_PARAMS = new Set([
   "SERVICE",

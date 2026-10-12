@@ -1,3 +1,5 @@
+> **Current status (13 October 2026):** Accepted V9.17.0 features are promoted to production: BoM dBZ-only 2-D and inferred 3-D, rounded cells with source-pixel relative height, 1.0× manual default, 22 primary radar choices and minimalist tappable dish markers. Historical descriptions below of these items awaiting acceptance now refer only to earlier development stages. `/preview/volume-dbz/` is a retained comparison preview. Brewarrina Doppler is still disabled. See [CHANGELOG_V9.17.0.md](CHANGELOG_V9.17.0.md).
+
 # StormTracker authorised-origin preview acceptance
 
 The static Pages workflow publishes accepted production files from `main/frontend`

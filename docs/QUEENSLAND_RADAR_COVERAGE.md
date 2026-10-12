@@ -1,3 +1,5 @@
+> **V9.17.0 coverage extension:** The historical Queensland inventory below still correctly lists **19 QLD stations**. The current selectable app also includes **three NSW border-coverage stations:** Brewarrina **93** (-29.96, 146.81), Moree **53** (-29.50, 149.85), and Grafton **28** (-29.62, 152.97). These select BoM *national WMTS mosaic windows* for southern Queensland coverage. Moree/Grafton are radar-only. Brewarrina's `IDR93I` wind product is explicitly allowlisted in code but **not enabled** until the isolated Worker and map calibration are verified. Station markers are **minimal 18px cyan SVG radar dishes**, tappable to select primary. The original 19-QLD catalogue and 08/50/66 calibrated Doppler analysis contract remain intact. See [HANDOVER_V9.17.0.md](HANDOVER_V9.17.0.md).
+
 # Queensland radar coverage — Operational V9.7
 
 Verified against BoM's public radar-sites catalogue and product pages on

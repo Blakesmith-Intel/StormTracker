@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>StormTracker — V9.16.14 streamlined operational sidebar</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography-sidebar-v14-pixeltrack-prod-r1-multiradar-v15">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography-sidebar-v14-pixeltrack-prod-r1-multiradar-v15-dbz-blob-nsw-doppler-icon-v2-perpixel-height-v3-minimal-dish-v4">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -73,13 +73,16 @@
         <input id="radarOpacity" type="range" min="0" max="100" step="5" value="65" aria-label="Radar layer opacity: 0 transparent, 100 opaque">
         <label for="volumeOpacity">3-D volume opacity <output id="volumeOpacityValue" for="volumeOpacity">100%</output></label>
         <input id="volumeOpacity" type="range" min="0" max="100" step="5" value="100" aria-label="3-D volume opacity: 0 transparent, 100 opaque; does not change radar intensity">
+        <label class="volume-blob-toggle"><input type="checkbox" id="blobVolume" checked> Rounded 3-D storm volumes (preview)</label>
       </div>
       <label class="science-toggle"><input id="showAdvancedScience" type="checkbox"> Inference controls</label>
     </section>
     <section id="legendDock" class="card" aria-label="Weather legends">
-      <div id="legend"><strong>Inferred intensity · dBZ</strong><div class="intensity-scale">
-        <span><i style="background:#6ab6ff"></i>20–29</span><span><i style="background:#1e78ff"></i>30–39</span><span><i style="background:#00b96b"></i>40–49</span><span><i style="background:#ffd21a"></i>50–54</span><span><i style="background:#ff5a22"></i>55–59</span><span><i style="background:#bd2fff"></i>60+</span>
-      </div></div>
+      <div id="legend">
+        <strong>BoM rain radar · reflectivity (dBZ)</strong>
+        <div id="reflectivityLegend" class="intensity-scale" aria-label="15-band original BoM reflectivity colour scale in dBZ"></div>
+        <div class="note" style="font-size:9px">Same original 15-band BoM colours for measured 2-D radar and inferred 3-D echoes. The 3-D display starts at 40 dBZ.</div>
+      </div>
       <strong class="velocity-title">Doppler radial velocity · km/h</strong>
       <div id="dopplerVelocityLegend"><span class="note">BoM Doppler legend appears when a valid wind source is available.</span></div>
       <div class="support-scale"><span><i class="support-dot support-high"></i>High support</span><span><i class="support-dot support-medium"></i>Medium</span><span><i class="support-dot support-low"></i>Low</span></div>
@@ -94,10 +97,10 @@
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
     <div id="cesiumCredits" class="cesium-widget-credits" aria-label="Map attribution"></div>
-    <div id="nav"><select id="radarSite" aria-label="Primary Queensland radar site"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
+    <div id="nav"><select id="radarSite" aria-label="Primary radar site in Queensland or northern New South Wales"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
     <section id="multiRadarPanel" class="multi-radar-panel" aria-label="Additional radar sites" hidden>
       <header class="multi-radar-heading"><strong>Display radar coverage</strong><button type="button" id="closeMultiRadarPanel" aria-label="Close radar selection">×</button></header>
-      <p class="note">Primary radar controls storm tracks, inferred 3-D and Doppler. Add up to three more original BoM rain windows on the map.</p>
+      <p class="note">Primary radar controls storm tracks, inferred 3-D and any supported Doppler. Add up to three more BoM reflectivity windows, including northern NSW.</p><p class="note">Tap a radar marker to make it primary. Station names are available on hover or in the radar dropdown.</p>
       <div id="multiRadarChecklist" class="multi-radar-checklist" role="group" aria-label="Additional rain radar sites"></div>
       <div class="multi-radar-actions"><button type="button" id="fitMultiRadars">Fit selected</button><button type="button" id="clearMultiRadars">Primary only</button></div>
       <div id="multiRadarStatus" class="note multi-radar-limit-warning" role="alert" aria-live="assertive" hidden></div>
@@ -119,7 +122,7 @@
       <header><div class="river-gauge-info-heading"><span class="river-gauge-key river-gauge-key-large" aria-hidden="true"></span><div><span id="riverGaugeInfoKicker" class="map-info-kicker">RIVER GAUGE</span><strong id="riverGaugeInfoTitle">River gauge</strong></div></div><button id="closeRiverGaugeInfo" type="button" aria-label="Close river gauge details">×</button></header>
       <div id="riverGaugeInfoRows" class="metric"></div>
     </section>
-    <div id="mapTruthLabel">Measured reflectivity / inferred vertical structure</div>
+    <div id="mapTruthLabel">Measured BoM reflectivity · dBZ / inferred 3-D structure</div>
   </main>
 </div>
 <dialog id="detailsDialog" aria-labelledby="detailsTitle">
@@ -201,7 +204,7 @@
         value="3"
         step="1"
       >
-    </section><p class="note">Vertical intensity uses an empirical five-event AURA model. Inferred geometry never creates or preserves track identity.</p></div>
+    </section><p class="note">Vertical intensity uses an empirical five-event AURA model. 1.0× is neutral; taller intense storms are presentation only, not measured cloud tops. Inferred geometry never creates or preserves track identity.</p></div>
   <div data-detail-panel="model" hidden><section class="card">
       <h2>
         Current inferred volume
@@ -280,6 +283,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.16-bom-native-rain30-v1-cone-v2-time-v3-hold-v4-steer-v5-smooth-v6-warp-v7-synced-v8-perf-v9-trails-v10-recovery-v10-doppler-footer-rain3d-v2-bom-raw-png-v4-place-labels-v12-footer-fullwind-v13-sidebar-hardcut-v14-pixeltrack-prod-r1-multiradar-v15"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.16-bom-native-rain30-v1-cone-v2-time-v3-hold-v4-steer-v5-smooth-v6-warp-v7-synced-v8-perf-v9-trails-v10-recovery-v10-doppler-footer-rain3d-v2-bom-raw-png-v4-place-labels-v12-footer-fullwind-v13-sidebar-hardcut-v14-pixeltrack-prod-r1-multiradar-v15-dbz-blob-nsw-doppler-icon-v2-perpixel-height-v3-minimal-dish-v4"></script>
 </body>
 </html>

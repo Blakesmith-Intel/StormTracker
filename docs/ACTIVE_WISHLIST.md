@@ -1,3 +1,5 @@
+> **Current release note (V9.17.0, 13 October 2026):** V9.17.0 includes 22 BoM radar windows, the measured dBZ 2-D and inferred 3-D palette/height refinement, and minimalist radar-site map markers. Doppler for Brewarrina remains explicitly gated pending source transport/georegistration acceptance; Moree/Grafton have no integrated Doppler. All prior V9.13.4 and earlier "current" labels below are archival; use [HANDOVER_V9.17.0.md](HANDOVER_V9.17.0.md) for the actual outstanding items and P0/P1 priorities.
+
 # StormTracker — active wishlist and defect-first release policy
 
 Updated: 8 October 2026 (AEST). The deployed starting point is V9.13.4.

@@ -19,7 +19,8 @@ for(const [id,name,lat,lon] of [["93","Brewarrina",-29.96,146.81],["53","Moree",
   assert.equal(radar.longitude,lon);
   assert.equal(RADARS[id].name,name);
   assert.equal(radar.analysisGeorefVerified,false);
-  assert.deepEqual(primaryRadarDopplerSites(id),[],"NSW preview does not request unauthorized Doppler relay products");
+  assert.deepEqual(primaryRadarDopplerSites(id),id==="93"?["93"]:[],
+    "Only Brewarrina carries an authorised NSW Doppler product");
   const w=reflectivityWindowForRegion(id);
   assert.ok(w.colStart>=0&&w.colEnd<=42&&w.rowStart>=0&&w.rowEnd<=32, "BoM WMTS matrix bounds");
   assert.ok(w.colEnd>=w.colStart&&w.rowEnd>=w.rowStart);
@@ -41,9 +42,10 @@ assert.match(controller,/selector\.dispatchEvent\(new Event\("change",\{bubbles:
 assert.match(controller,/sites:BORDER_RADAR_SITES/);
 assert.match(controller,/getPrimary:selectedRadarRegion/);
 assert.match(html,/Primary radar site in Queensland or northern New South Wales/);
-assert.match(html,/Cyan radar names on the map/);
+assert.match(html,/Radar dish icons on the map/);
 assert.match(styles,/\.radar-site-labels/);
 assert.match(styles,/color:#61eeff/);
+assert.match(styles,/border:0;border-radius:0/,"Radar-site icons must have no border or box");
 assert.match(overlay,/aria-label","Load "\+item\.site\.name\+" as primary radar"/);
 assert.match(overlay,/worldToWindowCoordinates/);
 assert.match(overlay,/scene\.postRender\.addEventListener/);
@@ -82,7 +84,9 @@ const overlayInstance=createRadarSiteNameOverlay({
 assert.equal(overlayInstance.siteCount,22);
 assert.equal(typeof postRenderListener,"function");
 const newSite=nodes.find(node=>node.dataset.radarSiteId==="93");
-assert.ok(newSite,"Brewarrina label exists");
+assert.ok(newSite,"Brewarrina radar icon exists");
+assert.equal(newSite.textContent,"📡","Only a dish icon, no persistent site name");
+assert.match(newSite.title,/Brewarrina/,"Full station name available in tooltip");
 assert.equal(newSite.hidden,false,"Brewarrina visible when camera shows location");
 let stopped=0,prevented=0;
 newSite.handlers.click({
@@ -97,4 +101,4 @@ overlayInstance.destroy();
 assert.equal(removed,true,"Render listener removed cleanly");
 assert.equal(container.removed,undefined);
 assert.equal(newSite.handlers.click!==undefined,true);
-console.log("22-site QLD/NSW catalogue, radar WMTS bounds, clickable cyan geographic labels and 4-site cap verified.");
+console.log("22-site QLD/NSW catalogue, Brewarrina-only NSW Doppler, compact clickable radar dish icons and 4-site cap verified.");

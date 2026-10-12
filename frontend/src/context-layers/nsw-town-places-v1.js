@@ -1,4 +1,4 @@
-import {fetchNswRadarPlaceCatalogue} from "./nsw-radar-place-catalogue-v1.js?v=20261013-radar";
+import {fetchNswRadarPlaceCatalogue} from "./nsw-radar-place-catalogue-v1.js?v=9.18.0";
  
 // Existing public NSW ArcGIS feature service is authoritative but its API
 // lacks CORS, preventing direct browser fetch. GitHub Pages now serves a

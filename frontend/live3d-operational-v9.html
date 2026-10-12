@@ -97,10 +97,10 @@
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
     <div id="cesiumCredits" class="cesium-widget-credits" aria-label="Map attribution"></div>
-    <div id="nav"><select id="radarSite" aria-label="Primary Queensland radar site"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
+    <div id="nav"><select id="radarSite" aria-label="Primary radar site in Queensland or northern New South Wales"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
     <section id="multiRadarPanel" class="multi-radar-panel" aria-label="Additional radar sites" hidden>
       <header class="multi-radar-heading"><strong>Display radar coverage</strong><button type="button" id="closeMultiRadarPanel" aria-label="Close radar selection">×</button></header>
-      <p class="note">Primary radar controls storm tracks, inferred 3-D and Doppler. Add up to three more original BoM rain windows on the map.</p>
+      <p class="note">Primary radar controls storm tracks, inferred 3-D and any supported Doppler. Add up to three more BoM reflectivity windows, including northern NSW.</p><p class="note"><span style="color:#61eeff;font-weight:700">◆ Cyan radar names on the map</span> are clickable: select one to make it the primary radar.</p>
       <div id="multiRadarChecklist" class="multi-radar-checklist" role="group" aria-label="Additional rain radar sites"></div>
       <div class="multi-radar-actions"><button type="button" id="fitMultiRadars">Fit selected</button><button type="button" id="clearMultiRadars">Primary only</button></div>
       <div id="multiRadarStatus" class="note multi-radar-limit-warning" role="alert" aria-live="assertive" hidden></div>

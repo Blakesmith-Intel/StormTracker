@@ -88,7 +88,7 @@ test("Slider updates only volume point collections without forcing radar reload"
   assert.match(script,/addVolumeGlyph\(hybridTrackVolumeCollection/);
   assert.match(script,/addVolumeDisplayPoint\(hybridTrackFootprintCollection/);
   assert.match(listener,/setVolumeDisplayOpacity\(hybridTrackFootprintCollection,percent\)/);
-  assert.match(script,/\},point\.alpha,volumePercent,point\.dbzh/);
+  assert.match(script,/\},point\.alpha,volumePercent,point\.source_low_level_dbzh \?\? point\.dbzh/);
   assert.match(script,/\},1,volumePercent\)/);
   assert.match(script,/\},supportStyle\.alpha,volumePercent,point\.dbzh/);
 });

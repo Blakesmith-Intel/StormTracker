@@ -9,7 +9,7 @@ export const NSW_BORDER_RADAR_SITES=Object.freeze({
     halfSpanKm:128,dopplerProduct:"IDR93I",dopplerLatitude:-29.96,dopplerLongitude:146.81,
     // BoM Brewarrina Doppler is authorised only by exact product ID.
     // Geographic image calibration remains unverified until source-frame QA.
-    dopplerAvailableAtBom:true,dopplerIntegrated:true,analysisGeorefVerified:false
+    dopplerAvailableAtBom:true,dopplerIntegrated:false,analysisGeorefVerified:false
   }),
   "53":Object.freeze({
     id:"53",name:"Moree",state:"NSW",latitude:-29.50,longitude:149.85,
@@ -36,5 +36,5 @@ export const BORDER_RADAR_SITES=Object.freeze({
 export function primaryRadarDopplerSites(id){
   const site=BORDER_RADAR_SITES[id];
   if(!site)throw new RangeError("Unknown primary radar site: "+id);
-  return site.dopplerProduct?[site.id]:[];
+  return site.dopplerProduct && site.dopplerIntegrated!==false ? [site.id] : [];
 }

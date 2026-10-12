@@ -35,7 +35,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "2f72c22d0382fb85bfbacb2070979d822c21d168"
           npm test
           node --check relay/worker.js
-          node -e 'const c=require("./relay/wrangler-nsw-preview.jsonc"); if(c.name!=="stormtracker-bom-relay-nsw-preview"||c.main!=="worker.js")throw new Error("Unsafe deployment configuration")'
+          node -e 'const c=JSON.parse(require("node:fs").readFileSync("./relay/wrangler-nsw-preview.jsonc","utf8")); if(c.name!=="stormtracker-bom-relay-nsw-preview"||c.main!=="worker.js")throw new Error("Unsafe deployment configuration")'
           grep -Fq '"93":"IDR93I"' frontend/src/border-radar-sites-v1.js
           ! grep -Fq '"53":"IDR53I"' frontend/src/border-radar-sites-v1.js
           ! grep -Fq '"28":"IDR28I"' frontend/src/border-radar-sites-v1.js

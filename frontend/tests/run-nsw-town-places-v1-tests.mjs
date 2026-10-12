@@ -1,88 +1,67 @@
 import assert from "node:assert/strict";
+import {fetchNswTowns} from "../src/context-layers/nsw-town-places-v1.js";
 import {
-  NSW_SETTLEMENT_LAYERS, nswTownsQueryUrl, normaliseNswTowns,
-  fetchNswTowns
-} from "../src/context-layers/nsw-town-places-v1.js";
-import {
-  nswLocalityViewBounds, expandNswLocalityBounds, nswLocalityQueryUrl,
-  normaliseNswLocalities
-} from "../src/context-layers/nsw-nearby-localities-v1.js";
-import {
-  rankQueenslandTowns, layoutTownLabels,
-  geographicPlaceNameKey
-} from "../src/context-layers/qld-town-label-declutter-v1.js";
-import {DEA_REGIONAL_IMAGERY,createBasemapProvider,BASEMAP_IDS}
-  from "../src/context-layers/basemap-manager-v1.js";
-
-assert.deepEqual(NSW_SETTLEMENT_LAYERS.map(layer=>layer.kind),
-  ["city","town","village"]);
-assert.match(nswTownsQueryUrl({kind:"city"}),/outFields=objectid%2Cgeneralname/);
-assert.match(nswTownsQueryUrl({kind:"town"}),/population/);
-const mk=(id,name,lon,lat,pop=0)=>({
-  type:"Feature",id,properties:{objectid:id,generalname:name,population:pop},
-  geometry:{type:"Point",coordinates:[lon,lat]}
-});
-const city=normaliseNswTowns({features:[mk(10,"Sydney",151.21,-33.87)]},{kind:"city"});
-assert.equal(city.length,1);
-assert.equal(city[0].isMajor,true);
-assert.equal(city[0].population,0,
-  "Never invent numerical populations for city/village sources");
-assert.deepEqual(normaliseNswTowns({features:[
-  mk(11,"Moree",149.84,-29.46,10000),mk(12,"",150,-31),mk(13,"Outside NSW",140,-28)
-]},{kind:"town"}).map(p=>p.name),["Moree"]);
-let calls=[];
+  NSW_RADAR_PLACE_CATALOGUE_SCHEMA,NSW_RADAR_PLACE_CATALOGUE_URL,
+  normaliseNswRadarPlaceCatalogue,fetchNswRadarPlaceCatalogue
+} from "../src/context-layers/nsw-radar-place-catalogue-v1.js";
+import {fetchNswNearbyLocalities,nswLocalityViewBounds,expandNswLocalityBounds}
+  from "../src/context-layers/nsw-nearby-localities-v1.js";
+import {layoutTownLabels,rankQueenslandTowns,sameGeographicSettlement}
+  from "../src/context-layers/qld-town-label-declutter-v1.js";
+const sample={
+  schema:NSW_RADAR_PLACE_CATALOGUE_SCHEMA,
+  source:"https://spatial.industry.nsw.gov.au/arcgis/rest/services/PUBLIC/TopoBaseMap/MapServer",
+  places:[
+    {id:"nsw-town:1",name:"Brewarrina",longitude:146.8611357,latitude:-29.9624446,population:0,kind:"town"},
+    {id:"nsw-town:2",name:"Moree",longitude:149.8416351,latitude:-29.4629725,population:0,kind:"town"},
+    {id:"nsw-town:3",name:"Tweed Heads",longitude:153.5445904,latitude:-28.1740063,population:0,kind:"town"},
+    {id:"nsw-city:4",name:"Lismore",longitude:153.279,latitude:-28.808,population:0,kind:"city"},
+    {id:"nsw-locality:5",name:"Mungindi",longitude:149.00,latitude:-28.97,population:0,kind:"locality"},
+    {id:"nsw-locality:6",name:"Ashford",longitude:151.1,latitude:-29.32,population:0,kind:"locality"},
+    {id:"bad-town",name:"Invalid",longitude:160,latitude:-29,population:0,kind:"town"}
+  ]
+};
+assert.ok(NSW_RADAR_PLACE_CATALOGUE_URL.includes("/data/nsw-radar-places-v1.json"));
+assert.equal(normaliseNswRadarPlaceCatalogue(sample).length,6);
+assert.throws(()=>normaliseNswRadarPlaceCatalogue({schema:"bad",places:[]}),/invalid/);
+let requests=0,seenUrl="";
 const fetchImpl=async url=>{
-  calls.push(url);
-  const kind=/MapServer\/0\/query/.test(url)?"city":
-    /MapServer\/1\/query/.test(url)?"town":"village";
-  const features=kind==="city"?[mk(1,"Sydney",151.21,-33.87)]:
-    kind==="town"?[mk(2,"Moree",149.84,-29.46,10000)]:
-    [mk(3,"Grafton",152.93,-29.69)];
-  return {ok:true,async json(){return {type:"FeatureCollection",features};}};
+  requests++;seenUrl=url;
+  return {ok:true,json:async()=>sample};
 };
-const settlements=await fetchNswTowns({fetchImpl});
-assert.equal(settlements.length,3);
-assert.equal(calls.length,3,"City/town/village layers requested once in parallel");
-assert.deepEqual(settlements.map(p=>p.name).sort(),["Grafton","Moree","Sydney"]);
-const combined=rankQueenslandTowns([
-  {id:"qld:goondiwindi",name:"Goondiwindi",longitude:150.31,latitude:-28.54,population:6000},
-  ...settlements
-]);
-assert.ok(combined.find(x=>x.name==="Sydney").priority > combined.find(x=>x.name==="Grafton").priority,
-  "Official NSW cities have useful broad-scale importance without made-up populations");
-const accepted=layoutTownLabels({
-  candidates:combined.map((p,i)=>({...p,x:140+i*170,y:180})),
-  width:1100,height:600,cameraHeight:900000,mode:"qld-imagery"
+const towns=await fetchNswTowns({fetchImpl});
+assert.equal(towns.length,4);
+assert.deepEqual(towns.map(x=>x.name).sort(),
+  ["Brewarrina","Lismore","Moree","Tweed Heads"]);
+assert.equal(requests,1,"Load one same-origin snapshot instead of four non-CORS ArcGIS requests");
+assert.equal(seenUrl,NSW_RADAR_PLACE_CATALOGUE_URL);
+assert.equal(towns.find(x=>x.name==="Lismore").isMajor,true);
+const north=await fetchNswNearbyLocalities({
+  bounds:{west:148,south:-30,east:152,north:-28},
+  fetchImpl
 });
-assert.equal(accepted.length,combined.length,
-  "Same existing collision layout can display nearby QLD and NSW towns together");
-assert.equal(geographicPlaceNameKey("Tweed Heads"),"tweed heads");
-
+assert.deepEqual(north.map(x=>x.name).sort(),["Ashford","Mungindi"]);
+assert.equal(requests,1,"Localities share cached snapshot with towns");
+assert.ok(north.every(x=>x.fromNswLocality&&x.priority===38));
 const view=nswLocalityViewBounds({
-  positionCartographic:{height:90000},
-  computeViewRectangle(){return {west:150,east:152,south:-32,north:-30};}
+  positionCartographic:{height:540000},
+  computeViewRectangle(){return {west:147,east:153,south:-31,north:-27.5};}
 },{Math:{toDegrees:x=>x}},{});
-assert.ok(view&&view.east===152);
-const expanded=expandNswLocalityBounds(view);
-assert.ok(expanded.west < view.west && expanded.north > view.north);
-const localityUrl=nswLocalityQueryUrl(expanded);
-assert.match(localityUrl,/generalname/);
-assert.match(localityUrl,/esriGeometryEnvelope/);
-assert.deepEqual(normaliseNswLocalities({features:[mk(7,"Grafton",152.93,-29.69)]})
-  .map(x=>x.name),["Grafton"]);
-
-class Wmts{constructor(options){this.options=options;}}
-class Rectangle{static fromDegrees(...v){return v;}}
-const Cesium={
-  WebMapTileServiceImageryProvider:Wmts,
-  WebMercatorTilingScheme:class{},
-  Credit:class{constructor(text){this.text=text;}},
-  Rectangle
-};
-const imagery=createBasemapProvider(Cesium,BASEMAP_IDS.QLD_IMAGERY);
-assert.equal(imagery.options.url,DEA_REGIONAL_IMAGERY.service);
-assert.equal(imagery.options.layer,DEA_REGIONAL_IMAGERY.layer);
-assert.equal(imagery.options.rectangle,undefined,
-  "National satellite base must not clip at either state border");
-assert.match(imagery.options.credit.text,/Geoscience Australia/);
-console.log("PASS official NSW settlements, DEA 2025 national imagery, shared QLD label layout and locality bounds.");
+assert.ok(view&&view.west===147&&view.east===153,
+  "NSW rural names permitted at radar-regional zoom, not just street-level");
+assert.ok(expandNswLocalityBounds(view).west<view.west);
+assert.equal(nswLocalityViewBounds({
+  positionCartographic:{height:1000000},
+  computeViewRectangle(){throw Error("not invoked at extreme zoom");}
+},{Math:{toDegrees:x=>x}},{}),null);
+const ranked=rankQueenslandTowns([...towns,{
+  id:"qld-town:1",name:"Goondiwindi",longitude:150.31,latitude:-28.54,population:7000
+}]);
+const accepted=layoutTownLabels({candidates:ranked.map((p,i)=>({...p,x:80+i*170,y:180})),
+  width:1200,height:800,cameraHeight:750000,mode:"qld-imagery"});
+assert.equal(accepted.length,ranked.length,
+  "QLD and NSW place names share the one geographical screen-space label layout");
+assert.ok(!sameGeographicSettlement(towns[0],towns[1]));
+const invalidFetch=async()=>({ok:false,status:503});
+await assert.rejects(()=>fetchNswRadarPlaceCatalogue({fetchImpl:invalidFetch}),/503/);
+console.log("PASS same-origin NSW radar-name snapshot, major settlements, rural 540-km altitude, cache, and shared QLD/NSW layout.");

@@ -392,6 +392,9 @@ export function buildMeasuredTrackVolume(
       }
 
       points.push({
+        // The observed dBZ at THIS pixel, not the track's maximum.
+        // Used for display-only vertical scale; never changes inference.
+        source_low_level_dbzh: inputDbz,
         longitude:
           geographic.longitude,
 

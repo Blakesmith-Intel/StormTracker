@@ -63,13 +63,24 @@ features.push(mk(1000,"Brisbane",153.03,-27.47,2_600_000));
 let feedCount=0;const statuses=[];
 const layer=createQueenslandTownLabelLayer({
   viewer,CesiumRef,documentRef,container:mapPanel,mode:"qld-imagery",
-  fetchImpl:async()=>{feedCount++;return {
-    ok:true,async json(){return {type:"FeatureCollection",features};}
-  };},
+  fetchImpl:async url=>{
+    feedCount++;
+    const nsw=String(url).includes("spatial.industry.nsw.gov.au");
+    const layer=String(url).match(/MapServer\/(\d+)\/query/)?.[1];
+    const id=layer==="0"?10001:layer==="1"?10002:10003;
+    const location=layer==="0"?["Newcastle",151.78,-32.93,0]
+      :layer==="1"?["Moree",149.84,-29.46,11000]
+      :["Grafton",152.93,-29.69,0];
+    const record=mk(id,...location);
+    if(nsw)record.properties.generalname=record.properties.name;
+    return {ok:true,async json(){return {
+      type:"FeatureCollection",features:nsw?[record]:features
+    };}};
+  },
   onStatus:status=>statuses.push(status)
 });
-assert.equal(await layer.start(),features.length);
-assert.equal(feedCount,1);
+assert.equal(await layer.start(),features.length+3);
+assert.equal(feedCount,4);
 assert.equal(mapPanel.childElementCount,1);
 assert.equal(mapPanel.children[0].className,"qld-place-foreground");
 assert.ok(layer.visibleCount>=12,
@@ -113,7 +124,7 @@ assert.ok(!layer.visibleLabels.some(p=>p.name==="Brisbane"),
   "Avoid redundant major city label above OSM");
 layer.setMode("qld-imagery");
 assert.ok(layer.visibleCount>0);
-assert.equal(feedCount,1,"Changing basemaps never refetches towns");
+assert.equal(feedCount,4,"Changing basemaps never refetches towns");
 scene.canvas.clientWidth=390;scene.canvas.clientHeight=350;
 layer.draw(true);
 assert.ok(layer.visibleCount<=16);

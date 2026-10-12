@@ -4,6 +4,7 @@ import {
   BASEMAP_IDS,
   BASEMAP_STORAGE_KEY,
   QLD_IMAGERY_BASEMAP,
+  WORLD_IMAGERY_BASEMAP,
   QUEENSLAND_PLACE_LABELS,
   REFERENCE_LABELS,
   basemapLabel,
@@ -99,11 +100,11 @@ const qld =
 
 assert.equal(
   qld.options.url,
-  "https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestStateProgram_AllUsers/ImageServer/tile/{z}/{y}/{x}"
+  WORLD_IMAGERY_BASEMAP.tileTemplate
 );
 assert.equal(
   qld.options.maximumLevel,
-  20
+  19
 );
 assert.equal(
   qld.options.tileWidth,
@@ -119,17 +120,15 @@ assert.ok(
 );
 assert.match(
   qld.options.credit.text,
-  /State of Queensland/
+  /Esri, Vantor, Earthstar Geographics/
 );
 
-assert.deepEqual(
-  qld.options.rectangle,
-  QLD_IMAGERY_BASEMAP.rectangleDegrees
-);
+assert.equal(qld.options.rectangle,undefined,
+  "Single national satellite tile source has no Queensland or NSW clip");
 
 assert.equal(
   QLD_IMAGERY_BASEMAP.label,
-  "Queensland imagery · latest public aerial / satellite"
+  "Satellite · Esri World Imagery (national)"
 );
 
 const labels =
@@ -331,8 +330,10 @@ assert.equal(
 assert.equal(
   layers[1].provider.constructor,
   FakeUrlTemplateProvider,
-  "QLD imagery overlays the generic fallback."
+  "One national Esri satellite mosaic overlays the generic fallback."
 );
+assert.equal(layers[1].provider.options.url,WORLD_IMAGERY_BASEMAP.tileTemplate);
+assert.equal(layers[1].provider.options.rectangle,undefined);
 
 const street =
   manager.setBasemap(
@@ -394,5 +395,5 @@ assert.equal(
 );
 
 console.log(
-  "Basemap manager checks passed: Queensland imagery remains clipped to its published extent, generic fallback fills outside coverage, global labels cross the imagery seam, Queensland Globe place labels are available, and layer replacement remains camera-safe."
+  "Basemap manager checks passed: one national Esri satellite source, no artificial state clip, correct credits, street fallback, state labels, and safe layer replacement."
 );

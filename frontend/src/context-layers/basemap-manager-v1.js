@@ -31,8 +31,18 @@ export const QLD_IMAGERY_BASEMAP =
         north: -9.00150272786486
       }),
     label:
-      "Queensland imagery · latest public aerial / satellite"
+      "Satellite · Esri World Imagery (national)"
   });
+
+// A single national basemap removes cross-provider rectangular imagery seams.
+// Earthstar Geographics contributes imagery to Esri's licensed compilation;
+// Earthstar does not publish a separate generic satellite tile service.
+export const WORLD_IMAGERY_BASEMAP = Object.freeze({
+  service:"https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+  tileTemplate:"https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  maximumLevel:19,
+  label:"Satellite · Esri World Imagery (national)"
+});
 
 export const REFERENCE_LABELS =
   Object.freeze({
@@ -186,8 +196,7 @@ export function createBasemapProvider(
     === BASEMAP_IDS.QLD_IMAGERY
   ) {
     return new Cesium.UrlTemplateImageryProvider({
-      url:
-        QLD_IMAGERY_BASEMAP.tileTemplate,
+      url: WORLD_IMAGERY_BASEMAP.tileTemplate,
 
       tilingScheme:
         new Cesium.WebMercatorTilingScheme(),
@@ -198,18 +207,12 @@ export function createBasemapProvider(
       tileHeight:
         256,
 
-      maximumLevel:
-        QLD_IMAGERY_BASEMAP.maximumLevel,
-
-      rectangle:
-        qldImageryRectangle(
-          Cesium
-        ),
-
-      credit:
-        new Cesium.Credit(
-          "Imagery © State of Queensland; © Planet Labs Netherlands B.V., Planet and Geoplex, 2026"
-        )
+      maximumLevel: WORLD_IMAGERY_BASEMAP.maximumLevel,
+      // World Imagery deliberately has NO NSW/QLD rectangle clip.
+      // Retain native provider attribution and third-party source credits.
+      credit: new Cesium.Credit(
+        "World Imagery © Esri, Vantor, Earthstar Geographics and the GIS User Community"
+      )
     });
   }
 
@@ -279,7 +282,7 @@ export function createStormTrackerBasemapManager({
 
           onStatus(
             id === BASEMAP_IDS.QLD_IMAGERY
-              ? "Queensland imagery unavailable for part of this view · generic map shown underneath"
+              ? "Esri World Imagery unavailable · Street map retained underneath"
               : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
             id === BASEMAP_IDS.QLD_IMAGERY
               ? "normal"
@@ -413,7 +416,7 @@ export function createStormTrackerBasemapManager({
 
     onStatus(
       id === BASEMAP_IDS.QLD_IMAGERY
-        ? "Basemap: Queensland imagery · generic global fallback outside coverage"
+        ? "Basemap: Esri World Imagery · national satellite coverage with Street fallback"
         : `Basemap: ${basemapLabel(id)}`,
       "ok"
     );

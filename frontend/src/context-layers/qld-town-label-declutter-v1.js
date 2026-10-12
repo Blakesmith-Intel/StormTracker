@@ -90,8 +90,10 @@ export function rankQueenslandTowns(towns) {
     // Remoteness receives extra weight; satellite towns around major
     // metropolitan centres should not swamp rural settlements.
     const population = Math.max(0, Number(town.population) || 0);
+    // The NSW Cities source does not publish numerical population.
+    // Give it an important label rank WITHOUT fabricating population data.
     const priority = Math.log10(population + 1) * 20 +
-      Math.min(closestLarger, 260) / 5;
+      Math.min(closestLarger, 260) / 5 + (town.isMajor ? 130 : 0);
     return { ...town, priority, isolationKm: closestLarger };
   });
 }

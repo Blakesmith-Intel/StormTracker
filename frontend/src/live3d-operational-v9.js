@@ -134,7 +134,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.13.2";
+} from "./context-layers/basemap-manager-v1.js?v=9.17-dea-regional-autodetail-r1";
 
 import {
   createQueenslandTownLabelLayer

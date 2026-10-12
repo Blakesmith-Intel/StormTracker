@@ -1,4 +1,7 @@
 import { fetchQueenslandPopulationCentres } from "./qld-population-centres-v2.js?v=9.12.3";
+import { fetchNswTowns } from "./nsw-town-places-v1.js?v=20261013";
+import { fetchNswNearbyLocalities, nswLocalityViewBounds, expandNswLocalityBounds }
+  from "./nsw-nearby-localities-v1.js?v=20261013";
 import { rankQueenslandTowns, sameGeographicSettlement, layoutTownLabels, townLabelTypography }
   from "./qld-town-label-declutter-v1.js?v=9.16.12";
 import { fetchQldNearbyLocalities, expandLocalityBounds, localityBoundsContain,
@@ -22,7 +25,8 @@ export function cameraLookDownDegrees(camera,CesiumRef,ellipsoid) {
 // Foreground HTML text is intentionally above ALL WebGL weather imagery,
 // Cesium 3-D points, radar sprites and terrain. Updating a small DOM subset
 // on camera changes is independent of expensive volume/radar frame playback.
-// The OSM and QLD satellite modes share precisely one place-label mechanism.
+// Street and national satellite use ONE shared screen-space label and
+// collision budget for Queensland and NSW. No two DOM overlays can overlap.
 export function createQueenslandTownLabelLayer({
   viewer,CesiumRef=globalThis.Cesium,fetchImpl=globalThis.fetch,
   documentRef=globalThis.document,container=viewer?.container?.parentElement,
@@ -31,7 +35,7 @@ export function createQueenslandTownLabelLayer({
   if(!viewer?.scene?.postRender || !CesiumRef?.SceneTransforms ||
      !CesiumRef?.EllipsoidalOccluder || !container ||
      typeof documentRef?.createElement!=="function")
-    throw new TypeError("Queensland town labels require a Cesium scene and map container");
+    throw new TypeError("Cross-border town labels require a Cesium scene and map container");
 
   const scene=viewer.scene;
   const root=documentRef.createElement("div");
@@ -43,6 +47,8 @@ export function createQueenslandTownLabelLayer({
   let currentMode=mode,lastFingerprint="",lastCalculation=0,calculationCount=0;
   let resizeDisposer=null,postRenderDisposer=null,localityCoverage=null;
   let localityBusy=false,lastLocalityRequest=0,localityRequestVersion=0;
+  let nswLocalityCoverage=null,nswLocalityBusy=false;
+  let lastNswLocalityRequest=0,nswLocalityVersion=0;
   const elements=new Map();
   const activePlacements=new Map();
 
@@ -128,6 +134,38 @@ export function createQueenslandTownLabelLayer({
       if(!destroyed)console.warn("Nearby QLD localities unavailable:",error);
     }).finally(()=>{if(version===localityRequestVersion)localityBusy=false;});
   }
+  // NSW localities follow the same small-scale, viewport-bounded gazetteer
+  // rules as QLD. Both enter the SAME shared candidate list and collision pass.
+  function maybeLoadNswNearby() {
+    if(destroyed||nswLocalityBusy||!places.length)return;
+    const ellipsoid=scene.globe?.ellipsoid??CesiumRef.Ellipsoid?.WGS84;
+    const view=nswLocalityViewBounds(scene.camera,CesiumRef,ellipsoid);
+    if(!view||localityBoundsContain(nswLocalityCoverage,view))return;
+    const now=Date.now();
+    if(now-lastNswLocalityRequest<2500)return;
+    lastNswLocalityRequest=now;
+    const bounds=expandNswLocalityBounds(view);
+    const version=++nswLocalityVersion;
+    nswLocalityBusy=true;
+    void fetchNswNearbyLocalities({bounds,fetchImpl}).then(records=>{
+      if(destroyed||version!==nswLocalityVersion)return;
+      for(const p of places.filter(x=>x.fromNswLocality)){
+        elements.get(String(p.id))?.remove();
+        elements.delete(String(p.id));
+      }
+      places=places.filter(x=>!x.fromNswLocality);
+      for(const item of records){
+        if(places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+        places.push({...item,fromNswLocality:true,
+          position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude,0)});
+      }
+      nswLocalityCoverage=bounds;
+      lastFingerprint="";
+      draw(true);
+    }).catch(error=>{
+      if(!destroyed)console.warn("Nearby NSW localities unavailable:",error);
+    }).finally(()=>{if(version===nswLocalityVersion)nswLocalityBusy=false;});
+  }
   function draw(force=false){
     if(destroyed || !places.length)return [];
     // Camera tracking is deliberately not gated on the layout fingerprint
@@ -172,6 +210,7 @@ export function createQueenslandTownLabelLayer({
       x:p.x,y:p.y,population:p.population,font:townLabelTypography(width,p.population).font}));
     calculationCount++;
     maybeLoadNearby();
+    maybeLoadNswNearby();
     return selectedIds;
   }
   function setMode(nextMode){
@@ -183,8 +222,23 @@ export function createQueenslandTownLabelLayer({
     if(started)return started;
     started=(async()=>{
       try{
-        const records=rankQueenslandTowns(await fetchQueenslandPopulationCentres({fetchImpl}));
+        // Do not suppress Queensland labels if the NSW public service
+        // temporarily fails (or vice versa). Each source is independent.
+        const [qldResponse,nswResponse]=await Promise.allSettled([
+          fetchQueenslandPopulationCentres({fetchImpl}),
+          fetchNswTowns({fetchImpl})
+        ]);
         if(destroyed)return 0;
+        if(qldResponse.status==="rejected"&&nswResponse.status==="rejected")
+          throw Error("Both official settlement sources unavailable");
+        for(const [state,answer] of [["QLD",qldResponse],["NSW",nswResponse]]){
+          if(answer.status==="rejected")
+            console.warn(state+" town labels unavailable:",answer.reason);
+        }
+        const records=rankQueenslandTowns([
+          ...(qldResponse.status==="fulfilled"?qldResponse.value:[]),
+          ...(nswResponse.status==="fulfilled"?nswResponse.value:[])
+        ]);
         const identities=new Set();
         for(const item of records){
           const identity=item.name.toLowerCase()+":"+item.latitude.toFixed(2)+":"+
@@ -203,8 +257,8 @@ export function createQueenslandTownLabelLayer({
           window.addEventListener("resize",resizeDisposer,{passive:true});
         }
         draw(true);
-        onStatus({kind:"ok",message:"Queensland place names ready · "+
-          places.length+" locations, collision-aware"});
+        onStatus({kind:"ok",message:"QLD + NSW place names ready · "+
+          places.length+" locations, shared collision-aware layout"});
         return places.length;
       }catch(error){
         if(!destroyed)onStatus({kind:"warning",message:
@@ -216,7 +270,7 @@ export function createQueenslandTownLabelLayer({
   }
   function destroy(){
     if(destroyed)return;
-    destroyed=true;localityRequestVersion++;
+    destroyed=true;localityRequestVersion++;nswLocalityVersion++;
     postRenderDisposer?.();
     if(resizeDisposer && typeof window!=="undefined")
       window.removeEventListener("resize",resizeDisposer);
@@ -229,7 +283,8 @@ export function createQueenslandTownLabelLayer({
     get visibleIds(){return [...selectedIds];},
     get visibleLabels(){return displayedPlaces.map(p=>({...p}));},
     get calculationCount(){return calculationCount;},
-    get gazetteerCount(){return places.filter(p=>p.fromGazetteer).length;},
+    get gazetteerCount(){return places.filter(p=>p.fromGazetteer||p.fromNswLocality).length;},
+    get nswCount(){return places.filter(p=>p.fromNsw).length;},
     get mode(){return currentMode;},
     get cameraHeight(){return scene.camera?.positionCartographic?.height??null;},
     get cameraPitchDegrees(){return cameraLookDownDegrees(

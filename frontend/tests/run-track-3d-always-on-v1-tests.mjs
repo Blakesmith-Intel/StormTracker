@@ -36,7 +36,7 @@ test("Vertical reflectivity remains inferred, rather than filled with surface me
   // Preserve per-point scientific confidence/transparency with both the
   // original point renderer and the optional dBZ-coloured cloud glyph renderer.
   assert.match(controller,/addVolumeGlyph\(hybridTrackVolumeCollection/);
-  assert.match(controller,/\},point\.alpha,volumePercent,point\.dbzh/);
+  assert.match(controller,/\},point\.alpha,volumePercent,point\.source_low_level_dbzh \?\? point\.dbzh/);
   assert.match(controller,/return addVolumeDisplayPoint\(collection,options,sourceAlpha,percent\)/);
   assert.match(controller,/shouldDisplayMeasuredTrackPoint\(point,displayedMinimumDbz\)/);
   assert.match(controller,/BoM measured 2-D reflectivity core \(projected\)/);

@@ -63,13 +63,27 @@ features.push(mk(1000,"Brisbane",153.03,-27.47,2_600_000));
 let feedCount=0;const statuses=[];
 const layer=createQueenslandTownLabelLayer({
   viewer,CesiumRef,documentRef,container:mapPanel,mode:"qld-imagery",
-  fetchImpl:async()=>{feedCount++;return {
-    ok:true,async json(){return {type:"FeatureCollection",features};}
-  };},
+  fetchImpl:async url=>{
+    feedCount++;
+    if(String(url).includes("nsw-radar-places-v1.json")) {
+      return {ok:true,async json(){return {
+        schema:"StormTrackerNSWRadarPlacesV1",
+        places:[
+          {id:"nsw-city:1",name:"Lismore",longitude:153.27,latitude:-28.80,kind:"city",population:0},
+          {id:"nsw-town:2",name:"Moree",longitude:149.84,latitude:-29.46,kind:"town",population:11000},
+          {id:"nsw-town:3",name:"Brewarrina",longitude:146.86,latitude:-29.96,kind:"town",population:1000},
+          {id:"nsw-locality:4",name:"Mungindi",longitude:149,latitude:-28.97,kind:"locality",population:0}
+        ]
+      }}};
+    }
+    return {ok:true,async json(){return {
+      type:"FeatureCollection",features
+    };}};
+  },
   onStatus:status=>statuses.push(status)
 });
-assert.equal(await layer.start(),features.length);
-assert.equal(feedCount,1);
+assert.equal(await layer.start(),features.length+3);
+assert.equal(feedCount,2);
 assert.equal(mapPanel.childElementCount,1);
 assert.equal(mapPanel.children[0].className,"qld-place-foreground");
 assert.ok(layer.visibleCount>=12,
@@ -113,7 +127,7 @@ assert.ok(!layer.visibleLabels.some(p=>p.name==="Brisbane"),
   "Avoid redundant major city label above OSM");
 layer.setMode("qld-imagery");
 assert.ok(layer.visibleCount>0);
-assert.equal(feedCount,1,"Changing basemaps never refetches towns");
+assert.equal(feedCount,2,"Changing basemaps never refetches towns");
 scene.canvas.clientWidth=390;scene.canvas.clientHeight=350;
 layer.draw(true);
 assert.ok(layer.visibleCount<=16);
@@ -128,7 +142,7 @@ scene.camera.positionCartographic.height=1_700_000;
 layer.draw(true);
 assert.ok(layer.visibleCount>0);
 scene.listener?.();
-assert.equal(feedCount,1);
+assert.equal(feedCount,2,"Camera redraw does not repeat regional QLD/NSW settlement fetches");
 layer.destroy();
 assert.equal(mapPanel.childElementCount,0);
 assert.equal(scene.listener,null);

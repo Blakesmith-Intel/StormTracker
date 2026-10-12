@@ -40,8 +40,12 @@ assert.match(runtime,/currentIndex: \(\) => isNativeDopplerPlayback\(\) \? indep
 assert.match(runtime,/showFrame: index => isNativeDopplerPlayback\(\) \? showDopplerOnlyFrame\(index\)/);
 assert.match(runtime,/if\(selectedLoopSelection\(\)===DOPPLER_AVAILABLE_LOOP_VALUE\)\s*return loadDopplerSequence\(automatic\)/);
 assert.match(runtime,/radarImageryHandover\.setOpacity\(0\);/);
-assert.match(runtime,/hybridSource\.show=false/);
-assert.match(runtime,/if\(inferredCollection\) inferredCollection\.show=false/);
+assert.match(runtime,/clearReflectivityForDoppler\(\);/,
+  "Doppler must clear old track markers and cones rather than simply hiding their source");
+const mode=read("../src/reflectivity-overlay-mode-v1.js");
+assert.match(mode,/trackSource\.show = false/);
+assert.match(mode,/trackSource\.entities\.removeAll\(\)/);
+assert.match(mode,/if \(inferredVolume\) inferredVolume\.show = false/);
 assert.match(runtime,/const plan=buildDopplerOnlySchedule\(independentDopplerFrames\)/);
 assert.match(runtime,/if\(isNativeDopplerPlayback\(\)\) return playbackDelayForSpeed\(selectedPlaybackSpeed\(\)\)/);
 assert.match(runtime,/await dopplerOverlayTransition\.replacePrepared\(/);

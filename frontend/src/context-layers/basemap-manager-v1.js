@@ -31,8 +31,80 @@ export const QLD_IMAGERY_BASEMAP =
         north: -9.00150272786486
       }),
     label:
-      "Queensland imagery · latest public aerial / satellite"
+      "Satellite · DEA regional / detailed when zoomed in"
   });
+
+// NSW Spatial Services official public imagery is a 256px EPSG:3857
+// tiled MapServer. Its published extent is deliberately bounded so the
+// browser never requests imagery outside the source's coverage. Layer order
+// is global street fallback → NSW imagery → Queensland imagery on top.
+export const NSW_IMAGERY_BASEMAP = Object.freeze({
+  service: "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer",
+  tileTemplate: "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}",
+  maximumLevel: 20, // Match the current QLD imagery zoom capability.
+  rectangleDegrees: Object.freeze({
+    west: 138.42823352306536,
+    south: -38.38094509104267,
+    east: 159.28994735728213,
+    north: -26.48153106270077
+  }),
+  label: "NSW Spatial Services aerial / satellite imagery"
+});
+
+// Verified 2026-10-13 against DEA WMTS GetCapabilities and a real NSW/QLD
+// tile: Web Mercator matrix 0..14, default Time 2025-01-01, simple_rgb.
+// Annual GeoMAD is a cloud-free historical *reference*, not a live scan.
+export const DEA_REGIONAL_IMAGERY = Object.freeze({
+  service:"https://ows.dea.ga.gov.au/",
+  layer:"ga_ls8cls9c_gm_cyear_3",
+  style:"simple_rgb",
+  format:"image/png",
+  matrixSet:"WholeWorld_WebMercator",
+  time:"2025-01-01",
+  maximumLevel:12,
+  label:"DEA GeoMAD Landsat 8/9 · 2025 · regional reference"
+});
+
+export const DETAIL_SWITCH = Object.freeze({
+  // 30-m native Landsat resolution; use aerial detail only as camera display
+  // starts oversampling regional pixels. Hysteresis prevents toggle chatter.
+  enterMetresPerPixel:38,
+  exitMetresPerPixel:65,
+  blendStep:0.25
+});
+
+export function estimatedCameraMetresPerPixel(scene) {
+  const height=Number(scene?.camera?.positionCartographic?.height);
+  const pixels=Number(scene?.canvas?.clientHeight);
+  const fov=Number(scene?.camera?.frustum?.fovy) ||
+    Number(scene?.camera?.frustum?.fov) || Math.PI/3;
+  if(!Number.isFinite(height)||height<0||pixels<1)return Infinity;
+  return 2*height*Math.tan(fov/2)/pixels;
+}
+
+export function chooseDetailForScale(previousDetailed,metresPerPixel) {
+  if(!Number.isFinite(metresPerPixel))return false;
+  return previousDetailed
+    ? metresPerPixel<DETAIL_SWITCH.exitMetresPerPixel
+    : metresPerPixel<=DETAIL_SWITCH.enterMetresPerPixel;
+}
+
+export function createDeaRegionalImageryProvider(Cesium) {
+  return new Cesium.WebMapTileServiceImageryProvider({
+    url:DEA_REGIONAL_IMAGERY.service,
+    layer:DEA_REGIONAL_IMAGERY.layer,
+    style:DEA_REGIONAL_IMAGERY.style,
+    format:DEA_REGIONAL_IMAGERY.format,
+    tileMatrixSetID:DEA_REGIONAL_IMAGERY.matrixSet,
+    tilingScheme:new Cesium.WebMercatorTilingScheme(),
+    tileWidth:256,tileHeight:256,
+    maximumLevel:DEA_REGIONAL_IMAGERY.maximumLevel,
+    dimensions:{Time:DEA_REGIONAL_IMAGERY.time},
+    credit:new Cesium.Credit(
+      "Regional historical satellite composite © Geoscience Australia (DEA), CC BY 4.0; GeoMAD Landsat 8 & 9, 2025"
+    )
+  });
+}
 
 export const REFERENCE_LABELS =
   Object.freeze({
@@ -95,6 +167,25 @@ function persistBasemap(
   } catch {
     // Storage is an optional convenience. Basemap switching must still work.
   }
+}
+
+function nswImageryRectangle(Cesium) {
+  const b = NSW_IMAGERY_BASEMAP.rectangleDegrees;
+  return Cesium.Rectangle.fromDegrees(b.west,b.south,b.east,b.north);
+}
+
+export function createNswImageryProvider(Cesium) {
+  return new Cesium.UrlTemplateImageryProvider({
+    url: NSW_IMAGERY_BASEMAP.tileTemplate,
+    tilingScheme: new Cesium.WebMercatorTilingScheme(),
+    tileWidth: 256,
+    tileHeight: 256,
+    maximumLevel: NSW_IMAGERY_BASEMAP.maximumLevel,
+    rectangle: nswImageryRectangle(Cesium),
+    credit: new Cesium.Credit(
+      "NSW imagery © Department of Customer Service (NSW Spatial Services), 2026"
+    )
+  });
 }
 
 function qldImageryRectangle(
@@ -185,9 +276,18 @@ export function createBasemapProvider(
     selected
     === BASEMAP_IDS.QLD_IMAGERY
   ) {
-    return new Cesium.UrlTemplateImageryProvider({
-      url:
-        QLD_IMAGERY_BASEMAP.tileTemplate,
+    return createDeaRegionalImageryProvider(Cesium);
+  }
+
+  return new Cesium.OpenStreetMapImageryProvider({
+    url:
+      "https://tile.openstreetmap.org/"
+  });
+}
+
+export function createDetailedQldProvider(Cesium){
+  return new Cesium.UrlTemplateImageryProvider({
+      url:QLD_IMAGERY_BASEMAP.tileTemplate,
 
       tilingScheme:
         new Cesium.WebMercatorTilingScheme(),
@@ -211,12 +311,6 @@ export function createBasemapProvider(
           "Imagery © State of Queensland; © Planet Labs Netherlands B.V., Planet and Geoplex, 2026"
         )
     });
-  }
-
-  return new Cesium.OpenStreetMapImageryProvider({
-    url:
-      "https://tile.openstreetmap.org/"
-  });
 }
 
 export function basemapLabel(
@@ -229,250 +323,142 @@ export function basemapLabel(
 }
 
 export function createStormTrackerBasemapManager({
-  Cesium,
-  viewer,
-  storage =
-    globalThis.localStorage,
-  onStatus = () => {}
+  Cesium,viewer,storage=globalThis.localStorage,onStatus=()=>{}
 }) {
-  if (!Cesium || !viewer?.imageryLayers) {
-    throw new TypeError(
-      "Basemap manager requires Cesium and a viewer imagery collection."
-    );
+  if(!Cesium||!viewer?.imageryLayers)
+    throw TypeError("Basemap manager requires Cesium and a viewer");
+  const imagery=viewer.imageryLayers;
+  const scene=viewer.scene;
+  let currentId=null,streetLayer=null,regionalLayer=null,
+    qldDetailLayer=null,nswDetailLayer=null;
+  let sourceListeners=[],postRenderUnlisten=null;
+  let detailTarget=false,detailStaging=false,detailBlend=0,readyFrames=0;
+  let destroyed=false;
+  function remove(layer){if(layer)imagery.remove(layer,true);}
+  function render(){scene?.requestRender?.();}
+  function detach(){
+    postRenderUnlisten?.();postRenderUnlisten=null;
+    for(const dispose of sourceListeners)dispose();
+    sourceListeners=[];
   }
-
-  let currentLayer = null;
-  let fallbackLayer = null;
-  let currentId = null;
-  let sourceErrorDisposer = null;
-
-  function detachSourceError() {
-    if (
-      typeof sourceErrorDisposer
-      === "function"
-    ) {
-      sourceErrorDisposer();
-    }
-
-    sourceErrorDisposer = null;
+  function clearLayers(){
+    detach();
+    remove(qldDetailLayer);remove(nswDetailLayer);
+    remove(regionalLayer);remove(streetLayer);
+    qldDetailLayer=null;nswDetailLayer=null;
+    regionalLayer=null;streetLayer=null;
+    detailTarget=false;detailStaging=false;detailBlend=0;readyFrames=0;
+    render();
   }
-
-  function attachSourceError(
-    provider,
-    id
-  ) {
-    const errorEvent =
-      provider?.errorEvent;
-
-    if (
-      !errorEvent
-      || typeof errorEvent.addEventListener
-        !== "function"
-    ) {
-      return;
-    }
-
-    sourceErrorDisposer =
-      errorEvent.addEventListener(
-        () => {
-          if (currentId !== id) return;
-
-          onStatus(
-            id === BASEMAP_IDS.QLD_IMAGERY
-              ? "Queensland imagery unavailable for part of this view · generic map shown underneath"
-              : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
-            id === BASEMAP_IDS.QLD_IMAGERY
-              ? "normal"
-              : "error"
-          );
-        }
-      );
+  function attach(provider,label){
+    const dispose=provider?.errorEvent?.addEventListener?.(()=>{
+      if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return;
+      onStatus(label+" imagery unavailable; retaining underlying DEA / Street map","warning");
+    });
+    if(typeof dispose==="function")sourceListeners.push(dispose);
   }
-
-  function setBasemap(
-    requestedId,
-    {
-      persist = true
-    } = {}
-  ) {
-    const id =
-      normaliseBasemapId(
-        requestedId
-      );
-
-    if (
-      currentLayer
-      && currentId === id
-    ) {
-      return {
-        id,
-        layer:
-          currentLayer,
-        changed:
-          false
-      };
+  function setBlend(alpha){
+    detailBlend=Math.max(0,Math.min(1,alpha));
+    if(qldDetailLayer)qldDetailLayer.alpha=detailBlend || .005;
+    if(nswDetailLayer)nswDetailLayer.alpha=detailBlend || .005;
+    if(!detailBlend&&!detailTarget){
+      if(qldDetailLayer)qldDetailLayer.show=false;
+      if(nswDetailLayer)nswDetailLayer.show=false;
     }
-
-    const provider =
-      createBasemapProvider(
-        Cesium,
-        id
-      );
-
-    let nextLayer;
-    let nextFallbackLayer =
-      null;
-
-    try {
-      if (
-        id
-        === BASEMAP_IDS.QLD_IMAGERY
-      ) {
-        nextFallbackLayer =
-          viewer.imageryLayers
-            .addImageryProvider(
-              new Cesium
-                .OpenStreetMapImageryProvider({
-                  url:
-                    "https://tile.openstreetmap.org/"
-                }),
-              0
-            );
-
-        nextLayer =
-          viewer.imageryLayers
-            .addImageryProvider(
-              provider,
-              1
-            );
-      } else {
-        nextLayer =
-          viewer.imageryLayers
-            .addImageryProvider(
-              provider,
-              0
-            );
+    render();
+  }
+  function updateForCamera(){
+    if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return "street";
+    const target=chooseDetailForScale(detailTarget,estimatedCameraMetresPerPixel(scene));
+    if(target!==detailTarget){
+      detailTarget=target;
+      if(target){
+        if(qldDetailLayer){qldDetailLayer.show=true;qldDetailLayer.alpha=.005;}
+        if(nswDetailLayer){nswDetailLayer.show=true;nswDetailLayer.alpha=.005;}
+        detailStaging=true;readyFrames=0;
+      } else if(detailStaging){
+        detailStaging=false;readyFrames=0;setBlend(0);
       }
-    } catch (error) {
-      if (nextFallbackLayer) {
-        viewer.imageryLayers.remove(
-          nextFallbackLayer,
-          true
-        );
+      render();
+    }
+    if(detailTarget&&detailStaging){
+      // Cesium fetches official fine imagery beneath a virtually transparent
+      // layer while the GeoMAD raster stays 100% visible. TWO globe-ready
+      // frames are needed, otherwise a bare map/partial tile mosaic flashes.
+      readyFrames=scene?.globe?.tilesLoaded===true?readyFrames+1:0;
+      if(readyFrames>=2){detailStaging=false;readyFrames=0;}
+      else if(readyFrames>0)render();
+    }
+    if(!detailStaging){
+      const targetBlend=detailTarget?1:0;
+      if(Math.abs(detailBlend-targetBlend)>.001){
+        const step=DETAIL_SWITCH.blendStep;
+        setBlend(detailTarget?
+          Math.min(targetBlend,detailBlend+step):
+          Math.max(targetBlend,detailBlend-step));
       }
-
-      onStatus(
-        `Unable to switch basemap: ${error.message ?? error}`,
-        "error"
-      );
+    }
+    return detailStaging?"staging":detailBlend>0?"detailed":"regional";
+  }
+  function setBasemap(requestedId,{persist=true}={}){
+    if(destroyed)throw Error("Basemap manager was destroyed");
+    const id=normaliseBasemapId(requestedId);
+    if(currentId===id&&streetLayer)
+      return {id,layer:regionalLayer??streetLayer,changed:false};
+    // Stage original data providers before discarding any current imagery.
+    const created=[],subscriptions=[];
+    let nextStreet,nextRegional=null,nextNsw=null,nextQld=null;
+    try{
+      nextStreet=imagery.addImageryProvider(
+        new Cesium.OpenStreetMapImageryProvider({
+          url:"https://tile.openstreetmap.org/"
+        }),0);
+      created.push(nextStreet);
+      if(id===BASEMAP_IDS.QLD_IMAGERY){
+        const regionalProvider=createDeaRegionalImageryProvider(Cesium);
+        nextRegional=imagery.addImageryProvider(regionalProvider,1);
+        created.push(nextRegional);
+        const nswProvider=createNswImageryProvider(Cesium);
+        nextNsw=imagery.addImageryProvider(nswProvider,2);
+        created.push(nextNsw);nextNsw.show=false;
+        const qldProvider=createDetailedQldProvider(Cesium);
+        nextQld=imagery.addImageryProvider(qldProvider,3);
+        created.push(nextQld);nextQld.show=false;
+        // Register source errors only after all insertions are successful.
+        subscriptions.push([regionalProvider,"DEA"],[nswProvider,"NSW"],[qldProvider,"QLD"]);
+      }
+    }catch(error){
+      for(const layer of created.reverse())remove(layer);
+      onStatus("Unable to switch basemap: "+error.message,"error");
       throw error;
     }
-
-    const previousLayer =
-      currentLayer;
-
-    const previousFallbackLayer =
-      fallbackLayer;
-
-    detachSourceError();
-
-    currentLayer =
-      nextLayer;
-
-    fallbackLayer =
-      nextFallbackLayer;
-
-    currentId =
-      id;
-
-    attachSourceError(
-      provider,
-      id
-    );
-
-    if (previousLayer) {
-      viewer.imageryLayers.remove(
-        previousLayer,
-        true
-      );
-    }
-
-    if (previousFallbackLayer) {
-      viewer.imageryLayers.remove(
-        previousFallbackLayer,
-        true
-      );
-    }
-
-    if (persist) {
-      persistBasemap(
-        storage,
-        id
-      );
-    }
-
-    onStatus(
-      id === BASEMAP_IDS.QLD_IMAGERY
-        ? "Basemap: Queensland imagery · generic global fallback outside coverage"
-        : `Basemap: ${basemapLabel(id)}`,
-      "ok"
-    );
-
-    viewer.scene?.requestRender?.();
-
-    return {
-      id,
-      layer:
-        nextLayer,
-      changed:
-        true
-    };
+    clearLayers();
+    streetLayer=nextStreet;regionalLayer=nextRegional;
+    nswDetailLayer=nextNsw;qldDetailLayer=nextQld;
+    currentId=id;
+    for(const [provider,label] of subscriptions)attach(provider,label);
+    if(id===BASEMAP_IDS.QLD_IMAGERY && scene?.postRender?.addEventListener)
+      postRenderUnlisten=scene.postRender.addEventListener(updateForCamera);
+    if(persist)persistBasemap(storage,id);
+    onStatus(id===BASEMAP_IDS.QLD_IMAGERY
+      ? "Satellite: DEA regional (2025) · automatic official QLD/NSW detail on zoom"
+      : "Basemap: Street · OpenStreetMap","ok");
+    updateForCamera();
+    render();
+    return {id,layer:regionalLayer??streetLayer,changed:true};
   }
-
-  function initialise() {
-    const stored =
-      readStoredBasemap(
-        storage
-      );
-
-    return setBasemap(
-      stored,
-      {
-        persist:
-          false
-      }
-    );
+  function initialise(){return setBasemap(readStoredBasemap(storage),{persist:false});}
+  function destroy(){
+    if(destroyed)return;
+    clearLayers();currentId=null;destroyed=true;
   }
-
-  function destroy() {
-    detachSourceError();
-
-    if (currentLayer) {
-      viewer.imageryLayers.remove(
-        currentLayer,
-        true
-      );
-    }
-
-    if (fallbackLayer) {
-      viewer.imageryLayers.remove(
-        fallbackLayer,
-        true
-      );
-    }
-
-    currentLayer = null;
-    fallbackLayer = null;
-    currentId = null;
-  }
-
   return {
-    initialise,
-    setBasemap,
-    destroy,
-
-    get currentId() {
-      return currentId;
-    }
+    initialise,setBasemap,destroy,updateForCamera,
+    get currentId(){return currentId;},
+    get detailMode(){
+      return detailStaging?"staging":detailBlend>0?"detailed":"regional";
+    },
+    get detailBlend(){return detailBlend;},
+    get regionalLayer(){return regionalLayer;}
   };
 }

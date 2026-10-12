@@ -25,15 +25,18 @@ export function createRadarSiteNameOverlay({
     svg.setAttribute("class","radar-site-glyph");
     svg.setAttribute("aria-hidden","true");
     svg.setAttribute("focusable","false");
+    // Recognisable parabolic dish with receiver arm, mast and TWO signal arcs.
+    // Not a generic circular radar sweep or a platform-dependent emoji.
     const traces=[
-      "M4.5 5a11.5 11.5 0 0 0 11.5 11.5",
-      "M4.5 5 16 16.5",
-      "M10.5 14.4 8.5 20h7",
-      "M15 5a4 4 0 0 1 4 4"
+      "M4 10a7.2 7.2 0 0 0 10 10Z M10 17.4 8.3 21h7.1",
+      "M9 15l3-3",
+      "M17 13a6 6 0 0 0-6-6",
+      "M21 13A10 10 0 0 0 11 3"
     ];
-    for(const d of traces){
+    for(const [index,d] of traces.entries()){
       const path=documentRef.createElementNS(SVG_NS,"path");
       path.setAttribute("d",d);
+      if(index===0)path.setAttribute("class","radar-dish-reflector");
       svg.appendChild(path);
     }
     return svg;

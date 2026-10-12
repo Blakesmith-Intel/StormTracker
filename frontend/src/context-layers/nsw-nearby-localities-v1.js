@@ -1,6 +1,7 @@
-// Nearby NSW official locality names from NSW Spatial Services TopoBaseMap.
-// The same viewport-only/small-zoom rule as the Queensland gazetteer avoids
-// pulling thousands of distant names and keeps mobile playback responsive.
+import {fetchNswRadarPlaceCatalogue} from "./nsw-radar-place-catalogue-v1.js?v=20261013-radar";
+// Nearby NSW official locality points are from the SAME CORS-safe Pages
+// snapshot as town names. Only viewport-filtered items join the existing
+// QLD/NSW screen collision pass. Radar-scale rural context remains visible.
 export const NSW_LOCALITY_QUERY_URL =
   "https://spatial.industry.nsw.gov.au/arcgis/rest/services/PUBLIC/TopoBaseMap/MapServer/3/query";
 export const NSW_LOCALITY_BOUNDS = Object.freeze({
@@ -10,14 +11,14 @@ const NSW_LOCALITY_LIMIT=900;
 export function nswLocalityViewBounds(camera,CesiumRef,ellipsoid) {
   if(typeof camera?.computeViewRectangle!=="function" ||
     typeof CesiumRef?.Math?.toDegrees!=="function" ||
-    Number(camera?.positionCartographic?.height)>250000)return null;
+    Number(camera?.positionCartographic?.height)>900000)return null;
   const rect=camera.computeViewRectangle(ellipsoid);
   if(!rect)return null;
   const toDeg=CesiumRef.Math.toDegrees;
   const r={west:toDeg(rect.west),east:toDeg(rect.east),
     south:toDeg(rect.south),north:toDeg(rect.north)};
   if(!Object.values(r).every(Number.isFinite)||r.west>=r.east||
-    r.south>=r.north||r.east-r.west>5||r.north-r.south>4)return null;
+    r.south>=r.north||r.east-r.west>9||r.north-r.south>7)return null;
   const b=NSW_LOCALITY_BOUNDS;
   const clipped={west:Math.max(r.west,b.west),east:Math.min(r.east,b.east),
     south:Math.max(r.south,b.south),north:Math.min(r.north,b.north)};
@@ -64,16 +65,14 @@ export function normaliseNswLocalities(payload) {
   return [...unique.values()];
 }
 export async function fetchNswNearbyLocalities({
-  bounds,fetchImpl=globalThis.fetch,timeoutMs=13000,baseUrl=NSW_LOCALITY_QUERY_URL
+  bounds,fetchImpl=globalThis.fetch
 }={}) {
-  if(typeof fetchImpl!=="function")throw Error("NSW locality fetch unavailable");
-  const controller=typeof AbortController==="function"?new AbortController():null;
-  const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
-  try{
-    const response=await fetchImpl(nswLocalityQueryUrl(bounds,baseUrl),{
-      headers:{Accept:"application/geo+json,application/json"},signal:controller?.signal
-    });
-    if(!response.ok)throw Error("NSW locality HTTP "+response.status);
-    return normaliseNswLocalities(await response.json());
-  }finally{if(timer!==null)clearTimeout(timer);}
+  if(!bounds || !Object.values(bounds).every(Number.isFinite) ||
+     bounds.west>=bounds.east || bounds.south>=bounds.north)
+    throw new TypeError("NSW locality viewport bounds required");
+  const records=await fetchNswRadarPlaceCatalogue({fetchImpl});
+  return records.filter(place=>place.kind==="locality" &&
+    place.longitude>=bounds.west && place.longitude<=bounds.east &&
+    place.latitude>=bounds.south && place.latitude<=bounds.north
+  ).map(place=>({...place,priority:38,fromNswLocality:true}));
 }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>StormTracker — V9.16.14 streamlined operational sidebar</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
-  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography-sidebar-v14-pixeltrack-prod-r1-multiradar-v15-dbz-blob-nsw-doppler-icon-v2-perpixel-height-v3">
+  <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=9.16.13-top-geography-sidebar-v14-pixeltrack-prod-r1-multiradar-v15-dbz-blob-nsw-doppler-icon-v2-perpixel-height-v3-minimal-dish-v4">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -100,7 +100,7 @@
     <div id="nav"><select id="radarSite" aria-label="Primary radar site in Queensland or northern New South Wales"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
     <section id="multiRadarPanel" class="multi-radar-panel" aria-label="Additional radar sites" hidden>
       <header class="multi-radar-heading"><strong>Display radar coverage</strong><button type="button" id="closeMultiRadarPanel" aria-label="Close radar selection">×</button></header>
-      <p class="note">Primary radar controls storm tracks, inferred 3-D and any supported Doppler. Add up to three more BoM reflectivity windows, including northern NSW.</p><p class="note"><span style="color:#61eeff;font-weight:700">📡 Radar dish icons on the map</span> are clickable: tap one to make it primary. Station names appear on hover or in the radar dropdown.</p>
+      <p class="note">Primary radar controls storm tracks, inferred 3-D and any supported Doppler. Add up to three more BoM reflectivity windows, including northern NSW.</p><p class="note">Tap a radar marker to make it primary. Station names are available on hover or in the radar dropdown.</p>
       <div id="multiRadarChecklist" class="multi-radar-checklist" role="group" aria-label="Additional rain radar sites"></div>
       <div class="multi-radar-actions"><button type="button" id="fitMultiRadars">Fit selected</button><button type="button" id="clearMultiRadars">Primary only</button></div>
       <div id="multiRadarStatus" class="note multi-radar-limit-warning" role="alert" aria-live="assertive" hidden></div>
@@ -283,6 +283,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=9.16-bom-native-rain30-v1-cone-v2-time-v3-hold-v4-steer-v5-smooth-v6-warp-v7-synced-v8-perf-v9-trails-v10-recovery-v10-doppler-footer-rain3d-v2-bom-raw-png-v4-place-labels-v12-footer-fullwind-v13-sidebar-hardcut-v14-pixeltrack-prod-r1-multiradar-v15-dbz-blob-nsw-doppler-icon-v2-perpixel-height-v3"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=9.16-bom-native-rain30-v1-cone-v2-time-v3-hold-v4-steer-v5-smooth-v6-warp-v7-synced-v8-perf-v9-trails-v10-recovery-v10-doppler-footer-rain3d-v2-bom-raw-png-v4-place-labels-v12-footer-fullwind-v13-sidebar-hardcut-v14-pixeltrack-prod-r1-multiradar-v15-dbz-blob-nsw-doppler-icon-v2-perpixel-height-v3-minimal-dish-v4"></script>
 </body>
 </html>

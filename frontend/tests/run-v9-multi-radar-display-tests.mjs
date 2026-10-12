@@ -69,11 +69,28 @@ function frame(id,time=utc){
     sourceMetadata:{tileWindow:window}};
 }
 let layers=[],updates=0,requests=[],warnings=[];
+const renderListeners=new Set();
 const imageryLayers={
-  add(layer){layers.push(layer);},
-  remove(layer){layers=layers.filter(x=>x!==layer);}
+  add(layer,index=layers.length){layers.splice(index,0,layer);return layer;},
+  indexOf(layer){return layers.indexOf(layer);},
+  raiseToTop(layer){
+    const index=layers.indexOf(layer);
+    if(index>=0){layers.splice(index,1);layers.push(layer);}
+  },
+  remove(layer){layers=layers.filter(x=>x!==layer);return true;}
 };
-const scene={requestRender(){updates++;}};
+const scene={
+  globe:{tilesLoaded:true},
+  postRender:{addEventListener(fn){
+    renderListeners.add(fn);
+    return ()=>renderListeners.delete(fn);
+  }},
+  requestRender(){
+    updates++;
+    // Deterministic browser render ticks for staged SingleTile images.
+    queueMicrotask(()=>{for(const fn of [...renderListeners])fn();});
+  }
+};
 const sources=new Map();
 const providers=[];
 const controller=createSupplementalRadarDisplay({
@@ -121,6 +138,41 @@ assert.equal(layers.length,1);
 assert.equal(providers.at(-1).observedUtc,"2026-10-10T01:15:00Z");
 passed++;
 console.log("PASS multi radar source switch cancels obsolete pending image without stale radar bleed");
+
+controller.configure("primary",["secondary"]);
+await controller.show(utc);
+assert.equal(layers.length,1);
+const retained=layers[0];
+const delayed=deferred();
+sources.set("secondary",delayed.promise);
+const nextUtc="2026-10-10T01:06:00Z";
+const nextFrame=controller.show(nextUtc);
+await Promise.resolve();
+assert.equal(layers.length,1,"Old measured radar image MUST remain while next scan loads");
+assert.equal(layers[0],retained,"Current image is not removed just for a new UTC");
+delayed.resolve(frame("secondary",nextUtc));
+await nextFrame;
+assert.equal(layers.length,1,"Exactly one measured source image after atomic handover");
+assert.notEqual(layers[0],retained,"Fresh genuine BoM scan replaces old scan");
+assert.equal(providers.at(-1).observedUtc,nextUtc);
+assert.equal(layers[0].alpha,1);
+assert.equal(renderListeners.size,0,"Staging listeners detached after successful handover");
+sources.delete("secondary");
+passed++;
+console.log("PASS QLD/NSW supplemental images retain prior source through decode and 3-frame handover; no blank transition");
+
+// Same primary/selection: a late older radar scan must not overwrite a new UTC.
+const slow=deferred();
+sources.set("secondary",slow.promise);
+const oldTask=controller.show("2026-10-10T01:07:00Z");
+const freshTask=controller.show("2026-10-10T01:08:00Z");
+slow.resolve(frame("secondary","2026-10-10T01:07:00Z"));
+await Promise.all([oldTask,freshTask]);
+assert.equal(providers.at(-1).observedUtc,"2026-10-10T01:08:00Z");
+assert.equal(layers.length,1);
+sources.delete("secondary");
+passed++;
+console.log("PASS stale asynchronous supplemental frame cannot overwrite newer QLD/NSW image");
 
 controller.configure("primary",["secondary"]);
 sources.set("secondary",Promise.resolve(frame("secondary","2020-01-01T00:00:00Z")));

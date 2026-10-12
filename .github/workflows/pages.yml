@@ -80,6 +80,15 @@ jobs:
           path: preview-builds/doppler-overlay-repair
           persist-credentials: false
 
+      # PR #74 combines visually approved PR73 fixes with official NSW tiles.
+      # Pin the exact reviewed source; never deploy the branch HEAD implicitly.
+      - name: Checkout isolated QLD + NSW satellite preview
+        uses: actions/checkout@v4
+        with:
+          ref: 94a6ccd40f518085646e413537819a8786ce0901
+          path: preview-builds/nsw-satellite
+          persist-credentials: false
+
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
       - name: Checkout independent BoM dBZ cloud-volume preview
@@ -258,6 +267,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # QLD + NSW satellite preview extends the proven PR73 build.
+          (cd preview-builds/nsw-satellite && npm test)
+          test "$(git -C preview-builds/nsw-satellite rev-parse HEAD)" = "94a6ccd40f518085646e413537819a8786ce0901"
+          grep -Fq 'NSW_IMAGERY_BASEMAP' preview-builds/nsw-satellite/frontend/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'Satellite · QLD + NSW' preview-builds/nsw-satellite/frontend/live3d-operational-v9.html
+          grep -Fq 'clearReflectivityForDoppler()' preview-builds/nsw-satellite/frontend/src/live3d-operational-v9.js
+          mkdir -p frontend/preview/nsw-satellite
+          cp -a preview-builds/nsw-satellite/frontend/. frontend/preview/nsw-satellite/
+          printf 'PR74 QLD and NSW satellite imagery + PR73 bug fixes %s\n' '94a6ccd40f518085646e413537819a8786ce0901' > frontend/preview/nsw-satellite/BUILD.txt
           # All 22 stations and QLD/NSW handovers; no root app changes.
           (cd preview-builds/doppler-overlay-repair && npm test)
           test "$(git -C preview-builds/doppler-overlay-repair rev-parse HEAD)" = "76933117aac4e6cdf5333111f0a0b5f2f6463de2"
@@ -377,6 +395,8 @@ jobs:
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' published-site/BUILD.txt
+          test -f published-site/preview/nsw-satellite/src/context-layers/basemap-manager-v1.js
+          grep -Fq '94a6ccd40f518085646e413537819a8786ce0901' published-site/preview/nsw-satellite/BUILD.txt
           test -f published-site/preview/doppler-overlay-repair/src/reflectivity-overlay-mode-v1.js
           grep -Fq '76933117aac4e6cdf5333111f0a0b5f2f6463de2' published-site/preview/doppler-overlay-repair/BUILD.txt
           test -f published-site/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
@@ -459,6 +479,45 @@ jobs:
           production="$(retry_curl "$base/BUILD.txt")"
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$production"
           echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
+
+      - name: Verify NSW source tiles and CORS for browser-only satellite preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer"
+          curl --fail --show-error --silent --location --retry 3 --max-time 30 \
+            --header 'Origin: https://blakesmith-intel.github.io' \
+            -D /tmp/nsw-imagery-headers -o /tmp/nsw-imagery-tile "$base/tile/10/599/938"
+          grep -Eiq '^content-type: *image/(png|jpeg|jpg)' /tmp/nsw-imagery-headers
+          test "$(wc -c </tmp/nsw-imagery-tile)" -gt 400
+          if ! grep -Eiq '^access-control-allow-origin: *(\*|https://blakesmith-intel.github.io)' /tmp/nsw-imagery-headers; then
+            echo "::error::NSW imagery server lacks cross-origin permission required by browser WebGL tiles."
+            exit 1
+          fi
+          echo "Official NSW live tile and browser CORS validated."
+
+      - name: Verify NSW satellite review preview publicly served
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          path="$base/preview/nsw-satellite"
+          build="$(retry_curl "$path/BUILD.txt")"
+          grep -Fq '94a6ccd40f518085646e413537819a8786ce0901' <<< "$build"
+          html="$(retry_curl "$path/live3d-operational-v9.html")"
+          grep -Fq 'Satellite · QLD + NSW' <<< "$html"
+          manager="$(retry_curl "$path/src/context-layers/basemap-manager-v1.js")"
+          grep -Fq 'public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}' <<< "$manager"
+          grep -Fq 'createNswImageryProvider' <<< "$manager"
+          grep -Fq 'addImageryProvider(provider, 2)' <<< "$manager"
+          tracks="$(retry_curl "$path/src/reflectivity-overlay-mode-v1.js")"
+          grep -Fq 'trackSource.entities.removeAll()' <<< "$tracks"
+          original="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$original"
+          echo "PR74 QLD/NSW satellite preview live. Sealed V9.17.0 production root unchanged."
 
       - name: Verify PR73 isolated preview is publicly served (V9.17.0 sealed root unchanged)
         shell: bash
@@ -589,7 +648,10 @@ jobs:
           release_sha="60d6750be2d335858dac485a5312a55693e40c74"
           # actions/checkout uses fetch-depth:1; the pinned release SHA is its parent.
           # Fetch the release commit object before creating immutable refs.
-          git fetch --no-tags --depth=4 origin main
+          # Pinning production does not guarantee a shallow main checkout
+          # contains this older release commit. Fetch the explicit immutable
+          # object rather than walking an arbitrary number of main parents.
+          git fetch --no-tags --depth=1 origin "$release_sha"
           git cat-file -e "$release_sha^{commit}"
           git fetch --tags origin
           if git rev-parse -q --verify "refs/tags/v9.17.0" >/dev/null; then

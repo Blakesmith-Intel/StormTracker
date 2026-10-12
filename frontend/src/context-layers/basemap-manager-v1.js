@@ -31,7 +31,7 @@ export const QLD_IMAGERY_BASEMAP =
         north: -9.00150272786486
       }),
     label:
-      "Queensland imagery · latest public aerial / satellite"
+      "QLD + NSW imagery · official aerial / satellite"
   });
 
 // NSW Spatial Services official public imagery is a 256px EPSG:3857

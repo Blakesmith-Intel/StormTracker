@@ -139,7 +139,7 @@ scene.camera.positionCartographic.height=1_700_000;
 layer.draw(true);
 assert.ok(layer.visibleCount>0);
 scene.listener?.();
-assert.equal(feedCount,1);
+assert.equal(feedCount,4,"Camera redraw does not repeat regional QLD/NSW settlement fetches");
 layer.destroy();
 assert.equal(mapPanel.childElementCount,0);
 assert.equal(scene.listener,null);

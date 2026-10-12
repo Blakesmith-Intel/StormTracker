@@ -43,10 +43,14 @@ assert.match(controller,/selector\.dispatchEvent\(new Event\("change",\{bubbles:
 assert.match(controller,/sites:BORDER_RADAR_SITES/);
 assert.match(controller,/getPrimary:selectedRadarRegion/);
 assert.match(html,/Primary radar site in Queensland or northern New South Wales/);
-assert.match(html,/Radar dish icons on the map/);
+assert.match(html,/Tap a radar marker to make it primary/);
 assert.match(styles,/\.radar-site-labels/);
-assert.match(styles,/color:#61eeff/);
+assert.match(styles,/color:#8fdbe6/);
+assert.match(styles,/\.radar-site-glyph/);
+assert.match(styles,/stroke-width:1\.65/);
+assert.match(styles,/width:18px;height:18px/);
 assert.match(styles,/border:0;border-radius:0/,"Radar-site icons must have no border or box");
+assert.doesNotMatch(styles,/Apple Color Emoji|Segoe UI Emoji/,"No loud platform emoji glyphs");
 assert.match(overlay,/aria-label","Load "\+item\.site\.name\+" as primary radar"/);
 assert.match(overlay,/worldToWindowCoordinates/);
 assert.match(overlay,/scene\.postRender\.addEventListener/);
@@ -55,14 +59,14 @@ assert.match(overlay,/btn\.addEventListener\("click"/);
 // This is in addition to static markup checks above.
 const nodes=[];
 class Element {
-  constructor(tag){this.tag=tag;this.dataset={};this.style={};this.handlers={};this.hidden=false;}
-  setAttribute(key,value){this[key]=value;}
+  constructor(tag){this.tag=tag;this.dataset={};this.style={};this.handlers={};this.hidden=false;this.children=[];this.attributes={};}
+  setAttribute(key,value){this.attributes[key]=value;this[key]=value;}
   addEventListener(type,handler){this.handlers[type]=handler;}
-  appendChild(child){nodes.push(child);return child;}
+  appendChild(child){this.children.push(child);nodes.push(child);return child;}
   remove(){this.removed=true;}
 }
 const container=new Element("main");
-const doc={createElement:tag=>new Element(tag)};
+const doc={createElement:tag=>new Element(tag),createElementNS:(ns,tag)=>{assert.equal(ns,"http://www.w3.org/2000/svg");return new Element(tag);}};
 let postRenderListener=null,removed=false,chosen=null,primary="66";
 const fakeScene={
   canvas:{clientWidth:1200,clientHeight:900},
@@ -86,7 +90,13 @@ assert.equal(overlayInstance.siteCount,22);
 assert.equal(typeof postRenderListener,"function");
 const newSite=nodes.find(node=>node.dataset.radarSiteId==="93");
 assert.ok(newSite,"Brewarrina radar icon exists");
-assert.equal(newSite.textContent,"📡","Only a dish icon, no persistent site name");
+assert.equal(newSite.textContent,undefined,"No permanent text or emoji");
+assert.equal(newSite.children.length,1,"One clean dish icon per radar");
+const dish=newSite.children[0];
+assert.equal(dish.tag,"svg");
+assert.equal(dish.attributes["viewBox"],"0 0 24 24");
+assert.equal(dish.attributes["aria-hidden"],"true");
+assert.equal(dish.children.length,4,"Minimal four-stroke vector dish");
 assert.match(newSite.title,/Brewarrina/,"Full station name available in tooltip");
 assert.equal(newSite.hidden,false,"Brewarrina visible when camera shows location");
 let stopped=0,prevented=0;
@@ -102,4 +112,4 @@ overlayInstance.destroy();
 assert.equal(removed,true,"Render listener removed cleanly");
 assert.equal(container.removed,undefined);
 assert.equal(newSite.handlers.click!==undefined,true);
-console.log("22-site QLD/NSW catalogue, Brewarrina-only NSW Doppler, compact clickable radar dish icons and 4-site cap verified.");
+console.log("22-site QLD/NSW catalogue, compact monochrome SVG dish markers, tap handlers, 4-site cap and relay gates verified.");

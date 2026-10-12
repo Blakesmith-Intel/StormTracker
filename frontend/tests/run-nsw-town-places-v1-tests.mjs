@@ -11,7 +11,7 @@ import {
   rankQueenslandTowns, layoutTownLabels,
   geographicPlaceNameKey
 } from "../src/context-layers/qld-town-label-declutter-v1.js";
-import {WORLD_IMAGERY_BASEMAP,createBasemapProvider,BASEMAP_IDS}
+import {DEA_REGIONAL_IMAGERY,createBasemapProvider,BASEMAP_IDS}
   from "../src/context-layers/basemap-manager-v1.js";
 
 assert.deepEqual(NSW_SETTLEMENT_LAYERS.map(layer=>layer.kind),
@@ -71,17 +71,18 @@ assert.match(localityUrl,/esriGeometryEnvelope/);
 assert.deepEqual(normaliseNswLocalities({features:[mk(7,"Grafton",152.93,-29.69)]})
   .map(x=>x.name),["Grafton"]);
 
-class UrlTemplate{constructor(options){this.options=options;}}
+class Wmts{constructor(options){this.options=options;}}
 class Rectangle{static fromDegrees(...v){return v;}}
 const Cesium={
-  UrlTemplateImageryProvider:UrlTemplate,
+  WebMapTileServiceImageryProvider:Wmts,
   WebMercatorTilingScheme:class{},
   Credit:class{constructor(text){this.text=text;}},
   Rectangle
 };
 const imagery=createBasemapProvider(Cesium,BASEMAP_IDS.QLD_IMAGERY);
-assert.equal(imagery.options.url,WORLD_IMAGERY_BASEMAP.tileTemplate);
+assert.equal(imagery.options.url,DEA_REGIONAL_IMAGERY.service);
+assert.equal(imagery.options.layer,DEA_REGIONAL_IMAGERY.layer);
 assert.equal(imagery.options.rectangle,undefined,
   "National satellite base must not clip at either state border");
-assert.match(imagery.options.credit.text,/Earthstar Geographics/);
-console.log("PASS official NSW cities/towns/villages, national imagery, shared QLD label layout and viewport locality bounds.");
+assert.match(imagery.options.credit.text,/Geoscience Australia/);
+console.log("PASS official NSW settlements, DEA 2025 national imagery, shared QLD label layout and locality bounds.");

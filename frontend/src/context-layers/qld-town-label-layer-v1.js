@@ -1,7 +1,7 @@
 import { fetchQueenslandPopulationCentres } from "./qld-population-centres-v2.js?v=9.12.3";
-import { fetchNswTowns } from "./nsw-town-places-v1.js?v=20261013";
+import { fetchNswTowns } from "./nsw-town-places-v1.js?v=9.18.0";
 import { fetchNswNearbyLocalities, nswLocalityViewBounds, expandNswLocalityBounds }
-  from "./nsw-nearby-localities-v1.js?v=20261013";
+  from "./nsw-nearby-localities-v1.js?v=9.18.0";
 import { rankQueenslandTowns, sameGeographicSettlement, layoutTownLabels, townLabelTypography }
   from "./qld-town-label-declutter-v1.js?v=9.16.12";
 import { fetchQldNearbyLocalities, expandLocalityBounds, localityBoundsContain,

@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           # Draft PR #71, pinned; never replace the protected production root.
-          ref: 8a94bf86a32fe285916f098c6afc5d63b92539ce
+          ref: 73c9237f600766fa450be913bd4589f6a6706a94
           path: preview-builds/volumetric-dbz
           persist-credentials: false
       - name: Checkout V9.14 candidate
@@ -168,9 +168,10 @@ jobs:
         run: |
           set -euo pipefail
           (cd preview-builds/volumetric-dbz && npm test)
-          test "$(git -C preview-builds/volumetric-dbz rev-parse HEAD)" = "8a94bf86a32fe285916f098c6afc5d63b92539ce"
+          test "$(git -C preview-builds/volumetric-dbz rev-parse HEAD)" = "73c9237f600766fa450be913bd4589f6a6706a94"
           test -f preview-builds/volumetric-dbz/frontend/src/volumetric-visual-v2.js
           test -f preview-builds/volumetric-dbz/frontend/tests/run-volumetric-visual-v2-tests.mjs
+          test -f preview-builds/volumetric-dbz/frontend/tests/run-nsw-border-radar-site-labels-v1-tests.mjs
           grep -Fq 'id="blobVolume" checked' preview-builds/volumetric-dbz/frontend/live3d-operational-v9.html
           grep -Fq 'id="reflectivityLegend"' preview-builds/volumetric-dbz/frontend/live3d-operational-v9.html
           ! grep -Eqi 'rainRateLegend|estimated mm/h' preview-builds/volumetric-dbz/frontend/live3d-operational-v9.html
@@ -239,7 +240,7 @@ jobs:
           set -euo pipefail
           mkdir -p frontend/preview/volume-dbz
           cp -a preview-builds/volumetric-dbz/frontend/. frontend/preview/volume-dbz/
-          printf 'BoM dBZ volumetric V2 preview candidate %s\n' '8a94bf86a32fe285916f098c6afc5d63b92539ce' > frontend/preview/volume-dbz/BUILD.txt
+          printf 'BoM dBZ volumetric V2 preview candidate %s\n' '73c9237f600766fa450be913bd4589f6a6706a94' > frontend/preview/volume-dbz/BUILD.txt
           test -f frontend/preview/volume-dbz/src/volumetric-visual-v2.js
           mkdir -p frontend/preview/multi-radar
           cp -a preview-builds/multi-radar/frontend/. frontend/preview/multi-radar/
@@ -390,7 +391,7 @@ jobs:
           base="${PAGES_URL%/}"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/preview/volume-dbz/BUILD.txt")"
-          grep -Fq "8a94bf86a32fe285916f098c6afc5d63b92539ce" <<< "$build"
+          grep -Fq "73c9237f600766fa450be913bd4589f6a6706a94" <<< "$build"
           html="$(retry_curl "$base/preview/volume-dbz/live3d-operational-v9.html")"
           grep -Fq 'id="reflectivityLegend"' <<< "$html"
           script="$(retry_curl "$base/preview/volume-dbz/src/border-radar-sites-v1.js")"

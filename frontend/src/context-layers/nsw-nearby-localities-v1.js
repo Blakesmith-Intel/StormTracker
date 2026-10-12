@@ -1,4 +1,4 @@
-import {fetchNswRadarPlaceCatalogue} from "./nsw-radar-place-catalogue-v1.js?v=20261013-radar";
+import {fetchNswRadarPlaceCatalogue} from "./nsw-radar-place-catalogue-v1.js?v=9.18.0";
 // Nearby NSW official locality points are from the SAME CORS-safe Pages
 // snapshot as town names. Only viewport-filtered items join the existing
 // QLD/NSW screen collision pass. Radar-scale rural context remains visible.

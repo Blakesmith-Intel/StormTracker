@@ -82,10 +82,14 @@ test("Slider updates only volume point collections without forcing radar reload"
   assert.match(listener,/setVolumeDisplayOpacity\(inferredCollection,percent\)/);
   assert.match(listener,/setVolumeDisplayOpacity\(hybridTrackVolumeCollection,percent\)/);
   assert.doesNotMatch(listener,/renderInferredVolume|renderHybridTracks|loadHybridSequence|renderSurface|surfaceLayer\.alpha|dopplerOverlayTransition\.setOpacity/);
-  assert.match(script,/addVolumeDisplayPoint\(inferredCollection/);
-  assert.match(script,/addVolumeDisplayPoint\(hybridTrackVolumeCollection/);
-  assert.match(script,/\},point\.alpha,volumePercent\)/);
+  // Cloud billboards retain the same reversible confidence-aware opacity
+  // while the source-derived 2-D footprint continues as original RGB points.
+  assert.match(script,/addVolumeGlyph\(inferredCollection/);
+  assert.match(script,/addVolumeGlyph\(hybridTrackVolumeCollection/);
+  assert.match(script,/addVolumeDisplayPoint\(hybridTrackFootprintCollection/);
+  assert.match(listener,/setVolumeDisplayOpacity\(hybridTrackFootprintCollection,percent\)/);
+  assert.match(script,/\},point\.alpha,volumePercent,point\.dbzh/);
   assert.match(script,/\},1,volumePercent\)/);
-  assert.match(script,/\},supportStyle\.alpha,volumePercent\)/);
+  assert.match(script,/\},supportStyle\.alpha,volumePercent,point\.dbzh/);
 });
 console.log(checks+" 3-D volume-opacity UI and scientific-intensity regression checks passed.");

@@ -71,6 +71,15 @@ jobs:
           test -f sealed-production/v9.17.0/frontend/src/storm-track-trail-visibility-v1.js
           grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.17.0/frontend/src/live3d-operational-v9.js
 
+      # PR #73, reviewed and tested source. Never use an unpinned branch
+      # nor replace the immutable production root for this visual preview.
+      - name: Checkout isolated Doppler/track and NSW handover repair preview
+        uses: actions/checkout@v4
+        with:
+          ref: 76933117aac4e6cdf5333111f0a0b5f2f6463de2
+          path: preview-builds/doppler-overlay-repair
+          persist-credentials: false
+
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
       - name: Checkout independent BoM dBZ cloud-volume preview
@@ -249,6 +258,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # All 22 stations and QLD/NSW handovers; no root app changes.
+          (cd preview-builds/doppler-overlay-repair && npm test)
+          test "$(git -C preview-builds/doppler-overlay-repair rev-parse HEAD)" = "76933117aac4e6cdf5333111f0a0b5f2f6463de2"
+          test -f preview-builds/doppler-overlay-repair/frontend/src/reflectivity-overlay-mode-v1.js
+          grep -Fq 'clearReflectivityForDoppler();' preview-builds/doppler-overlay-repair/frontend/src/live3d-operational-v9.js
+          grep -Fq 'createRadarImageryHandover' preview-builds/doppler-overlay-repair/frontend/src/multi-radar-display-v9.js
+          grep -Fq 'radar-dish-reflector' preview-builds/doppler-overlay-repair/frontend/src/context-layers/radar-site-name-overlay-v1.js
+          mkdir -p frontend/preview/doppler-overlay-repair
+          cp -a preview-builds/doppler-overlay-repair/frontend/. frontend/preview/doppler-overlay-repair/
+          printf 'Isolated PR73 Doppler cleanup, NSW/QLD radar handover and icon visibility commit %s\n' '76933117aac4e6cdf5333111f0a0b5f2f6463de2' > frontend/preview/doppler-overlay-repair/BUILD.txt
+          test -s frontend/preview/doppler-overlay-repair/index.html
           mkdir -p frontend/preview/volume-dbz
           cp -a preview-builds/volumetric-dbz/frontend/. frontend/preview/volume-dbz/
           printf 'BoM dBZ volumetric V2 preview candidate %s\n' '07b8baafd0d1bf3bccd16f6fbb6667e0a0261fbd' > frontend/preview/volume-dbz/BUILD.txt
@@ -357,6 +377,8 @@ jobs:
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' published-site/BUILD.txt
+          test -f published-site/preview/doppler-overlay-repair/src/reflectivity-overlay-mode-v1.js
+          grep -Fq '76933117aac4e6cdf5333111f0a0b5f2f6463de2' published-site/preview/doppler-overlay-repair/BUILD.txt
           test -f published-site/preview/v9.16.13/src/context-layers/qld-town-label-layer-v1.js
           grep -Fq '2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e' published-site/preview/v9.16.13/BUILD.txt
           test -f published-site/preview/v9.16.12/src/context-layers/qld-town-label-layer-v1.js
@@ -437,6 +459,29 @@ jobs:
           production="$(retry_curl "$base/BUILD.txt")"
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$production"
           echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
+
+      - name: Verify PR73 isolated preview is publicly served (V9.17.0 sealed root unchanged)
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          preview="$base/preview/doppler-overlay-repair"
+          build="$(retry_curl "$preview/BUILD.txt")"
+          grep -Fq '76933117aac4e6cdf5333111f0a0b5f2f6463de2' <<< "$build"
+          html="$(retry_curl "$preview/index.html")"
+          grep -Fq 'live3d-operational-v9.html' <<< "$html"
+          cleanup="$(retry_curl "$preview/src/reflectivity-overlay-mode-v1.js")"
+          grep -Fq 'trackSource.entities.removeAll()' <<< "$cleanup"
+          handover="$(retry_curl "$preview/src/multi-radar-display-v9.js")"
+          grep -Fq 'createRadarImageryHandover' <<< "$handover"
+          icon="$(retry_curl "$preview/src/context-layers/radar-site-name-overlay-v1.js")"
+          grep -Fq 'radar-dish-reflector' <<< "$icon"
+          prod="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$prod"
+          echo "Verified live isolated PR73 browser preview at $preview; production root immutable."
 
       - name: Verify V9.17.0 publicly served production root
         shell: bash

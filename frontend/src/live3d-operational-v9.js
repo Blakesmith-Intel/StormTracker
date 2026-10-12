@@ -1,4 +1,6 @@
-import { QLD_RADAR_SITES, dopplerRadarsForRegion } from "./qld-radar-sites-v1.js";
+import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
+import { BORDER_RADAR_SITES, primaryRadarDopplerSites } from "./border-radar-sites-v1.js";
+import { createRadarSiteNameOverlay } from "./context-layers/radar-site-name-overlay-v1.js?v=nsw-border-radar-v1";
 import {
   loadLatestBomReflectivityMosaic,
   findLatestBomReflectivityTime,
@@ -1068,9 +1070,9 @@ function displayAltitude(altitude) {
 }
 
 function selectedRadarRegion() { return $("radarSite").value; }
-function selectedSourceRadars() { return dopplerRadarsForRegion(selectedRadarRegion()); }
+function selectedSourceRadars() { return primaryRadarDopplerSites(selectedRadarRegion()); }
 function resetView() {
-  const site = QLD_RADAR_SITES[selectedRadarRegion()];
+  const site = BORDER_RADAR_SITES[selectedRadarRegion()];
   if (site) mapCamera.setView({...CORE_HOME, longitude:site.longitude, latitude:site.latitude});
   else mapCamera.setView(REGIONAL_HOME);
 }
@@ -1081,14 +1083,14 @@ function configureRadarSite() {
   // Internal hidden input preserves existing verified loading/science paths
   // without an independently user-selectable Doppler radar.
   $("dopplerOverlayRadar").value=ids[0]??"";
-  const site=QLD_RADAR_SITES[selected];
+  const site=BORDER_RADAR_SITES[selected];
   $("radarSite").title=selected==="SEQ"
     ? "Legacy south-east region (not exposed as an operational option)"
     : `${site?.name??"Radar"}: ${ids.length ? "Doppler available" : "reflectivity only"}`;
 }
-for (const site of Object.values(QLD_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
+for (const site of Object.values(BORDER_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
   const option = document.createElement("option"); option.value = site.id;
-  option.textContent = `${site.name}${site.dopplerProduct ? "" : " · radar only"}`;
+  option.textContent = `${site.name}${site.state==="NSW" ? " (NSW)" : ""}${site.dopplerProduct ? "" : site.dopplerAvailableAtBom ? " · Doppler not integrated" : " · radar only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
 // The primary site alone drives Doppler, storm tracks and inferred 3-D.
@@ -1098,7 +1100,7 @@ configureRadarSite();
 function refreshAdditionalRadarChoices(){
   const primary=selectedRadarRegion();
   additionalRadarSiteIds=chooseSupplementalRadarSites(primary,
-    additionalRadarSiteIds,QLD_RADAR_SITES);
+    additionalRadarSiteIds,BORDER_RADAR_SITES);
   for(const input of $("multiRadarChecklist").querySelectorAll("input[type=checkbox]")){
     const isPrimary=input.value===primary;
     input.checked=isPrimary || additionalRadarSiteIds.includes(input.value);
@@ -1130,13 +1132,13 @@ function clearMultiRadarSelectionWarning(){
 }
 function setAdditionalRadarSelection(next){
   additionalRadarSiteIds=chooseSupplementalRadarSites(
-    selectedRadarRegion(),next,QLD_RADAR_SITES);
+    selectedRadarRegion(),next,BORDER_RADAR_SITES);
   refreshAdditionalRadarChoices();
   clearMultiRadarSelectionWarning();
   if(latestFrame)showSupplementalRadarSites(latestFrame);
 
 }
-for(const site of Object.values(QLD_RADAR_SITES).sort((a,b)=>
+for(const site of Object.values(BORDER_RADAR_SITES).sort((a,b)=>
   a.name.localeCompare(b.name))){
   const label=document.createElement("label");
   const checkbox=document.createElement("input");
@@ -1160,6 +1162,24 @@ for(const site of Object.values(QLD_RADAR_SITES).sort((a,b)=>
   });
 }
 refreshAdditionalRadarChoices();
+// Persistent radar-site location names remain distinct from Queensland town
+// labels and share the primary-radar select event with the existing dropdown.
+// They do not add more simultaneous radar sites or bypass frame-science gates.
+const radarSiteNames=createRadarSiteNameOverlay({
+  scene,CesiumRef:Cesium,container:$("mapPanel"),sites:BORDER_RADAR_SITES,
+  getPrimary:selectedRadarRegion,
+  onSelect:id=>{
+    const selector=$("radarSite");
+    if(!Object.hasOwn(BORDER_RADAR_SITES,id))return;
+    if(selector.value===id){
+      resetView();
+      scene.requestRender();
+      return;
+    }
+    selector.value=id;
+    selector.dispatchEvent(new Event("change",{bubbles:true}));
+  }
+});
 // Opt-in, read-only browser diagnostics for verifying actual Cesium layers,
 // native BoM timestamps, selector state, and latest observed source frame.
 if(new URLSearchParams(window.location.search).has("qaMultiRadar")){
@@ -1174,6 +1194,8 @@ if(new URLSearchParams(window.location.search).has("qaMultiRadar")){
     frameCount:hybridFrames.length,
     sourceStatus:$("status")?.textContent??"",
     addedStatus:$("multiRadarStatus")?.textContent??"",
+    radarLabelCount:radarSiteNames.siteCount,
+    radarVisibleIds:radarSiteNames.visibleRadarIds,
     mapWidth:$("cesiumContainer")?.clientWidth??0,
     mapHeight:$("cesiumContainer")?.clientHeight??0,
     radarAlpha:radarImageryHandover.currentLayer?.alpha??null,
@@ -1196,7 +1218,7 @@ $("closeMultiRadarPanel").addEventListener("click",()=>{
 $("clearMultiRadars").addEventListener("click",()=>setAdditionalRadarSelection([]));
 $("fitMultiRadars").addEventListener("click",()=>{
   const bounds=fitSelectedRadarSites(
-    selectedRadarRegion(),additionalRadarSiteIds,QLD_RADAR_SITES);
+    selectedRadarRegion(),additionalRadarSiteIds,BORDER_RADAR_SITES);
   mapCamera.setView({...CORE_HOME,...bounds});
 });
 
@@ -4618,7 +4640,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   const nextPrimary=selectedRadarRegion();
   if(additionalRadarSiteIds.length && nextPrimary!==previousPrimaryRadarId){
     additionalRadarSiteIds=chooseSupplementalRadarSites(nextPrimary,
-      [...additionalRadarSiteIds,previousPrimaryRadarId],QLD_RADAR_SITES);
+      [...additionalRadarSiteIds,previousPrimaryRadarId],BORDER_RADAR_SITES);
   }
   previousPrimaryRadarId=nextPrimary;
   configureRadarSite(); resetView(); clearDopplerOverlay();

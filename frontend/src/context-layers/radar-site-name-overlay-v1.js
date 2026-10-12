@@ -1,5 +1,5 @@
-// Geographically anchored, accessible BoM radar-site names. All sites use
-// bright cyan, distinct from ordinary Queensland town labels. No radar
+// Geographically anchored, accessible BoM radar-dish icons. Station names
+// remain available by hover/long-press and to screen readers. No radar
 // imagery, frame history or map-camera state is modified by this overlay.
 export function createRadarSiteNameOverlay({
   scene,CesiumRef,container,documentRef=globalThis.document,
@@ -23,10 +23,11 @@ export function createRadarSiteNameOverlay({
     btn.type="button";
     btn.className="radar-site-label";
     btn.dataset.radarSiteId=item.site.id;
-    btn.textContent="◆ "+item.site.name;
+    btn.textContent="📡"; // Small, borderless dish glyph; no permanent name or box.
     btn.title="Switch primary radar to "+item.site.name+
       (item.site.state==="NSW"?" (NSW)":" (QLD)");
     btn.setAttribute("aria-label","Load "+item.site.name+" as primary radar");
+    btn.setAttribute("aria-keyshortcuts","Enter Space");
     btn.addEventListener("pointerdown",event=>event.stopPropagation());
     btn.addEventListener("click",event=>{
       event.preventDefault();event.stopPropagation();
@@ -58,15 +59,14 @@ export function createRadarSiteNameOverlay({
       }
       const point=CesiumRef.SceneTransforms.worldToWindowCoordinates(scene,position);
       if(!point || !Number.isFinite(point.x)||!Number.isFinite(point.y) ||
-         point.x<45||point.y<24||point.x>width-45||point.y>height-24){
+         point.x<16||point.y<16||point.x>width-16||point.y>height-16){
         button.hidden=true;continue;
       }
-      const labelWidth=Math.min(240,36+site.name.length*7.2);
-      const box={left:point.x-labelWidth/2,right:point.x+labelWidth/2,
-        top:point.y-16,bottom:point.y+16};
+      const box={left:point.x-13,right:point.x+13,
+        top:point.y-13,bottom:point.y+13};
       if(boxes.some(prior=>
-        box.left<prior.right+5 && box.right>prior.left-5 &&
-        box.top<prior.bottom+5 && box.bottom>prior.top-5)){
+        box.left<prior.right+6 && box.right>prior.left-6 &&
+        box.top<prior.bottom+6 && box.bottom>prior.top-6)){
         button.hidden=true;continue;
       }
       boxes.push(box);

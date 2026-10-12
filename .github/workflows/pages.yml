@@ -311,6 +311,12 @@ jobs:
           printf 'StormTracker V9.16.15 release %s\n' 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' > published-site/BUILD.txt
           mkdir -p published-site/preview
           cp -a frontend/preview/. published-site/preview/
+          # Standalone experimental volume study: only the preview HTML is copied.
+          # The pinned production release and its site root remain unchanged.
+          mkdir -p published-site/previews
+          cp frontend/previews/volumetric-v2.html published-site/previews/volumetric-v2.html
+          test -s published-site/previews/volumetric-v2.html
+          grep -Fq 'ISOLATED VISUAL PROTOTYPE' published-site/previews/volumetric-v2.html
           cmp sealed-production/v9.16.15/frontend/index.html published-site/index.html
           cmp sealed-production/v9.16.15/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
@@ -337,6 +343,18 @@ jobs:
       - name: Deploy sealed V9.16.15 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify served standalone volumetric V2 preview
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          preview="$(curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$base/previews/volumetric-v2.html")"
+          grep -Fq 'StormTracker — Inferred Volume V2' <<< "$preview"
+          grep -Fq 'SYNTHETIC TEST STORM' <<< "$preview"
+          echo "Verified independent volumetric V2 preview; pinned production unchanged."
+
       - name: Verify V9.16.15 publicly served production root
         shell: bash
         env:

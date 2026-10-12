@@ -20,6 +20,11 @@ for(const id of ["53","28"]){
 assert.deepEqual(primaryRadarDopplerSites("93"),["93"]);
 assert.equal(DOPPLER_PRODUCTS["93"],"IDR93I");
 assert.equal(new URL(buildDopplerRelayUrl("93")).searchParams.get("product"),"IDR93I");
+assert.equal(new URL(buildDopplerRelayUrl("93")).host,
+  "stormtracker-bom-relay-nsw-preview.stormtracker-bom-relay.workers.dev");
+assert.equal(new URL(buildDopplerRelayUrl("66")).host,
+  "stormtracker-bom-relay.stormtracker-bom-relay.workers.dev",
+  "Original Queensland Doppler must not change endpoint");
 assert.equal(new URL(buildDopplerHistoryUrl("93")).searchParams.get("product"),"IDR93I");
 const filename="IDR93I.T.202610121050.png";
 const history=parseBomRadarLoopFrames(

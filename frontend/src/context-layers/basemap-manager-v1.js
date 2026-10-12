@@ -31,8 +31,25 @@ export const QLD_IMAGERY_BASEMAP =
         north: -9.00150272786486
       }),
     label:
-      "Queensland imagery · latest public aerial / satellite"
+      "QLD + NSW imagery · official aerial / satellite"
   });
+
+// NSW Spatial Services official public imagery is a 256px EPSG:3857
+// tiled MapServer. Its published extent is deliberately bounded so the
+// browser never requests imagery outside the source's coverage. Layer order
+// is global street fallback → NSW imagery → Queensland imagery on top.
+export const NSW_IMAGERY_BASEMAP = Object.freeze({
+  service: "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer",
+  tileTemplate: "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}",
+  maximumLevel: 20, // Match the current QLD imagery zoom capability.
+  rectangleDegrees: Object.freeze({
+    west: 138.42823352306536,
+    south: -38.38094509104267,
+    east: 159.28994735728213,
+    north: -26.48153106270077
+  }),
+  label: "NSW Spatial Services aerial / satellite imagery"
+});
 
 export const REFERENCE_LABELS =
   Object.freeze({
@@ -95,6 +112,25 @@ function persistBasemap(
   } catch {
     // Storage is an optional convenience. Basemap switching must still work.
   }
+}
+
+function nswImageryRectangle(Cesium) {
+  const b = NSW_IMAGERY_BASEMAP.rectangleDegrees;
+  return Cesium.Rectangle.fromDegrees(b.west,b.south,b.east,b.north);
+}
+
+export function createNswImageryProvider(Cesium) {
+  return new Cesium.UrlTemplateImageryProvider({
+    url: NSW_IMAGERY_BASEMAP.tileTemplate,
+    tilingScheme: new Cesium.WebMercatorTilingScheme(),
+    tileWidth: 256,
+    tileHeight: 256,
+    maximumLevel: NSW_IMAGERY_BASEMAP.maximumLevel,
+    rectangle: nswImageryRectangle(Cesium),
+    credit: new Cesium.Credit(
+      "NSW imagery © Department of Customer Service (NSW Spatial Services), 2026"
+    )
+  });
 }
 
 function qldImageryRectangle(
@@ -243,23 +279,19 @@ export function createStormTrackerBasemapManager({
 
   let currentLayer = null;
   let fallbackLayer = null;
+  let nswLayer = null;
   let currentId = null;
-  let sourceErrorDisposer = null;
+  let sourceErrorDisposers = [];
 
   function detachSourceError() {
-    if (
-      typeof sourceErrorDisposer
-      === "function"
-    ) {
-      sourceErrorDisposer();
-    }
-
-    sourceErrorDisposer = null;
+    for(const dispose of sourceErrorDisposers) dispose();
+    sourceErrorDisposers = [];
   }
 
   function attachSourceError(
     provider,
-    id
+    id,
+    region = "QLD"
   ) {
     const errorEvent =
       provider?.errorEvent;
@@ -272,21 +304,17 @@ export function createStormTrackerBasemapManager({
       return;
     }
 
-    sourceErrorDisposer =
-      errorEvent.addEventListener(
-        () => {
-          if (currentId !== id) return;
-
-          onStatus(
-            id === BASEMAP_IDS.QLD_IMAGERY
-              ? "Queensland imagery unavailable for part of this view · generic map shown underneath"
-              : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
-            id === BASEMAP_IDS.QLD_IMAGERY
-              ? "normal"
-              : "error"
-          );
-        }
-      );
+    const dispose = errorEvent.addEventListener(() => {
+      if (currentId !== id) return;
+      const satellite = id === BASEMAP_IDS.QLD_IMAGERY;
+      onStatus(satellite
+        ? (region === "NSW"
+          ? "NSW imagery temporarily unavailable · Street map remains as fallback"
+          : "Queensland imagery unavailable for part of this view · NSW imagery / Street fallback remains")
+        : "Street basemap tiles are currently unavailable. Weather layers are unaffected.",
+        satellite ? "normal" : "error");
+    });
+    if (typeof dispose === "function") sourceErrorDisposers.push(dispose);
   }
 
   function setBasemap(
@@ -320,8 +348,9 @@ export function createStormTrackerBasemapManager({
       );
 
     let nextLayer;
-    let nextFallbackLayer =
-      null;
+    let nextFallbackLayer = null;
+    let nextNswLayer = null;
+    let nswProviderForErrors = null;
 
     try {
       if (
@@ -339,12 +368,13 @@ export function createStormTrackerBasemapManager({
               0
             );
 
-        nextLayer =
-          viewer.imageryLayers
-            .addImageryProvider(
-              provider,
-              1
-            );
+        // One satellite selection: NSW is underneath QLD; source credits
+        // remain attached to each official provider. Do not move the camera.
+        nswProviderForErrors = createNswImageryProvider(Cesium);
+        nextNswLayer = viewer.imageryLayers.addImageryProvider(
+          nswProviderForErrors, 1
+        );
+        nextLayer = viewer.imageryLayers.addImageryProvider(provider, 2);
       } else {
         nextLayer =
           viewer.imageryLayers
@@ -354,12 +384,8 @@ export function createStormTrackerBasemapManager({
             );
       }
     } catch (error) {
-      if (nextFallbackLayer) {
-        viewer.imageryLayers.remove(
-          nextFallbackLayer,
-          true
-        );
-      }
+      if (nextNswLayer) viewer.imageryLayers.remove(nextNswLayer,true);
+      if (nextFallbackLayer) viewer.imageryLayers.remove(nextFallbackLayer,true);
 
       onStatus(
         `Unable to switch basemap: ${error.message ?? error}`,
@@ -371,24 +397,22 @@ export function createStormTrackerBasemapManager({
     const previousLayer =
       currentLayer;
 
-    const previousFallbackLayer =
-      fallbackLayer;
+    const previousFallbackLayer = fallbackLayer;
+    const previousNswLayer = nswLayer;
 
     detachSourceError();
 
     currentLayer =
       nextLayer;
 
-    fallbackLayer =
-      nextFallbackLayer;
+    fallbackLayer = nextFallbackLayer;
+    nswLayer = nextNswLayer;
 
     currentId =
       id;
 
-    attachSourceError(
-      provider,
-      id
-    );
+    attachSourceError(provider,id);
+    if(nswProviderForErrors) attachSourceError(nswProviderForErrors,id,"NSW");
 
     if (previousLayer) {
       viewer.imageryLayers.remove(
@@ -397,6 +421,7 @@ export function createStormTrackerBasemapManager({
       );
     }
 
+    if (previousNswLayer) viewer.imageryLayers.remove(previousNswLayer,true);
     if (previousFallbackLayer) {
       viewer.imageryLayers.remove(
         previousFallbackLayer,
@@ -413,7 +438,7 @@ export function createStormTrackerBasemapManager({
 
     onStatus(
       id === BASEMAP_IDS.QLD_IMAGERY
-        ? "Basemap: Queensland imagery · generic global fallback outside coverage"
+        ? "Basemap: Queensland + NSW official imagery · Street fallback elsewhere"
         : `Basemap: ${basemapLabel(id)}`,
       "ok"
     );
@@ -454,6 +479,7 @@ export function createStormTrackerBasemapManager({
       );
     }
 
+    if (nswLayer) viewer.imageryLayers.remove(nswLayer, true);
     if (fallbackLayer) {
       viewer.imageryLayers.remove(
         fallbackLayer,
@@ -463,6 +489,7 @@ export function createStormTrackerBasemapManager({
 
     currentLayer = null;
     fallbackLayer = null;
+    nswLayer = null;
     currentId = null;
   }
 

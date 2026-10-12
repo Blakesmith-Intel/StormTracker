@@ -3,44 +3,26 @@
 // remain source-true and unchanged. mm/h is NOT an official BoM rain-rate field.
 import { BOM_REFLECTIVITY_RGB, REFLECTIVITY_CLASSES } from "./palette.js";
 
-export const RAIN_RATE_ESTIMATE_SOURCE = "Marshall–Palmer Z=200R^1.6 (illustrative; not calibrated by BoM)";
+// BoM native rain-rate band boundaries; the colours match its 15-band
+// rain-rate image, but these mm/h categories are NOT derived from a single
+// reflectivity-to-rainfall formula.
+export const NATIVE_RAIN_RATE_LAYER="atm_surf_air_precip_rate_1hr_total_mm_h";
 export const VOLUME_BASE_VERTICAL_EXAGGERATION = 1.0;
 
-export function estimateRainRateMmH(dbz) {
-  const value=Number(dbz);
-  if(!Number.isFinite(value))return null;
-  return Math.pow(Math.pow(10,value/10)/200,1/1.6);
-}
-
-export function rateRangeForReflectivityCategory(category) {
-  const range=REFLECTIVITY_CLASSES[category];
-  if(!range)return null;
-  return {
-    lowerDbz:range[0],upperDbz:range[1],
-    lowerMmH:estimateRainRateMmH(range[0]),
-    upperMmH:range[1]==null?null:estimateRainRateMmH(range[1])
-  };
-}
-
-export function formatRate(value) {
-  if(value==null||!Number.isFinite(value))return "—";
-  if(value<1)return value.toFixed(1);
-  if(value<10)return value.toFixed(1);
-  return Math.round(value).toLocaleString("en-AU");
-}
+const RATE_LABELS=[
+  "Under 2","2–3","3–5","5–7","7–10",
+  "10–15","15–25","25–35","35–55","55–80",
+  "80–120","120–180","180–270","270–400","400+"
+];
 
 export function rainfallLegendBands() {
-  return BOM_REFLECTIVITY_RGB.map(entry=>{
-    const range=rateRangeForReflectivityCategory(entry.value);
-    return {
-      category:entry.value,
-      color:"#"+entry.rgb.map(v=>v.toString(16).padStart(2,"0")).join(""),
-      dbzLabel:range.upperDbz==null?`${range.lowerDbz}+ dBZ`:`${range.lowerDbz}–${range.upperDbz} dBZ`,
-      rainRateLabel:range.upperMmH==null?`${formatRate(range.lowerMmH)}+ mm/h`:
-        `${formatRate(range.lowerMmH)}–${formatRate(range.upperMmH)} mm/h`,
-      rainRateLowerMmH:range.lowerMmH
-    };
-  });
+  return BOM_REFLECTIVITY_RGB.map((entry,index)=>({
+    category:entry.value,
+    color:"#"+entry.rgb.map(v=>v.toString(16).padStart(2,"0")).join(""),
+    rainRateLabel:RATE_LABELS[index]+" mm/h",
+    rainRateLowerMmH:index===0?0:
+      [2,3,5,7,10,15,25,35,55,80,120,180,270,400][index-1]
+  }));
 }
 
 // Use exactly the same 15 colour categories as the measured BoM 2-D surface.

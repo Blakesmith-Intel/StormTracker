@@ -4,8 +4,7 @@ import {
   BASEMAP_IDS,
   BASEMAP_STORAGE_KEY,
   QLD_IMAGERY_BASEMAP,
-  NSW_IMAGERY_BASEMAP,
-  createNswImageryProvider,
+  WORLD_IMAGERY_BASEMAP,
   QUEENSLAND_PLACE_LABELS,
   REFERENCE_LABELS,
   basemapLabel,
@@ -101,11 +100,11 @@ const qld =
 
 assert.equal(
   qld.options.url,
-  "https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestStateProgram_AllUsers/ImageServer/tile/{z}/{y}/{x}"
+  WORLD_IMAGERY_BASEMAP.tileTemplate
 );
 assert.equal(
   qld.options.maximumLevel,
-  20
+  19
 );
 assert.equal(
   qld.options.tileWidth,
@@ -121,36 +120,16 @@ assert.ok(
 );
 assert.match(
   qld.options.credit.text,
-  /State of Queensland/
+  /Esri, Vantor, Earthstar Geographics/
 );
 
-assert.deepEqual(
-  qld.options.rectangle,
-  QLD_IMAGERY_BASEMAP.rectangleDegrees
-);
+assert.equal(qld.options.rectangle,undefined,
+  "Single national satellite tile source has no Queensland or NSW clip");
 
 assert.equal(
   QLD_IMAGERY_BASEMAP.label,
-  "QLD + NSW imagery · official aerial / satellite"
+  "Satellite · Esri World Imagery (national)"
 );
-
-const nsw = createNswImageryProvider(Cesium);
-assert.equal(
-  nsw.options.url,
-  "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}"
-);
-assert.equal(nsw.options.maximumLevel,20,"Both state imagery providers support the same requested zoom limit");
-assert.equal(nsw.options.tileWidth,256);
-assert.equal(nsw.options.tileHeight,256);
-assert.ok(nsw.options.tilingScheme instanceof FakeWebMercatorTilingScheme);
-assert.deepEqual(nsw.options.rectangle, NSW_IMAGERY_BASEMAP.rectangleDegrees,
-  "NSW source only requests official service footprint (no nationwide blank tiles)");
-assert.match(nsw.options.credit.text,/NSW Spatial Services/,
-  "NSW government requires a separate attribution credit");
-assert.ok(NSW_IMAGERY_BASEMAP.rectangleDegrees.north>QLD_IMAGERY_BASEMAP.rectangleDegrees.south,
-  "Small geographic overlap prevents a latitude gap at the Queensland/NSW border");
-assert.ok(NSW_IMAGERY_BASEMAP.rectangleDegrees.south < -37,
-  "Satellite imagery must reach southern NSW, not just the QLD border");
 
 const labels =
   createReferenceLabelProvider(
@@ -339,23 +318,22 @@ assert.equal(
   initial.id,
   BASEMAP_IDS.QLD_IMAGERY
 );
-assert.equal(layers.length,3);
-assert.equal(layers[0].provider.constructor,FakeStreetProvider,
-  "QLD + NSW satellite retains the global street fallback");
-assert.equal(layers[1].provider.options.url,NSW_IMAGERY_BASEMAP.tileTemplate,
-  "Official NSW imagery renders ABOVE street");
-assert.equal(layers[2].provider.options.url,QLD_IMAGERY_BASEMAP.tileTemplate,
-  "Existing QLD imagery renders ABOVE NSW for border overlap priority");
-assert.equal(layers[1].index,1);
-assert.equal(layers[2].index,2);
-const oldNswProvider=layers[1].provider;
-const oldQldProvider=layers[2].provider;
-oldNswProvider.listener();
-assert.match(statuses.at(-1).message,/NSW imagery temporarily unavailable/,
-  "Unavailable NSW tiles warn but leave street fallback usable");
-assert.ok(oldNswProvider.listener && oldQldProvider.listener,
-  "Both official source errors have separate listeners while imagery is selected");
-
+assert.equal(
+  layers.length,
+  2
+);
+assert.equal(
+  layers[0].provider.constructor,
+  FakeStreetProvider,
+  "QLD imagery mode keeps a global fallback underneath."
+);
+assert.equal(
+  layers[1].provider.constructor,
+  FakeUrlTemplateProvider,
+  "One national Esri satellite mosaic overlays the generic fallback."
+);
+assert.equal(layers[1].provider.options.url,WORLD_IMAGERY_BASEMAP.tileTemplate);
+assert.equal(layers[1].provider.options.rectangle,undefined);
 
 const street =
   manager.setBasemap(
@@ -374,10 +352,6 @@ assert.equal(
   layers[0].provider.constructor,
   FakeStreetProvider
 );
-assert.equal(oldNswProvider.listener,null,
-  "Switching to street unsubscribes old NSW provider events");
-assert.equal(oldQldProvider.listener,null,
-  "Switching to street unsubscribes old Queensland provider events");
 assert.equal(
   store.get(
     BASEMAP_STORAGE_KEY
@@ -414,15 +388,12 @@ assert.equal(
   1
 );
 
-const returned=manager.setBasemap(BASEMAP_IDS.QLD_IMAGERY);
-assert.equal(returned.changed,true);
-assert.equal(layers.length,3);
-assert.deepEqual(layers.map(layer=>layer.provider.constructor),[
-  FakeStreetProvider,FakeUrlTemplateProvider,FakeUrlTemplateProvider
-]);
 manager.destroy();
-assert.equal(layers.length,0);
+assert.equal(
+  layers.length,
+  0
+);
 
 console.log(
-  "Basemap manager checks passed: QLD/NSW official satellite layers overlap safely, clear attribution/error handling, global street fallback, labels, switching/cleanup and camera safety."
+  "Basemap manager checks passed: one national Esri satellite source, no artificial state clip, correct credits, street fallback, state labels, and safe layer replacement."
 );

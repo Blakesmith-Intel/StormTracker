@@ -16,6 +16,28 @@ export function createRadarSiteNameOverlay({
   const points=Object.values(sites).map(site=>({
     site,position:CesiumRef.Cartesian3.fromDegrees(site.longitude,site.latitude,0)
   }));
+  // Monochrome SVG rather than a platform-dependent full-colour emoji.
+  // Keep the drawn mark small but the transparent tap target easy to hit.
+  const SVG_NS="http://www.w3.org/2000/svg";
+  function dishGlyph(){
+    const svg=documentRef.createElementNS(SVG_NS,"svg");
+    svg.setAttribute("viewBox","0 0 24 24");
+    svg.setAttribute("class","radar-site-glyph");
+    svg.setAttribute("aria-hidden","true");
+    svg.setAttribute("focusable","false");
+    const traces=[
+      "M4.5 5a11.5 11.5 0 0 0 11.5 11.5",
+      "M4.5 5 16 16.5",
+      "M10.5 14.4 8.5 20h7",
+      "M15 5a4 4 0 0 1 4 4"
+    ];
+    for(const d of traces){
+      const path=documentRef.createElementNS(SVG_NS,"path");
+      path.setAttribute("d",d);
+      svg.appendChild(path);
+    }
+    return svg;
+  }
   const elements=new Map();
   let destroyed=false,visibleIds=[];
   for(const item of points){
@@ -23,7 +45,7 @@ export function createRadarSiteNameOverlay({
     btn.type="button";
     btn.className="radar-site-label";
     btn.dataset.radarSiteId=item.site.id;
-    btn.textContent="📡"; // Small, borderless dish glyph; no permanent name or box.
+    btn.appendChild(dishGlyph()); // Deliberately no persistent label text.
     btn.title="Switch primary radar to "+item.site.name+
       (item.site.state==="NSW"?" (NSW)":" (QLD)");
     btn.setAttribute("aria-label","Load "+item.site.name+" as primary radar");

@@ -1,3 +1,7 @@
+> **CURRENT OPERATIONAL BASELINE: V9.17.0 (13 October 2026).** This file retains the historical release record below. The authoritative new release record is [CHANGELOG_V9.17.0.md](CHANGELOG_V9.17.0.md), with [USER_GUIDE_V9.17.0.md](USER_GUIDE_V9.17.0.md) and [PRODUCTION_BASELINE_V9.17.0.md](PRODUCTION_BASELINE_V9.17.0.md). Earlier V9.9.1 "current" statements below are historical, not active release facts. Brewarrina Doppler is source-whitelisted but runtime-gated; production remains QLD wind-safe.
+
+---
+
 # StormTracker Operational V9.9.1
 
 Release date: 8 October 2026 (AEST). Status: V9.9.1 full production release sealed and deployed; wishlist item 1 complete and Doppler playback smoothing accepted.

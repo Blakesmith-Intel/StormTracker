@@ -1,3 +1,5 @@
+> **Promoted to production V9.17.0:** Multiple radar windows are no longer just a preview. A primary and up to three extras are available in the accepted build; primary location also changes via minimalist clickable map dish icons, and NSW border stations 93/53/28 are selectable. Brewarrina Doppler remains gated pending separate relay verification; other NSW sites offer reflectivity only. The older PR preview scope and branch references below are retained for history. See [USER_GUIDE_V9.17.0.md](USER_GUIDE_V9.17.0.md) and [PRODUCTION_BASELINE_V9.17.0.md](PRODUCTION_BASELINE_V9.17.0.md).
+
 # V9.16.15 preview — multiple Queensland radar display windows
 
 **Status:** isolated V9 enhancement branch, based on sealed production commit `0c7424abdc659e5874595473c0e91953ffa0a48b`. Does NOT merge, retag or deploy over V9.16.14 without review.

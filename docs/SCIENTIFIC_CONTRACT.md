@@ -1,3 +1,5 @@
+> **V9.17.0 clarification:** Production's original BoM dBZ reflectivity scale is used universally. Rounded 3-D sprites and their stronger-cell-taller *display geometry* remain inference from the measured 2-D source, not actual weather-radar volume scans or measured cloud-top altitude. Each tracked column uses the actual **corresponding source pixel's** low-level dBZ for the 1.0–1.4× visual-height mapping (manual scale defaults to 1.0×), not the strongest pixel elsewhere in its storm. The original ≥40 dBZ 16-observed-connected-pixel tracking threshold and independent 2-D footprint are unchanged. Brewarrina Doppler remains disabled until separate relay and calibration verification.
+
 # StormTracker scientific contract
 
 This reconstructed baseline preserves the scientific constraints established in the lost project.

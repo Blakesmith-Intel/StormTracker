@@ -1,203 +1,35 @@
-# StormTracker — Operational V9.9.1
+# StormTracker — V9.17.0 production
 
-StormTracker is a browser-native Queensland radar and storm-tracking product built
-from public Bureau of Meteorology imagery. The production application runs from
-GitHub Pages, with a small Cloudflare relay used only where browser/CORS transport
-requires it. Tracking, inference and product logic remain in the browser.
+**Live:** https://blakesmith-intel.github.io/StormTracker/
 
-[Open StormTracker](https://blakesmith-intel.github.io/StormTracker/) ·
-[Operational release record](docs/OPERATIONAL_RELEASE.md) ·
-[Scientific contract](docs/SCIENTIFIC_CONTRACT.md) ·
-[Production restore point](docs/BASELINE_RESTORE.md) ·
-[Future development handover](docs/FUTURE_DEVELOPMENT_HANDOVER.md)
+Browser-only Queensland and border-region situational-awareness radar display. Uses original public Bureau of Meteorology (BoM) **reflectivity in dBZ throughout** (not estimated mm/h), optional Doppler radial velocity, empirically **inferred** (not measured) 3-D radar echoes and observed-pixel storm tracking. GitHub Pages serves the application; the existing Cloudflare Worker relays permitted source files only.
 
-## Current production product
+## Current capabilities
 
-- All 19 public Queensland radar sites are selectable, plus the south-east
-  Queensland regional view. Selecting a site centres the map on that radar.
-- Measured 2-D reflectivity drives persistent `STxxxx` storm identities and
-  horizontal motion.
-- Track-specific 3-D structure is inferred from measured 2-D reflectivity and is
-  explicitly labelled as inferred rather than measured volumetric radar.
-- Doppler overlays are available at 14 sites. Footprint-restricted Doppler
-  analysis remains calibrated only for 08 Gympie, 50 Marburg and 66 Mt Stapylton;
-  the other wind panels are display-only until independently calibrated.
-- A selected storm track can display labels, track-specific inferred structure
-  and a +90-minute measured-motion cone. The cone is an operational extrapolation
-  aid, not a warning polygon or forecast probability.
-- Radar/Doppler opacity controls, AEST and UTC timestamps, continuous playback,
-  Play/Pause, speed control, frame scrubbing and jump-to-latest are retained.
-- Mobile uses compact controls with explicit one-finger pan, pinch zoom,
-  two-finger rotation and pitch gestures.
+- **22 selectable radar coverage windows:** all 19 existing Queensland stations plus **Brewarrina (93), Moree (53) and Grafton (28)** in NSW. These locations select windows of the *national BoM WMTS mosaic*, not independent fused radar scans. Source reflectivity and 2-D history are unchanged.
+- The selected **primary** radar controls tracked storms, inferred 3-D, radar clock and supported Doppler. Add **up to three** other 2-D reflectivity windows. Overlap, stale timestamps and supplemental-load failures cannot manufacture a new primary observation.
+- **Small single-colour SVG radar-dish markers** on the map are clickable/tappable to select the primary source. The name is available in the dropdown, accessible button label and hover tooltip. Map towns stay separate.
+- **Rounded cloud-like inferred 3-D sprites** use the **same 15-category original BoM dBZ colour palette** as 2-D imagery; volumes display only at **≥40 dBZ**. No rain-rate conversions and no synthetic cloud-top measurements.
+- **Per-source-pixel intensity** controls each rendered column's *presentation-only* height multiplier (1.0–1.4). Weaker echoes appear shorter; strong cores appear taller. The independent manual vertical-exaggeration control defaults to **1.0×**. Empirical five-event AURA vertical profiles, confidence, occupancy and source-pixel dBZ remain unchanged.
+- Connected-pixel storm tracking: 40 dBZ threshold, ≥16 **observed** connected pixels, gap joining within two raster pixels, independent strong-core protections, track IDs, labels and motion cones.
+- Original BoM Doppler winds, double-buffered frame presentation and source timestamps; 08/50/66 remain the only geographically calibrated footprint-wind analysis sites. All other nominally aligned wind displays are **not** calibrated for footprint analysis.
+- **Brewarrina Doppler is NOT enabled in V9.17.0:** BoM publishes `IDR93I` but its separate Cloudflare preview Worker is not deployed/verified. It is whitelisted in source code only and explicitly gated (`dopplerIntegrated:false`). Moree and Grafton are reflectivity-only.
+- Rolling source-backed radar history, independent source polling (~five minutes), timeline scrub, speed/loop choices and safe playback recovery.
+- Street/imagery basemaps, terrain, official geography and town labels, current unplanned road closures and power outages, BoM flood signals and public QFD grouped rescue/assistance indicators (subject to source availability and each layer's existing filters).
 
-## Basemap switching
+## Read first
 
-V9.9.0 adds the first situational-awareness extension without changing the
-protected radar/tracking core.
+- [V9.17.0 end-user guide](docs/USER_GUIDE_V9.17.0.md)
+- [Release notes and change log](docs/CHANGELOG_V9.17.0.md)
+- [Production baseline and recovery](docs/PRODUCTION_BASELINE_V9.17.0.md)
+- [Engineering / operational handover](docs/HANDOVER_V9.17.0.md)
+- [Scientific integrity contract](docs/SCIENTIFIC_CONTRACT.md)
+- [Historical operational release archive](docs/OPERATIONAL_RELEASE.md)
 
-- **Street** retains the existing OpenStreetMap basemap.
-- **GA satellite** uses Geoscience Australia's public cached
-  **World Bathymetry, Imagery and Hillshade** service. That service includes
-  Landsat-derived satellite imagery and is published as a Web Mercator tile cache.
-  StormTracker consumes the cached tiles directly rather than relying on the DEA
-  time-enabled WMS path that proved unreliable in browser acceptance testing.
-- GA satellite mode adds a transparent **World Boundaries and Places** reference
-  layer above the weather imagery so towns and place names remain readable.
-- Optional **3-D terrain** uses the public ArcGIS WorldElevation3D/Terrain3D
-  elevation service through Cesium's native ArcGIS terrain provider. If terrain
-  fails, StormTracker falls back to the normal ellipsoid surface without affecting
-  radar, tracks or playback.
-- The selected basemap and terrain preference are stored in localStorage and
-  restored on the next visit.
-- Switching basemaps replaces only the bottom imagery layer. It does not reset the
-  camera, selected radar, radar history, tracks, Doppler state, playback or motion
-  cone.
-- A basemap-source failure is reported independently and does not block weather
-  layers or tracking.
-- Camera movement uses an adaptive terrain-detail governor: terrain mesh detail is
-  temporarily relaxed while the map is actively moving, then restored after the
-  gesture settles. Two-finger touch pinch/rotate/pitch changes are also batched into
-  a single camera update per pointer event, and high-delta wheel zooms are applied
-  in one render instead of several sequential renders.
-- The playback frame slider is dynamically resynchronised to the complete loaded
-  frame count whenever history grows, rather than retaining its original six-frame
-  startup maximum.
+## Validation and scientific limits
 
-V9.9.1 is the current sealed production baseline. The previous
-`restore/v9.9.0` and `restore/v9.8.4` recovery points remain unchanged as
-historical fallbacks.
+`npm test` validates browser source/relay and meteorological display contracts (Node.js is used **only for development**, not the user runtime). Original BoM reflectivity alone determines reported 2-D intensity and measured-cell segmentation. Live 3-D is a **display-model inference**, not a direct vertical radar scan. Stronger low-level dBZ does **not prove** greater real cloud height. Doppler is radial velocity, not storm travel speed; exploratory severe/circulation features do not constitute warnings. Display-only interpolated radar frames cannot generate new measured tracks or measured 3-D claims.
 
-## V9.9.1 Doppler playback smoothing
+## Deploy / rollback
 
-V9.9.1 is the accepted display-only refinement on the sealed V9.9.0 feature set.
-
-- The current Doppler imagery layer remains visible while the next matched source
-  frame is decoded and prepared, removing the blank interval caused by deleting the
-  old layer before its replacement was ready.
-- Matched Doppler frames crossfade with complementary alpha rather than switching
-  abruptly.
-- If adjacent radar frames use the same genuine Doppler source frame, StormTracker
-  reuses the existing layer instead of rebuilding it.
-- A radar frame with no valid Doppler match still shows no invented wind data; the
-  previous layer fades out briefly instead of disappearing in one render.
-- Doppler opacity continues to affect display only. Decoding, radial-velocity
-  values, pairing tolerance and analytical inputs are unchanged.
-
-`restore/v9.9.1` is the current production recovery point.
-
-## Radar history and automatic updating
-
-V9.8.4 uses source-aware history instead of assuming every fixed loop is always
-available.
-
-- The loop selector offers only 30/60/90/120/150/180-minute windows that the
-  currently available observations can support, plus **All available**.
-- Genuine reflectivity frames are persisted per radar view in browser IndexedDB.
-  An actively viewed radar can accumulate a rolling history of up to three hours
-  even when the Bureau WMTS endpoint exposes a shorter recent history.
-- Once three hours is reached, playback becomes a rolling window: new genuine
-  observations enter at the newest end and observations older than the
-  180-minute display cutoff fall out of the loop.
-- The browser cache keeps roughly four hours as a safety buffer before pruning.
-- Missing five-minute display slots may be filled only between genuine bounding
-  observations, for gaps no larger than 30 minutes. These frames are visibly
-  marked **INFERRED** and are excluded from storm identity, Doppler analysis,
-  convective scoring and measured-track-specific volumes.
-- The normal live check remains every five minutes while the page is visible.
-  Returning to a visible page triggers an immediate check.
-- V9.8.4 restores automatic loop growth: when cache warming or later polling adds
-  genuine historical observations behind the already-processed tracking point,
-  StormTracker performs a chronological rebuild and expands the displayed loop
-  without requiring a manual Refresh click.
-- Doppler remains a genuine-source-only 30-minute shared-history product.
-  Selecting Doppler switches to 30 minutes; selecting a longer or All available
-  radar window deselects Doppler.
-
-Manual **Refresh latest** remains available for an immediate check, but normal
-history growth should not require it.
-
-## Timing and recovery
-
-Reflectivity discovery follows the established five-minute timestamp grid and
-publication-delay allowance. The next scheduled check runs five minutes after the
-previous check completes, so checks do not overlap.
-
-If a source stalls or the newest frame cannot be loaded, StormTracker retains the
-current loop and retries later. Rejected Doppler images do not poison future
-retries. Site changes start a fresh tracking association for the selected
-geographic view; ordinary automatic updates within that view preserve track
-history unless newly recovered historical observations require an explicit
-chronological rebuild.
-
-## Scientific boundaries
-
-- Tracking and motion use measured 2-D reflectivity.
-- Live 3-D is inferred, not measured live volumetric radar.
-- Doppler is radial velocity, not storm translation speed or a stand-alone
-  diagnosis of rotation.
-- Temporally interpolated radar frames are display-only.
-- Convective/lightning assessment is ordinal radar/Doppler evidence, not detected
-  lightning strikes or a calibrated probability.
-- Historical AURA multi-elevation work remains reference/validation material and
-  is not presented as the live source.
-
-See [docs/SCIENTIFIC_CONTRACT.md](docs/SCIENTIFIC_CONTRACT.md) for the full
-scientific contract.
-
-## Validation and deployment
-
-No production npm package installation is required. With Node.js available:
-
-```bash
-npm test
-```
-
-The repository currently contains 45 `frontend/tests/run-*-tests.mjs` regression
-suites covering source timing, tracking, Doppler, georegistration, inferred
-structure, Queensland sites, playback/history, temporal interpolation, mobile UI
-and production-shell contracts. GitHub Pages runs the frontend validation gate
-before publishing; a failed gate prevents deployment.
-
-The accepted V9.9.1 runtime commit is:
-
-```text
-a14a5f458d2e79b8afabe51a5f5f797fdeea1366
-```
-
-Its full frontend validation and Pages deployment completed successfully on
-8 October 2026 (AEST). The complete sealed repository state is preserved by
-`restore/v9.9.1`; see [docs/BASELINE_RESTORE.md](docs/BASELINE_RESTORE.md).
-
-The user-facing product requires only a web browser. Node/Python are development
-and test tools, not runtime requirements. The Cloudflare worker remains a
-transport layer only and must not become the tracking or meteorological modelling
-engine.
-
-## Repository map
-
-- `frontend/` — published application, models and browser regression suites.
-- `frontend/src/live3d-operational-v9.js` — current operational controller.
-- `frontend/src/radar-history-window-v1.js` — source-aware loop planning.
-- `frontend/src/radar-temporal-interpolation-v1.js` — bounded display-only gap
-  interpolation.
-- `frontend/src/storage.js` — browser-local radar history persistence.
-- `frontend/src/live-loop-refresh-v1.js` — five-minute refresh and chronology
-  rebuild decisions.
-- `scripts/check-frontend.mjs` — frontend validation entry point.
-- `relay/` — public-source transport/CORS relay.
-- `docs/` — release record, scientific boundaries, restore notes and handover.
-- `reference/python/` — historical/recovered reference material outside the live
-  browser runtime.
-
-Wishlist item 1 is complete: Street/OpenStreetMap and GA satellite context,
-place-name reference labels and optional 3-D terrain are now part of the protected
-production UI.
-
-Observed lightning is currently **parked**. Source reconnaissance did not identify
-a legitimate, zero-cost, near-real-time Australian strike feed that fits
-StormTracker's browser-first situational-awareness use and required polling
-cadence. The feature can be reopened if a suitable open feed appears or the
-project later accepts a paid data service.
-
-The next planned release is **V9.10.0 — road closures**, followed by power outages
-and flood gauges.
+The GitHub Pages workflow publishes an **exact pinned release commit**, never whatever happens to be newest on main. The public `/BUILD.txt` identifies that exact production source. An immutable `v9.17.0` tag and `restore/v9.17.0` branch are sealed only after live deployment checks. Historical `v9.16.15` remains available for rollback. No local hosting, paid data, backend meteorological processing or unrelated Cloudflare Worker changes are required.

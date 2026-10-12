@@ -867,3 +867,42 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   .multi-radar-panel { right:5px; top:49px; max-height:min(65dvh,440px); padding:8px; }
   .multi-radar-checklist { max-height:170px; }
 }
+
+/* V2 preview: BoM radar-site labels are deliberately distinct from ordinary
+   white Queensland locality names and are map-clickable to load primary. */
+.radar-site-labels {
+  position:absolute;inset:0;
+  z-index:calc(var(--stormtracker-geo-label-z) + 120);
+  pointer-events:none;overflow:hidden;contain:layout style;
+}
+.radar-site-label {
+  position:absolute;
+  transform:translate(-50%,-50%);
+  max-width:240px;
+  padding:4px 7px;
+  border:1px solid #52eaf1bb;
+  border-radius:5px;
+  background:#051923e8;
+  color:#61eeff;
+  font:700 11px/1.25 system-ui,-apple-system,Segoe UI,sans-serif;
+  letter-spacing:.02em;
+  text-shadow:0 1px 2px #00121a;
+  white-space:nowrap;cursor:pointer;
+  pointer-events:auto;touch-action:manipulation;
+  box-shadow:0 1px 4px #0009;
+  outline-offset:2px;
+}
+.radar-site-label:hover,
+.radar-site-label:focus-visible {
+  background:#094354;
+  border-color:#bffaff;color:#fff;
+}
+.radar-site-label[data-primary="true"] {
+  border:2px solid #8afaff;
+  background:#174354f0;
+  color:#e3ffff;
+}
+.radar-site-label[hidden]{display:none!important}
+@media (max-width:700px) {
+  .radar-site-label {font-size:10px;padding:3px 5px}
+}

@@ -44,7 +44,11 @@ export function extractNativeDopplerPanel(imageData, palette, {
       const alpha = imageData.data[from + 3];
       if (!alpha) continue;
       const rgb = [imageData.data[from], imageData.data[from + 1], imageData.data[from + 2]];
-      const swatch = nearestPaletteMatch(rgb, palette);
+      // Display only the exact 19 BoM velocity swatches, just like the
+      // scientific Doppler decoder. A tolerant near-colour match can turn
+      // unrelated source annotations (range rings, map outlines, track ink)
+      // into false wind pixels. Never repaint or alter source observations.
+      const swatch = nearestPaletteMatch(rgb, palette, { relaxedDistance: 0 });
       if (!swatch || (!includeZero && swatch.velocity_kmh === 0)) continue;
       const to = (row * size + col) * 4;
       data[to] = rgb[0];

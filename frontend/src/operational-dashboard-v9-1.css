@@ -868,9 +868,8 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   .multi-radar-checklist { max-height:170px; }
 }
 
-/* Compact map-interactive radar dishes: no permanent site text, border,
-   background panel or obstruction to place labels. Names remain in title
-   tooltips and button accessibility labels. */
+/* Minimal radar site map symbols: 18px line-art glyphs on transparent
+   32px touch targets. No coloured emoji, border, name or background. */
 .radar-site-labels {
   position:absolute;inset:0;
   z-index:calc(var(--stormtracker-geo-label-z) + 120);
@@ -879,29 +878,33 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
 .radar-site-label {
   position:absolute;transform:translate(-50%,-50%);
   display:grid;place-items:center;
-  width:30px;height:30px;min-width:0;min-height:0;
+  width:32px;height:32px;min-width:0;min-height:0;
   padding:0;margin:0;border:0;border-radius:0;
   background:transparent;box-shadow:none;
-  font:23px/1 "Apple Color Emoji","Segoe UI Emoji",system-ui,sans-serif;
-  color:#61eeff;
-  text-shadow:0 0 3px #00c7ec,0 1px 3px #00121a;
-  filter:drop-shadow(0 0 1px #07131f);
+  color:#8fdbe6;opacity:.86;
   cursor:pointer;pointer-events:auto;touch-action:manipulation;
   outline-offset:1px;user-select:none;
 }
-.radar-site-label:hover,.radar-site-label:focus-visible {
-  background:transparent;border:0;
-  filter:drop-shadow(0 0 5px #60f4ff);
-}
-.radar-site-label:focus-visible {
-  outline:2px solid #a4f7ff;
-  border-radius:5px;
+.radar-site-glyph {
+  display:block;width:18px;height:18px;
+  fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linecap:round;stroke-linejoin:round;
+  pointer-events:none;
+  filter:drop-shadow(0 1px 1px #07131fcc);
 }
 .radar-site-label[data-primary="true"] {
+  color:#bcf5fa;opacity:1; background:transparent;border:0;
+}
+.radar-site-label:hover,
+.radar-site-label:focus-visible {
+  color:#f4ffff;opacity:1;
   background:transparent;border:0;
-  filter:drop-shadow(0 0 5px #eaffff);
+}
+.radar-site-label:focus-visible {
+  outline:2px solid #a4f7ff;border-radius:4px;
 }
 .radar-site-label[hidden] {display:none!important}
 @media (max-width:700px) {
-  .radar-site-label {width:32px;height:32px;font-size:22px}
+  .radar-site-label {width:34px;height:34px}
+  .radar-site-glyph {width:17px;height:17px}
 }

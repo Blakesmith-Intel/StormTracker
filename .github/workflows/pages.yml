@@ -834,9 +834,7 @@ jobs:
             # unnecessary workflow-file permission gate for an unchanged
             # already-validated release commit.
             payload="$(printf '{"ref":"refs/tags/v9.18.0","sha":"%s"}' "$release_sha")"
-            status="$(curl "${opts[@]}" --request POST
-              --header 'Content-Type: application/json' --data "$payload"
-              -o /tmp/stormtracker-v9.18-tag.json -w '%{http_code}' "$api")"
+            status="$(curl "${opts[@]}" --request POST --header 'Content-Type: application/json' --data "$payload" -o /tmp/stormtracker-v9.18-tag.json -w '%{http_code}' "$api")"
             if [ "$status" != 201 ]; then
               echo "::warning::Published V9.18.0 is verified and restore/v9.18.0 is pinned, but tag creation returned HTTP $status. A repository maintainer must create the immutable tag in GitHub."
               cat /tmp/stormtracker-v9.18-tag.json

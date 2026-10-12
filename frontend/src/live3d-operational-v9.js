@@ -108,6 +108,7 @@ import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combi
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
 import { stormTrackPresentation } from "./storm-track-presentation-v1.js?v=40dbz-v1";
 import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
+import { clearReflectivityOverlaysForDoppler } from "./reflectivity-overlay-mode-v1.js?v=20261013";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
@@ -133,7 +134,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.13.2";
+} from "./context-layers/basemap-manager-v1.js?v=9.17-dea-regional-autodetail-r1";
 
 import {
   createQueenslandTownLabelLayer
@@ -1876,6 +1877,24 @@ function clearHybridTrackVolumeCollection() {
   }
 }
 
+ // Own the ENTIRE reflectivity-only presentation: track ID markers, history
+ // trails, +90-minute cones, Cesium track glyphs and selection controls.
+ // Switching to Doppler clears rather than merely toggles visibility so a
+ // paused frame or any later toggle cannot resurrect obsolete geometry.
+ function clearReflectivityForDoppler() {
+   clearReflectivityOverlaysForDoppler({
+     trackSource: hybridSource,
+     trackLabels: stormTrackLabelOverlay,
+     severeAlerts: severeStormAlertOverlay,
+     clearTrackVolumes: clearHybridTrackVolumeCollection,
+     inferredVolume: inferredCollection,
+     resetSelection: resetTrackDisplaySelection,
+     requestRender: () => scene.requestRender()
+   });
+   $("trackDisplayFilter").disabled = true;
+   $("showTrackLabels").disabled = true;
+ }
+ 
 function canvasImageData(
   canvas
 ) {
@@ -3106,6 +3125,13 @@ function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
 }
 
 function renderHybridTracks(index) {
+  // Source-mode check, not merely loaded-mode check: a pending switch to
+  // Doppler must never recreate old storm trails/cones after teardown.
+  if (selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE ||
+      isNativeDopplerPlayback()) {
+    clearReflectivityForDoppler();
+    return;
+  }
   const stormTrackMarkers = [];
   hybridSource.entities.suspendEvents();
   clearHybridTrackVolumeCollection();
@@ -3696,15 +3722,10 @@ async function loadDopplerSequence(automatic=false) {
   independentDopplerIndexValue=Math.max(0,recovered);
   // Additional rain windows never remain in Doppler-only playback.
   showSupplementalRadarSites(null);
-  // Hide radar display, inferred 3-D and storm annotations, NOT their
-  // underlying measured analysis or caches. Rain-only restores the controls.
+  // All reflectivity-only objects are removed, including the selected +90m
+  // threat cone and standalone Cesium primitives (not controlled by Labels).
+  clearReflectivityForDoppler();
   radarImageryHandover.setOpacity(0);
-  if(inferredCollection) inferredCollection.show=false;
-  if(hybridTrackVolumeCollection) hybridTrackVolumeCollection.show=false;
-  if(hybridTrackFootprintCollection) hybridTrackFootprintCollection.show=false;
-  hybridSource.show=false;
-  stormTrackLabelOverlay.setVisible(false);
-  scene.requestRender();
   const minutes=Math.round((Date.parse(windPlaybackFrames.at(-1).observedUtc)-
     Date.parse(windPlaybackFrames[0].observedUtc))/60000);
   $("operationalLoopWindow").textContent=
@@ -3726,6 +3747,7 @@ async function loadHybridSequence(automatic = false) {
     return loadDopplerSequence(automatic);
   windPlaybackFrames=[];
   hybridSource.show=true;
+  $("showTrackLabels").disabled=false;
   stormTrackLabelOverlay.setVisible(Boolean($("showTrackLabels")?.checked));
   radarImageryHandover.setOpacity(Number($("radarOpacity").value)/100);
   if (!automatic) setStatus("Checking available BOM radar history…");
@@ -4742,8 +4764,10 @@ $("loopDurationMinutes").addEventListener("change", () => {
   // Otherwise an awaiting native BoM image can resurrect the outgoing wind.
   ++hybridSceneRenderToken;
   ++independentDopplerRequest;
-  // Apply the visible-mode boundary immediately, before the new radar
-  // history finishes loading. Doppler's source cache remains untouched.
+  // Apply the visible-mode boundary immediately, before asynchronous loading
+  // can redraw obsolete ST tracks or a previously selected threat cone.
+  if (selectedLoopSelection() === DOPPLER_AVAILABLE_LOOP_VALUE)
+    clearReflectivityForDoppler();
   renderDopplerOverlay();
   updateIndependentDopplerUi();
   updateLoopButtonLabel();

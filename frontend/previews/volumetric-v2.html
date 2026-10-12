@@ -7,11 +7,11 @@
 <body><header><h1>⛈ StormTracker — Inferred Volume V2</h1><div class="tag">ISOLATED VISUAL PROTOTYPE · SYNTHETIC TEST STORM · NOT LIVE BOM</div></header>
 <main><aside>
 <section><div class="heading">Rendering style</div><div id="mode"><button id="old" aria-pressed="false">Original columns</button><button id="new" aria-pressed="true">Enhanced volume</button></div></section>
-<section><div class="heading">Storm controls</div><label for="dbz">Peak reflectivity: <b id="dbzValue">55 dBZ</b></label><input type="range" id="dbz" min="40" max="70" value="55" step="1"><label for="density">Visual fullness: <b id="densityValue">70%</b></label><input type="range" id="density" min="25" max="100" value="70" step="5"><label for="stretch">Vertical exaggeration: <b id="stretchValue">1.5×</b></label><input type="range" id="stretch" min="1" max="2.5" value="1.5" step=".1"></section>
+<section><div class="heading">Storm controls</div><label for="dbz">Reference reflectivity: <b id="dbzValue">55 dBZ</b></label><input type="range" id="dbz" min="40" max="70" value="55" step="1"><label for="density">Visual fullness: <b id="densityValue">70%</b></label><input type="range" id="density" min="25" max="100" value="70" step="5"><label for="stretch">Vertical exaggeration: <b id="stretchValue">1.5×</b></label><input type="range" id="stretch" min="1" max="2.5" value="1.5" step=".1"></section>
 <section><div class="heading">View controls</div><button id="reset">Reset camera</button> <button id="spin" aria-pressed="false">Auto rotate</button><div class="notice" style="margin-top:10px">Drag to orbit · Mouse wheel to zoom · Touch drag to rotate</div></section>
 <section><div class="heading">Illustrative storm characteristics</div><div class="metric"><b id="structure">Developing tower</b><span>Visual interpretation only</span></div><div class="metric"><b id="height">—</b><span>Relative model height, not measured echo-top altitude</span></div></section>
-<div class="notice">This page demonstrates the proposed GPU-friendly visual geometry in a self-contained browser renderer. Reflectivity is synthetic, so no displayed volume or apparent height should be used for operational decisions. The existing 40 dBZ detection rule and production application are unchanged.</div>
-</aside><div id="viewport"><canvas id="cv"></canvas><div id="overlay"><strong id="caption">Enhanced inferred cloud volume</strong><span>Model-space visualisation · rotate to inspect shape</span></div><div id="foot">Synthetic vertical reflectivity profile · Ground plane at z = 0 · Illustrative presentation only</div></div></main>
+<div class="notice">This page demonstrates cloud-like 3D presentation in a self-contained browser renderer. Reflectivity is synthetic and the slider indicates a representative dBZ band, not an exact measured peak. No displayed volume or apparent height should be used for operational decisions. The existing 40 dBZ detection rule and production application are unchanged.</div>
+</aside><div id="viewport"><canvas id="cv"></canvas><div id="overlay"><strong id="caption">Enhanced inferred cloud volume</strong><span>Model-space visualisation · rotate to inspect shape</span></div><div id="foot">Synthetic reflectivity bands · ≥40 green · ≥50 yellow · ≥55 orange · ≥60 violet · No measured echo-top heights</div></div></main>
 <script>
 const el=id=>document.getElementById(id),cv=el('cv'),ctx=cv.getContext('2d',{alpha:false}),wrap=el('viewport');
 let enhanced=true,yaw=-.55,pitch=.48,zoom=1,drag=null,auto=false,last=0,particles=[];
@@ -21,16 +21,19 @@ const H=(.75+3.55*t)*st, pts=[];let nx=enhanced?40:26,nz=enhanced?23:20;
 for(let k=0;k<nz;k++){let z=H*(k+.35)/nz,fr=z/H,core=clamp(1.04-.2*fr+.09*Math.sin(fr*8+2),.5,1.2),shoulder=(.50+.65*fr)*(.85+.15*Math.sin(fr*6)),radius=1.16*core*(1-fr*.38)+.16*Math.sin(fr*13);for(let j=0;j<nx;j++){const theta=2*Math.PI*(j+rnd(k,j)*.7)/nx,rr=Math.sqrt(rnd(j+13,k+21)),ring=rr*radius, irregular=enhanced?(1+.16*Math.sin(theta*5+fr*13)+.1*Math.cos(theta*8-fr*9)):1;
 let x=Math.cos(theta)*ring*irregular+.16*Math.sin(fr*5), y=Math.sin(theta)*ring*irregular+.12*Math.cos(fr*9);
 if(enhanced){x+=(rnd(j+31,k+81)-.5)*.13;y+=(rnd(j+91,k+17)-.5)*.13;z=H*(k+.35)/nz+(rnd(j,k+51)-.5)*H/nz*.9;}
-const radial=rr, strength=dbz-12*radial-19*Math.pow(fr,1.7)*(1-.55*t)-4*Math.sin(fr*9+theta*2);
+// Synthetic display samples use a representative value within the selected dBZ band.
+// A lighter weak-storm vertical falloff keeps the 40 dBZ category visible.
+const radial=rr, falloff=.2+.8*t, strength=dbz+2-falloff*(12*radial+19*Math.pow(fr,1.7)*(1-.55*t)+4*Math.sin(fr*9+theta*2));
 if(strength<40||rnd(j+121,k+141)>(enhanced?full*.90+.09:full*.7+.28))continue;
-let hue=strength>=60?'#ff4668':strength>=55?'#ff9943':strength>=50?'#f1d35d':strength>=45?'#8be178':'#5ac4ff';
+// Match the established StormTracker operational inferred-volume colours.
+let hue=strength>=60?'#bd2fff':strength>=55?'#ff5a22':strength>=50?'#ffd21a':'#00b96b';
 pts.push({x,y,z,r:enhanced?(10+12*full)*(1.06-rr*.33):2.5,colour:hue,alpha:enhanced?.17+.13*(1-rr):.94,strength});}}
 particles=pts;el('caption').textContent=enhanced?'Enhanced inferred cloud volume':'Original column-style rendering';}
 function project(p,W,H){const c=Math.cos(yaw),s=Math.sin(yaw), cp=Math.cos(pitch),sp=Math.sin(pitch),rx=p.x*c-p.y*s,ry=p.x*s+p.y*c;const v=ry*cp+p.z*sp;const depth=ry*sp-p.z*cp;let scale=Math.min(W,H)*.17*zoom;return {x:W*.5+rx*scale,y:H*.69-v*scale,depth,r:scale};}
 function draw(time){const rect=cv.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2),W=Math.max(1,rect.width),H=Math.max(1,rect.height);if(cv.width!==Math.floor(W*dpr)||cv.height!==Math.floor(H*dpr)){cv.width=Math.floor(W*dpr);cv.height=Math.floor(H*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#0c1c30';ctx.fillRect(0,0,W,H);ctx.strokeStyle='rgba(128,178,215,.11)';ctx.lineWidth=1;
 for(let a=-5;a<=5;a++){let p=project({x:a*.5,y:-2.5,z:0},W,H),q=project({x:a*.5,y:2.5,z:0},W,H);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();p=project({x:-2.5,y:a*.5,z:0},W,H);q=project({x:2.5,y:a*.5,z:0},W,H);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke()}
 const ordered=particles.map(p=>({...p,P:project(p,W,H)})).sort((a,b)=>a.P.depth-b.P.depth);ctx.globalCompositeOperation='source-over';
-for(const p of ordered){let r=enhanced?Math.max(2,p.r*p.P.r/110):p.r*zoom,x=p.P.x,y=p.P.y;if(x<-r||x>W+r||y<-r||y>H+r)continue;if(enhanced){let g=ctx.createRadialGradient(x-r*.2,y-r*.25,.3,x,y,r);g.addColorStop(0,p.colour);g.addColorStop(.48,p.colour);g.addColorStop(1,'rgba(22,44,66,0)');ctx.globalAlpha=p.alpha;ctx.fillStyle=g}else{ctx.globalAlpha=p.alpha;ctx.fillStyle=p.colour}ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
+for(const p of ordered){let r=enhanced?Math.max(2,p.r*p.P.r/110):p.r*zoom,x=p.P.x,y=p.P.y;if(x<-r||x>W+r||y<-r||y>H+r)continue;if(enhanced){let g=ctx.createRadialGradient(x-r*.2,y-r*.25,.3,x,y,r);g.addColorStop(0,p.colour);g.addColorStop(.48,p.colour);g.addColorStop(1,p.colour+'00');ctx.globalAlpha=p.alpha;ctx.fillStyle=g}else{ctx.globalAlpha=p.alpha;ctx.fillStyle=p.colour}ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
 ctx.globalAlpha=1;if(auto){yaw+=(time-last||0)*.00016}last=time;requestAnimationFrame(draw)}
 el('old').onclick=()=>{enhanced=false;el('old').setAttribute('aria-pressed','true');el('new').setAttribute('aria-pressed','false');build()};
 el('new').onclick=()=>{enhanced=true;el('new').setAttribute('aria-pressed','true');el('old').setAttribute('aria-pressed','false');build()};

@@ -98,6 +98,15 @@ jobs:
           path: preview-builds/dea-regional
           persist-credentials: false
 
+      # Draft PR77 preserves the approved DEA+QLD/NSW frontend and bundles
+      # official NSW town/locality point names from a same-origin static JSON.
+      - name: Checkout isolated NSW radar-range foreground label preview
+        uses: actions/checkout@v4
+        with:
+          ref: df5add5fb12d87244bf36213e76b4246f5f67ecc
+          path: preview-builds/nsw-radar-labels
+          persist-credentials: false
+
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
       - name: Checkout independent BoM dBZ cloud-volume preview
@@ -276,6 +285,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # NSW place names are fetched server-to-server at BUILD TIME because
+          # the official NSW ArcGIS API lacks browser CORS. At runtime this is
+          # a lightweight same-origin static JSON; no relay or hosting change.
+          (cd preview-builds/nsw-radar-labels && npm test)
+          test "$(git -C preview-builds/nsw-radar-labels rev-parse HEAD)" = "df5add5fb12d87244bf36213e76b4246f5f67ecc"
+          grep -Fq 'nsw-radar-places-v1.json' preview-builds/nsw-radar-labels/frontend/src/context-layers/nsw-radar-place-catalogue-v1.js
+          mkdir -p frontend/preview/nsw-radar-labels
+          cp -a preview-builds/nsw-radar-labels/frontend/. frontend/preview/nsw-radar-labels/
+          python preview-builds/nsw-radar-labels/scripts/build-nsw-radar-places.py --output frontend/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
+          python - <<'PY'
+          import json
+          doc=json.load(open("frontend/preview/nsw-radar-labels/data/nsw-radar-places-v1.json"))
+          assert doc["schema"]=="StormTrackerNSWRadarPlacesV1"
+          assert len(doc["places"])>=500
+          names={p["name"].lower() for p in doc["places"]}
+          assert {"moree","brewarrina","tweed heads"}<=names
+          print("NSW radar range official same-origin snapshot validated:",len(doc["places"]))
+          PY
+          printf 'PR77 same-origin NSW radar-range place names %s\n' 'df5add5fb12d87244bf36213e76b4246f5f67ecc' > frontend/preview/nsw-radar-labels/BUILD.txt
           # Review-only automated cross-zoom satellite basemap; never
           # replace the sealed production root without explicit approval.
           (cd preview-builds/dea-regional && npm test)
@@ -415,6 +443,9 @@ jobs:
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' published-site/BUILD.txt
+          test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
+          test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
+          grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
           test -f published-site/preview/dea-regional/src/context-layers/basemap-manager-v1.js
           grep -Fq '36ff1c7798b9f62874ee27651a26196961ba7c6c' published-site/preview/dea-regional/BUILD.txt
           test -f published-site/preview/nsw-satellite/src/context-layers/basemap-manager-v1.js
@@ -501,6 +532,33 @@ jobs:
           production="$(retry_curl "$base/BUILD.txt")"
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$production"
           echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
+
+      - name: Verify publicly served NSW radar-range labels are same-origin and valid
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}/preview/nsw-radar-labels"
+          curl --fail --silent --show-error --location --retry 10 --retry-delay 3 --retry-all-errors \
+            "$base/data/nsw-radar-places-v1.json" -o /tmp/nsw-radar-labels.json
+          curl --fail --silent --show-error --location --retry 10 --retry-delay 3 --retry-all-errors \
+            "$base/src/context-layers/nsw-radar-place-catalogue-v1.js" -o /tmp/nsw-catalogue-js
+          grep -Fq 'new URL("../../data/nsw-radar-places-v1.json",import.meta.url)' /tmp/nsw-catalogue-js
+          python - <<'PY'
+          import json
+          with open("/tmp/nsw-radar-labels.json") as fd: doc=json.load(fd)
+          assert doc["schema"]=="StormTrackerNSWRadarPlacesV1"
+          assert len(doc["places"])>500
+          kinds={x["kind"] for x in doc["places"]}
+          assert {"town","locality"} <= kinds
+          names={x["name"].casefold() for x in doc["places"]}
+          assert {"moree","brewarrina","tweed heads"}<=names
+          print("Published NSW radar-range official names verified:",len(doc["places"]))
+          PY
+          curl --fail --silent --show-error --location --retry 10 --retry-delay 3 --retry-all-errors \
+            "${PAGES_URL%/}/BUILD.txt" | grep -Fq '60d6750be2d335858dac485a5312a55693e40c74'
+          echo "PR77 NSW place-name preview served; sealed V9.17.0 production intact."
 
       - name: Verify national DEA regional WMTS tile is available to browser
         shell: bash

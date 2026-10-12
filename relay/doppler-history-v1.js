@@ -1,4 +1,4 @@
-import { QLD_DOPPLER_PRODUCTS } from "../frontend/src/qld-radar-sites-v1.js";
+import { BORDER_RADAR_DOPPLER_PRODUCTS } from "../frontend/src/border-radar-sites-v1.js";
 export function radarTimestampToIso(timestamp) {
   const value = String(timestamp ?? "");
 
@@ -32,7 +32,7 @@ export function radarTimestampToIso(timestamp) {
 export function parseBomRadarLoopFrames(html, product) {
   const safeProduct = String(product ?? "").toUpperCase();
 
-  if (!Object.values(QLD_DOPPLER_PRODUCTS).includes(safeProduct)) {
+  if (!Object.values(BORDER_RADAR_DOPPLER_PRODUCTS).includes(safeProduct)) {
     throw new Error(`Unsupported Doppler product: ${product}`);
   }
 

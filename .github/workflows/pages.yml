@@ -29,47 +29,75 @@ jobs:
           node-version: "24"
       - name: Validate current development source
         run: npm test
-      - name: Checkout sealed V9.17.0 pixel-tracking production source
+      - name: Checkout sealed V9.18.0 pixel-tracking production source
         uses: actions/checkout@v4
         with:
           # Exact, green-reviewed release merge commit. Never deploy unpinned main.
-          ref: 60d6750be2d335858dac485a5312a55693e40c74
-          path: sealed-production/v9.17.0
+          ref: 66d3da447ef7a4df53e7df49aa1ac06f86cb5afd
+          path: sealed-production/v9.18.0
           persist-credentials: false
-      - name: Verify and test V9.17.0 release source
+      - name: Verify and test V9.18.0 release source
         run: |
           set -euo pipefail
-          (cd sealed-production/v9.17.0 && npm test)
-          node --check sealed-production/v9.17.0/relay/worker.js
-          test "$(git -C sealed-production/v9.17.0 rev-parse HEAD)" = "60d6750be2d335858dac485a5312a55693e40c74"
-          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.17.0/frontend/index.html
-          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.17.0/frontend/index.html
-          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'minPixels: 16' sealed-production/v9.17.0/frontend/src/config.js
-          ! grep -Fq 'minAreaKm2' sealed-production/v9.17.0/frontend/src/config.js
-          test -f sealed-production/v9.17.0/frontend/src/storm-track-presentation-v1.js
-          test -f sealed-production/v9.17.0/frontend/src/multi-radar-display-v9.js
-          test -f sealed-production/v9.17.0/frontend/src/volumetric-visual-v2.js
-          test -f sealed-production/v9.17.0/frontend/src/border-radar-sites-v1.js
-          grep -Fq 'source_low_level_dbzh: inputDbz' sealed-production/v9.17.0/frontend/src/measured-track-volume-v1.js
-          grep -Fq 'point.source_low_level_dbzh ?? point.dbzh' sealed-production/v9.17.0/frontend/src/live3d-operational-v9.js
-          grep -Fq 'btn.appendChild(dishGlyph())' sealed-production/v9.17.0/frontend/src/context-layers/radar-site-name-overlay-v1.js
-          grep -Fq 'dopplerIntegrated:false' sealed-production/v9.17.0/frontend/src/border-radar-sites-v1.js
-          grep -Fq 'id="reflectivityLegend"' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'id="blobVolume" checked' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'width:18px;height:18px' sealed-production/v9.17.0/frontend/src/operational-dashboard-v9-1.css
-          test -f sealed-production/v9.17.0/docs/HANDOVER_V9.17.0.md
-          test -f sealed-production/v9.17.0/docs/USER_GUIDE_V9.17.0.md
-          grep -Fq 'id="multiRadarSelectButton"' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'id="multiRadarStatus"' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'role="alert" aria-live="assertive" hidden' sealed-production/v9.17.0/frontend/live3d-operational-v9.html
-          grep -Fq 'maximum of three additional radars' sealed-production/v9.17.0/frontend/src/live3d-operational-v9.js
-          grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' sealed-production/v9.17.0/frontend/src/multi-radar-display-v9.js
-          grep -Fq 'multiradar-v15' sealed-production/v9.17.0/frontend/index.html
-          test -f sealed-production/v9.17.0/frontend/src/storm-track-trail-visibility-v1.js
-          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.17.0/frontend/src/live3d-operational-v9.js
+          (cd sealed-production/v9.18.0 && npm test)
+          node --check sealed-production/v9.18.0/relay/worker.js
+          test "$(git -C sealed-production/v9.18.0 rev-parse HEAD)" = "66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
+          grep -Fq 'sidebar-hardcut-v14' sealed-production/v9.18.0/frontend/index.html
+          ! grep -Fq 'id="dopplerOpacity"' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          ! grep -Fq 'id="operationalDoppler"' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.18.0/frontend/index.html
+          grep -Fq 'pixeltrack-prod-r1' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'minPixels: 16' sealed-production/v9.18.0/frontend/src/config.js
+          ! grep -Fq 'minAreaKm2' sealed-production/v9.18.0/frontend/src/config.js
+          test -f sealed-production/v9.18.0/frontend/src/storm-track-presentation-v1.js
+          test -f sealed-production/v9.18.0/frontend/src/multi-radar-display-v9.js
+          test -f sealed-production/v9.18.0/frontend/src/volumetric-visual-v2.js
+          test -f sealed-production/v9.18.0/frontend/src/border-radar-sites-v1.js
+          grep -Fq 'source_low_level_dbzh: inputDbz' sealed-production/v9.18.0/frontend/src/measured-track-volume-v1.js
+          grep -Fq 'point.source_low_level_dbzh ?? point.dbzh' sealed-production/v9.18.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'btn.appendChild(dishGlyph())' sealed-production/v9.18.0/frontend/src/context-layers/radar-site-name-overlay-v1.js
+          grep -Fq 'dopplerIntegrated:false' sealed-production/v9.18.0/frontend/src/border-radar-sites-v1.js
+          grep -Fq 'id="reflectivityLegend"' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'id="blobVolume" checked' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'width:23px;height:23px' sealed-production/v9.18.0/frontend/src/operational-dashboard-v9-1.css
+          test -f sealed-production/v9.18.0/docs/HANDOVER_V9.18.0.md
+          test -f sealed-production/v9.18.0/docs/USER_GUIDE_V9.18.0.md
+          test -f sealed-production/v9.18.0/docs/RELEASE_NOTES_V9.18.0.md
+          test -f sealed-production/v9.18.0/scripts/build-nsw-radar-places.py
+          grep -Fq 'NSW_RADAR_PLACE_CATALOGUE_SCHEMA' sealed-production/v9.18.0/frontend/src/context-layers/nsw-radar-place-catalogue-v1.js
+          grep -Fq 'ga_ls8cls9c_gm_cyear_3' sealed-production/v9.18.0/frontend/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'Satellite · DEA Regional + Local Detail' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'v9.18.0' sealed-production/v9.18.0/frontend/index.html
+          grep -Fq 'radar-dish-reflector' sealed-production/v9.18.0/frontend/src/context-layers/radar-site-name-overlay-v1.js
+          grep -Fq 'id="multiRadarSelectButton"' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'id="multiRadarStatus"' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'role="alert" aria-live="assertive" hidden' sealed-production/v9.18.0/frontend/live3d-operational-v9.html
+          grep -Fq 'maximum of three additional radars' sealed-production/v9.18.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' sealed-production/v9.18.0/frontend/src/multi-radar-display-v9.js
+          grep -Fq 'multiradar-v15' sealed-production/v9.18.0/frontend/index.html
+          test -f sealed-production/v9.18.0/frontend/src/storm-track-trail-visibility-v1.js
+          grep -Fq 'const trackVolumesRequested = true' sealed-production/v9.18.0/frontend/src/live3d-operational-v9.js
+
+      - name: Build official NSW place-name snapshot for release (same-origin, browser-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python sealed-production/v9.18.0/scripts/build-nsw-radar-places.py \
+            --output sealed-production/v9.18.0/frontend/data/nsw-radar-places-v1.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path("sealed-production/v9.18.0/frontend/data/nsw-radar-places-v1.json")
+          d=json.loads(path.read_text(encoding="utf-8"))
+          assert d.get("schema")=="StormTrackerNSWRadarPlacesV1"
+          assert len(d.get("places",[]))>=500
+          assert path.stat().st_size<300000
+          names={p["name"].casefold() for p in d["places"]}
+          assert {"brewarrina","moree","tweed heads"}<=names
+          assert all(-38<=p["latitude"]<=-27 and 140.5<=p["longitude"]<=159.5 for p in d["places"])
+          print("Sealed NSW radar context asset ready:",len(d["places"]),"geocoded places",path.stat().st_size,"bytes")
+          PY
+          test -s sealed-production/v9.18.0/frontend/data/nsw-radar-places-v1.json
 
       # PR #73, reviewed and tested source. Never use an unpinned branch
       # nor replace the immutable production root for this visual preview.
@@ -188,7 +216,7 @@ jobs:
           path: preview-builds/track-grouping
           persist-credentials: false
       # Pinned PR #63: multi-radar site selection visual preview, not production.
-      - name: Checkout V9.17.0 multiple radar display candidate
+      - name: Checkout V9.18.0 multiple radar display candidate
         uses: actions/checkout@v4
         with:
           ref: ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903
@@ -341,7 +369,7 @@ jobs:
           test -f frontend/preview/volume-dbz/src/volumetric-visual-v2.js
           mkdir -p frontend/preview/multi-radar
           cp -a preview-builds/multi-radar/frontend/. frontend/preview/multi-radar/
-          printf 'V9.17.0 multi-radar preview candidate %s\n' "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903" > frontend/preview/multi-radar/BUILD.txt
+          printf 'V9.18.0 multi-radar preview candidate %s\n' "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903" > frontend/preview/multi-radar/BUILD.txt
           test -f frontend/preview/multi-radar/src/multi-radar-display-v9.js
           test -f frontend/preview/multi-radar/v9-multi-radar-hardware-qa.html
           mkdir -p frontend/preview/track-grouping
@@ -423,13 +451,13 @@ jobs:
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 
-      - name: Construct published site from V9.17.0 SEALED production plus isolated previews
+      - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p published-site
-          cp -a sealed-production/v9.17.0/frontend/. published-site/
-          printf 'StormTracker V9.17.0 release %s\n' '60d6750be2d335858dac485a5312a55693e40c74' > published-site/BUILD.txt
+          cp -a sealed-production/v9.18.0/frontend/. published-site/
+          printf 'StormTracker V9.18.0 release %s\n' '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' > published-site/BUILD.txt
           mkdir -p published-site/preview
           cp -a frontend/preview/. published-site/preview/
           # Standalone experimental volume study: only the preview HTML is copied.
@@ -438,11 +466,14 @@ jobs:
           cp preview-builds/volumetric-dbz/frontend/previews/volumetric-v2.html published-site/previews/volumetric-v2.html
           test -s published-site/previews/volumetric-v2.html
           grep -Fq 'ISOLATED VISUAL PROTOTYPE' published-site/previews/volumetric-v2.html
-          cmp sealed-production/v9.17.0/frontend/index.html published-site/index.html
-          cmp sealed-production/v9.17.0/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
+          cmp sealed-production/v9.18.0/frontend/index.html published-site/index.html
+          cmp sealed-production/v9.18.0/frontend/live3d-operational-v9.html published-site/live3d-operational-v9.html
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' published-site/BUILD.txt
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' published-site/BUILD.txt
+          test -f published-site/data/nsw-radar-places-v1.json
+          test -f published-site/src/context-layers/nsw-radar-place-catalogue-v1.js
+          test -f published-site/src/reflectivity-overlay-mode-v1.js
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
@@ -466,14 +497,14 @@ jobs:
           grep -Fq 'ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903' published-site/preview/multi-radar/BUILD.txt
           test -f published-site/preview/track-grouping/src/storm-track-presentation-v1.js
           grep -Fq "a5f2d3658d738c52b209256751315ec00482d246" published-site/preview/track-grouping/BUILD.txt
-          cmp sealed-production/v9.17.0/frontend/index.html published-site/index.html
-          echo "Deployment payload: SEALED V9.17.0 production root + original previews"
+          cmp sealed-production/v9.18.0/frontend/index.html published-site/index.html
+          echo "Deployment payload: SEALED V9.18.0 production root + original previews"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: published-site
-      - name: Deploy sealed V9.17.0 root and isolated previews
+      - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
       - name: Verify served standalone volumetric V2 preview
@@ -530,7 +561,7 @@ jobs:
           demo="$(retry_curl "$base/previews/volumetric-v2.html")"
           grep -Fq 'value="1.0"' <<< "$demo"
           production="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$production"
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$production"
           echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
 
       - name: Verify publicly served NSW radar-range labels are same-origin and valid
@@ -557,8 +588,8 @@ jobs:
           print("Published NSW radar-range official names verified:",len(doc["places"]))
           PY
           curl --fail --silent --show-error --location --retry 10 --retry-delay 3 --retry-all-errors \
-            "${PAGES_URL%/}/BUILD.txt" | grep -Fq '60d6750be2d335858dac485a5312a55693e40c74'
-          echo "PR77 NSW place-name preview served; sealed V9.17.0 production intact."
+            "${PAGES_URL%/}/BUILD.txt" | grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd'
+          echo "PR77 NSW place-name preview served; sealed V9.18.0 production intact."
 
       - name: Verify national DEA regional WMTS tile is available to browser
         shell: bash
@@ -593,8 +624,8 @@ jobs:
           places="$(retry_curl "$candidate/src/context-layers/qld-town-label-layer-v1.js")"
           grep -Fq 'fetchNswTowns' <<< "$places"
           prod="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$prod"
-          echo "PR76 isolated DEA regional satellite and official local detail publicly verified; V9.17.0 production intact."
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$prod"
+          echo "PR76 isolated DEA regional satellite and official local detail publicly verified; V9.18.0 production intact."
 
       - name: Verify NSW source tiles and CORS for browser-only satellite preview
         shell: bash
@@ -632,10 +663,10 @@ jobs:
           tracks="$(retry_curl "$path/src/reflectivity-overlay-mode-v1.js")"
           grep -Fq 'trackSource.entities.removeAll()' <<< "$tracks"
           original="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$original"
-          echo "PR74 QLD/NSW satellite preview live. Sealed V9.17.0 production root unchanged."
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$original"
+          echo "PR74 QLD/NSW satellite preview live. Sealed V9.18.0 production root unchanged."
 
-      - name: Verify PR73 isolated preview is publicly served (V9.17.0 sealed root unchanged)
+      - name: Verify PR73 isolated preview is publicly served (V9.18.0 sealed root unchanged)
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -655,10 +686,10 @@ jobs:
           icon="$(retry_curl "$preview/src/context-layers/radar-site-name-overlay-v1.js")"
           grep -Fq 'radar-dish-reflector' <<< "$icon"
           prod="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$prod"
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$prod"
           echo "Verified live isolated PR73 browser preview at $preview; production root immutable."
 
-      - name: Verify V9.17.0 publicly served production root
+      - name: Verify V9.18.0 publicly served production root
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -667,11 +698,35 @@ jobs:
           base="${PAGES_URL%/}"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$build"
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$build"
           index="$(retry_curl "$base/index.html")"
           grep -Fq 'sidebar-hardcut-v14' <<< "$index"
           html="$(retry_curl "$base/live3d-operational-v9.html")"
-          grep -Fq 'V9.16.14 streamlined operational sidebar' <<< "$html"
+          grep -Fq 'V9.18.0 QLD/NSW regional situation viewer' <<< "$html"
+          grep -Fq 'Satellite · DEA Regional + Local Detail' <<< "$html"
+          grep -Fq 'v9.18.0' <<< "$index"
+          basemap="$(retry_curl "$base/src/context-layers/basemap-manager-v1.js")"
+          grep -Fq 'ga_ls8cls9c_gm_cyear_3' <<< "$basemap"
+          grep -Fq 'chooseDetailForScale' <<< "$basemap"
+          grep -Fq 'createNswImageryProvider' <<< "$basemap"
+          nsw="$(retry_curl "$base/src/context-layers/nsw-radar-place-catalogue-v1.js")"
+          grep -Fq 'new URL("../../data/nsw-radar-places-v1.json",import.meta.url)' <<< "$nsw"
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
+            "$base/data/nsw-radar-places-v1.json" -o /tmp/stormtracker-prod-nsw-labels.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload=json.loads(Path("/tmp/stormtracker-prod-nsw-labels.json").read_text())
+          assert payload.get("schema")=="StormTrackerNSWRadarPlacesV1"
+          assert len(payload.get("places",[]))>=500
+          names={place["name"].casefold() for place in payload["places"]}
+          assert {"moree","brewarrina","tweed heads"}<=names
+          print("PUBLIC PRODUCTION NSW LABELS VERIFIED:",len(payload["places"]),"points")
+          PY
+          cleanup="$(retry_curl "$base/src/reflectivity-overlay-mode-v1.js")"
+          grep -Fq 'trackSource.entities.removeAll()' <<< "$cleanup"
+          supplementary="$(retry_curl "$base/src/multi-radar-display-v9.js")"
+          grep -Fq 'createRadarImageryHandover' <<< "$supplementary"
           if grep -Fq 'id="dopplerOpacity"' <<< "$html"; then exit 1; fi
           if grep -Fq 'id="operationalDoppler"' <<< "$html"; then exit 1; fi
           wind="$(retry_curl "$base/src/native-doppler-image-v1.js")"
@@ -706,7 +761,7 @@ jobs:
           helper="$(retry_curl "$base/src/volumetric-visual-v2.js")"
           grep -Fq 'reflectivityLegendBands' <<< "$helper"
           ! grep -Fq '>Primary radar only.</div>' <<< "$html"
-          echo "Verified BoM Doppler and accepted multiple-radar selection in production commit 60d6750be2d335858dac485a5312a55693e40c74"
+          echo "Verified BoM Doppler and accepted multiple-radar selection in production commit 66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
 
       - name: Verify published V9.16 research preview and current sealed production
         env:
@@ -732,7 +787,7 @@ jobs:
           display="$(retry_curl "$base/preview/track-grouping/src/storm-track-presentation-v1.js")"
           grep -Fq 'observation.pixel_count' <<< "$display"
           production="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$production"
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$production"
           echo "Verified PR #64 isolated browser preview with unchanged sealed production root."
 
       - name: Verify publicly served multi-radar site preview and sealed production
@@ -750,18 +805,18 @@ jobs:
           previewJs="$(retry_curl "$base/preview/multi-radar/src/multi-radar-display-v9.js")"
           grep -Fq 'MAX_DISPLAY_RADAR_SITES = 4' <<< "$previewJs"
           productionBuild="$(retry_curl "$base/BUILD.txt")"
-          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$productionBuild"
+          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$productionBuild"
           productionHtml="$(retry_curl "$base/live3d-operational-v9.html")"
           grep -Fq 'id="multiRadarSelectButton"' <<< "$productionHtml"
           grep -Fq 'role="alert" aria-live="assertive" hidden' <<< "$productionHtml"
           ! grep -Fq '>Primary radar only.</div>' <<< "$productionHtml"
-          echo "Verified multi-radar V9.17.0 production and retained isolated pre-release preview; storm pixel-tracking intact."
+          echo "Verified multi-radar V9.18.0 production and retained isolated pre-release preview; storm pixel-tracking intact."
 
-      - name: Seal verified production tag v9.17.0
+      - name: Seal verified production tag v9.18.0
         shell: bash
         run: |
           set -euo pipefail
-          release_sha="60d6750be2d335858dac485a5312a55693e40c74"
+          release_sha="66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
           # actions/checkout uses fetch-depth:1; the pinned release SHA is its parent.
           # Fetch the release commit object before creating immutable refs.
           # Pinning production does not guarantee a shallow main checkout
@@ -770,24 +825,24 @@ jobs:
           git fetch --no-tags --depth=1 origin "$release_sha"
           git cat-file -e "$release_sha^{commit}"
           git fetch --tags origin
-          if git rev-parse -q --verify "refs/tags/v9.17.0" >/dev/null; then
-            actual="$(git rev-list -n1 refs/tags/v9.17.0)"
+          if git rev-parse -q --verify "refs/tags/v9.18.0" >/dev/null; then
+            actual="$(git rev-list -n1 refs/tags/v9.18.0)"
             test "$actual" = "$release_sha"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a v9.17.0 "$release_sha" -m "Sealed StormTracker V9.17.0 · dBZ 3D, NSW coverage, minimal radar icons · verified GitHub Pages"
-            git push origin refs/tags/v9.17.0
+            git tag -a v9.18.0 "$release_sha" -m "Sealed StormTracker V9.18.0 · DEA national imagery, QLD/NSW detail, official NSW radar labels, BoM track/wind repairs · verified GitHub Pages"
+            git push origin refs/tags/v9.18.0
           fi
-          test "$(git rev-list -n1 refs/tags/v9.17.0)" = "$release_sha"
-          restore="$(git ls-remote --heads origin 'refs/heads/restore/v9.17.0' | awk '{print $1}')"
+          test "$(git rev-list -n1 refs/tags/v9.18.0)" = "$release_sha"
+          restore="$(git ls-remote --heads origin 'refs/heads/restore/v9.18.0' | awk '{print $1}')"
           if [ -z "$restore" ]; then
-            git push origin "$release_sha:refs/heads/restore/v9.17.0"
+            git push origin "$release_sha:refs/heads/restore/v9.18.0"
           else
             test "$restore" = "$release_sha"
           fi
-          test "$(git ls-remote --heads origin 'refs/heads/restore/v9.17.0' | awk '{print $1}')" = "$release_sha"
-          echo "SEALED v9.17.0 and restore/v9.17.0 to exact commit $release_sha (historical v9.16.15 left unchanged)"
+          test "$(git ls-remote --heads origin 'refs/heads/restore/v9.18.0' | awk '{print $1}')" = "$release_sha"
+          echo "SEALED v9.18.0 and restore/v9.18.0 at commit $release_sha; prior v9.17.0 tag and restore branch preserved"
       - name: Verify published V9.16.13 labels and native Doppler
         shell: bash
         env:

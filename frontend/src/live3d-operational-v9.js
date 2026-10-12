@@ -179,9 +179,9 @@ import {
 } from "./volume-display-threshold-v1.js?v=9.15.1-intensity40";
 
 import {
-  rainfallLegendBands, rgbForInferredDbz, displayedVolumeAltitude,
+  reflectivityLegendBands, rgbForInferredDbz, displayedVolumeAltitude,
   volumeBlobDiameterPx, createBlobSpriteDataUrl
-} from "./volumetric-visual-v2.js?v=volume-rainrate-v2";
+} from "./volumetric-visual-v2.js?v=unified-dbz-v2";
 
 import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
@@ -1043,16 +1043,16 @@ function addVolumeGlyph(collection,options,sourceAlpha,percent,sizeDbz,support=1
   return addVolumeDisplayPoint(collection,options,sourceAlpha,percent);
 }
 
-function refreshRainRateLegend(){
-  const holder=$("rainRateLegend");
+function refreshReflectivityLegend(){
+  const holder=$("reflectivityLegend");
   if(!holder)return;
-  holder.replaceChildren(...rainfallLegendBands().map(band=>{
+  holder.replaceChildren(...reflectivityLegendBands().map(band=>{
     const span=document.createElement("span");
-    span.title=band.dbzLabel+" (BoM reflectivity)";
     const swatch=document.createElement("i");
     swatch.style.background=band.color;
     const label=document.createElement("small");
-    label.textContent=band.rainRateLabel.replace(" mm/h","");
+    label.textContent=band.dbzLabel.replace(" dBZ","");
+    span.title=band.dbzLabel;
     span.append(swatch,label);
     return span;
   }));
@@ -4926,7 +4926,7 @@ $("resetButton").addEventListener(
   }
 );
 
-refreshRainRateLegend();
+refreshReflectivityLegend();
 $("blobVolume")?.addEventListener("change",()=>{
   clearVolumeGeometryCache();
   if(latestFrame && !isNativeDopplerPlayback()){

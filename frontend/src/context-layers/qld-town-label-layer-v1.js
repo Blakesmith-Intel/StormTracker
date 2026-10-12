@@ -250,19 +250,23 @@ export function createQueenslandTownLabelLayer({
             item.longitude,item.latitude,0)});
         }
         postRenderDisposer=scene.postRender.addEventListener(()=>{
-          try{draw();}catch(error){console.warn("QLD label placement skipped:",error);}
+          try{draw();}catch(error){console.warn("Regional place label placement skipped:",error);}
         });
         if(typeof window!=="undefined" && typeof window.addEventListener==="function"){
           resizeDisposer=()=>draw(true);
           window.addEventListener("resize",resizeDisposer,{passive:true});
         }
         draw(true);
-        onStatus({kind:"ok",message:"QLD + NSW place names ready · "+
-          places.length+" locations, shared collision-aware layout"});
+        const qldCount=places.filter(p=>!p.fromNsw).length;
+        const nswCount=places.length-qldCount;
+        onStatus({kind:(qldCount&&nswCount)?"ok":"warning",
+          message:"Place names: QLD "+qldCount+" · NSW "+nswCount+
+            " · shared collision-aware layout"+
+            (nswCount?"":" (NSW catalogue unavailable)")});
         return places.length;
       }catch(error){
         if(!destroyed)onStatus({kind:"warning",message:
-          "Queensland place names unavailable: "+(error?.message??error)});
+          "QLD/NSW place names unavailable: "+(error?.message??error)});
         throw error;
       }
     })();

@@ -62,6 +62,13 @@ jobs:
 
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
+      - name: Checkout independent BoM dBZ cloud-volume preview
+        uses: actions/checkout@v4
+        with:
+          # Draft PR #71, pinned; never replace the protected production root.
+          ref: fe4af51a9adfc4df418e0b717ad660cd13c552e1
+          path: preview-builds/volumetric-dbz
+          persist-credentials: false
       - name: Checkout V9.14 candidate
         uses: actions/checkout@v4
         with:
@@ -156,6 +163,18 @@ jobs:
           github-token: ${{ github.token }}
           name: AURA-Gympie-2025-experimental-hook-replay
           path: preview-builds/gympie-hook-audit
+      - name: Validate BoM dBZ volume preview independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd preview-builds/volumetric-dbz && npm test)
+          test "$(git -C preview-builds/volumetric-dbz rev-parse HEAD)" = "fe4af51a9adfc4df418e0b717ad660cd13c552e1"
+          test -f preview-builds/volumetric-dbz/frontend/src/volumetric-visual-v2.js
+          test -f preview-builds/volumetric-dbz/frontend/tests/run-volumetric-visual-v2-tests.mjs
+          grep -Fq 'id="blobVolume" checked' preview-builds/volumetric-dbz/frontend/live3d-operational-v9.html
+          grep -Fq 'id="reflectivityLegend"' preview-builds/volumetric-dbz/frontend/live3d-operational-v9.html
+          ! grep -Eqi 'rainRateLegend|estimated mm/h' preview-builds/volumetric-dbz/frontend/live3d-operational-v9.html
+
       - name: Validate all four candidates independently
         run: |
           (cd preview-builds/v9.14.0 && npm test)
@@ -218,6 +237,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p frontend/preview/volume-dbz
+          cp -a preview-builds/volumetric-dbz/frontend/. frontend/preview/volume-dbz/
+          printf 'BoM dBZ volumetric V2 preview candidate %s\n' 'fe4af51a9adfc4df418e0b717ad660cd13c552e1' > frontend/preview/volume-dbz/BUILD.txt
+          test -f frontend/preview/volume-dbz/src/volumetric-visual-v2.js
           mkdir -p frontend/preview/multi-radar
           cp -a preview-builds/multi-radar/frontend/. frontend/preview/multi-radar/
           printf 'V9.16.15 multi-radar preview candidate %s\n' "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903" > frontend/preview/multi-radar/BUILD.txt
@@ -314,7 +337,7 @@ jobs:
           # Standalone experimental volume study: only the preview HTML is copied.
           # The pinned production release and its site root remain unchanged.
           mkdir -p published-site/previews
-          cp frontend/previews/volumetric-v2.html published-site/previews/volumetric-v2.html
+          cp preview-builds/volumetric-dbz/frontend/previews/volumetric-v2.html published-site/previews/volumetric-v2.html
           test -s published-site/previews/volumetric-v2.html
           grep -Fq 'ISOLATED VISUAL PROTOTYPE' published-site/previews/volumetric-v2.html
           cmp sealed-production/v9.16.15/frontend/index.html published-site/index.html
@@ -329,6 +352,9 @@ jobs:
           test -f published-site/preview/v9.16.11/src/doppler-layer-transition-v1.js
           test -f published-site/preview/v9.16.10/src/storm-track-trail-visibility-v1.js
           grep -Fq 'f4927fea810833230bce1af65df80ee2e3b59661' published-site/preview/v9.16.10/BUILD.txt
+          test -f published-site/preview/volume-dbz/src/volumetric-visual-v2.js
+          test -f published-site/preview/volume-dbz/tests/run-volumetric-visual-v2-tests.mjs
+          test -f published-site/preview/volume-dbz/previews/volumetric-v2.html
           test -f published-site/preview/multi-radar/src/multi-radar-display-v9.js
           grep -Fq 'ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903' published-site/preview/multi-radar/BUILD.txt
           test -f published-site/preview/track-grouping/src/storm-track-presentation-v1.js
@@ -354,6 +380,27 @@ jobs:
           grep -Fq 'StormTracker — Inferred Volume V2' <<< "$preview"
           grep -Fq 'SYNTHETIC TEST STORM' <<< "$preview"
           echo "Verified independent volumetric V2 preview; pinned production unchanged."
+
+      - name: Verify publicly served dBZ volumetric preview without touching production
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          build="$(retry_curl "$base/preview/volume-dbz/BUILD.txt")"
+          grep -Fq "fe4af51a9adfc4df418e0b717ad660cd13c552e1" <<< "$build"
+          html="$(retry_curl "$base/preview/volume-dbz/live3d-operational-v9.html")"
+          grep -Fq 'id="reflectivityLegend"' <<< "$html"
+          grep -Fq 'id="blobVolume" checked' <<< "$html"
+          script="$(retry_curl "$base/preview/volume-dbz/src/volumetric-visual-v2.js")"
+          grep -Fq 'reflectivityLegendBands' <<< "$script"
+          demo="$(retry_curl "$base/previews/volumetric-v2.html")"
+          grep -Fq 'value="1.0"' <<< "$demo"
+          production="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq 'ec3508dc7c2e263b1f3fcfc16803bc5bc7e469f5' <<< "$production"
+          echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
 
       - name: Verify V9.16.15 publicly served production root
         shell: bash

@@ -1,0 +1,46 @@
+name: Publish sealed StormTracker V9.17.0 GitHub Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v9-17-release.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stormtracker-publish-v9-17-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact immutable accepted release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="60d6750be2d335858dac485a5312a55693e40c74"
+          git fetch --no-tags --depth=4 origin main
+          git fetch --tags origin
+          test "$(git rev-list -n1 refs/tags/v9.17.0)" = "$release"
+          test -s docs/CHANGELOG_V9.17.0.md
+          echo "Verified immutable V9.17.0 = $release"
+      - name: Publish release notes once, never move the tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v9.17.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "V9.17.0 GitHub Release already exists, leaving it unchanged."
+          else
+            gh release create v9.17.0 --repo "$GITHUB_REPOSITORY" \
+              --title "StormTracker V9.17.0 — dBZ 3-D volumes and NSW border radars" \
+              --notes-file docs/CHANGELOG_V9.17.0.md --verify-tag
+          fi
+          gh release view v9.17.0 --repo "$GITHUB_REPOSITORY" --json url,tagName,isDraft,isPrerelease

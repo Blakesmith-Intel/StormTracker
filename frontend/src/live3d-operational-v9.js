@@ -179,6 +179,11 @@ import {
 } from "./volume-display-threshold-v1.js?v=9.15.1-intensity40";
 
 import {
+  rainfallLegendBands, rgbForInferredDbz, displayedVolumeAltitude,
+  volumeBlobDiameterPx, createBlobSpriteDataUrl
+} from "./volumetric-visual-v2.js?v=volume-rainrate-v2";
+
+import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
@@ -614,6 +619,7 @@ const playback = createContinuousPlayback({
 
 let hybridTrackVolumes = [];
 let hybridTrackVolumeCollection = null;
+let hybridTrackFootprintCollection = null;
 
 let hybridDopplerFrameStates =
   [];
@@ -1012,39 +1018,44 @@ function selectDetailsTab(name) {
 }
 
 function colourForDbzh(value) {
-  if (value >= 60) {
-    return Cesium.Color.fromCssColorString(
-      "#bd2fff"
-    );
-  }
+  const rgb=rgbForInferredDbz(value);
+  return rgb
+    ? Cesium.Color.fromBytes(rgb[0],rgb[1],rgb[2],255)
+    : Cesium.Color.fromCssColorString("#6ab6ff");
+}
 
-  if (value >= 55) {
-    return Cesium.Color.fromCssColorString(
-      "#ff5a22"
-    );
+// Cloud-like billboards are presentation only; the AURA-inferred profiles
+// and original reflectivity frames remain unchanged.
+let volumeBlobImage=null;
+function useBlobVolume(){ return $("blobVolume")?.checked ?? true; }
+function blobImage(){
+  if(!volumeBlobImage)volumeBlobImage=createBlobSpriteDataUrl(document);
+  return volumeBlobImage;
+}
+function addVolumeGlyph(collection,options,sourceAlpha,percent,sizeDbz,support=1) {
+  if(useBlobVolume()){
+    const diameter=volumeBlobDiameterPx($("pointSize").value,sizeDbz,support);
+    const {pixelSize:unusedPixelSize,...spriteOptions}=options;
+    return addVolumeDisplayPoint(collection,{
+      ...spriteOptions,image:blobImage(),width:diameter,height:diameter
+    },Math.min(1,sourceAlpha*.8),percent);
   }
+  return addVolumeDisplayPoint(collection,options,sourceAlpha,percent);
+}
 
-  if (value >= 50) {
-    return Cesium.Color.fromCssColorString(
-      "#ffd21a"
-    );
-  }
-
-  if (value >= 40) {
-    return Cesium.Color.fromCssColorString(
-      "#00b96b"
-    );
-  }
-
-  if (value >= 30) {
-    return Cesium.Color.fromCssColorString(
-      "#1e78ff"
-    );
-  }
-
-  return Cesium.Color.fromCssColorString(
-    "#6ab6ff"
-  );
+function refreshRainRateLegend(){
+  const holder=$("rainRateLegend");
+  if(!holder)return;
+  holder.replaceChildren(...rainfallLegendBands().map(band=>{
+    const span=document.createElement("span");
+    span.title=band.dbzLabel+" (BoM reflectivity)";
+    const swatch=document.createElement("i");
+    swatch.style.background=band.color;
+    const label=document.createElement("small");
+    label.textContent=band.rainRateLabel.replace(" mm/h","");
+    span.append(swatch,label);
+    return span;
+  }));
 }
 
 function displayAltitude(altitude) {
@@ -1318,7 +1329,8 @@ function renderInferredVolume(frame) {
   const signature=[
     selectedRadarRegion(),frame.observedUtc,
     $("occupancyThreshold").value,$("minimumDbzh").value,
-    $("pointSize").value,$("volumeOpacity").value
+    $("pointSize").value,$("volumeOpacity").value,
+    $("verticalScale").value,useBlobVolume()?"blob":"point"
   ].join(":");
   if(inferredCollection)inferredCollection.show=false;
   const previouslyBuilt=volumeGeometryCache.get(signature);
@@ -1332,7 +1344,9 @@ function renderInferredVolume(frame) {
   }
   inferredCollection =
     scene.primitives.add(
-      new Cesium.PointPrimitiveCollection()
+      useBlobVolume()
+        ? new Cesium.BillboardCollection()
+        : new Cesium.PointPrimitiveCollection()
     );
 
   const occupancyThreshold =
@@ -1458,14 +1472,14 @@ function renderInferredVolume(frame) {
 
         const colour=colourForDbzh(point.dbzh);
 
-        addVolumeDisplayPoint(inferredCollection,{
+        addVolumeGlyph(inferredCollection,{
           position:
             Cesium.Cartesian3
               .fromDegrees(
                 geographic.longitude,
                 geographic.latitude,
-                displayAltitude(
-                  point.altitude_m_amsl
+                displayedVolumeAltitude(
+                  point.altitude_m_amsl,inputDbzh,Number($("verticalScale").value)
                 )
               ),
 
@@ -1477,7 +1491,7 @@ function renderInferredVolume(frame) {
 
           disableDepthTestDistance:
             0
-        },supportStyle.alpha,volumePercent);
+        },supportStyle.alpha,volumePercent,point.dbzh,Math.min(1.3,supportStyle.pixelSize/3));
 
         renderedPoints++;
         confidenceSum +=
@@ -1832,9 +1846,11 @@ function clearHybridTrackVolumeCollection() {
     scene.primitives.remove(
       hybridTrackVolumeCollection
     );
-
-    hybridTrackVolumeCollection =
-      null;
+    hybridTrackVolumeCollection=null;
+  }
+  if(hybridTrackFootprintCollection){
+    scene.primitives.remove(hybridTrackFootprintCollection);
+    hybridTrackFootprintCollection=null;
   }
 }
 
@@ -3073,7 +3089,12 @@ function renderHybridTracks(index) {
   clearHybridTrackVolumeCollection();
   const showTrackVolumes = useTrackSpecificVolume(index);
   const volumePercent=Number($("volumeOpacity").value);
-  if (showTrackVolumes) hybridTrackVolumeCollection = scene.primitives.add(new Cesium.PointPrimitiveCollection());
+  if (showTrackVolumes) {
+    hybridTrackVolumeCollection=scene.primitives.add(
+      useBlobVolume()?new Cesium.BillboardCollection():new Cesium.PointPrimitiveCollection()
+    );
+    hybridTrackFootprintCollection=scene.primitives.add(new Cesium.PointPrimitiveCollection());
+  }
   try {
     hybridSource.entities.removeAll();
     const result = hybridResults[index];
@@ -3130,16 +3151,18 @@ function renderHybridTracks(index) {
           // The volume analysis retains the full inferred profile; only
           // the user-visible dots follow the same dBZ cutoff as frame-wide.
           if (!shouldDisplayMeasuredTrackPoint(point,displayedMinimumDbz)) continue;
-          addVolumeDisplayPoint(hybridTrackVolumeCollection,{
+          addVolumeGlyph(hybridTrackVolumeCollection,{
             position: Cesium.Cartesian3.fromDegrees(
               point.longitude,
               point.latitude,
-              displayAltitude(point.altitude_m_amsl)
+              displayedVolumeAltitude(point.altitude_m_amsl,
+                Number(observation.maximum_dbzh_lower_bound),
+                Number($("verticalScale").value))
             ),
             color: colourForDbzh(point.dbzh),
             pixelSize: trackPointSize(point.support_band),
             disableDepthTestDistance: 0
-          },point.alpha,volumePercent);
+          },point.alpha,volumePercent,point.dbzh,trackPointSize(point.support_band)/3);
         }
 
         // Critical visibility contract: track segmentation decides WHERE
@@ -3151,7 +3174,7 @@ function renderHybridTracks(index) {
           if (measured.representative_dbzh < displayedMinimumDbz) continue;
           const rgb=displayRgb(measured.source_category);
           if (!rgb) continue;
-          addVolumeDisplayPoint(hybridTrackVolumeCollection,{
+          addVolumeDisplayPoint(hybridTrackFootprintCollection,{
             position: Cesium.Cartesian3.fromDegrees(
               measured.longitude,
               measured.latitude,
@@ -3656,6 +3679,7 @@ async function loadDopplerSequence(automatic=false) {
   radarImageryHandover.setOpacity(0);
   if(inferredCollection) inferredCollection.show=false;
   if(hybridTrackVolumeCollection) hybridTrackVolumeCollection.show=false;
+  if(hybridTrackFootprintCollection) hybridTrackFootprintCollection.show=false;
   hybridSource.show=false;
   stormTrackLabelOverlay.setVisible(false);
   scene.requestRender();
@@ -4784,6 +4808,7 @@ $("volumeOpacity").addEventListener("input", event => {
   $("volumeOpacityValue").textContent=`${percent}%`;
   setVolumeDisplayOpacity(inferredCollection,percent);
   setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
+  setVolumeDisplayOpacity(hybridTrackFootprintCollection,percent);
   scene.requestRender();
 });
 
@@ -4900,6 +4925,18 @@ $("resetButton").addEventListener(
     resetView();
   }
 );
+
+refreshRainRateLegend();
+$("blobVolume")?.addEventListener("change",()=>{
+  clearVolumeGeometryCache();
+  if(latestFrame && !isNativeDopplerPlayback()){
+    renderInferredVolume(latestFrame);
+    if(hybridResults.length){
+      applyHybridVolumeMode(hybridFrameIndex);
+      renderHybridTracks(hybridFrameIndex);
+    }
+  }
+});
 
 initialise().catch(
   error => {

@@ -89,6 +89,15 @@ jobs:
           path: preview-builds/nsw-satellite
           persist-credentials: false
 
+      # PR76, pinned to tested source: national DEA GeoMAD at regional zoom,
+      # automatic close-up official detail, and shared QLD/NSW place names.
+      - name: Checkout isolated DEA regional + local detail preview
+        uses: actions/checkout@v4
+        with:
+          ref: 36ff1c7798b9f62874ee27651a26196961ba7c6c
+          path: preview-builds/dea-regional
+          persist-credentials: false
+
       # Preview subpaths share the trusted production github.io Origin,
       # so existing Cloudflare relay CORS policies work unchanged.
       - name: Checkout independent BoM dBZ cloud-volume preview
@@ -267,6 +276,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Review-only automated cross-zoom satellite basemap; never
+          # replace the sealed production root without explicit approval.
+          (cd preview-builds/dea-regional && npm test)
+          test "$(git -C preview-builds/dea-regional rev-parse HEAD)" = "36ff1c7798b9f62874ee27651a26196961ba7c6c"
+          grep -Fq 'ga_ls8cls9c_gm_cyear_3' preview-builds/dea-regional/frontend/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'chooseDetailForScale' preview-builds/dea-regional/frontend/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'fetchNswTowns' preview-builds/dea-regional/frontend/src/context-layers/qld-town-label-layer-v1.js
+          grep -Fq 'Satellite · DEA Regional + Local Detail' preview-builds/dea-regional/frontend/live3d-operational-v9.html
+          mkdir -p frontend/preview/dea-regional
+          cp -a preview-builds/dea-regional/frontend/. frontend/preview/dea-regional/
+          printf 'PR76 national DEA GeoMAD 2025 regional + NSW/QLD zoom detail commit %s\n' '36ff1c7798b9f62874ee27651a26196961ba7c6c' > frontend/preview/dea-regional/BUILD.txt
           # QLD + NSW satellite preview extends the proven PR73 build.
           (cd preview-builds/nsw-satellite && npm test)
           test "$(git -C preview-builds/nsw-satellite rev-parse HEAD)" = "94a6ccd40f518085646e413537819a8786ce0901"
@@ -395,6 +415,8 @@ jobs:
           grep -Fq 'sidebar-hardcut-v14' published-site/index.html
           ! grep -Fq 'id="dopplerOpacity"' published-site/live3d-operational-v9.html
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' published-site/BUILD.txt
+          test -f published-site/preview/dea-regional/src/context-layers/basemap-manager-v1.js
+          grep -Fq '36ff1c7798b9f62874ee27651a26196961ba7c6c' published-site/preview/dea-regional/BUILD.txt
           test -f published-site/preview/nsw-satellite/src/context-layers/basemap-manager-v1.js
           grep -Fq '94a6ccd40f518085646e413537819a8786ce0901' published-site/preview/nsw-satellite/BUILD.txt
           test -f published-site/preview/doppler-overlay-repair/src/reflectivity-overlay-mode-v1.js
@@ -479,6 +501,42 @@ jobs:
           production="$(retry_curl "$base/BUILD.txt")"
           grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$production"
           echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
+
+      - name: Verify national DEA regional WMTS tile is available to browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          tile='https://ows.dea.ga.gov.au/?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ga_ls8cls9c_gm_cyear_3&STYLE=simple_rgb&FORMAT=image/png&TILEMATRIXSET=WholeWorld_WebMercator&TILEMATRIX=9&TILECOL=470&TILEROW=297&TIME=2025-01-01'
+          curl --fail --silent --show-error --location --retry 3 --max-time 40 \
+            --header 'Origin: https://blakesmith-intel.github.io' \
+            -D /tmp/dea-regional-headers -o /tmp/dea-regional-tile "$tile"
+          grep -Eiq '^content-type: *image/png' /tmp/dea-regional-headers
+          grep -Eiq '^access-control-allow-origin: *(\*|https://blakesmith-intel.github.io)' /tmp/dea-regional-headers
+          test "$(wc -c </tmp/dea-regional-tile)" -gt 1000
+          echo "Verified historical 2025 DEA GeoMAD imagery as real browser-compatible PNG."
+
+      - name: Verify isolated national DEA + local detail preview is live
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
+          candidate="$base/preview/dea-regional"
+          build="$(retry_curl "$candidate/BUILD.txt")"
+          grep -Fq '36ff1c7798b9f62874ee27651a26196961ba7c6c' <<< "$build"
+          page="$(retry_curl "$candidate/live3d-operational-v9.html")"
+          grep -Fq 'Satellite · DEA Regional + Local Detail' <<< "$page"
+          js="$(retry_curl "$candidate/src/context-layers/basemap-manager-v1.js")"
+          grep -Fq 'WholeWorld_WebMercator' <<< "$js"
+          grep -Fq 'chooseDetailForScale' <<< "$js"
+          grep -Fq 'createNswImageryProvider' <<< "$js"
+          places="$(retry_curl "$candidate/src/context-layers/qld-town-label-layer-v1.js")"
+          grep -Fq 'fetchNswTowns' <<< "$places"
+          prod="$(retry_curl "$base/BUILD.txt")"
+          grep -Fq '60d6750be2d335858dac485a5312a55693e40c74' <<< "$prod"
+          echo "PR76 isolated DEA regional satellite and official local detail publicly verified; V9.17.0 production intact."
 
       - name: Verify NSW source tiles and CORS for browser-only satellite preview
         shell: bash

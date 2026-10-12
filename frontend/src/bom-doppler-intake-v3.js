@@ -3,6 +3,8 @@ import { withFreshDopplerResponse } from "./doppler-request-v1.js?v=operational-
 
 const RELAY_ROOT =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
+const NSW_DOPPLER_PREVIEW_RELAY_ROOT =
+  "https://stormtracker-bom-relay-nsw-preview.stormtracker-bom-relay.workers.dev";
 
 export const DOPPLER_PRODUCTS = BORDER_RADAR_DOPPLER_PRODUCTS;
 
@@ -31,7 +33,7 @@ function relayUrl(
 ) {
   const url =
     new URL(
-      `${RELAY_ROOT}${path}`
+      `${String(radarId)==="93" ? NSW_DOPPLER_PREVIEW_RELAY_ROOT : RELAY_ROOT}${path}`
     );
 
   url.searchParams.set(

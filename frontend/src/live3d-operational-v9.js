@@ -3178,13 +3178,13 @@ function renderHybridTracks(index) {
               point.longitude,
               point.latitude,
               displayedVolumeAltitude(point.altitude_m_amsl,
-                Number(observation.maximum_dbzh_lower_bound),
+                point.source_low_level_dbzh ?? point.dbzh,
                 Number($("verticalScale").value))
             ),
             color: colourForDbzh(point.dbzh),
             pixelSize: trackPointSize(point.support_band),
             disableDepthTestDistance: 0
-          },point.alpha,volumePercent,point.dbzh,trackPointSize(point.support_band)/3);
+          },point.alpha,volumePercent,point.source_low_level_dbzh ?? point.dbzh,trackPointSize(point.support_band)/3);
         }
 
         // Critical visibility contract: track segmentation decides WHERE

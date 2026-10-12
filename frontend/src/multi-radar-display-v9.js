@@ -1,3 +1,5 @@
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js";
+
 // V9 multi-site 2-D reflectivity display only. The existing primary site
 // still owns Doppler, source histories, storm tracks and inferred 3-D science.
 export const MAX_DISPLAY_RADAR_SITES = 4;
@@ -52,94 +54,128 @@ export function fitSelectedRadarSites(primary,extras,sites) {
   };
 }
 
-// Additional windows deliberately do NOT participate in the primary atomic
-// weather handover. They are best-effort and never hold or slow the true
-// primary radar playback clock. No stale scan remains on source-time changes.
+// An independently decoded BoM 2-D radar image uses the exact same
+// prepare -> stage below -> wait for Cesium -> atomic handover as the primary.
+// In particular, never remove last frame while fetching the next one.
+// Supplemental handovers do NOT delay primary radar playback or tracking.
 export function createSupplementalRadarDisplay({
   imageryLayers,scene,loadFrame,prepareProvider,createLayer,
   getWindow,onStatus=()=>{},maxCached=18
 }) {
-  let primary="",extras=[],generation=0,lastKey="",layers=new Map(),cache=new Map();
-  function removeLayers(){
-    for(const layer of layers.values()){
-      try{imageryLayers.remove(layer,true);}catch{/* discarded Cesium view */}
+  let primary="",extras=[],generation=0,lastKey="",opacity=1;
+  const controllers=new Map(),cache=new Map();
+
+  function controllerFor(site) {
+    if (!controllers.has(site)) {
+      controllers.set(site,createRadarImageryHandover({
+        imageryLayers,scene
+      }));
     }
-    layers.clear();
+    return controllers.get(site);
+  }
+
+  function reset() {
+    generation++;
+    lastKey="";
+    for (const controller of controllers.values()) controller.reset();
+    controllers.clear();
     scene.requestRender();
   }
-  function reset(){
-    generation++;lastKey="";removeLayers();
+
+  function configure(primaryId,selectedIds) {
+    const next=[...(selectedIds??[])];
+    const same=primary===primaryId && extras.join(",")===next.join(",");
+    primary=primaryId;
+    extras=next;
+    // A new site/mask layout is the only reason to discard the old mosaic.
+    // Advancing source time MUST keep the previous frame until replacement.
+    if(!same) reset();
   }
-  function configure(primaryId,selectedIds){
-    const same=primary===primaryId &&
-      extras.join(",")===(selectedIds??[]).join(",");
-    primary=primaryId;extras=[...(selectedIds??[])];
-    if(!same)reset();
-  }
-  function setOpacity(alpha){
-    const bounded=Math.max(0,Math.min(1,Number(alpha)||0));
-    for(const layer of layers.values())layer.alpha=bounded;
+
+  function setOpacity(alpha) {
+    opacity=Math.max(0,Math.min(1,Number(alpha)||0));
+    for(const controller of controllers.values()) controller.setOpacity(opacity);
     scene.requestRender();
   }
-  async function cachedFrame(site,utc){
+
+  async function cachedFrame(site,utc) {
     const key=site+"@"+utc;
     if(cache.has(key)){
-      const value=cache.get(key);cache.delete(key);cache.set(key,value);return value;
+      const value=cache.get(key);
+      cache.delete(key);
+      cache.set(key,value);
+      return value;
     }
     const task=Promise.resolve().then(()=>loadFrame(utc,site));
     cache.set(key,task);
-    while(cache.size>maxCached)cache.delete(cache.keys().next().value);
+    while(cache.size>maxCached) cache.delete(cache.keys().next().value);
     try{return await task;}catch(error){cache.delete(key);throw error;}
   }
-  function show(utc,{enabled=true,alpha=1}={}){
+
+  function show(utc,{enabled=true,alpha=1}={}) {
+    setOpacity(alpha);
     if(!enabled || !extras.length || !utc || !primary){
       reset();
-      onStatus(!extras.length ? "Primary radar only." :
+      onStatus(!extras.length?"Primary radar only.":
         "Additional rain windows paused until an original rain scan is displayed.");
       return Promise.resolve([]);
     }
     const key=primary+"|"+extras.join(",")+"|"+utc;
-    if(key===lastKey){
-      setOpacity(alpha);return Promise.resolve([...layers.keys()]);
-    }
-    reset();lastKey=key;
-    const mine=generation;
+    if(key===lastKey) return Promise.resolve(
+      [...controllers.entries()].filter(([,c])=>c.currentLayer).map(([id])=>id)
+    );
+    // Invalidate older asynchronous operations WITHOUT clearing the source
+    // image currently displayed. A stale frame can never win a later handover.
+    const mine=++generation;
+    lastKey=key;
     const prior=[getWindow(primary)];
     let success=0,fail=0,covered=0;
     const summary=()=>success+"/"+extras.length+" additional measured sites · "+
       utc+(covered?" · "+covered+" already covered":"")+
       (fail?" · "+fail+" unavailable":"");
-    onStatus("Loading "+extras.length+" additional radar site"+(extras.length===1?"":"s")+
-      " at original BoM "+utc+"…");
-    // List is ordered so windows are masked against the primary AND each
-    // preceding selection: never double-paint duplicated national WMTS tiles.
+    onStatus("Preparing "+extras.length+" additional original BoM radar site"+
+      (extras.length===1?"":"s")+" for "+utc+"…");
+
+    // Mask overlapping national WMTS tiles exactly as before. Only measured
+    // source frames with the requested UTC are allowed to replace a site.
     const tasks=extras.map(async (site,index)=>{
       const earlier=[...prior,...extras.slice(0,index).map(id=>getWindow(id))];
       try{
         const frame=await cachedFrame(site,utc);
+        if(mine!==generation || key!==lastKey) return null;
         if(frame.observedUtc!==utc || frame.sourceMetadata?.temporalInference)
           throw new Error("Source scan clock mismatch or synthetic interpolation");
         const masked=maskPreviouslyDisplayedTiles(frame,earlier);
-        if(masked.sourceMetadata.overlappingTilesMasked ===
-            (getWindow(site).rowEnd-getWindow(site).rowStart+1)*
-            (getWindow(site).colEnd-getWindow(site).colStart+1)){
-          if(mine===generation){
+        const siteWindow=getWindow(site);
+        if(masked.sourceMetadata.overlappingTilesMasked===
+            (siteWindow.rowEnd-siteWindow.rowStart+1)*
+            (siteWindow.colEnd-siteWindow.colStart+1)){
+          if(mine===generation) {
+            controllerFor(site).reset();
             covered++;onStatus(summary());
           }
           return null;
         }
         const provider=await prepareProvider(masked);
-        if(mine!==generation || key!==lastKey)return null;
+        if(mine!==generation || key!==lastKey) return null;
         const layer=createLayer(provider);
-        layer.alpha=Math.max(0,Math.min(1,Number(alpha)||0));
-        imageryLayers.add(layer);
-        layers.set(site,layer);
-        success++;
-        scene.requestRender();
-        onStatus(summary());
+        const ready=await controllerFor(site).replace(layer,{
+          alpha:opacity,
+          decodedSingleTile:true,
+          timeoutMs:1800,
+          isCurrent:()=>mine===generation && key===lastKey
+        });
+        if(mine!==generation || key!==lastKey) return null;
+        if(!ready) throw new Error("New source scan was not ready for atomic handover");
+        controllerFor(site).setOpacity(opacity);
+        success++;onStatus(summary());
         return site;
       }catch(error){
-        if(mine!==generation)return null;
+        if(mine!==generation || key!==lastKey) return null;
+        // An unavailable new source is not replaced with a different UTC.
+        // Do not indefinitely misrepresent an old scan as the current scan.
+        controllerFor(site).reset();
+        cache.delete(site+"@"+utc);
         fail++;
         console.warn("Additional BoM radar site unavailable",site,utc,error);
         onStatus(summary());
@@ -148,9 +184,12 @@ export function createSupplementalRadarDisplay({
     });
     return Promise.all(tasks);
   }
+
   return {
     configure,show,reset,setOpacity,
-    get visibleSites(){return [...layers.keys()];},
+    get visibleSites(){
+      return [...controllers.entries()].filter(([,c])=>c.currentLayer).map(([id])=>id);
+    },
     get selectedSites(){return [...extras];},
     get generation(){return generation;}
   };

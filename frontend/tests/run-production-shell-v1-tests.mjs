@@ -34,7 +34,7 @@ assert.match(html, /id="showTrackLabels"/);
 assert.match(html, /id="trackDisplayFilter"/);
 assert.match(html, /id="showTrackThreatCone"/);
 assert.match(html, /id="basemapSelect"/);
-assert.match(html, /Satellite · QLD \+ NSW/,
+assert.match(html, /Satellite · Esri World Imagery/,
   "Existing satellite selector must advertise coverage in both states");
 assert.match(html, /value="qld-imagery"/);
 assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.13\.2/);

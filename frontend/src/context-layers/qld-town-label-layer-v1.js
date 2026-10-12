@@ -1,5 +1,5 @@
 import { fetchQueenslandPopulationCentres } from "./qld-population-centres-v2.js?v=9.12.3";
-import { rankQueenslandTowns, sameGeographicSettlement, layoutTownLabels, townLabelTypography }
+import { rankQueenslandTowns, sameGeographicSettlement, geographicPlaceNameKey, layoutTownLabels, townLabelTypography }
   from "./qld-town-label-declutter-v1.js?v=9.16.12";
 import { fetchQldNearbyLocalities, expandLocalityBounds, localityBoundsContain,
   qldLocalityViewBounds } from "./qld-nearby-localities-v1.js?v=9.13.4";
@@ -110,16 +110,29 @@ export function createQueenslandTownLabelLayer({
         const el=elements.get(String(p.id));el?.remove();elements.delete(String(p.id));
       }
       places=places.filter(p=>!p.fromGazetteer);
+      // Compare only places sharing a normalised name. The old double
+      // places.some() scanned the entire growing list per locality and could
+      // block the render thread when a zoom loaded hundreds of settlements.
+      const sameName=new Map();
+      function indexName(item) {
+        const key=geographicPlaceNameKey(item.name);
+        if(!sameName.has(key))sameName.set(key,[]);
+        sameName.get(key).push(item);
+      }
+      for(const item of places)indexName(item);
       const unique=new Set();
       for(const item of records){
-        if(places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+        const key=geographicPlaceNameKey(item.name);
+        const matches=sameName.get(key)??[];
         const identity=item.name.toLowerCase()+":"+item.latitude.toFixed(3)+":"+
           item.longitude.toFixed(3);
         if(unique.has(identity) ||
-           places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+           matches.some(p=>sameGeographicSettlement(p,item,25)))continue;
         unique.add(identity);
-        places.push({...item,fromGazetteer:true,
-          position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude,0)});
+        const place={...item,fromGazetteer:true,
+          position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude,0)};
+        places.push(place);
+        indexName(place);
       }
       localityCoverage=bounds;
       lastFingerprint="";

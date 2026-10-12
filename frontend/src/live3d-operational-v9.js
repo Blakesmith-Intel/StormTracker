@@ -273,7 +273,11 @@ const cameraPerformance =
   createCameraPerformanceGovernor({
     globe:
       scene.globe,
-    scene
+    scene,
+    // Stay at interaction-grade terrain quality beyond the 180ms wheel
+    // gesture quiet period. Avoid immediately refining globe tiles between
+    // adjacent scroll bursts, then restore normal detail when navigation ends.
+    settleMs: 320
   });
 
 const DEFAULT_RADAR_SITE_ID = "66"; // Brisbane (Mt Stapylton)

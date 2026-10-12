@@ -1,0 +1,38 @@
+name: StormTracker rapid zoom Chromium QA
+on:
+  push:
+    branches:
+      - fix/v9-16-15-rapid-zoom-stability
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-zoom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install Chromium and Playwright for isolated browser smoke
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Serve the feature branch in a browser-only local preview
+        run: |
+          python3 -m http.server 8765 --directory frontend > /tmp/stormtracker-rapid-zoom-preview.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/live3d-operational-v9.html >/dev/null
+      - name: Reproduce rapid wheel and pinch gestures in real Cesium Chromium
+        run: node scripts/smoke-rapid-zoom-browser.mjs
+      - name: Preserve stress-test metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapid-zoom-chromium-qa
+          path: qa-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7

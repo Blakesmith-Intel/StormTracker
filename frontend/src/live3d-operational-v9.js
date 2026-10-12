@@ -1090,7 +1090,7 @@ function configureRadarSite() {
 }
 for (const site of Object.values(BORDER_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
   const option = document.createElement("option"); option.value = site.id;
-  option.textContent = `${site.name}${site.state==="NSW" ? " (NSW)" : ""}${site.dopplerProduct ? "" : site.dopplerAvailableAtBom ? " · Doppler not integrated" : " · radar only"}`;
+  option.textContent = `${site.name}${site.state==="NSW" ? " (NSW)" : ""}${site.dopplerIntegrated===false ? " · Doppler pending" : site.dopplerProduct ? "" : " · radar only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
 // The primary site alone drives Doppler, storm tracks and inferred 3-D.

@@ -17,7 +17,9 @@ for(const id of ["53","28"]){
   assert.equal(NSW_BORDER_RADAR_SITES[id].dopplerProduct,null);
   assert.deepEqual(primaryRadarDopplerSites(id),[]);
 }
-assert.deepEqual(primaryRadarDopplerSites("93"),["93"]);
+assert.deepEqual(primaryRadarDopplerSites("93"),[],
+  "No unavailable Doppler relay should break the source selection");
+assert.equal(NSW_BORDER_RADAR_SITES["93"].dopplerIntegrated,false);
 assert.equal(DOPPLER_PRODUCTS["93"],"IDR93I");
 assert.equal(new URL(buildDopplerRelayUrl("93")).searchParams.get("product"),"IDR93I");
 assert.equal(new URL(buildDopplerRelayUrl("93")).host,

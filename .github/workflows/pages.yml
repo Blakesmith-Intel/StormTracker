@@ -542,6 +542,10 @@ jobs:
         run: |
           set -euo pipefail
           release_sha="60d6750be2d335858dac485a5312a55693e40c74"
+          # actions/checkout uses fetch-depth:1; the pinned release SHA is its parent.
+          # Fetch the release commit object before creating immutable refs.
+          git fetch --no-tags --depth=4 origin main
+          git cat-file -e "$release_sha^{commit}"
           git fetch --tags origin
           if git rev-parse -q --verify "refs/tags/v9.17.0" >/dev/null; then
             actual="$(git rev-list -n1 refs/tags/v9.17.0)"

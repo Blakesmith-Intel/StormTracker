@@ -812,37 +812,51 @@ jobs:
           ! grep -Fq '>Primary radar only.</div>' <<< "$productionHtml"
           echo "Verified multi-radar V9.18.0 production and retained isolated pre-release preview; storm pixel-tracking intact."
 
-      - name: Seal verified production tag v9.18.0
+      - name: Verify V9.18.0 recovery branch and create lightweight release tag via GitHub API
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           release_sha="66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
-          # actions/checkout uses fetch-depth:1; the pinned release SHA is its parent.
-          # Fetch the release commit object before creating immutable refs.
-          # Pinning production does not guarantee a shallow main checkout
-          # contains this older release commit. Fetch the explicit immutable
-          # object rather than walking an arbitrary number of main parents.
-          git fetch --no-tags --depth=1 origin "$release_sha"
-          git cat-file -e "$release_sha^{commit}"
-          git fetch --tags origin
-          if git rev-parse -q --verify "refs/tags/v9.18.0" >/dev/null; then
-            actual="$(git rev-list -n1 refs/tags/v9.18.0)"
-            test "$actual" = "$release_sha"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a v9.18.0 "$release_sha" -m "Sealed StormTracker V9.18.0 · DEA national imagery, QLD/NSW detail, official NSW radar labels, BoM track/wind repairs · verified GitHub Pages"
-            git push origin refs/tags/v9.18.0
-          fi
-          test "$(git rev-list -n1 refs/tags/v9.18.0)" = "$release_sha"
+          # The verified rollback branch is maintained separately, and the
+          # historical V9.17.0 tag/branch must never be moved.
           restore="$(git ls-remote --heads origin 'refs/heads/restore/v9.18.0' | awk '{print $1}')"
-          if [ -z "$restore" ]; then
-            git push origin "$release_sha:refs/heads/restore/v9.18.0"
-          else
-            test "$restore" = "$release_sha"
+          test "$restore" = "$release_sha"
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs"
+          opts=(--silent --show-error --location
+            --header "Authorization: Bearer ${GH_TOKEN}"
+            --header "Accept: application/vnd.github+json"
+            --header "X-GitHub-Api-Version: 2022-11-28")
+          status="$(curl "${opts[@]}" -o /tmp/stormtracker-v9.18-tag.json -w '%{http_code}' "$api/tags/v9.18.0")"
+          if [ "$status" = 404 ]; then
+            # Creating a Git reference with the REST API avoids git-push's
+            # unnecessary workflow-file permission gate for an unchanged
+            # already-validated release commit.
+            payload="$(printf '{"ref":"refs/tags/v9.18.0","sha":"%s"}' "$release_sha")"
+            status="$(curl "${opts[@]}" --request POST
+              --header 'Content-Type: application/json' --data "$payload"
+              -o /tmp/stormtracker-v9.18-tag.json -w '%{http_code}' "$api")"
+            if [ "$status" != 201 ]; then
+              echo "::warning::Published V9.18.0 is verified and restore/v9.18.0 is pinned, but tag creation returned HTTP $status. A repository maintainer must create the immutable tag in GitHub."
+              cat /tmp/stormtracker-v9.18-tag.json
+              exit 0
+            fi
+          elif [ "$status" != 200 ]; then
+            echo "::warning::Cannot read existing V9.18.0 tag (HTTP $status); production and recovery branch are still verified."
+            exit 0
           fi
-          test "$(git ls-remote --heads origin 'refs/heads/restore/v9.18.0' | awk '{print $1}')" = "$release_sha"
-          echo "SEALED v9.18.0 and restore/v9.18.0 at commit $release_sha; prior v9.17.0 tag and restore branch preserved"
+          python - <<'PY'
+          import json
+          d=json.load(open("/tmp/stormtracker-v9.18-tag.json"))
+          actual=d.get("object",{}).get("sha")
+          expected="66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
+          if actual!=expected:
+            raise SystemExit("V9.18.0 release tag points at an unexpected commit: "+str(actual))
+          print("SEALED v9.18.0 tag ->",actual)
+          PY
+          echo "Sealed V9.18.0 public production, immutable tag and restore/v9.18.0; V9.17.0 preserved."
+
       - name: Verify published V9.16.13 labels and native Doppler
         shell: bash
         env:

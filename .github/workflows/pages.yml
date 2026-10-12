@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           # Draft PR #71, pinned; never replace the protected production root.
-          ref: 94681ae3dd87637fe13b5ed4fa9db0868242f961
+          ref: 1b5f5bb58660fadb68849324bf299ba099241540
           path: preview-builds/volumetric-dbz
           persist-credentials: false
       - name: Checkout V9.14 candidate
@@ -168,7 +168,7 @@ jobs:
         run: |
           set -euo pipefail
           (cd preview-builds/volumetric-dbz && npm test)
-          test "$(git -C preview-builds/volumetric-dbz rev-parse HEAD)" = "94681ae3dd87637fe13b5ed4fa9db0868242f961"
+          test "$(git -C preview-builds/volumetric-dbz rev-parse HEAD)" = "1b5f5bb58660fadb68849324bf299ba099241540"
           test -f preview-builds/volumetric-dbz/frontend/src/volumetric-visual-v2.js
           test -f preview-builds/volumetric-dbz/frontend/tests/run-volumetric-visual-v2-tests.mjs
           test -f preview-builds/volumetric-dbz/frontend/tests/run-nsw-border-radar-site-labels-v1-tests.mjs
@@ -240,7 +240,7 @@ jobs:
           set -euo pipefail
           mkdir -p frontend/preview/volume-dbz
           cp -a preview-builds/volumetric-dbz/frontend/. frontend/preview/volume-dbz/
-          printf 'BoM dBZ volumetric V2 preview candidate %s\n' '94681ae3dd87637fe13b5ed4fa9db0868242f961' > frontend/preview/volume-dbz/BUILD.txt
+          printf 'BoM dBZ volumetric V2 preview candidate %s\n' '1b5f5bb58660fadb68849324bf299ba099241540' > frontend/preview/volume-dbz/BUILD.txt
           test -f frontend/preview/volume-dbz/src/volumetric-visual-v2.js
           mkdir -p frontend/preview/multi-radar
           cp -a preview-builds/multi-radar/frontend/. frontend/preview/multi-radar/
@@ -391,7 +391,7 @@ jobs:
           base="${PAGES_URL%/}"
           retry_curl() { curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors "$1"; }
           build="$(retry_curl "$base/preview/volume-dbz/BUILD.txt")"
-          grep -Fq "94681ae3dd87637fe13b5ed4fa9db0868242f961" <<< "$build"
+          grep -Fq "1b5f5bb58660fadb68849324bf299ba099241540" <<< "$build"
           html="$(retry_curl "$base/preview/volume-dbz/live3d-operational-v9.html")"
           grep -Fq 'id="reflectivityLegend"' <<< "$html"
           script="$(retry_curl "$base/preview/volume-dbz/src/border-radar-sites-v1.js")"
@@ -404,6 +404,10 @@ jobs:
           grep -Fq 'Radar dish icons on the map' <<< "$html"
           runtime="$(retry_curl "$base/preview/volume-dbz/src/live3d-operational-v9.js")"
           grep -Fq 'Doppler pending' <<< "$runtime"
+          grep -Fq 'point.source_low_level_dbzh ?? point.dbzh' <<< "$runtime"
+          measured="$(retry_curl "$base/preview/volume-dbz/src/measured-track-volume-v1.js")"
+          grep -Fq 'source_low_level_dbzh: inputDbz' <<< "$measured"
+          grep -Fq 'perpixel-height-v3' <<< "$html"
           grep -Fq 'dopplerIntegrated:false' <<< "$script"
           icon="$(retry_curl "$base/preview/volume-dbz/src/context-layers/radar-site-name-overlay-v1.js")"
           grep -Fq 'btn.textContent="📡"' <<< "$icon"

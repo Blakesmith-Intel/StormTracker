@@ -4,6 +4,7 @@ import {QLD_RADAR_SITES} from "../src/qld-radar-sites-v1.js";
 import {NSW_BORDER_RADAR_SITES,BORDER_RADAR_SITES,primaryRadarDopplerSites} from "../src/border-radar-sites-v1.js";
 import {reflectivityWindowForRegion,buildBomReflectivityTileUrl} from "../src/bom-wmts-loop-v2.js";
 import {RADARS} from "../src/config.js";
+import {createRadarSiteNameOverlay} from "../src/context-layers/radar-site-name-overlay-v1.js";
 import {chooseSupplementalRadarSites,MAX_DISPLAY_RADAR_SITES} from "../src/multi-radar-display-v9.js";
 
 assert.equal(Object.keys(QLD_RADAR_SITES).length,19,"Do not change the QLD-only radar source contract");
@@ -47,4 +48,53 @@ assert.match(overlay,/aria-label","Load "\+item\.site\.name\+" as primary radar"
 assert.match(overlay,/worldToWindowCoordinates/);
 assert.match(overlay,/scene\.postRender\.addEventListener/);
 assert.match(overlay,/btn\.addEventListener\("click"/);
+// Exercise the actual overlay event handler in a headless DOM/Cesium stub.
+// This is in addition to static markup checks above.
+const nodes=[];
+class Element {
+  constructor(tag){this.tag=tag;this.dataset={};this.style={};this.handlers={};this.hidden=false;}
+  setAttribute(key,value){this[key]=value;}
+  addEventListener(type,handler){this.handlers[type]=handler;}
+  appendChild(child){nodes.push(child);return child;}
+  remove(){this.removed=true;}
+}
+const container=new Element("main");
+const doc={createElement:tag=>new Element(tag)};
+let postRenderListener=null,removed=false,chosen=null,primary="66";
+const fakeScene={
+  canvas:{clientWidth:1200,clientHeight:900},
+  camera:{positionWC:{}},
+  globe:{ellipsoid:{}},
+  postRender:{addEventListener(handler){postRenderListener=handler;return()=>{removed=true;};}}
+};
+const fakeCesium={
+  Cartesian3:{fromDegrees(lon,lat){return {lon,lat};}},
+  SceneTransforms:{worldToWindowCoordinates(_scene,point){
+    return {x:580+(point.lon-149)*40,y:340+(point.lat+26)*28};
+  }},
+  EllipsoidalOccluder:class{isPointVisible(){return true;}}
+};
+const overlayInstance=createRadarSiteNameOverlay({
+  scene:fakeScene,CesiumRef:fakeCesium,container,documentRef:doc,
+  sites:BORDER_RADAR_SITES,onSelect:id=>{chosen=id;primary=id;},
+  getPrimary:()=>primary
+});
+assert.equal(overlayInstance.siteCount,22);
+assert.equal(typeof postRenderListener,"function");
+const newSite=nodes.find(node=>node.dataset.radarSiteId==="93");
+assert.ok(newSite,"Brewarrina label exists");
+assert.equal(newSite.hidden,false,"Brewarrina visible when camera shows location");
+let stopped=0,prevented=0;
+newSite.handlers.click({
+  stopPropagation(){stopped++;},preventDefault(){prevented++;}
+});
+assert.equal(chosen,"93","Click routes site ID to the existing selection callback");
+assert.equal(stopped,1);
+assert.equal(prevented,1);
+postRenderListener();
+assert.equal(newSite.dataset.primary,"true","New primary radar is highlighted");
+overlayInstance.destroy();
+assert.equal(removed,true,"Render listener removed cleanly");
+assert.equal(container.removed,undefined);
+assert.equal(newSite.handlers.click!==undefined,true);
 console.log("22-site QLD/NSW catalogue, radar WMTS bounds, clickable cyan geographic labels and 4-site cap verified.");

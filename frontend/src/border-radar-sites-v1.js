@@ -6,10 +6,10 @@ import {QLD_RADAR_SITES} from "./qld-radar-sites-v1.js";
 export const NSW_BORDER_RADAR_SITES=Object.freeze({
   "93":Object.freeze({
     id:"93",name:"Brewarrina",state:"NSW",latitude:-29.96,longitude:146.81,
-    halfSpanKm:128,dopplerProduct:null,dopplerLatitude:null,dopplerLongitude:null,
-    // BoM carries an IDR93I wind product, but StormTracker's QLD-only relay
-    // is not yet authorised for it; never silently attempt/claim Doppler.
-    dopplerAvailableAtBom:true,dopplerIntegrated:false,analysisGeorefVerified:false
+    halfSpanKm:128,dopplerProduct:"IDR93I",dopplerLatitude:-29.96,dopplerLongitude:146.81,
+    // BoM Brewarrina Doppler is authorised only by exact product ID.
+    // Geographic image calibration remains unverified until source-frame QA.
+    dopplerAvailableAtBom:true,dopplerIntegrated:true,analysisGeorefVerified:false
   }),
   "53":Object.freeze({
     id:"53",name:"Moree",state:"NSW",latitude:-29.50,longitude:149.85,
@@ -23,6 +23,12 @@ export const NSW_BORDER_RADAR_SITES=Object.freeze({
   })
 });
 
+export const NSW_BORDER_DOPPLER_PRODUCTS=Object.freeze({"93":"IDR93I"});
+export const BORDER_RADAR_DOPPLER_PRODUCTS=Object.freeze({
+  ...Object.fromEntries(Object.values(QLD_RADAR_SITES)
+    .filter(site=>site.dopplerProduct).map(site=>[site.id,site.dopplerProduct])),
+  ...NSW_BORDER_DOPPLER_PRODUCTS
+});
 export const BORDER_RADAR_SITES=Object.freeze({
   ...QLD_RADAR_SITES,
   ...NSW_BORDER_RADAR_SITES

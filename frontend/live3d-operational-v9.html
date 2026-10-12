@@ -79,11 +79,9 @@
     </section>
     <section id="legendDock" class="card" aria-label="Weather legends">
       <div id="legend">
-        <strong>2-D rain intensity · estimated mm/h</strong>
-        <div id="rainRateLegend" class="intensity-scale" aria-label="BoM reflectivity colour scale with approximate rain-rate equivalents"></div>
-        <div class="note" style="font-size:9px">BoM radar reflectivity colours · mm/h estimated from dBZ (Z=200R^1.6). Not a BoM rain-rate measurement or observed gauge rainfall.</div>
-        <strong style="display:block;margin-top:6px">3-D inferred intensity · same BoM colours</strong>
-        <div class="note">40–42 teal · 43–54 yellow/orange · 55–63 red · ≥64 very dark red. Volumes are inferred, not measured.</div>
+        <strong>BoM rain radar · reflectivity (dBZ)</strong>
+        <div id="reflectivityLegend" class="intensity-scale" aria-label="15-band original BoM reflectivity colour scale in dBZ"></div>
+        <div class="note" style="font-size:9px">Same original 15-band BoM colours for measured 2-D radar and inferred 3-D echoes. The 3-D display starts at 40 dBZ.</div>
       </div>
       <strong class="velocity-title">Doppler radial velocity · km/h</strong>
       <div id="dopplerVelocityLegend"><span class="note">BoM Doppler legend appears when a valid wind source is available.</span></div>
@@ -124,7 +122,7 @@
       <header><div class="river-gauge-info-heading"><span class="river-gauge-key river-gauge-key-large" aria-hidden="true"></span><div><span id="riverGaugeInfoKicker" class="map-info-kicker">RIVER GAUGE</span><strong id="riverGaugeInfoTitle">River gauge</strong></div></div><button id="closeRiverGaugeInfo" type="button" aria-label="Close river gauge details">×</button></header>
       <div id="riverGaugeInfoRows" class="metric"></div>
     </section>
-    <div id="mapTruthLabel">Measured 2-D BoM reflectivity (mm/h estimate) / inferred 3-D</div>
+    <div id="mapTruthLabel">Measured BoM reflectivity · dBZ / inferred 3-D structure</div>
   </main>
 </div>
 <dialog id="detailsDialog" aria-labelledby="detailsTitle">

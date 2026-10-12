@@ -1,11 +1,8 @@
 name: Deploy isolated Brewarrina Doppler preview relay
 
+# Manual deployment only: Cloudflare's current token cannot create this
+# isolated Worker. Do not retry on ordinary pushes or touch the live relay.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/deploy-preview-nsw-doppler.yml
   workflow_dispatch:
 
 permissions:

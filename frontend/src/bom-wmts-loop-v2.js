@@ -1,4 +1,4 @@
-import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
+import { BORDER_RADAR_SITES } from "./border-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";
 import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
 import { loadCompleteRadarTiles } from "./radar-tile-retry-v1.js?v=9.16-radar-recovery";
@@ -28,8 +28,8 @@ const SEQ_WINDOW = Object.freeze({
 
 export function reflectivityWindowForRegion(region = 'SEQ') {
   if (region === 'SEQ') return SEQ_WINDOW;
-  const site = QLD_RADAR_SITES[region];
-  if (!site) throw new Error(`Unknown Queensland radar site: ${region}`);
+  const site = BORDER_RADAR_SITES[region];
+  if (!site) throw new Error(`Unknown radar site: ${region}`);
   const R = 6378137, span = tileSpanM();
   const x = R * site.longitude * Math.PI / 180;
   const y = R * Math.log(Math.tan(Math.PI / 4 + site.latitude * Math.PI / 360));

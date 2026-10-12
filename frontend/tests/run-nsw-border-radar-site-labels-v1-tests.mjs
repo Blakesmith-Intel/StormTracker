@@ -19,8 +19,8 @@ for(const [id,name,lat,lon] of [["93","Brewarrina",-29.96,146.81],["53","Moree",
   assert.equal(radar.longitude,lon);
   assert.equal(RADARS[id].name,name);
   assert.equal(radar.analysisGeorefVerified,false);
-  assert.deepEqual(primaryRadarDopplerSites(id),id==="93"?["93"]:[],
-    "Only Brewarrina carries an authorised NSW Doppler product");
+  assert.deepEqual(primaryRadarDopplerSites(id),[],
+    "NSW stations remain reflectivity-only until the isolated preview relay is authorised");
   const w=reflectivityWindowForRegion(id);
   assert.ok(w.colStart>=0&&w.colEnd<=42&&w.rowStart>=0&&w.rowEnd<=32, "BoM WMTS matrix bounds");
   assert.ok(w.colEnd>=w.colStart&&w.rowEnd>=w.rowStart);
@@ -28,6 +28,7 @@ for(const [id,name,lat,lon] of [["93","Brewarrina",-29.96,146.81],["53","Moree",
   assert.equal(new URL(uri).searchParams.get("LAYER"),"atm_surf_air_precip_reflectivity_dbz");
 }
 assert.equal(NSW_BORDER_RADAR_SITES["93"].dopplerAvailableAtBom,true);
+assert.equal(NSW_BORDER_RADAR_SITES["93"].dopplerIntegrated,false);
 assert.deepEqual(primaryRadarDopplerSites("66"),["66"],"Existing Queensland Doppler remains untouched");
 assert.equal(MAX_DISPLAY_RADAR_SITES,4);
 assert.deepEqual(chooseSupplementalRadarSites("93",["53","28","66","50"],BORDER_RADAR_SITES),["53","28","66"]);

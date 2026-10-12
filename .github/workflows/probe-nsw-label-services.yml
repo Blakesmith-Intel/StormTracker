@@ -11,6 +11,17 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - name: Build same-origin NSW radar place snapshot from official point feeds
+        run: |
+          python scripts/build-nsw-radar-places.py --output /tmp/nsw-radar-places-v1.json
+          python - <<'PY'
+          import json,collections
+          p=json.load(open('/tmp/nsw-radar-places-v1.json'))
+          print('SNAPSHOT COUNTS',dict(collections.Counter(x['kind'] for x in p['places'])))
+          print('SNAPSHOT BYTES',__import__('os').path.getsize('/tmp/nsw-radar-places-v1.json'))
+          for n in ['Brewarrina','Moree','Grafton','Tweed Heads']:
+              print('SNAPSHOT ANCHOR',n,[x for x in p['places'] if x['name'].lower()==n.lower()][:2])
+          PY
       - name: Check browser origin NSW city/town/village/locality ArcGIS queries
         run: |
           python - <<'PY'

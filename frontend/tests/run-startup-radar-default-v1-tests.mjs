@@ -23,7 +23,7 @@ assert.match(runtime, /QLD_RADAR_SITES\[DEFAULT_RADAR_SITE_ID\]\.latitude/);
 assert.match(runtime, /if \(site\.id !== DEFAULT_RADAR_SITE_ID\) \$\("radarSite"\)\.append\(option\)/);
 assert.match(runtime, /\$\("radarSite"\)\.value = DEFAULT_RADAR_SITE_ID;\s*configureRadarSite\(\)/);
 assert.match(runtime, /function selectedRadarRegion\(\) \{ return \$\("radarSite"\)\.value; \}/);
-assert.match(runtime, /function resetView\(\) \{\s*const site = QLD_RADAR_SITES\[selectedRadarRegion\(\)\]/);
+assert.match(runtime, /function resetView\(\) \{\s*const site = BORDER_RADAR_SITES\[selectedRadarRegion\(\)\]/);
 assert.match(runtime, /resetView\(\);\s*updateLoopButtonLabel\(\)/);
 
 // ID 66 must have real geography and a single genuine Doppler source rather

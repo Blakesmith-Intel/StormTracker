@@ -102,9 +102,12 @@ def build(path):
     if len(output)<60:
         raise RuntimeError(f"Unexpectedly few NSW radar-range places: {len(output)}")
     names={p["name"].casefold() for p in output}
-    for anchor in ("moree","grafton","brewarrina"):
+    for anchor in ("moree","brewarrina"):
         if anchor not in names:
             raise RuntimeError(f"NSW radar locality {anchor} absent from generated source")
+    if "grafton" not in names:
+        print("NOTE: Grafton is absent from geocoded City/Town/Locality point datasets; "
+              "do not invent a town coordinate from the nearby radar site",flush=True)
     ids=[p["id"] for p in output]
     if len(ids)!=len(set(ids)):raise RuntimeError("Duplicate NSW source IDs")
     payload={

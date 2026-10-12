@@ -7,11 +7,11 @@
 <body><header><h1>⛈ StormTracker — Inferred Volume V2</h1><div class="tag">ISOLATED VISUAL PROTOTYPE · SYNTHETIC TEST STORM · NOT LIVE BOM</div></header>
 <main><aside>
 <section><div class="heading">Rendering style</div><div id="mode"><button id="old" aria-pressed="false">Original columns</button><button id="new" aria-pressed="true">Enhanced volume</button></div></section>
-<section><div class="heading">Storm controls</div><label for="dbz">Reference reflectivity: <b id="dbzValue">55 dBZ</b></label><input type="range" id="dbz" min="40" max="70" value="55" step="1"><label for="density">Visual fullness: <b id="densityValue">70%</b></label><input type="range" id="density" min="25" max="100" value="70" step="5"><label for="stretch">Vertical exaggeration: <b id="stretchValue">1.5×</b></label><input type="range" id="stretch" min="1" max="2.5" value="1.5" step=".1"></section>
+<section><div class="heading">Storm controls</div><label for="dbz">Reference reflectivity: <b id="dbzValue">55 dBZ</b></label><input type="range" id="dbz" min="40" max="70" value="55" step="1"><label for="density">Visual fullness: <b id="densityValue">70%</b></label><input type="range" id="density" min="25" max="100" value="70" step="5"><label for="stretch">Vertical exaggeration: <b id="stretchValue">1.0×</b></label><input type="range" id="stretch" min="1" max="2.5" value="1.0" step=".1"></section>
 <section><div class="heading">View controls</div><button id="reset">Reset camera</button> <button id="spin" aria-pressed="false">Auto rotate</button><div class="notice" style="margin-top:10px">Drag to orbit · Mouse wheel to zoom · Touch drag to rotate</div></section>
 <section><div class="heading">Illustrative storm characteristics</div><div class="metric"><b id="structure">Developing tower</b><span>Visual interpretation only</span></div><div class="metric"><b id="height">—</b><span>Relative model height, not measured echo-top altitude</span></div></section>
 <div class="notice">This page demonstrates cloud-like 3D presentation in a self-contained browser renderer. Reflectivity is synthetic and the slider indicates a representative dBZ band, not an exact measured peak. No displayed volume or apparent height should be used for operational decisions. The existing 40 dBZ detection rule and production application are unchanged.</div>
-</aside><div id="viewport"><canvas id="cv"></canvas><div id="overlay"><strong id="caption">Enhanced inferred cloud volume</strong><span>Model-space visualisation · rotate to inspect shape</span></div><div id="foot">Synthetic reflectivity bands · ≥40 green · ≥50 yellow · ≥55 orange · 60–64 purple · ≥65 black · No measured echo-top heights</div></div></main>
+</aside><div id="viewport"><canvas id="cv"></canvas><div id="overlay"><strong id="caption">Enhanced inferred cloud volume</strong><span>Model-space visualisation · rotate to inspect shape</span></div><div id="foot">BoM reflectivity bands (dBZ) · ≥40 dark teal · ≥43 yellow · ≥46 amber · ≥55 red · ≥64 near-black · No measured echo-top heights</div></div></main>
 <script>
 const el=id=>document.getElementById(id),cv=el('cv'),ctx=cv.getContext('2d',{alpha:false}),wrap=el('viewport');
 let enhanced=true,yaw=-.55,pitch=.48,zoom=1,drag=null,auto=false,last=0,particles=[];
@@ -26,7 +26,7 @@ if(enhanced){x+=(rnd(j+31,k+81)-.5)*.13;y+=(rnd(j+91,k+17)-.5)*.13;z=H*(k+.35)/n
 const radial=rr, falloff=.2+.8*t, strength=dbz+2-falloff*(12*radial+19*Math.pow(fr,1.7)*(1-.55*t)+4*Math.sin(fr*9+theta*2));
 if(strength<40||rnd(j+121,k+141)>(enhanced?full*.90+.09:full*.7+.28))continue;
 // Match the established StormTracker operational inferred-volume colours.
-let hue=strength>=65?'#000000':strength>=60?'#bd2fff':strength>=55?'#ff5a22':strength>=50?'#ffd21a':'#00b96b';
+let hue=strength>=64?'#280000':strength>=61?'#780000':strength>=58?'#c80000':strength>=55?'#ff0000':strength>=52?'#ff6400':strength>=49?'#ff9600':strength>=46?'#ffc800':strength>=43?'#ffff00':'#006666';
 pts.push({x,y,z,r:enhanced?(10+12*full)*(1.06-rr*.33):2.5,colour:hue,alpha:enhanced?.17+.13*(1-rr):.94,strength});}}
 particles=pts;el('caption').textContent=enhanced?'Enhanced inferred cloud volume':'Original column-style rendering';}
 function project(p,W,H){const c=Math.cos(yaw),s=Math.sin(yaw), cp=Math.cos(pitch),sp=Math.sin(pitch),rx=p.x*c-p.y*s,ry=p.x*s+p.y*c;const v=ry*cp+p.z*sp;const depth=ry*sp-p.z*cp;let scale=Math.min(W,H)*.17*zoom;return {x:W*.5+rx*scale,y:H*.69-v*scale,depth,r:scale};}

@@ -33,7 +33,11 @@ test("Track intensity pins preserve measured source palette, not weaker inferred
 });
 test("Vertical reflectivity remains inferred, rather than filled with surface measured dBZ",()=>{
   assert.ok(controller.includes("color: colourForDbzh(point.dbzh)"));
-  assert.ok(controller.includes("},point.alpha,volumePercent)"));
+  // Preserve per-point scientific confidence/transparency with both the
+  // original point renderer and the optional dBZ-coloured cloud glyph renderer.
+  assert.match(controller,/addVolumeGlyph\(hybridTrackVolumeCollection/);
+  assert.match(controller,/\},point\.alpha,volumePercent,point\.source_low_level_dbzh \?\? point\.dbzh/);
+  assert.match(controller,/return addVolumeDisplayPoint\(collection,options,sourceAlpha,percent\)/);
   assert.match(controller,/shouldDisplayMeasuredTrackPoint\(point,displayedMinimumDbz\)/);
   assert.match(controller,/BoM measured 2-D reflectivity core \(projected\)/);
   assert.match(measured,/const inferred =\s*inferColumn/);

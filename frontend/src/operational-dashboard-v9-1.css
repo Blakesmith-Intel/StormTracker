@@ -867,3 +867,44 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   .multi-radar-panel { right:5px; top:49px; max-height:min(65dvh,440px); padding:8px; }
   .multi-radar-checklist { max-height:170px; }
 }
+
+/* Minimal radar site map symbols: 18px line-art glyphs on transparent
+   32px touch targets. No coloured emoji, border, name or background. */
+.radar-site-labels {
+  position:absolute;inset:0;
+  z-index:calc(var(--stormtracker-geo-label-z) + 120);
+  pointer-events:none;overflow:hidden;contain:layout style;
+}
+.radar-site-label {
+  position:absolute;transform:translate(-50%,-50%);
+  display:grid;place-items:center;
+  width:32px;height:32px;min-width:0;min-height:0;
+  padding:0;margin:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none;
+  color:#8fdbe6;opacity:.86;
+  cursor:pointer;pointer-events:auto;touch-action:manipulation;
+  outline-offset:1px;user-select:none;
+}
+.radar-site-glyph {
+  display:block;width:18px;height:18px;
+  fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linecap:round;stroke-linejoin:round;
+  pointer-events:none;
+  filter:drop-shadow(0 1px 1px #07131fcc);
+}
+.radar-site-label[data-primary="true"] {
+  color:#bcf5fa;opacity:1; background:transparent;border:0;
+}
+.radar-site-label:hover,
+.radar-site-label:focus-visible {
+  color:#f4ffff;opacity:1;
+  background:transparent;border:0;
+}
+.radar-site-label:focus-visible {
+  outline:2px solid #a4f7ff;border-radius:4px;
+}
+.radar-site-label[hidden] {display:none!important}
+@media (max-width:700px) {
+  .radar-site-label {width:34px;height:34px}
+  .radar-site-glyph {width:17px;height:17px}
+}

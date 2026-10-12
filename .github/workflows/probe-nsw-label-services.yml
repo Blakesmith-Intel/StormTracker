@@ -24,6 +24,35 @@ jobs:
               raw=r.read()
               print("NSW RESPONSE",path,"status",r.status,"CORS",r.headers.get("access-control-allow-origin"),"len",len(raw))
             return json.loads(raw)
+          endpoints=[
+            ("NSW GNB official names",
+              "https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/GNB_Place_name_Public/FeatureServer/0"),
+            ("NSW Spatial Collaboration Suburbs",
+              "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/2")
+          ]
+          for title,endpoint in endpoints:
+            print("ALT SOURCE",title,endpoint)
+            for opts in [
+              {"f":"json","where":"1=1","returnCountOnly":"true"},
+              {"f":"geojson","where":"1=1","outFields":"*",
+                "returnGeometry":"true","outSR":"4326","resultRecordCount":"2"},
+              {"f":"geojson","where":"1=1",
+                "geometry":"148.5,-30.5,151,-28.8","geometryType":"esriGeometryEnvelope",
+                "spatialRel":"esriSpatialRelIntersects","inSR":"4326",
+                "outFields":"objectid,geographical_name,place_name,designation,locality,status",
+                "returnGeometry":"true","outSR":"4326","resultRecordCount":"5"}
+            ]:
+              q=urllib.parse.urlencode(opts)
+              url=endpoint+"/query?"+q
+              try:
+                request=urllib.request.Request(url,headers={"Origin":"https://blakesmith-intel.github.io","User-Agent":"StormTracker-NSW-Radar-Labels/1.0"})
+                with urllib.request.urlopen(request,timeout=25) as response:
+                  body=response.read()
+                  print("ALT HEADERS",title,"status",response.status,"CORS",response.headers.get("access-control-allow-origin"),"bytes",len(body),"content-type",response.headers.get("content-type"))
+                data=json.loads(body)
+                print("ALT CONTENT",title,"count",data.get("count"),"error",data.get("error"),"features",str(data.get("features",[]))[:1700])
+              except Exception as error:
+                print("ALT ERROR",title,repr(error))
           for layer in range(4):
             try:
               count=read(layer,{"where":"generalname IS NOT NULL","returnCountOnly":"true","f":"json"})

@@ -1,0 +1,43 @@
+name: Probe NSW radar-range place-name sources
+on:
+  push:
+    branches: ["fix/nsw-radar-range-place-labels-20261013"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check browser origin NSW city/town/village/locality ArcGIS queries
+        run: |
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,collections
+          root="https://spatial.industry.nsw.gov.au/arcgis/rest/services/PUBLIC/TopoBaseMap/MapServer"
+          sites=[("Brewarrina",146.81,-29.96),("Moree",149.85,-29.50),("Grafton",152.97,-29.62)]
+          def read(path,params,limit=30):
+            url=root+"/"+str(path)+"/query?"+urllib.parse.urlencode(params)
+            req=urllib.request.Request(url,headers={"Origin":"https://blakesmith-intel.github.io","User-Agent":"StormTracker-NSW-Radar-Labels/1.0"})
+            with urllib.request.urlopen(req,timeout=limit) as r:
+              raw=r.read()
+              print("NSW RESPONSE",path,"status",r.status,"CORS",r.headers.get("access-control-allow-origin"),"len",len(raw))
+            return json.loads(raw)
+          for layer in range(4):
+            try:
+              count=read(layer,{"where":"generalname IS NOT NULL","returnCountOnly":"true","f":"json"})
+              print("NSW TOTAL",layer,count)
+              params={"where":"generalname IS NOT NULL","outFields":"objectid,generalname"+(",population,placetype_desc" if layer==1 else ""),
+                "returnGeometry":"true","outSR":"4326","resultRecordCount":"3","resultOffset":"0","f":"geojson"}
+              result=read(layer,params)
+              print("NSW GEOJSON",layer,"keys",list(result),"error",result.get("error"),"examples",str(result.get("features",[]))[:550])
+              for name,lon,lat in sites:
+                params={"where":"generalname IS NOT NULL","geometry":f"{lon-1.3},{lat-1.15},{lon+1.3},{lat+1.15}",
+                  "geometryType":"esriGeometryEnvelope","spatialRel":"esriSpatialRelIntersects",
+                  "inSR":"4326","returnCountOnly":"true","f":"json"}
+                ct=read(layer,params)
+                print("NSW RADAR",layer,name,ct.get("count"),"error",ct.get("error"))
+            except Exception as e:
+              print("NSW ERROR",layer,repr(e))
+          PY

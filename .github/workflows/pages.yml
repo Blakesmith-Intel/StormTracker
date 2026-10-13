@@ -563,7 +563,7 @@ jobs:
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
           grep -Fq '/preview/radar-history-fix/' "$destination/src/radar-source.js"
-          grep -Fq 'no prior ' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'no prior ' "$destination/src/radar-source-fallback-v1.js"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews

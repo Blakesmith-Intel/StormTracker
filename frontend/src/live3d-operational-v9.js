@@ -110,7 +110,7 @@ import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
 import { stormTrackPresentation } from "./storm-track-presentation-v1.js?v=40dbz-v1";
-import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
+import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.18.8-track-visibility";
 import { clearReflectivityOverlaysForDoppler } from "./reflectivity-overlay-mode-v1.js?v=20261013";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -161,15 +161,15 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.15.0-unplanned";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.18.8-gpu-pick";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.14.0";
+} from "./context-layers/power-outages-operational-v1.js?v=9.18.8-gpu-pick";
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.13.2";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.18.8-gpu-pick";
 
 import {
   initialiseOperationalQfdTechnicalRescues

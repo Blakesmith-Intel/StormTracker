@@ -1,88 +1,20 @@
-# StormTracker production baseline — V9.9.1
+# StormTracker — current recovery and release procedure
 
-V9.9.1 is the current accepted full production baseline. It preserves the sealed
-V9.9.0 wishlist-item-1 feature set and adds the accepted Doppler playback
-presentation refinement.
+As of 13 October 2026, the **user-accepted working diagnostic source** is `acfa0ebd3717a793369e3e887e2d1a54785620b7`, preserved at `restore/v9.18-accepted-diagnostic-20261013`.
 
-## Authoritative runtime
+The **sealed production source** is `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` (V9.18.0). Do not move this reference or promote the diagnostic build without explicit user authorisation.
 
-Accepted runtime commit:
+The entire repository state immediately before administration cleanup is preserved at `archive/pre-cleanup-20261013` (commit `3633307ec502ad85359a2e4e7d41cbcac22005c4`).
 
-```text
-a14a5f458d2e79b8afabe51a5f5f797fdeea1366
-```
+## Recovery
 
-That build passed the complete frontend validation gate and was deployed through
-the normal GitHub Pages workflow on 8 October 2026 (AEST).
+1. Use `git fetch origin` and inspect the source commit, not a similarly named old branch.
+2. For **accepted QA** restore a new branch at `acfa0ebd3717a793369e3e887e2d1a54785620b7`; leave the original recovery branch intact.
+3. For **sealed production** use a new branch at `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` and run the full release regression suite.
+4. To restore old installer/deployment experiments, inspect `archive/pre-cleanup-20261013` or individual historical commits. Do not restore the entire old multi-preview Pages workflow to `main`.
+5. Verify the public `/BUILD.txt` and `/preview/radar-history-fix/BUILD.txt` match their pinned commits after a deployment.
+6. Run `npm test` and `node --check relay/worker.js` before promoting a build; perform desktop/mobile visual acceptance.
 
-The complete sealed repository recovery reference is:
+## No surprises
 
-```text
-restore/v9.9.1
-```
-
-That branch includes the accepted runtime plus the final V9.9.1 README, release
-record, restore notes and future-development handover.
-
-## Restore without overwriting current work
-
-```bash
-git fetch origin
-git switch -c recovery/v9.9.1 origin/restore/v9.9.1
-npm test
-```
-
-For future feature work:
-
-```bash
-git fetch origin
-git switch -c feature/next-work origin/restore/v9.9.1
-npm test
-```
-
-Do not move or reuse `restore/v9.9.1`. Future accepted production changes should
-receive a new recovery reference.
-
-## Production contract preserved at this baseline
-
-- Browser-native static product; no localhost or user-managed runtime is required.
-- All 19 public Queensland radar sites remain selectable.
-- Five-minute automatic source checks remain the live cadence.
-- Radar-only loops advance on the newest reflectivity independently of Doppler
-  unless the Doppler overlay is explicitly enabled.
-- Measured 2-D reflectivity controls storm identity and horizontal motion.
-- Live vertical structure remains inferred.
-- Doppler remains radial velocity; calibrated analytical use remains restricted
-  to 08/50/66.
-- Doppler remains constrained to genuine shared 30-minute history when enabled.
-- Doppler imagery is double-buffered for display: the current genuine matched
-  frame remains visible until the replacement is ready, then the layers crossfade.
-- Adjacent radar frames that reuse the same genuine Doppler source frame do not
-  rebuild that layer.
-- Unmatched radar frames do not invent Doppler data; the previous Doppler display
-  fades out briefly.
-- Doppler smoothing changes presentation only. Decoding, radial velocities,
-  matching tolerance, georegistration and analytical samples are unchanged.
-- Radar-only history can accumulate to a rolling three hours per viewed radar via
-  browser IndexedDB, with roughly four hours retained as a storage buffer.
-- Source-aware loop choices never claim unsupported fixed windows.
-- Bounded temporal interpolation may fill missing display slots only between real
-  observations and only for gaps of 30 minutes or less.
-- Temporally inferred radar frames remain display-only and are excluded from
-  tracking, Doppler analysis and scoring.
-- Automatic cache/history backfill triggers a chronological tracking rebuild so
-  the displayed loop expands without a manual refresh.
-- Playback slider bounds follow the complete dynamically loaded frame history.
-- Street/OpenStreetMap and GA satellite basemaps are switchable without resetting
-  radar, camera, tracking or playback state.
-- GA satellite mode uses Geoscience Australia's cached Landsat-derived imagery and
-  a transparent place-name/boundary reference overlay.
-- Optional 3-D terrain uses ArcGIS WorldElevation3D/Terrain3D and falls back to the
-  ellipsoid if unavailable.
-- Active camera movement temporarily relaxes terrain mesh detail and restores full
-  detail after the gesture settles; touch and wheel camera updates are batched to
-  avoid redundant renders.
-- Track selection, labels, mobile controls and the +90-minute motion cone remain
-  protected baseline behaviour.
-
-Historical recovery references, including `restore/v9.9.0`, remain unchanged.
+`main` is not the deployed production release. The Pages workflow deliberately builds the root from the pinned sealed production source and a *separate* preview from the accepted diagnostic source. Production and the recovery ref must remain immutable.

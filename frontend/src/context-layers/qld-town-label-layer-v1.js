@@ -240,11 +240,14 @@ export function createQueenslandTownLabelLayer({
     if(!navigating){
       // One settled screen-space declutter, followed by an optional
       // viewport-bounded official locality load.
+      // Respect the gazetteer rate limit, but schedule the FINAL load rather
+      // than silently skipping it if the last request was recent.
+      const afterThrottle=Math.max(650,lastLocalityRequest+2550-Date.now());
       settleTimer=setTimeout(()=>{
         settleTimer=null;
         if(destroyed||navigating)return;
         draw(true);
-      },650);
+      },afterThrottle);
     }
   }
   function setMode(nextMode){

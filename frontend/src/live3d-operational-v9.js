@@ -4623,16 +4623,24 @@ async function loadLatest() {
   const renderToken =
     ++hybridSceneRenderToken;
 
+  // Latest-only mode follows the same measured-source atomic handover as
+  // loop playback, with original BoM timestamps and no secondary flicker.
+  if(additionalRadarSiteIds.length && !frame.sourceMetadata?.temporalInference)
+    await supplementalRadarDisplay.prepare(frame.observedUtc);
+  if(renderToken!==hybridSceneRenderToken)return;
   const surfaceApplied =
     await renderSurface(
       frame,
-      renderToken
+      renderToken,{
+        onBeforeReveal:()=>supplementalRadarDisplay.commit(
+          frame.observedUtc,{alpha:Number($("radarOpacity").value)/100}
+        )
+      }
     );
 
   if (!surfaceApplied) {
     return;
   }
-  showSupplementalRadarSites(frame);
 
   renderInferredVolume(
     frame
@@ -5040,6 +5048,7 @@ $("minimumDbzh").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(
@@ -5067,6 +5076,7 @@ $("occupancyThreshold").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(
@@ -5094,6 +5104,7 @@ $("verticalScale").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(
@@ -5119,6 +5130,7 @@ $("pointSize").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(

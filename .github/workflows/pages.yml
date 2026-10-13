@@ -549,6 +549,13 @@ jobs:
           grep -Fq 'label-gpu-v2-live-window' "$destination/index.html"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
+      - name: Checkout pinned diagnostic hover guard (authenticated)
+        uses: actions/checkout@v4
+        with:
+          ref: 51057b789b8d34ced80b0bf0a3201ff21e4e886c
+          path: preview-builds/hover-gpu-guard
+          persist-credentials: false
+
       - name: Stage bounded source-history and genuine-cache fallback browser QA
         shell: bash
         run: |
@@ -558,16 +565,12 @@ jobs:
           # Same Cesium, BoM, terrain, weather and context code as the prior
           # label-gpu experiment; only the path activates cached-source rescue.
           cp -a frontend/preview/label-gpu-guard/. "$destination/"
-          # Apply the isolated, pinned outage-hover WebGL pick guard ONLY to
-          # this preview; production and other QA previews remain unchanged.
-          curl --fail --silent --show-error --location --retry 3 \
-            https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/6fea656466eb56b56daba330daa7cefe35a4b77c/frontend/src/context-layers/power-outages-operational-v1.js \
-            -o "$destination/src/context-layers/power-outages-operational-v1.js"
-          grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/power-outages-operational-v1.js"
-          curl --fail --silent --show-error --location --retry 3 \
-            https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/1e1dc4c23ff8572d623b5b05e7cae55e03b3670d/frontend/src/context-layers/river-gauges-operational-v1.js \
-            -o "$destination/src/context-layers/river-gauges-operational-v1.js"
-          grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/river-gauges-operational-v1.js"
+          # Copy reviewed fixes from an authenticated checkout; unauthenticated
+          # raw.githubusercontent.com requests can 404 for private repositories.
+          for filename in power-outages-operational-v1.js river-gauges-operational-v1.js flood-road-closures-operational-v1.js; do
+            cp "preview-builds/hover-gpu-guard/frontend/src/context-layers/$filename" "$destination/src/context-layers/$filename"
+            grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/$filename"
+          done
           printf 'BO M BOUNDED RADAR HISTORY QA %s; V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"

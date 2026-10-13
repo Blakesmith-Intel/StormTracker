@@ -5,7 +5,7 @@ import { fetchNswNearbyLocalities, nswLocalityViewBounds, expandNswLocalityBound
 import { rankQueenslandTowns, sameGeographicSettlement, layoutTownLabels, townLabelTypography }
   from "./qld-town-label-declutter-v1.js?v=9.16.12";
 import { fetchQldNearbyLocalities, expandLocalityBounds, localityBoundsContain,
-  qldLocalityViewBounds } from "./qld-nearby-localities-v1.js?v=9.13.4";
+  qldLocalityViewBounds } from "./qld-nearby-localities-v1.js?v=9.18.5-adaptive-bounds";
 
 // Cesium camera.pitch is not reliable following lookAt frame transforms.
 // Measure actual line of sight relative to the ellipsoid surface normal.

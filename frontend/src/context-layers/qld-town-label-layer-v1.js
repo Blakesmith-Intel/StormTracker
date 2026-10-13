@@ -174,7 +174,11 @@ export function createQueenslandTownLabelLayer({
     const key=fingerprint();
     if(!force && key===lastFingerprint)return selectedIds;
     const now=Date.now();
-    if(!force && now-lastCalculation<170)return selectedIds;
+    // While a phone is moving, keep geographic anchors following EVERY
+    // render but run the expensive QLD+NSW declutter scan less often.
+    // Desktop remains at its established 170ms layout cadence.
+    const layoutIntervalMs=(scene.canvas?.clientWidth??0)<700?360:170;
+    if(!force && now-lastCalculation<layoutIntervalMs)return selectedIds;
     lastCalculation=now;lastFingerprint=key;
     const camera=scene.camera,canvas=scene.canvas;
     const width=canvas?.clientWidth??0,height=canvas?.clientHeight??0;

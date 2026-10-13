@@ -445,6 +445,11 @@ const terrainManager =
       setTerrainStatus
   });
 
+// Only the isolated /preview/street-only/ route opts in. Every other
+// preview and sealed production path retains its normal basemap behaviour.
+const STREET_ONLY_PERFORMANCE_TEST =
+  window.location.pathname.includes("/preview/street-only/");
+
 function setBasemapStatus(
   message,
   kind = "ok"
@@ -466,11 +471,25 @@ basemapManager =
     Cesium,
     viewer,
     suspendDetailDuringNavigation:true,
+    forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST,
     storage:
       window.localStorage,
     onStatus:
       setBasemapStatus
   });
+
+if(STREET_ONLY_PERFORMANCE_TEST){
+  // Remove the choice entirely for unambiguous comparison. The manager
+  // independently guards programmatic switches and stored satellite prefs.
+  const select=$("basemapSelect");
+  for(const option of [...select.options]){
+    if(option.value!==BASEMAP_IDS.STREET)option.remove();
+  }
+  select.value=BASEMAP_IDS.STREET;
+  select.disabled=true;
+  select.setAttribute("aria-label",
+    "Street-only performance test; satellite imagery disabled");
+}
 
 try {
   const initialBasemap =

@@ -32,3 +32,17 @@ Build and validate **candidates**, not official severe thunderstorm warnings:
 ## Operational constraint
 
 StormTracker is a **situational-awareness viewer**. It is not an official BoM warning system and must not be presented as an emergency-management decision-making tool. Candidate classifications must visibly identify their source timestamp, unsupported/unavailable conditions and the experimental nature of the inference.
+
+## 14 October 2026 source-validation implementation
+
+Source inspection found the existing `bom-doppler-decoder-v1.js` reads a **19-swatch, -70 to +70 km/h colour-image palette**. This does not provide independently verified radial measurements above ±70 km/h, even though actual radar hardware may have a higher Nyquist velocity. A wind-warning threshold cannot be inferred by extending that scale.
+
+New isolated, fail-closed research modules:
+
+- `frontend/src/doppler-source-validation-v10.js`: verifies allowed radar site, source observation timestamp, optional freshness, geographic/sign/aliasing verification flags and whether claimed range exceeds the colour image's measurable palette. Detectability of >=90 and >=125 km/h radial thresholds is separately reported. A favourable verification flag is **not** a claim that the current upstream feed has been calibrated.
+- `frontend/src/circulation-candidates-v10.js`: research-only spatially coherent inbound/outbound radial-velocity couplets, supported **only** for separately validated quantitative velocity sources. It does not diagnose rotation, identify tornadoes or show alerts.
+- `frontend/tests/run-doppler-v10-validation-tests.mjs`: negative/positive test vectors, source mismatch, stale timestamps, unsupported radars, aliasing status, palette range and required sample clusters. Automatically included by existing npm-test discovery.
+
+**Live integration is intentionally withheld:** the current public BoM image cannot satisfy the quantitative-source gate and does not establish reliable high-wind or rotation thresholds. Before a browser detection preview, obtain and verify a lawful machine-readable quantitative Doppler velocity source including scan origin, azimuth/elevation, Nyquist/dealiasing, geographic registration, provenance and coverage by radar site. Correlate against historical measured observations. No fake high-speed measurements or automated destructive/tornado warnings.
+
+Authoritative background: https://www.bom.gov.au/resources/learn-and-explore/radar-and-equipment-knowledge-centre/weather-radars and https://www.bom.gov.au/resources/learn-and-explore/severe-weather-knowledge-centre/severe-weather-and-coastal-hazard-warning-services .

@@ -60,11 +60,14 @@ export function fitSelectedRadarSites(primary,extras,sites) {
 // Supplemental handovers do NOT delay primary radar playback or tracking.
 export function createSupplementalRadarDisplay({
   imageryLayers,scene,loadFrame,prepareProvider,createLayer,
-  getWindow,onStatus=()=>{},maxCached=18,retireLayer=null
+  getWindow,onStatus=()=>{},maxCached=18,retireLayer=null,
+  onDisplay=()=>{},onHide=()=>{},stageTimeoutMs=2200
 }) {
   let primary="",extras=[],generation=0,lastKey="",opacity=1;
   let targetUtc=null;
   const controllers=new Map(),cache=new Map(),displayedUtc=new Map();
+  const staged=new Map();
+  let preparingKey="",preparingPromise=null;
 
   function controllerFor(site) {
     if (!controllers.has(site)) {
@@ -79,6 +82,8 @@ export function createSupplementalRadarDisplay({
     generation++;
     lastKey="";
     targetUtc=null;
+    clearStaged();
+    for(const site of displayedUtc.keys())onHide(site);
     displayedUtc.clear();
     for (const controller of controllers.values()) controller.reset();
     controllers.clear();
@@ -113,6 +118,151 @@ export function createSupplementalRadarDisplay({
     cache.set(key,task);
     while(cache.size>maxCached) cache.delete(cache.keys().next().value);
     try{return await task;}catch(error){cache.delete(key);throw error;}
+  }
+
+  function removeStagedLayer(layer){
+    if(!layer)return;
+    if(retireLayer && retireLayer(layer))return;
+    imageryLayers.remove(layer,true);
+  }
+  function clearStaged(){
+    preparingKey="";
+    preparingPromise=null;
+    for(const {layer} of staged.values())removeStagedLayer(layer);
+    staged.clear();
+  }
+  // A decoded WMTS SingleTile is prepared UNDER the still-visible previous
+  // image. Only the primary radar's beforeReveal callback may expose it.
+  // Therefore a secondary window never flashes off between valid frames and
+  // no two selected windows display different observation timestamps.
+  function waitForStagedTile(layer,valid){
+    return new Promise(resolve=>{
+      let done=false,frames=0,readyFrames=0,detach=()=>{};
+      let timeoutId;
+      const finish=ok=>{
+        if(done)return;
+        done=true;detach();clearTimeout(timeoutId);resolve(ok);
+      };
+      detach=scene.postRender.addEventListener(()=>{
+        if(!valid()){finish(false);return;}
+        frames++;
+        const ready=scene.globe?.tilesLoaded===true || frames>=3;
+        readyFrames=ready?readyFrames+1:0;
+        if(frames>=2 && readyFrames>=1)finish(true);
+        else scene.requestRender();
+      });
+      timeoutId=setTimeout(()=>finish(false),stageTimeoutMs);
+      scene.requestRender();
+    });
+  }
+  async function stageSite(site,index,utc,mine,key){
+    const valid=()=>mine===generation && preparingKey===key;
+    let layer=null;
+    try{
+      // Per-site deadline: optional windows must not hang the primary clock.
+      const withDeadline=promise=>Promise.race([
+        promise,
+        new Promise((_,reject)=>setTimeout(
+          ()=>reject(new Error("Optional source preparation timed out")),
+          stageTimeoutMs
+        ))
+      ]);
+      const frame=await withDeadline(cachedFrame(site,utc));
+      if(!valid())return null;
+      if(frame.observedUtc!==utc || frame.sourceMetadata?.temporalInference)
+        throw Error("Supplementary scan is not the requested genuine UTC");
+      const earlier=[getWindow(primary),...extras.slice(0,index).map(id=>getWindow(id))];
+      const masked=maskPreviouslyDisplayedTiles(frame,earlier);
+      const own=getWindow(site);
+      if(masked.sourceMetadata.overlappingTilesMasked===
+        (own.rowEnd-own.rowStart+1)*(own.colEnd-own.colStart+1))return null;
+      const provider=await withDeadline(prepareProvider(masked));
+      if(!valid())return null;
+      layer=createLayer(provider);
+      layer.alpha=.001;
+      // Keep the outgoing measured scan fully visible until atomic adoption.
+      const previous=controllerFor(site).currentLayer;
+      if(previous && imageryLayers.indexOf(previous)>=0)
+        imageryLayers.add(layer,imageryLayers.indexOf(previous));
+      else imageryLayers.add(layer);
+      const ready=await waitForStagedTile(layer,valid);
+      if(!valid() || !ready){
+        removeStagedLayer(layer);
+        return null;
+      }
+      return {site,layer,frame:masked};
+    }catch(error){
+      if(layer)removeStagedLayer(layer);
+      if(valid())console.warn("Supplemental BoM scan unavailable",site,utc,error);
+      return null;
+    }
+  }
+  function prepare(utc){
+    if(!primary || !extras.length || !utc)return Promise.resolve([]);
+    const key=primary+"|"+extras.join(",")+"|"+utc;
+    if(preparingKey===key && preparingPromise)return preparingPromise;
+    if(extras.every(site=>displayedUtc.get(site)===utc &&
+      controllerFor(site).currentLayer?.show!==false))return Promise.resolve([]);
+    ++generation;
+    clearStaged();
+    const mine=generation;
+    preparingKey=key;
+    preparingPromise=Promise.all(extras.map((site,index)=>
+      displayedUtc.get(site)===utc && controllerFor(site).currentLayer
+        ? Promise.resolve(null)
+        : stageSite(site,index,utc,mine,key)
+    )).then(results=>{
+      if(mine!==generation || preparingKey!==key){
+        for(const result of results)if(result)removeStagedLayer(result.layer);
+        return [];
+      }
+      for(const item of results)if(item)staged.set(item.site,item);
+      return results.filter(Boolean).map(x=>x.site);
+    });
+    return preparingPromise;
+  }
+  // Synchronous, source-time-atomic commit inside the primary image
+  // beforeReveal callback: all matched 2-D and inferred 3-D are revealed in
+  // one Cesium frame; unavailable secondaries are omitted, never faked.
+  function commit(utc,{alpha=opacity}={}){
+    if(!utc || !primary || !extras.length)return [];
+    const key=primary+"|"+extras.join(",")+"|"+utc;
+    targetUtc=utc;
+    const updated=[];
+    for(const site of extras){
+      const previousUtc=displayedUtc.get(site);
+      const current=controllerFor(site).currentLayer;
+      if(previousUtc===utc && current?.show!==false){
+        updated.push(site);
+        continue;
+      }
+      const entry=preparingKey===key?staged.get(site):null;
+      if(!entry){
+        controllerFor(site).reset();
+        displayedUtc.delete(site);
+        onHide(site);
+        continue;
+      }
+      try{
+        // Build the volume before the newly measured surface becomes visible.
+        try {onDisplay(site,entry.frame,utc);}
+        catch(error){console.warn("Supplemental 3-D unavailable",site,error);}
+        controllerFor(site).adoptPrepared(entry.layer,{alpha});
+        displayedUtc.set(site,utc);
+        updated.push(site);
+      }catch(error){
+        removeStagedLayer(entry.layer);
+        controllerFor(site).reset();
+        displayedUtc.delete(site);
+        onHide(site);
+        console.warn("Supplemental synchronized reveal skipped",site,error);
+      }
+      staged.delete(site);
+    }
+    clearStaged();
+    lastKey=key;
+    scene.requestRender();
+    return updated;
   }
 
   function show(utc,{enabled=true,alpha=1}={}) {
@@ -189,6 +339,9 @@ export function createSupplementalRadarDisplay({
         const active=controllerFor(site).currentLayer;
         if(active)active.show=true;
         displayedUtc.set(site,utc);
+        try { onDisplay(site,masked,utc); } catch(error) {
+          console.warn("Supplemental inferred volume unavailable",site,error);
+        }
         scene.requestRender();
         success++;onStatus(summary());
         return site;
@@ -209,7 +362,7 @@ export function createSupplementalRadarDisplay({
   }
 
   return {
-    configure,show,reset,setOpacity,
+    configure,show,prepare,commit,reset,setOpacity,
     get visibleSites(){
       return [...controllers.entries()].filter(([id,c])=>
         c.currentLayer && c.currentLayer.show!==false &&

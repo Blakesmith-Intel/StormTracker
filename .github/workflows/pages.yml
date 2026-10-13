@@ -31,7 +31,7 @@ jobs:
       - name: Checkout pinned diagnostic preview source
         uses: actions/checkout@v4
         with:
-          ref: 7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031
+          ref: f758e23f6e8ce89c25af624ea383d607e9260875
           path: preview-builds/hover-gpu-guard
           persist-credentials: false
       - name: Validate complete diagnostic preview regressions first
@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           (cd preview-builds/hover-gpu-guard && npm test)
           node --check preview-builds/hover-gpu-guard/relay/worker.js
-          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031"
+          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "f758e23f6e8ce89c25af624ea383d607e9260875"
       - name: Validate current development source
         run: npm test
       - name: Checkout sealed V9.18.0 pixel-tracking production source
@@ -594,7 +594,7 @@ jobs:
           grep -Fq '9.18.9-pan-persist' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'displayedUtc.get(id)===targetUtc' "$destination/src/multi-radar-display-v9.js"
           grep -Fq 'Never hide or unload satellite layers simply because the camera is' "$destination/src/context-layers/basemap-manager-v1.js"
-          printf 'V9.18 WEBGL + MULTIRADAR UTC + SATELLITE PAN QA commit %s; production V9.18.0 unchanged\n' '7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031' > "$destination/BUILD.txt"
+          printf 'V9.18 WEBGL + MULTIRADAR UTC + SATELLITE PAN QA commit %s; production V9.18.0 unchanged\n' 'f758e23f6e8ce89c25af624ea383d607e9260875' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -688,7 +688,7 @@ jobs:
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
           build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq '7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031' <<< "$build"
+          grep -Fq 'f758e23f6e8ce89c25af624ea383d607e9260875' <<< "$build"
           picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
           grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
           tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"

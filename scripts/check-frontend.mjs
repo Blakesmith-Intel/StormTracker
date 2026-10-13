@@ -2,13 +2,23 @@ import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-function run(args) {
-  const result = spawnSync(process.execPath, args, { stdio: 'inherit' });
-  if (result.error) {
-    console.error(result.error.message);
-    process.exit(1);
+// Run every suite and report ALL failures in one CI attempt. Historical
+// cache-buster assertions must not cause one failing deployment per file.
+const failed = [];
+function run(args, label=args.at(-1)) {
+  const result=spawnSync(process.execPath,args,{
+    encoding:'utf8',maxBuffer:16*1024*1024
+  });
+  if(result.stdout)process.stdout.write(result.stdout);
+  if(result.error || result.status!==0){
+    failed.push(label);
+    const stderr=String(result.stderr??result.error?.message??'');
+    const detail=stderr.split('\n').filter(line=>
+      /AssertionError|SyntaxError|ERR_ASSERTION|ERR_MODULE_NOT_FOUND|^\s*at .*\.mjs:\d+|Error:|expected:|operator:/.test(line)
+    ).slice(0,10);
+    console.error('\nFAIL '+label+' (exit '+String(result.status??'error')+')');
+    console.error(detail.join('\n')||stderr.slice(0,1200));
   }
-  if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
 const root = new URL('../', import.meta.url);
@@ -20,4 +30,9 @@ const tests = new URL('frontend/tests/', root);
 const suites = readdirSync(tests).filter(name => /^run-.*-tests\.mjs$/.test(name)).sort();
 if (!suites.length) throw new Error('No frontend regression suites found.');
 for (const name of suites) run([fileURLToPath(new URL(name, tests))]);
+if(failed.length) {
+  console.error('\nFAILED frontend checks ('+failed.length+'):');
+  failed.forEach((name,i)=>console.error(String(i+1)+'. '+name));
+  process.exit(1);
+}
 console.log(`${suites.length} frontend regression suites passed; frontend validation complete.`);

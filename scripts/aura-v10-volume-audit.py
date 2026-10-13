@@ -103,7 +103,7 @@ def main():
                     raise ValueError("--target-utc must be HH:MM in UTC")
                 target=int(hhmm[:2])*3600+int(hhmm[2:])*60
                 def distance(name):
-                    match=re.search(r"_(\\d{6})\\.pvol\\.h5$",name)
+                    match=re.search(r"_(\d{6})\.pvol\.h5$",name)
                     if not match:return 999999
                     t=match.group(1)
                     seconds=int(t[:2])*3600+int(t[2:4])*60+int(t[4:])

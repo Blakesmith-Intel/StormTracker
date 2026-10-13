@@ -27,6 +27,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      # Preflight diagnostic tests before the expensive 20+ historical preview checkouts.
+      - name: Checkout pinned diagnostic preview source
+        uses: actions/checkout@v4
+        with:
+          ref: 8a3a56af00f0228a1c83be356b1ff9a542d57fb8
+          path: preview-builds/hover-gpu-guard
+          persist-credentials: false
+      - name: Validate complete diagnostic preview regressions first
+        run: |
+          set -euo pipefail
+          (cd preview-builds/hover-gpu-guard && npm test)
+          node --check preview-builds/hover-gpu-guard/relay/worker.js
+          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "8a3a56af00f0228a1c83be356b1ff9a542d57fb8"
       - name: Validate current development source
         run: npm test
       - name: Checkout sealed V9.18.0 pixel-tracking production source
@@ -549,13 +562,6 @@ jobs:
           grep -Fq 'label-gpu-v2-live-window' "$destination/index.html"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
-      - name: Checkout pinned diagnostic hover guard (authenticated)
-        uses: actions/checkout@v4
-        with:
-          ref: c7ee4c99d33e9f3b24b54b1767361795c1a24142
-          path: preview-builds/hover-gpu-guard
-          persist-credentials: false
-
       - name: Stage bounded source-history and genuine-cache fallback browser QA
         shell: bash
         run: |
@@ -568,7 +574,6 @@ jobs:
           # Copy reviewed fixes from an authenticated checkout; unauthenticated
           # raw.githubusercontent.com requests can 404 for private repositories.
           # Test the EXACT isolated source that supplies the patched preview.
-          (cd preview-builds/hover-gpu-guard && npm test)
           for filename in power-outages-operational-v1.js river-gauges-operational-v1.js flood-road-closures-operational-v1.js; do
             cp "preview-builds/hover-gpu-guard/frontend/src/context-layers/$filename" "$destination/src/context-layers/$filename"
             grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/$filename"
@@ -583,7 +588,7 @@ jobs:
           grep -Fq 'recentRelayBlockedUntil' "$destination/src/context-layers/river-gauge-layer-v1.js"
           grep -Fq 'TRACK_THREAT_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
           grep -Fq 'trackAnnotationsVisible' "$destination/src/live3d-operational-v9.js"
-          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' 'c7ee4c99d33e9f3b24b54b1767361795c1a24142' > "$destination/BUILD.txt"
+          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' '8a3a56af00f0228a1c83be356b1ff9a542d57fb8' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -677,7 +682,7 @@ jobs:
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
           build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq 'c7ee4c99d33e9f3b24b54b1767361795c1a24142' <<< "$build"
+          grep -Fq '8a3a56af00f0228a1c83be356b1ff9a542d57fb8' <<< "$build"
           picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
           grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
           tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"

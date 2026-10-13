@@ -74,8 +74,19 @@ assert.equal((container.listeners.get('pointerdown')??[]).length,0);
 // iOS can deliver 60-120+ touch samples per second while Cesium still renders
 // the previous image: keep all displacement but issue only one view update.
 const beforeBurst=calls.length;
+let dragStarts=0,dragEnds=0;
+let startedBeforeCamera=false;
+const guardedController={
+  ...controller,
+  panByFraction(x,y){
+    assert.ok(dragStarts>dragEnds,"detail suspension must begin BEFORE camera pan");
+    startedBeforeCamera=true;
+    controller.panByFraction(x,y);
+  }
+};
 const fast=createStormTrackerTouchCameraGestures({
-  container,getController:()=>controller,onGesture:()=>gestures++,
+  container,getController:()=>guardedController,onGesture:()=>gestures++,
+  onGestureStart:()=>dragStarts++,onGestureEnd:()=>dragEnds++,
   scheduleFrame,cancelFrame
 });
 container.send('pointerdown',{pointerId:3,clientX:70,clientY:60});
@@ -87,6 +98,9 @@ assert.equal(calls.length,beforeBurst,'no camera work in pointermove callback');
 runFrame();
 assert.equal(calls.length,beforeBurst+1,'latest position updates camera exactly once');
 assert.deepEqual(calls.at(-1),['pan',.4,0],'all 80px of movement survives coalescing');
+assert.equal(dragStarts,1,"bursty drag suspends detail only once");
+assert.equal(dragEnds,0);
+assert.equal(startedBeforeCamera,true);
 
 // Touch-up and pinch-mode transitions must not discard the last gesture.
 container.send('pointermove',{pointerId:3,clientX:180,clientY:60});
@@ -95,6 +109,7 @@ container.send('pointerup',{pointerId:3,clientX:180,clientY:60});
 assert.equal(frames.size,0,'pending RAF cancelled after final flush');
 assert.deepEqual(calls.at(-1),['pan',.15,0],'final 30px applied on touch-up');
 assert.equal(fast.activeTouchCount(),0);
+assert.equal(dragEnds,1,"last pointer releases imagery after its final movement");
 container.send('pointerdown',{pointerId:4,clientX:70,clientY:60});
 container.send('pointermove',{pointerId:4,clientX:90,clientY:60});
 container.send('pointerdown',{pointerId:5,clientX:160,clientY:60});
@@ -103,6 +118,8 @@ container.send('lostpointercapture',{pointerId:5});
 assert.equal(fast.activeTouchCount(),1,'lost capture clears stale second finger');
 container.send('pointercancel',{pointerId:4});
 assert.equal(fast.activeTouchCount(),0,'cancelled gesture releases all touch pointers');
+assert.equal(dragStarts,2,"second pan begun during transition only fires one suspension");
+assert.equal(dragEnds,2,"lost capture plus last cancel restores suspended background");
 container.send('pointerdown',{pointerId:6,clientX:20,clientY:20});
 container.send('pointermove',{pointerId:6,clientX:35,clientY:20});
 assert.equal(frames.size,1);

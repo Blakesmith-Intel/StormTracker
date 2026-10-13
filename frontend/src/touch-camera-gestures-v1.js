@@ -39,7 +39,14 @@ export function createStormTrackerTouchCameraGestures({
   onGesture = () => {},
   minimumRange = 800,
   maximumRange = 5000000,
-  pitchDegreesPerPixel = 0.12
+  pitchDegreesPerPixel = 0.12,
+  // Coalesce high-frequency touch samples to the next display frame.
+  scheduleFrame = callback => typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame(callback)
+    : setTimeout(callback, 16),
+  cancelFrame = id => typeof cancelAnimationFrame === "function"
+    ? cancelAnimationFrame(id)
+    : clearTimeout(id)
 }) {
   if (!container || typeof getController !== "function") {
     throw new Error("container and getController are required.");
@@ -49,6 +56,8 @@ export function createStormTrackerTouchCameraGestures({
   let singleLast = null;
   let pairLast = null;
   let destroyed = false;
+  let scheduledFrame = null;
+  let pendingMove = false;
 
   function touchPoints() {
     return [...pointers.values()]
@@ -80,6 +89,8 @@ export function createStormTrackerTouchCameraGestures({
 
   function onPointerDown(event) {
     if (!ownTouchEvent(event)) return;
+    // Finish a one-finger pan before switching to a two-finger transform.
+    flushPending();
     pointers.set(event.pointerId, {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -89,116 +100,97 @@ export function createStormTrackerTouchCameraGestures({
     resetGestureBaseline();
   }
 
-  function onPointerMove(event) {
-    if (!pointers.has(event.pointerId) || !ownTouchEvent(event)) return;
-
-    const previousPoint = pointers.get(event.pointerId);
-    pointers.set(event.pointerId, {
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY
-    });
-
+  // Read the LATEST positions, not every historical pointer sample. On
+  // iOS a single draw can take longer than several incoming touch events;
+  // rendering every sample causes a backlog and apparent frozen gestures.
+  function applyLatestGesture() {
     const controller = getController();
     if (!controller) {
       resetGestureBaseline();
       return;
     }
-
     const points = touchPoints();
     if (points.length === 1) {
       const current = points[0];
-      const previous = singleLast ?? previousPoint;
-      const dx =
-        current.x - previous.x;
+      const previous = singleLast ?? current;
+      const dx = current.x - previous.x;
+      const dy = current.y - previous.y;
+      if (Math.hypot(dx, dy) < 1.5) return;
 
-      const dy =
-        current.y - previous.y;
-
-      if (
-        Math.hypot(dx, dy)
-        < 1.5
-      ) {
-        return;
-      }
-
-      const width = Math.max(1, container.clientWidth);
-      const height = Math.max(1, container.clientHeight);
       controller.panByFraction(
-        dx / width,
-        dy / height
+        dx / Math.max(1, container.clientWidth),
+        dy / Math.max(1, container.clientHeight)
       );
       singleLast = { x: current.x, y: current.y };
       pairLast = null;
       onGesture();
-      return;
-    }
-
-    if (points.length >= 2) {
+    } else if (points.length >= 2) {
       const current = touchPairMetrics(points[0], points[1]);
       if (pairLast) {
         const state = controller.getState();
+        const angleDelta = shortestAngleDelta(pairLast.angle, current.angle);
+        const midpointDy = current.midpointY - pairLast.midpointY;
+        const next = {};
 
-        const angleDelta =
-          shortestAngleDelta(
-            pairLast.angle,
-            current.angle
-          );
-
-        const midpointDy =
-          current.midpointY
-          - pairLast.midpointY;
-
-        const next = {
-          range:
-            pinchRange(
-              state.range,
-              pairLast.distance,
-              current.distance,
-              {
-                minimumRange,
-                maximumRange
-              }
-            )
-        };
-
-        if (
-          Math.abs(
-            angleDelta
-            * 180
-            / Math.PI
-          ) >= 0.08
-        ) {
-          next.heading =
-            Number(state.heading ?? 0)
-            + angleDelta;
+        if (Math.abs(current.distance - pairLast.distance) >= 0.3) {
+          next.range = pinchRange(state.range, pairLast.distance, current.distance, {
+            minimumRange, maximumRange
+          });
+        }
+        if (Math.abs(angleDelta * 180 / Math.PI) >= 0.08) {
+          next.heading = Number(state.heading ?? 0) + angleDelta;
+        }
+        if (Math.abs(midpointDy) >= 0.25) {
+          next.pitch = Number(state.pitch ?? 0)
+            + midpointDy * pitchDegreesPerPixel * Math.PI / 180;
         }
 
-        if (
-          Math.abs(
-            midpointDy
-          ) >= 0.25
-        ) {
-          next.pitch =
-            Number(state.pitch ?? 0)
-            + midpointDy
-              * pitchDegreesPerPixel
-              * Math.PI
-              / 180;
+        // No unnecessary Cesium view update for unchanged pinch samples.
+        if (Object.keys(next).length > 0) {
+          controller.setView(next);
+          onGesture();
         }
-
-        controller.setView(
-          next
-        );
       }
       pairLast = current;
       singleLast = null;
-      onGesture();
     }
+  }
+
+  function flushPending() {
+    if (scheduledFrame !== null) {
+      cancelFrame(scheduledFrame);
+      scheduledFrame = null;
+    }
+    if (!pendingMove || destroyed) return;
+    pendingMove = false;
+    applyLatestGesture();
+  }
+
+  function scheduleGesture() {
+    pendingMove = true;
+    if (scheduledFrame !== null) return;
+    scheduledFrame = scheduleFrame(() => {
+      scheduledFrame = null;
+      if (!pendingMove || destroyed) return;
+      pendingMove = false;
+      applyLatestGesture();
+    });
+  }
+
+  function onPointerMove(event) {
+    if (!pointers.has(event.pointerId) || !ownTouchEvent(event)) return;
+    pointers.set(event.pointerId, {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY
+    });
+    scheduleGesture();
   }
 
   function endTouch(event) {
     if (!pointers.has(event.pointerId) || !ownTouchEvent(event)) return;
+    // Always commit the final move even when touch-up beats the next RAF.
+    flushPending();
     pointers.delete(event.pointerId);
     try {
       if (container.hasPointerCapture?.(event.pointerId)) {
@@ -213,17 +205,24 @@ export function createStormTrackerTouchCameraGestures({
   container.addEventListener("pointermove", onPointerMove, options);
   container.addEventListener("pointerup", endTouch, options);
   container.addEventListener("pointercancel", endTouch, options);
+  // Safari/system gestures can release touch capture without pointerup.
+  // Clearing that pointer avoids a stale second-finger state on the next drag.
+  container.addEventListener("lostpointercapture", endTouch, options);
 
   return {
     activeTouchCount() { return pointers.size; },
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      if (scheduledFrame !== null) cancelFrame(scheduledFrame);
+      scheduledFrame = null;
+      pendingMove = false;
       pointers.clear();
       container.removeEventListener("pointerdown", onPointerDown, true);
       container.removeEventListener("pointermove", onPointerMove, true);
       container.removeEventListener("pointerup", endTouch, true);
       container.removeEventListener("pointercancel", endTouch, true);
+      container.removeEventListener("lostpointercapture", endTouch, true);
     }
   };
 }

@@ -45,7 +45,7 @@ import {
 
 import {
   createStormTrackerTouchCameraGestures
-} from "./touch-camera-gestures-v1.js?v=operational-v9-7-4";
+} from "./touch-camera-gestures-v1.js?v=v9.18.1-mobile-raf-gestures";
 
 import {
   loadDopplerDiagnostic,
@@ -138,7 +138,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.18.0-nsw-radar-region";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.18-mobile-label-throttle";
 
 import {
   createQueenslandStateBorderLayer
@@ -270,11 +270,17 @@ scene.fog.enabled = false;
 scene.globe.enableLighting = false;
 scene.globe.maximumScreenSpaceError = 4;
 
+// During sustained coarse-pointer movement, temporarily request fewer
+// terrain/imagery tiles. Restore full map detail after the gesture settles.
+// This applies equally to Street and Satellite; source imagery is unchanged.
+const coarsePointerNavigation =
+  window.matchMedia?.("(pointer: coarse)")?.matches === true;
 const cameraPerformance =
   createCameraPerformanceGovernor({
-    globe:
-      scene.globe,
-    scene
+    globe: scene.globe,
+    scene,
+    interactionScreenSpaceError: coarsePointerNavigation ? 12 : 8,
+    settleMs: coarsePointerNavigation ? 380 : 160
   });
 
 const DEFAULT_RADAR_SITE_ID = "66"; // Brisbane (Mt Stapylton)

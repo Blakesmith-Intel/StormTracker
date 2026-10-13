@@ -131,6 +131,17 @@ assert.equal(feedCount,2,"Changing basemaps never refetches towns");
 scene.canvas.clientWidth=390;scene.canvas.clientHeight=350;
 layer.draw(true);
 assert.ok(layer.visibleCount<=16);
+const mobileLayoutCount=layer.calculationCount;
+const mobileLabel=mapPanel.children[0].children[0];
+const mobileLabelX=parseFloat(mobileLabel.style.left);
+cameraPanPixelsX=9;
+scene.camera.positionWC.x+=2;
+scene.listener?.();
+assert.equal(layer.calculationCount,mobileLayoutCount,
+  "Mobile pan should follow the camera without running another layout pass immediately");
+if(mobileLabel.parent) assert.equal(parseFloat(mobileLabel.style.left),mobileLabelX+9,
+  "Phone labels remain geographically anchored while decluttering is throttled");
+cameraPanPixelsX=0;
 assert.ok(layer.visibleLabels.every(p=>p.font==="12px sans-serif"));
 scene.canvas.clientWidth=1200;scene.canvas.clientHeight=800;
 scene.camera.positionCartographic.height=4_000_000;

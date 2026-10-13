@@ -90,6 +90,21 @@ assert.ok(
   renders >= 4
 );
 
+// A coarse-pointer (phone/tablet) retains reduced tile detail for the
+// duration of bursty gestures; desktop retains the original governor.
+let mobileRestore=null;
+const mobileGlobe={maximumScreenSpaceError:4};
+const mobileGovernor=createCameraPerformanceGovernor({
+  globe:mobileGlobe,interactionScreenSpaceError:12,settleMs:380,
+  schedule(cb,ms){assert.equal(ms,380);mobileRestore=cb;return 7;},
+  cancel(){}
+});
+mobileGovernor.pulse();
+mobileGovernor.pulse();
+assert.equal(mobileGlobe.maximumScreenSpaceError,12);
+mobileRestore();
+assert.equal(mobileGlobe.maximumScreenSpaceError,4);
+assert.equal(mobileGovernor.active,false);
 console.log(
-  "Camera-performance checks passed: interaction quality relaxes temporarily and restores automatically."
+  "Camera-performance checks passed: desktop and mobile camera-quality governors restore idle detail."
 );

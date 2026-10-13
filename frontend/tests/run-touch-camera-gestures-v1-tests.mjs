@@ -32,17 +32,33 @@ const controller={
   tiltDegrees:v=>calls.push(['tilt',v])
 };
 let gestures=0;
-const touch=createStormTrackerTouchCameraGestures({container,getController:()=>controller,onGesture:()=>gestures++});
+const frames=new Map();
+let nextFrameId=0;
+const scheduleFrame=callback=>{const id=++nextFrameId;frames.set(id,callback);return id;};
+const cancelFrame=id=>frames.delete(id);
+function runFrame(){
+  const callbacks=[...frames.values()];
+  frames.clear();
+  for(const callback of callbacks)callback();
+}
+const touch=createStormTrackerTouchCameraGestures({
+  container,getController:()=>controller,onGesture:()=>gestures++,
+  scheduleFrame,cancelFrame
+});
 let event=container.send('pointerdown',{pointerId:1,clientX:50,clientY:50});
 assert.equal(event.prevented,true);assert.equal(event.stopped,true);assert.equal(touch.activeTouchCount(),1);
 assert.equal(gestures,0,'simple touch-down must not trigger camera-performance mode');
 container.send('pointermove',{pointerId:1,clientX:50.5,clientY:50.5});
+runFrame();
 assert.equal(gestures,0,'sub-pixel tap jitter must not trigger camera movement');
 container.send('pointermove',{pointerId:1,clientX:70,clientY:60});
+assert.equal(frames.size,1,'touch should request one frame, not redraw synchronously');
+runFrame();
 assert.deepEqual(calls.at(-1),['pan',.1,.1]);
 container.send('pointerdown',{pointerId:2,clientX:130,clientY:60});
 const before=state.range;
 container.send('pointermove',{pointerId:2,clientX:170,clientY:70});
+runFrame();
 assert.ok(state.range < before,'pinch apart should zoom in continuously');
 const multiView = calls.filter(x=>x[0]==='view').at(-1);
 assert.ok(Number.isFinite(multiView?.[1]?.heading),'two-finger twist should update heading in the batched view');
@@ -54,4 +70,43 @@ container.send('pointerup',{pointerId:1,clientX:70,clientY:60});
 assert.equal(touch.activeTouchCount(),0);assert.equal(gestures,2,'only actual pan/pinch movement should count as camera interaction');
 touch.destroy();
 assert.equal((container.listeners.get('pointerdown')??[]).length,0);
-console.log('Touch camera gesture checks passed: taps stay inert, one-finger pan and batched pinch/rotate/pitch update only on real movement.');
+
+// iOS can deliver 60-120+ touch samples per second while Cesium still renders
+// the previous image: keep all displacement but issue only one view update.
+const beforeBurst=calls.length;
+const fast=createStormTrackerTouchCameraGestures({
+  container,getController:()=>controller,onGesture:()=>gestures++,
+  scheduleFrame,cancelFrame
+});
+container.send('pointerdown',{pointerId:3,clientX:70,clientY:60});
+for(let i=1;i<=80;i++){
+  container.send('pointermove',{pointerId:3,clientX:70+i,clientY:60});
+}
+assert.equal(frames.size,1,'80 pointer samples should share one RAF');
+assert.equal(calls.length,beforeBurst,'no camera work in pointermove callback');
+runFrame();
+assert.equal(calls.length,beforeBurst+1,'latest position updates camera exactly once');
+assert.deepEqual(calls.at(-1),['pan',.4,0],'all 80px of movement survives coalescing');
+
+// Touch-up and pinch-mode transitions must not discard the last gesture.
+container.send('pointermove',{pointerId:3,clientX:180,clientY:60});
+assert.equal(frames.size,1);
+container.send('pointerup',{pointerId:3,clientX:180,clientY:60});
+assert.equal(frames.size,0,'pending RAF cancelled after final flush');
+assert.deepEqual(calls.at(-1),['pan',.15,0],'final 30px applied on touch-up');
+assert.equal(fast.activeTouchCount(),0);
+container.send('pointerdown',{pointerId:4,clientX:70,clientY:60});
+container.send('pointermove',{pointerId:4,clientX:90,clientY:60});
+container.send('pointerdown',{pointerId:5,clientX:160,clientY:60});
+assert.deepEqual(calls.at(-1),['pan',.1,0],'first pan flushed before second finger is tracked');
+container.send('lostpointercapture',{pointerId:5});
+assert.equal(fast.activeTouchCount(),1,'lost capture clears stale second finger');
+container.send('pointercancel',{pointerId:4});
+assert.equal(fast.activeTouchCount(),0,'cancelled gesture releases all touch pointers');
+container.send('pointerdown',{pointerId:6,clientX:20,clientY:20});
+container.send('pointermove',{pointerId:6,clientX:35,clientY:20});
+assert.equal(frames.size,1);
+fast.destroy();
+assert.equal(frames.size,0,'destroy cancels scheduled camera work');
+assert.equal((container.listeners.get('lostpointercapture')??[]).length,0);
+console.log('Touch checks passed: latest-sample RAF coalescing, complete pan/pinch motion, final move flush, lost capture and teardown.');

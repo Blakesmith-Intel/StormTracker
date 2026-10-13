@@ -7,7 +7,7 @@ on:
       - "frontend/**"
       - "scripts/**"
       - "package.json"
-      - ".github/workflows/review-validation.yml"
+      - ".github/workflows/**"
 
 permissions:
   contents: read

@@ -31,7 +31,7 @@ jobs:
       - name: Checkout pinned diagnostic preview source
         uses: actions/checkout@v4
         with:
-          ref: 09e5a172eda97a913658ff540804394f9cd82a07
+          ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
           path: preview-builds/hover-gpu-guard
           persist-credentials: false
       - name: Validate complete diagnostic preview regressions first
@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           (cd preview-builds/hover-gpu-guard && npm test)
           node --check preview-builds/hover-gpu-guard/relay/worker.js
-          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "09e5a172eda97a913658ff540804394f9cd82a07"
+          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "acfa0ebd3717a793369e3e887e2d1a54785620b7"
       - name: Validate current development source
         run: npm test
       - name: Checkout sealed V9.18.0 pixel-tracking production source
@@ -590,6 +590,9 @@ jobs:
           grep -Fq 'webgl-track-river-20261013' "$destination/index.html"
           grep -Fq 'webgl-track-river-20261013' "$destination/live3d-operational-v9.html"
           grep -Fq 'recentRelayBlockedUntil' "$destination/src/context-layers/river-gauge-layer-v1.js"
+          grep -Fq 'for(const target of candidates)' "$destination/src/context-layers/river-gauge-layer-v1.js"
+          grep -Fq '9.18.11-serial-gateway' "$destination/src/context-layers/river-gauges-operational-v1.js"
+          grep -Fq '9.18.11-gateway-guard' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'TRACK_TRAIL_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
           grep -Fq 'trackAnnotationsVisible' "$destination/src/live3d-operational-v9.js"
           grep -Fq '9.18.10-atomic-3d' "$destination/src/live3d-operational-v9.js"
@@ -599,7 +602,7 @@ jobs:
           grep -Fq 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500' "$destination/src/supplemental-radar-volume-v1.js"
           grep -Fq 'function adoptPrepared' "$destination/src/radar-imagery-handover-v1.js"
           grep -Fq 'Never hide or unload satellite layers simply because the camera is' "$destination/src/context-layers/basemap-manager-v1.js"
-          printf 'V9.18 ATOMIC MULTIRADAR + BOUNDED SECONDARY 3D QA commit %s; production V9.18.0 unchanged\n' '09e5a172eda97a913658ff540804394f9cd82a07' > "$destination/BUILD.txt"
+          printf 'V9.18 MULTIRADAR 3D + SERIAL RIVER HISTORY QA commit %s; production V9.18.0 unchanged\n' 'acfa0ebd3717a793369e3e887e2d1a54785620b7' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -693,9 +696,12 @@ jobs:
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
           build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq '09e5a172eda97a913658ff540804394f9cd82a07' <<< "$build"
+          grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$build"
           picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
           grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
+          grep -Fq '9.18.11-serial-gateway' <<< "$picker"
+          recent="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauge-layer-v1.js")"
+          grep -Fq 'for(const target of candidates)' <<< "$recent"
           tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"
           grep -Fq 'TRACK_TRAIL_ENTITY_PREFIX' <<< "$tracks"
           clock="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/multi-radar-display-v9.js")"

@@ -219,3 +219,38 @@ phone.destroy();
 assert.equal(resume,null,"destroy cancels pending detail restore");
 assert.equal(layers.length,0);
 console.log("PASS satellite mobile gesture suspends redundant NSW/QLD tile requests and resumes settled detail; source/credit/fade contracts retained.");
+
+// Isolated street-only control group: previously selected Satellite in
+// localStorage and even an explicit future satellite switch must not
+// instantiate ANY DEA, NSW or QLD imagery provider or fetch their tiles.
+mapState.set(BASEMAP_STORAGE_KEY,BASEMAP_IDS.QLD_IMAGERY);
+const beforeAdds=events.filter(x=>x[0]==="add").length;
+const streetOnlyStatuses=[];
+const streetOnly=createStormTrackerBasemapManager({
+  Cesium,viewer,storage,forceStreetOnly:true,
+  onStatus:(message,kind)=>streetOnlyStatuses.push([message,kind])
+});
+assert.equal(streetOnly.forceStreetOnly,true);
+assert.equal(streetOnly.initialise().id,BASEMAP_IDS.STREET);
+assert.equal(layers.length,1);
+assert.ok(layers[0].imageryProvider instanceof Street);
+assert.equal(streetOnly.regionalLayer,null);
+assert.equal(listeners.size,0,
+  "satellite switching/postRender machinery must never be attached");
+assert.equal(events.filter(x=>x[0]==="add").length,beforeAdds+1,
+  "Street-only mode creates exactly one background imagery provider");
+assert.equal(streetOnly.setBasemap(BASEMAP_IDS.QLD_IMAGERY).id,
+  BASEMAP_IDS.STREET,"programmatic switch cannot enable satellite");
+assert.equal(streetOnly.setBasemap("dea-satellite").changed,false);
+assert.equal(streetOnly.setBasemap("ga-satellite").changed,false);
+assert.equal(layers.length,1);
+assert.equal(mapState.get(BASEMAP_STORAGE_KEY),BASEMAP_IDS.QLD_IMAGERY,
+  "QA preview must never erase the user's stored satellite preference");
+assert.equal(streetOnly.setNavigationActive(true),false,
+  "street-only mode performs no imagery-detail handover on camera movement");
+assert.equal(streetOnly.updateForCamera(),"street");
+assert.ok(streetOnlyStatuses.some(([message])=>
+  /satellite/i.test(message) && message.includes("disabled")));
+streetOnly.destroy();
+assert.equal(layers.length,0);
+console.log("PASS street-only A/B mode: satellite preference ignored but preserved, DEA/NSW/QLD providers never instantiated, selector switch rejected, no fade, single OSM layer.");

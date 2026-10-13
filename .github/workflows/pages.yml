@@ -484,6 +484,22 @@ jobs:
           grep -Fq 'suspendDetailDuringNavigation' "$destination/src/context-layers/basemap-manager-v1.js"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
+      - name: Stage satellite-free Street-only performance comparison (never production)
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination=frontend/preview/street-only
+          mkdir -p "$destination"
+          # Same exact source code and operational data as the satellite QA
+          # candidate. Only the preview path activates the street-only guard.
+          cp -a frontend/preview/satellite-navigation/. "$destination/"
+          printf 'STREET-ONLY NO-SATELLITE QA; source %s; V9.18.0 production unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq 'forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'window.location.pathname.includes("/preview/street-only/")' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'forceStreetOnly ? BASEMAP_IDS.STREET' "$destination/src/context-layers/basemap-manager-v1.js"
+          grep -Fq 'baseLayer: false' "$destination/src/live3d-operational-v9.js"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |
@@ -510,6 +526,9 @@ jobs:
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
+          test -s published-site/preview/street-only/data/nsw-radar-places-v1.json
+          grep -Fq 'forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST' published-site/preview/street-only/src/live3d-operational-v9.js
+          grep -Fq 'forceStreetOnly ? BASEMAP_IDS.STREET' published-site/preview/street-only/src/context-layers/basemap-manager-v1.js
           test -s published-site/preview/satellite-navigation/data/nsw-radar-places-v1.json
           grep -Fq 'suspendDetailDuringNavigation' published-site/preview/satellite-navigation/src/context-layers/basemap-manager-v1.js
           grep -Fq 'onNavigationStart' published-site/preview/satellite-navigation/src/stormtracker-camera-v1.js
@@ -543,6 +562,23 @@ jobs:
       - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify published Street-only no-satellite A/B control
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          page="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/street-only/")"
+          grep -Fq 'live3d-operational-v9.html' <<< "$page"
+          runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/street-only/src/live3d-operational-v9.js")"
+          grep -Fq 'window.location.pathname.includes("/preview/street-only/")' <<< "$runtime"
+          grep -Fq 'forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST' <<< "$runtime"
+          manager="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/street-only/src/context-layers/basemap-manager-v1.js")"
+          grep -Fq 'forceStreetOnly ? BASEMAP_IDS.STREET' <<< "$manager"
+          grep -Fq 'if(id===BASEMAP_IDS.QLD_IMAGERY)' <<< "$manager"
+          echo "Served Street-only no-satellite preview; sealed V9.18.0 root unchanged."
+
       - name: Verify isolated cross-device satellite navigation candidate is publicly served
         shell: bash
         env:

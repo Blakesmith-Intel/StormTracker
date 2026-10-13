@@ -325,6 +325,9 @@ export function basemapLabel(
 export function createStormTrackerBasemapManager({
   Cesium,viewer,storage=globalThis.localStorage,onStatus=()=>{},
   suspendDetailDuringNavigation=false,
+  // Isolated A/B QA: never instantiate DEA/QLD/NSW satellite basemap
+  // providers even when storage retained a previous satellite selection.
+  forceStreetOnly=false,
   resumeDetailDelayMs=700,
   schedule=setTimeout,cancel=clearTimeout
 }) {
@@ -440,7 +443,7 @@ export function createStormTrackerBasemapManager({
   }
   function setBasemap(requestedId,{persist=true}={}){
     if(destroyed)throw Error("Basemap manager was destroyed");
-    const id=normaliseBasemapId(requestedId);
+    const id=forceStreetOnly ? BASEMAP_IDS.STREET : normaliseBasemapId(requestedId);
     if(currentId===id&&streetLayer)
       return {id,layer:regionalLayer??streetLayer,changed:false};
     // Stage original data providers before discarding any current imagery.
@@ -477,10 +480,13 @@ export function createStormTrackerBasemapManager({
     for(const [provider,label] of subscriptions)attach(provider,label);
     if(id===BASEMAP_IDS.QLD_IMAGERY && scene?.postRender?.addEventListener)
       postRenderUnlisten=scene.postRender.addEventListener(updateForCamera);
-    if(persist)persistBasemap(storage,id);
+    // A test route must not overwrite the user's real map preference.
+    if(persist && !forceStreetOnly)persistBasemap(storage,id);
     onStatus(id===BASEMAP_IDS.QLD_IMAGERY
       ? "Satellite: DEA regional (2025) · automatic official QLD/NSW detail on zoom"
-      : "Basemap: Street · OpenStreetMap","ok");
+      : forceStreetOnly
+        ? "STREET-ONLY TEST · Satellite basemaps disabled (no DEA/QLD/NSW tile downloads)"
+        : "Basemap: Street · OpenStreetMap","ok");
     updateForCamera();
     render();
     return {id,layer:regionalLayer??streetLayer,changed:true};
@@ -498,6 +504,7 @@ export function createStormTrackerBasemapManager({
     },
     get detailBlend(){return detailBlend;},
     get navigationActive(){return navigationActive;},
+    get forceStreetOnly(){return forceStreetOnly;},
     get regionalLayer(){return regionalLayer;}
   };
 }

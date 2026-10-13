@@ -3,6 +3,7 @@
 // with transparent tiles; a frame is accepted only after every tile is real.
 export async function loadCompleteRadarTiles(tasks, fetchTile, {
   retries = 1,
+  stopOnPermanent = false,
   wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 } = {}) {
   if (!Array.isArray(tasks) || !tasks.length || typeof fetchTile !== "function") {
@@ -31,7 +32,12 @@ export async function loadCompleteRadarTiles(tasks, fetchTile, {
       }
     });
     if (!failures.length) return results;
-    if (attempt === retries) {
+    // HTTP 400 is a permanently unavailable source tile for that exact
+    // timestamp, and HTTP 403 is a refusal; retrying the same URL immediately
+    // cannot make a complete, authentic BoM frame and may amplify a relay ban.
+    const permanent = stopOnPermanent && failures.some(({error}) =>
+      /(?:HTTP\s+(?:400|403|429)\b|relay cooldown|queue full)/i.test(error));
+    if (attempt === retries || permanent) {
       const details = failures.slice(0, 6).map(({ task, error }) =>
         "tile " + task.col + "/" + task.row + ": " + error
       ).join("; ");

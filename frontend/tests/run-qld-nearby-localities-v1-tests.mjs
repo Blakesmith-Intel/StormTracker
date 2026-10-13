@@ -61,7 +61,8 @@ await assert.rejects(()=>fetchQldNearbyLocalities({
   bounds:region,fetchImpl:async()=>{boundedCalls++;return overflowing();},
   maxSplitDepth:3
 }),/exceeded bounded query limit/);
-assert.equal(boundedCalls,15,"Dense gazetteer queries stop at a hard 15-call limit");
+assert.equal(boundedCalls,4,"An over-limit leftmost quadrant fails immediately at depth three");
+assert.ok(boundedCalls<=15,"No branch can exceed a hard 15-query bound");
 const CesiumMath={toDegrees:v=>v};
 const camera={positionCartographic:{height:55000},computeViewRectangle:()=>region};
 assert.deepEqual(qldLocalityViewBounds(camera,{Math:CesiumMath},{}),region);

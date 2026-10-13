@@ -170,9 +170,10 @@ manager.destroy();
 assert.equal(layers.length,0);
 assert.equal(listeners.size,0);
 assert.ok(statuses.some(([msg])=>msg.includes("DEA regional")));
-// Regression: during sustained iOS panning the overlapping official QLD
-// and NSW detail sources must NOT issue more Cesium tile requests. DEA remains
-// available for orientation, and only the final settled view stages detail.
+// Regression: satellite MUST remain visible during continuous iOS/desktop
+// panning and zooming. Do not unload layers in an attempt to throttle imagery:
+// the loss of detail persists as a black/blank map when camera gestures overlap.
+// Keep the original real state tiles AND the underlying DEA visible throughout.
 let resume=null,cancelled=0;
 const phone=createStormTrackerBasemapManager({
   Cesium,viewer,storage,suspendDetailDuringNavigation:true,
@@ -194,17 +195,19 @@ assert.equal(stateLayers.length,2);
 assert.ok(stateLayers.every(l=>l.show),"both state details visible when idle");
 assert.equal(phone.setNavigationActive(true),true);
 assert.equal(phone.navigationActive,true);
-assert.ok(stateLayers.every(l=>l.show===false),"gesture hides both overlapping state detail sources");
+assert.ok(stateLayers.every(l=>l.show===true),"gesture must preserve both satellite detail layers");
 assert.equal(phone.updateForCamera(),"navigation","post-render cannot reactivate hidden detail while dragging");
 viewer.scene.camera.positionCartographic.height=7000;
 for(let n=0;n<12;n++)listeners.forEach(fn=>fn());
-assert.ok(stateLayers.every(l=>l.show===false),"sustained navigation causes zero new detail loading");
+assert.ok(stateLayers.every(l=>l.show===true),"sustained navigation must not unload or hide satellite imagery");
+assert.equal(phone.detailMode,"detailed","detail compositing remains visible while camera moves");
 assert.equal(layers[1].show,true,"official DEA stays available throughout drag");
 phone.setNavigationActive(false);
 assert.ok(resume,"release schedules one delayed high-detail recovery");
 phone.setNavigationActive(true);
 assert.ok(cancelled>0,"a new drag cancels stale recovery before firing");
 assert.equal(resume,null);
+assert.ok(stateLayers.every(l=>l.show===true),"overlapping drags must retain the existing imagery");
 phone.setNavigationActive(false);
 const settle=resume;
 viewer.scene.camera.positionCartographic.height=11000;
@@ -218,7 +221,7 @@ phone.setNavigationActive(false);
 phone.destroy();
 assert.equal(resume,null,"destroy cancels pending detail restore");
 assert.equal(layers.length,0);
-console.log("PASS satellite mobile gesture suspends redundant NSW/QLD tile requests and resumes settled detail; source/credit/fade contracts retained.");
+console.log("PASS satellite pan and zoom keep existing DEA/QLD/NSW tiles visible; resolution changes only after settled camera");
 
 // Isolated street-only control group: previously selected Satellite in
 // localStorage and even an explicit future satellite switch must not

@@ -158,7 +158,7 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
   }
   // A single bad WMTS request no longer discards a scan without a targeted retry.
   // We still require every actual BoM tile before publishing a measured frame.
-  const guarded=["/preview/network-guard/","/preview/label-gpu-guard/"].some(
+  const guarded=["/preview/network-guard/","/preview/label-gpu-guard/","/preview/radar-history-fix/"].some(
     route=>globalThis.location?.pathname?.includes(route)===true);
   const tiles = await loadCompleteRadarTiles(tasks, fetchReadableImage, {
     retries: 1, stopOnPermanent:guarded

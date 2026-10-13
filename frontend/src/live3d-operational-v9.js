@@ -13,6 +13,8 @@ import {
 import {
   RadarWorkerClient
 } from "./worker-client.js?v=core-v6-pixeltrack-prod-r1";
+import { resolveSourceDiscovery }
+  from "./radar-source-fallback-v1.js?v=9.18.7-real-cache-recovery";
 
 import {
   SOURCE_PALETTES
@@ -233,7 +235,10 @@ const viewer = new Cesium.Viewer(
 const scene = viewer.scene;
 // The one isolated QA route compares deferred GPU cleanup and settled
 // gazetteer work with the current production code. Never enabled at root.
+const BOUNDED_RADAR_RECOVERY_QA =
+  window.location.pathname.includes("/preview/radar-history-fix/");
 const LABEL_GPU_QA =
+  BOUNDED_RADAR_RECOVERY_QA ||
   window.location.pathname.includes("/preview/label-gpu-guard/");
 const deferredImageryRetirement=LABEL_GPU_QA
   ? createDeferredImageryRetirement({imageryLayers:viewer.imageryLayers,scene})
@@ -3845,25 +3850,43 @@ async function loadHybridSequence(automatic = false) {
 
   const sourceDiscovery =
     automatic
-      ? findLatestBomReflectivityTime(
-          now,
-          region
-        ).then(observedUtc => [observedUtc])
+      ? (BOUNDED_RADAR_RECOVERY_QA
+          ? discoverBoundedBomReflectivityHistory(now,5,region)
+              .then(times=>times.slice(-1))
+          : findLatestBomReflectivityTime(now,region)
+              .then(observedUtc=>[observedUtc]))
       : recentDiscovery
-        ? Promise.resolve(
-            [...lastSourceDiscoveryTimes]
-          )
+        ? Promise.resolve([...lastSourceDiscoveryTimes])
         : (LABEL_GPU_QA
             ? discoverBoundedBomReflectivityHistory(now,180,region)
             : discoverBomReflectivityHistory(now,180,region));
 
-  const [discoveredTimes, cachedFrames] = await Promise.all([
-    sourceDiscovery,
+  // Startup metadata failure must not throw away authentic frames already
+  // saved in this browser. Do not invent earlier tiles or backdate a newer
+  // scan. Automatic poll failures leave the existing live loop untouched.
+  const [sourceResult, cachedFrames] = await Promise.all([
+    BOUNDED_RADAR_RECOVERY_QA
+      ? sourceDiscovery.then(times=>({times}),error=>({error}))
+      : sourceDiscovery.then(times=>({times})),
     getRadarFrames(region, cacheCutoff).catch(error => {
       console.warn("Persistent radar history cache unavailable", error);
       return [];
     })
   ]);
+  const resolvedSource=BOUNDED_RADAR_RECOVERY_QA
+    ? resolveSourceDiscovery({outcome:sourceResult,cachedFrames,automatic})
+    : {times:sourceResult.times,keepCurrent:false,cachedOnly:false};
+  if(resolvedSource.keepCurrent) {
+    $("autoRefreshNote").textContent =
+      "BoM new imagery currently unavailable · retaining last genuine displayed radar scan";
+    return;
+  }
+  if(resolvedSource.cachedOnly)
+    $("autoRefreshNote").textContent =
+      "BoM live scan unavailable · genuine locally cached observations only";
+  const discoveredTimes=resolvedSource.times;
+  if(BOUNDED_RADAR_RECOVERY_QA && !discoveredTimes.length && !cachedFrames.length)
+    throw Error("No verified BoM reflectivity frames available; nothing fabricated");
   const sources = { histories:new Map(),palettes:new Map(),
     latestRecords:new Map(),errors:new Map() };
 

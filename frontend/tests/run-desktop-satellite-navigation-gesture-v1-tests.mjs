@@ -9,6 +9,10 @@ const originalCesium=globalThis.Cesium;
 const originalWindow=globalThis.window;
 const calls=[],activePointers=new Set(),listeners=new Map();
 let suspended=false,starts=0,ends=0,cameraChanges=0;
+const frames=new Map();let nextFrame=1,cancelledFrames=0;
+const scheduleFrame=cb=>{const id=nextFrame++;frames.set(id,cb);return id;};
+const cancelFrame=id=>{if(frames.delete(id))cancelledFrames++;};
+function runFrame(){const pending=[...frames.values()];frames.clear();for(const cb of pending)cb();}
 globalThis.Cesium={
   Cartesian3:{
     clone:position=>({...position}),
@@ -62,6 +66,7 @@ const controller=createStormTrackerCameraController({
   viewer,container,
   home:{longitude:153,latitude:-27,range:150000,heading:0,pitch:-1.2,targetHeight:0},
   wheelGestureQuietMs:18,
+  scheduleFrame,cancelFrame,
   onNavigationStart(){suspended=true;starts++;calls.push("start");},
   onNavigationEnd(){suspended=false;ends++;calls.push("end");}
 });
@@ -74,6 +79,11 @@ try {
   assert.equal(suspended,true);
   for(let i=0;i<150;i++)emit("pointermove",{clientX:29+i,clientY:30+i/3});
   assert.equal(starts,1,"150 pan events never repeatedly toggle satellite layers");
+  assert.equal(frames.size,1,"all 150 pointer events schedule only one draw");
+  assert.equal(cameraChanges,1,"no synchronous Cesium camera calls from mousemove");
+  runFrame();
+  assert.equal(cameraChanges,2,"150 moves produce one Cesium camera update");
+  assert.equal(controller.getState().longitude<153,true,"batched pan must preserve full displacement");
   emit("pointerup",{clientX:178,clientY:80});
   assert.equal(ends,1);
   assert.equal(suspended,false);
@@ -82,6 +92,10 @@ try {
   emit("wheel",{deltaY:120,deltaMode:0});
   assert.equal(starts,2,"successive wheel ticks share one detail suspension");
   assert.equal(ends,1,"wheel quiet period prevents tile thrash between ticks");
+  assert.equal(frames.size,1,"discrete wheel burst schedules only one Cesium view update");
+  const beforeWheelDraw=cameraChanges;
+  runFrame();
+  assert.equal(cameraChanges,beforeWheelDraw+1,"wheel burst renders exactly once");
   await new Promise(resolve=>setTimeout(resolve,35));
   assert.equal(ends,2,"wheel quiet period resumes detail once after zooming");
 
@@ -91,6 +105,7 @@ try {
   emit("pointermove",{clientX:40});
   emit("wheel",{deltaY:-120});
   assert.equal(starts,3);
+  assert.equal(frames.size,1,"overlapping pointer + wheel share camera frame");
   emit("pointerup",{clientX:40});
   assert.equal(ends,2,"pointer release alone cannot reveal tiles during wheel");
   await new Promise(resolve=>setTimeout(resolve,35));
@@ -99,11 +114,13 @@ try {
   emit("pointerdown");
   emit("pointermove",{clientX:60});
   assert.equal(starts,4);
+  assert.equal(frames.size,1,"last unrendered desktop motion should be queued");
   controller.destroy();
+  assert.equal(frames.size,0,"teardown cancels pending Cesium camera updates");
   assert.equal(ends,4,"destroy cleans up active navigation");
   assert.equal(suspended,false);
   assert.equal(listeners.size,0);
-  console.log("PASS desktop sustained pan, jitter, discrete wheel burst, overlapping gestures and cleanup with tile suspension before camera mutation.");
+  console.log("PASS desktop 150-move RAF batch, wheel-burst single draw, retained motion, overlapping navigation and cancellation on destroy.");
 } finally {
   globalThis.Cesium=originalCesium;
   globalThis.window=originalWindow;

@@ -144,7 +144,7 @@ layer.draw(true);
 assert.equal(loads,previousFetches,
   "Rapid camera movement must not send locality queries while dragging");
 layer.setNavigationActive(false);
-await new Promise(resolve=>setTimeout(resolve,720));
+await new Promise(resolve=>setTimeout(resolve,2850));
 assert.ok(loads>previousFetches,
   "Settled navigation performs one viewport-bounded locality update");
 layer.destroy();

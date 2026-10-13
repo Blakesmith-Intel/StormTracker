@@ -222,7 +222,9 @@ export function createStormTrackerCameraController({
   maximumRange = 5000000,
   wheelGestureQuietMs = 180,
   onUnexpectedCorrection = null,
-  onInteraction = () => {}
+  onInteraction = () => {},
+  onNavigationStart = () => {},
+  onNavigationEnd = () => {}
 }) {
   if (!viewer || !container) {
     throw new Error("viewer and container are required.");
@@ -262,6 +264,17 @@ export function createStormTrackerCameraController({
   let activePointer = null;
   let wheelGestureOpen = false;
   let wheelQuietTimer = null;
+  let pointerNavigating = false;
+  let wheelNavigating = false;
+
+  function setNavigationSource(source, active) {
+    const wasActive = pointerNavigating || wheelNavigating;
+    if (source === "pointer") pointerNavigating = active;
+    else wheelNavigating = active;
+    const nowActive = pointerNavigating || wheelNavigating;
+    if (!wasActive && nowActive) onNavigationStart();
+    if (wasActive && !nowActive) onNavigationEnd();
+  }
 
   function snapshotCamera() {
     stableCamera = {
@@ -510,6 +523,7 @@ export function createStormTrackerCameraController({
     }
 
     activePointer = null;
+    setNavigationSource("pointer", false);
     snapshotCamera();
     scene.requestRender();
   }
@@ -597,6 +611,8 @@ export function createStormTrackerCameraController({
 
     if (!activePointer.dragging) {
       activePointer.dragging = true;
+      // Suspend high-detail imagery BEFORE the first moving camera frame.
+      setNavigationSource("pointer", true);
     }
 
     onInteraction();
@@ -631,6 +647,7 @@ export function createStormTrackerCameraController({
         () => {
           wheelGestureOpen = false;
           wheelQuietTimer = null;
+          setNavigationSource("wheel", false);
         },
         wheelGestureQuietMs
       );
@@ -653,6 +670,7 @@ export function createStormTrackerCameraController({
       return;
     }
 
+    setNavigationSource("wheel", true);
     if (
       wheel.mode
       === "discrete"
@@ -683,21 +701,9 @@ export function createStormTrackerCameraController({
       }
 
       applyState();
-
-      wheelGestureOpen =
-        false;
-
-      if (
-        wheelQuietTimer
-      ) {
-        clearTimeout(
-          wheelQuietTimer
-        );
-
-        wheelQuietTimer =
-          null;
-      }
-
+      // Even discrete wheel wheels emit a burst of samples; do not restore
+      // overlapping satellite sources between individual zoom ticks.
+      closeWheelGestureLater();
       return;
     }
 
@@ -790,6 +796,9 @@ export function createStormTrackerCameraController({
       if (wheelQuietTimer) {
         clearTimeout(wheelQuietTimer);
       }
+      wheelQuietTimer = null;
+      setNavigationSource("pointer", false);
+      setNavigationSource("wheel", false);
 
       container.removeEventListener(
         "pointerdown",

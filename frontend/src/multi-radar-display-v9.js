@@ -1,4 +1,4 @@
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.10-staged-sync";
 
 // V9 multi-site 2-D reflectivity display only. The existing primary site
 // still owns Doppler, source histories, storm tracks and inferred 3-D science.

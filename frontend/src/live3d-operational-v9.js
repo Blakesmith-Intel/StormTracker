@@ -41,11 +41,11 @@ import {
 
 import {
   createStormTrackerCameraController
-} from "./stormtracker-camera-v1.js?v=camera-v1.1-wheel";
+} from "./stormtracker-camera-v1.js?v=9.18.2-desktop-navigation-events";
 
 import {
   createStormTrackerTouchCameraGestures
-} from "./touch-camera-gestures-v1.js?v=v9.18.1-mobile-raf-gestures";
+} from "./touch-camera-gestures-v1.js?v=v9.18.2-gesture-boundaries";
 
 import {
   loadDopplerDiagnostic,
@@ -134,7 +134,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.17-dea-regional-autodetail-r1";
+} from "./context-layers/basemap-manager-v1.js?v=9.18.2-mobile-navigation-tiles";
 
 import {
   createQueenslandTownLabelLayer
@@ -320,11 +320,14 @@ const REGIONAL_HOME = Object.freeze({
 });
 
 let mapCamera = null;
+let basemapManager = null;
 
 const touchCameraGestures =
   createStormTrackerTouchCameraGestures({
     container: $("cesiumContainer"),
     getController: () => mapCamera,
+    onGestureStart: () => basemapManager?.setNavigationActive(true),
+    onGestureEnd: () => basemapManager?.setNavigationActive(false),
     onGesture: () => {
       motionTransition.cancel();
       cameraPerformance.pulse();
@@ -343,9 +346,9 @@ mapCamera =
     home:
       CORE_HOME,
 
-    onInteraction:
-      () =>
-        cameraPerformance.pulse()
+    onInteraction: () => cameraPerformance.pulse(),
+    onNavigationStart: () => basemapManager?.setNavigationActive(true),
+    onNavigationEnd: () => basemapManager?.setNavigationActive(false)
   });
 
 let queenslandTownLabels = null;
@@ -458,10 +461,11 @@ function setBasemapStatus(
     kind;
 }
 
-const basemapManager =
+basemapManager =
   createStormTrackerBasemapManager({
     Cesium,
     viewer,
+    suspendDetailDuringNavigation:true,
     storage:
       window.localStorage,
     onStatus:

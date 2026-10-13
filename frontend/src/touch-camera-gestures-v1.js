@@ -37,6 +37,8 @@ export function createStormTrackerTouchCameraGestures({
   container,
   getController,
   onGesture = () => {},
+  onGestureStart = () => {},
+  onGestureEnd = () => {},
   minimumRange = 800,
   maximumRange = 5000000,
   pitchDegreesPerPixel = 0.12,
@@ -58,6 +60,13 @@ export function createStormTrackerTouchCameraGestures({
   let destroyed = false;
   let scheduledFrame = null;
   let pendingMove = false;
+  let gestureStarted = false;
+
+  function beginGesture() {
+    if(gestureStarted)return;
+    gestureStarted=true;
+    onGestureStart();
+  }
 
   function touchPoints() {
     return [...pointers.values()]
@@ -117,6 +126,9 @@ export function createStormTrackerTouchCameraGestures({
       const dy = current.y - previous.y;
       if (Math.hypot(dx, dy) < 1.5) return;
 
+      // Signal before camera.lookAt: suspend expensive imagery tile updates
+      // BEFORE the first moving-camera frame is requested.
+      beginGesture();
       controller.panByFraction(
         dx / Math.max(1, container.clientWidth),
         dy / Math.max(1, container.clientHeight)
@@ -147,6 +159,7 @@ export function createStormTrackerTouchCameraGestures({
 
         // No unnecessary Cesium view update for unchanged pinch samples.
         if (Object.keys(next).length > 0) {
+          beginGesture();
           controller.setView(next);
           onGesture();
         }
@@ -198,6 +211,10 @@ export function createStormTrackerTouchCameraGestures({
       }
     } catch {}
     resetGestureBaseline();
+    if(pointers.size===0 && gestureStarted){
+      gestureStarted=false;
+      onGestureEnd();
+    }
   }
 
   const options = { passive:false, capture:true };
@@ -214,6 +231,7 @@ export function createStormTrackerTouchCameraGestures({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      if(gestureStarted){gestureStarted=false;onGestureEnd();}
       if (scheduledFrame !== null) cancelFrame(scheduledFrame);
       scheduledFrame = null;
       pendingMove = false;

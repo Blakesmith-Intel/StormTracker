@@ -323,7 +323,10 @@ export function basemapLabel(
 }
 
 export function createStormTrackerBasemapManager({
-  Cesium,viewer,storage=globalThis.localStorage,onStatus=()=>{}
+  Cesium,viewer,storage=globalThis.localStorage,onStatus=()=>{},
+  suspendDetailDuringNavigation=false,
+  resumeDetailDelayMs=700,
+  schedule=setTimeout,cancel=clearTimeout
 }) {
   if(!Cesium||!viewer?.imageryLayers)
     throw TypeError("Basemap manager requires Cesium and a viewer");
@@ -333,7 +336,7 @@ export function createStormTrackerBasemapManager({
     qldDetailLayer=null,nswDetailLayer=null;
   let sourceListeners=[],postRenderUnlisten=null;
   let detailTarget=false,detailStaging=false,detailBlend=0,readyFrames=0;
-  let destroyed=false;
+  let destroyed=false,navigationActive=false,resumeTimer=null;
   function remove(layer){if(layer)imagery.remove(layer,true);}
   function render(){scene?.requestRender?.();}
   function detach(){
@@ -342,6 +345,8 @@ export function createStormTrackerBasemapManager({
     sourceListeners=[];
   }
   function clearLayers(){
+    if(resumeTimer!==null){cancel(resumeTimer);resumeTimer=null;}
+    navigationActive=false;
     detach();
     remove(qldDetailLayer);remove(nswDetailLayer);
     remove(regionalLayer);remove(streetLayer);
@@ -369,6 +374,10 @@ export function createStormTrackerBasemapManager({
   }
   function updateForCamera(){
     if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return "street";
+    // Mobile panning should never multiply new tile requests across the
+    // overlapping QLD and NSW high-resolution providers. Leave the genuine
+    // DEA regional layer visible until this touch gesture has settled.
+    if(navigationActive)return "navigation";
     const target=chooseDetailForScale(detailTarget,estimatedCameraMetresPerPixel(scene));
     if(target!==detailTarget){
       detailTarget=target;
@@ -399,6 +408,35 @@ export function createStormTrackerBasemapManager({
       }
     }
     return detailStaging?"staging":detailBlend>0?"detailed":"regional";
+  }
+  function setNavigationActive(active) {
+    if(destroyed||!suspendDetailDuringNavigation)return false;
+    if(resumeTimer!==null){cancel(resumeTimer);resumeTimer=null;}
+    if(active){
+      if(navigationActive)return true;
+      navigationActive=true;
+      // show=false actually suspends imagery requests; alpha=0 alone does not.
+      // Retain the layer/provider for fast reactivation and do not touch any
+      // radar/Doppler/volume imagery above these background layers.
+      if(currentId===BASEMAP_IDS.QLD_IMAGERY){
+        if(qldDetailLayer)qldDetailLayer.show=false;
+        if(nswDetailLayer)nswDetailLayer.show=false;
+        detailTarget=false;detailStaging=false;detailBlend=0;readyFrames=0;
+        render();
+      }
+      return true;
+    }
+    if(!navigationActive)return false;
+    resumeTimer=schedule(()=>{
+      resumeTimer=null;
+      if(destroyed)return;
+      navigationActive=false;
+      // Re-evaluate the FINAL camera position and stage local detail only
+      // after navigation stops, retaining official DEA regional underneath.
+      updateForCamera();
+      render();
+    },resumeDetailDelayMs);
+    return true;
   }
   function setBasemap(requestedId,{persist=true}={}){
     if(destroyed)throw Error("Basemap manager was destroyed");
@@ -453,12 +491,13 @@ export function createStormTrackerBasemapManager({
     clearLayers();currentId=null;destroyed=true;
   }
   return {
-    initialise,setBasemap,destroy,updateForCamera,
+    initialise,setBasemap,destroy,updateForCamera,setNavigationActive,
     get currentId(){return currentId;},
     get detailMode(){
       return detailStaging?"staging":detailBlend>0?"detailed":"regional";
     },
     get detailBlend(){return detailBlend;},
+    get navigationActive(){return navigationActive;},
     get regionalLayer(){return regionalLayer;}
   };
 }

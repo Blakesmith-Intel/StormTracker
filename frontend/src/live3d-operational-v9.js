@@ -3389,7 +3389,7 @@ function renderHybridTracks(index) {
     hybridSource.entities.resumeEvents();
     stormTrackLabelOverlay.setMarkers(stormTrackMarkers);
     // Visibility must be honoured on paused frames AND after rebuilding a
-    // frame: no fresh trail, cone or track path can resurrect while labels off.
+    // frame: no fresh history trail can reappear while labels are off.
     const trackAnnotationsVisible =
       Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
     stormTrackLabelOverlay.setVisible(trackAnnotationsVisible);

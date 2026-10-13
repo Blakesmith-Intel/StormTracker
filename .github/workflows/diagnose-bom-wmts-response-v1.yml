@@ -1,0 +1,19 @@
+name: Diagnose BoM WMTS source availability (isolated)
+on:
+  push:
+    branches:
+      - 'fix/v9-18-bom-400-root-cause-*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect real BoM relay response and upstream capabilities (max six calls)
+        run: node scripts/diagnose-bom-wmts-response-v1.mjs

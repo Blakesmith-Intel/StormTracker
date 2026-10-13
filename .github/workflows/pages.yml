@@ -564,6 +564,10 @@ jobs:
             https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/6fea656466eb56b56daba330daa7cefe35a4b77c/frontend/src/context-layers/power-outages-operational-v1.js \
             -o "$destination/src/context-layers/power-outages-operational-v1.js"
           grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/power-outages-operational-v1.js"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/1e1dc4c23ff8572d623b5b05e7cae55e03b3670d/frontend/src/context-layers/river-gauges-operational-v1.js \
+            -o "$destination/src/context-layers/river-gauges-operational-v1.js"
+          grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/river-gauges-operational-v1.js"
           printf 'BO M BOUNDED RADAR HISTORY QA %s; V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"

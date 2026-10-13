@@ -27,6 +27,41 @@ await assert.rejects(()=>fetchQldNearbyLocalities({
     return {error:{message:"ArcGIS error"}};
   }})
 }),/ArcGIS error/);
+// Dense/urban viewport overflow must split into bounded official requests,
+// not endlessly refetch the identical over-limit URL when the camera moves.
+let subqueries=0,rootQueries=0;
+const dense=await fetchQldNearbyLocalities({
+  bounds:region,
+  fetchImpl:async url=>{
+    const geometry=String(new URL(url).searchParams.get("geometry")).split(",").map(Number);
+    if(Math.abs(geometry[0]-region.west)<1e-6 &&
+       Math.abs(geometry[2]-region.east)<1e-6){
+      rootQueries++;
+      return {ok:true,async json(){return {
+        type:"FeatureCollection",exceededTransferLimit:true,features:[]
+      };}};
+    }
+    subqueries++;
+    return {ok:true,async json(){return {type:"FeatureCollection",features:[
+      {type:"Feature",properties:{objectid:subqueries,place_name:"Town "+subqueries,type:"SUB"},
+        geometry:{type:"Point",coordinates:[(geometry[0]+geometry[2])/2,
+          (geometry[1]+geometry[3])/2]}}
+    ]};}};
+  }
+});
+assert.equal(rootQueries,1);
+assert.equal(subqueries,2,"Exactly two bounded subqueries resolve the saturated viewport");
+assert.equal(dense.length,2);
+assert.ok(dense.every(x=>x.kind==="SUB"));
+const overflowing=async()=>({ok:true,async json(){return {
+  type:"FeatureCollection",exceededTransferLimit:true,features:[]
+};}});
+let boundedCalls=0;
+await assert.rejects(()=>fetchQldNearbyLocalities({
+  bounds:region,fetchImpl:async()=>{boundedCalls++;return overflowing();},
+  maxSplitDepth:3
+}),/exceeded bounded query limit/);
+assert.equal(boundedCalls,15,"Dense gazetteer queries stop at a hard 15-call limit");
 const CesiumMath={toDegrees:v=>v};
 const camera={positionCartographic:{height:55000},computeViewRectangle:()=>region};
 assert.deepEqual(qldLocalityViewBounds(camera,{Math:CesiumMath},{}),region);

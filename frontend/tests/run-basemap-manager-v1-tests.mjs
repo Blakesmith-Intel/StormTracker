@@ -175,7 +175,7 @@ assert.ok(statuses.some(([msg])=>msg.includes("DEA regional")));
 // available for orientation, and only the final settled view stages detail.
 let resume=null,cancelled=0;
 const phone=createStormTrackerBasemapManager({
-  Cesium,viewer,storage,mobileNavigation:true,
+  Cesium,viewer,storage,suspendDetailDuringNavigation:true,
   resumeDetailDelayMs:700,
   schedule(cb,delay){
     assert.equal(delay,700);

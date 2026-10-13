@@ -31,7 +31,7 @@ jobs:
       - name: Checkout pinned diagnostic preview source
         uses: actions/checkout@v4
         with:
-          ref: e449e87f19ac2889b673f3d6d82d1aa79eae2e5f
+          ref: 7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031
           path: preview-builds/hover-gpu-guard
           persist-credentials: false
       - name: Validate complete diagnostic preview regressions first
@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           (cd preview-builds/hover-gpu-guard && npm test)
           node --check preview-builds/hover-gpu-guard/relay/worker.js
-          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "e449e87f19ac2889b673f3d6d82d1aa79eae2e5f"
+          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031"
       - name: Validate current development source
         run: npm test
       - name: Checkout sealed V9.18.0 pixel-tracking production source
@@ -580,6 +580,8 @@ jobs:
           done
           cp preview-builds/hover-gpu-guard/frontend/src/context-layers/river-gauge-layer-v1.js "$destination/src/context-layers/"
           cp preview-builds/hover-gpu-guard/frontend/src/storm-track-trail-visibility-v1.js "$destination/src/"
+          cp preview-builds/hover-gpu-guard/frontend/src/multi-radar-display-v9.js "$destination/src/"
+          cp preview-builds/hover-gpu-guard/frontend/src/context-layers/basemap-manager-v1.js "$destination/src/context-layers/"
           cp preview-builds/hover-gpu-guard/frontend/src/live3d-operational-v9.js "$destination/src/"
           cp preview-builds/hover-gpu-guard/frontend/live3d-operational-v9.html "$destination/"
           cp preview-builds/hover-gpu-guard/frontend/index.html "$destination/"
@@ -588,7 +590,11 @@ jobs:
           grep -Fq 'recentRelayBlockedUntil' "$destination/src/context-layers/river-gauge-layer-v1.js"
           grep -Fq 'TRACK_TRAIL_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
           grep -Fq 'trackAnnotationsVisible' "$destination/src/live3d-operational-v9.js"
-          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' 'e449e87f19ac2889b673f3d6d82d1aa79eae2e5f' > "$destination/BUILD.txt"
+          grep -Fq '9.18.9-primary-utc-sync' "$destination/src/live3d-operational-v9.js"
+          grep -Fq '9.18.9-pan-persist' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'displayedUtc.get(id)===targetUtc' "$destination/src/multi-radar-display-v9.js"
+          grep -Fq 'Never hide or unload satellite layers simply because the camera is' "$destination/src/context-layers/basemap-manager-v1.js"
+          printf 'V9.18 WEBGL + MULTIRADAR UTC + SATELLITE PAN QA commit %s; production V9.18.0 unchanged\n' '7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -682,11 +688,15 @@ jobs:
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
           build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq 'e449e87f19ac2889b673f3d6d82d1aa79eae2e5f' <<< "$build"
+          grep -Fq '7ecfbefcb79bbe9e9f6747c00a8d10ff6f1cb031' <<< "$build"
           picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
           grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
           tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"
           grep -Fq 'TRACK_TRAIL_ENTITY_PREFIX' <<< "$tracks"
+          clock="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/multi-radar-display-v9.js")"
+          grep -Fq 'displayedUtc.get(id)===targetUtc' <<< "$clock"
+          basemap="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/basemap-manager-v1.js")"
+          grep -Fq 'Never hide or unload satellite layers simply because the camera is' <<< "$basemap"
           echo "Verified isolated source-history QA; original production root remains pinned."
 
       - name: Verify served QLD label/WebGL stability review

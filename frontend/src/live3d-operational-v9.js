@@ -5,9 +5,10 @@ import {
   loadLatestBomReflectivityMosaic,
   findLatestBomReflectivityTime,
   discoverBomReflectivityHistory,
+  discoverBoundedBomReflectivityHistory,
   loadBomReflectivityMosaicAtTime,
   reflectivityWindowForRegion
-} from "./bom-wmts-loop-v2.js?v=operational-v9-7";
+} from "./bom-wmts-loop-v2.js?v=9.18.6-bounded-published-history";
 
 import {
   RadarWorkerClient
@@ -3852,11 +3853,9 @@ async function loadHybridSequence(automatic = false) {
         ? Promise.resolve(
             [...lastSourceDiscoveryTimes]
           )
-        : discoverBomReflectivityHistory(
-            now,
-            180,
-            region
-          );
+        : (LABEL_GPU_QA
+            ? discoverBoundedBomReflectivityHistory(now,180,region)
+            : discoverBomReflectivityHistory(now,180,region));
 
   const [discoveredTimes, cachedFrames] = await Promise.all([
     sourceDiscovery,

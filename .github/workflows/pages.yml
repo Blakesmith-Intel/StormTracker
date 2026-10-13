@@ -544,7 +544,9 @@ jobs:
           grep -Fq 'deferLocalityDuringNavigation:LABEL_GPU_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'createDeferredImageryRetirement' "$destination/src/imagery-layer-retirement-v1.js"
           grep -Fq 'splitQldLocalityBounds' "$destination/src/context-layers/qld-nearby-localities-v1.js"
-          grep -Fq 'label-gpu-v1' "$destination/index.html"
+          grep -Fq 'discoverBoundedBomReflectivityHistory' "$destination/src/bom-wmts-loop-v2.js"
+          grep -Fq 'LABEL_GPU_QA' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'label-gpu-v2-live-window' "$destination/index.html"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
@@ -624,9 +626,12 @@ jobs:
           set -euo pipefail
           base="${PAGES_URL%/}"
           page="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/")"
-          grep -Fq 'label-gpu-v1' <<< "$page"
+          grep -Fq 'label-gpu-v2-live-window' <<< "$page"
           runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/src/live3d-operational-v9.js")"
           grep -Fq 'LABEL_GPU_QA' <<< "$runtime"
+          grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$runtime"
+          mosaic="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/src/bom-wmts-loop-v2.js")"
+          grep -Fq 'maximumPublishedFrames = 9' <<< "$mosaic"
           grep -Fq '__stormtrackerGraphicsDiagnostics' <<< "$runtime"
           labels="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/src/context-layers/qld-town-label-layer-v1.js")"
           grep -Fq 'deferLocalityDuringNavigation' <<< "$labels"

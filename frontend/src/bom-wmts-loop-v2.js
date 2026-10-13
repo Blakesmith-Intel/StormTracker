@@ -239,6 +239,56 @@ export async function loadLatestBomReflectivityMosaic(now = Date.now(), region =
   return loadBomReflectivityMosaicAtTime(observedUtc, region);
 }
 
+// The public BoM reflectivity WMTS publishes a short rolling set of
+// observations (nine at a five-minute cadence in its observed capabilities).
+// The user's 60/120/180-minute history must come from genuine prior browser
+// cache, not 48 speculative queries against timestamps BoM no longer serves.
+// This bounded discovery is isolated until visually validated.
+export async function discoverBoundedBomReflectivityHistory(
+  now = Date.now(),
+  horizonMinutes = 180,
+  region = 'SEQ',
+  { probe = probeTimestamp, maximumPublishedFrames = 9 } = {}
+) {
+  const frameLimit = Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
+  const horizon = Math.max(5,Math.min(180,Number(horizonMinutes)||180));
+  const recentCandidates=candidateBomReflectivityTimes(now,12);
+  let newest=null;
+  let failedAtHead=0;
+  for (const candidate of recentCandidates) {
+    try {
+      if(await probe(candidate,region)){newest=candidate;break;}
+    } catch(error) {
+      // Do not turn an upstream refusal into twelve more failed requests.
+      if(/HTTP (?:403|429|502|503|504)\b/.test(String(error?.message??error)))
+        throw new Error("BoM reflectivity service is temporarily unavailable");
+    }
+    if(++failedAtHead>=4)break;
+  }
+  if(!newest) throw new Error(
+    "No verified current BoM reflectivity timestamp; retaining previously cached radar images"
+  );
+
+  const available=[newest];
+  const count=Math.min(frameLimit,Math.floor(horizon/5)+1);
+  let consecutiveMisses=0;
+  for(let i=1;i<count;i++){
+    const candidate=new Date(Date.parse(newest)-i*300000)
+      .toISOString().replace(".000Z","Z");
+    try{
+      if(await probe(candidate,region)){
+        available.push(candidate);
+        consecutiveMisses=0;
+      } else if(++consecutiveMisses>=2)break;
+    }catch(error){
+      const message=String(error?.message??error);
+      if(/HTTP (?:403|429|502|503|504)\b/.test(message))break;
+      if(++consecutiveMisses>=2)break;
+    }
+  }
+  return available.reverse();
+}
+
 export async function discoverBomReflectivityHistory(
   now = Date.now(),
   horizonMinutes = 180,

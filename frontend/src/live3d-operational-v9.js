@@ -41,7 +41,7 @@ import {
 
 import {
   createStormTrackerCameraController
-} from "./stormtracker-camera-v1.js?v=camera-v1.1-wheel";
+} from "./stormtracker-camera-v1.js?v=9.18.2-desktop-navigation-events";
 
 import {
   createStormTrackerTouchCameraGestures
@@ -346,9 +346,9 @@ mapCamera =
     home:
       CORE_HOME,
 
-    onInteraction:
-      () =>
-        cameraPerformance.pulse()
+    onInteraction: () => cameraPerformance.pulse(),
+    onNavigationStart: () => basemapManager?.setNavigationActive(true),
+    onNavigationEnd: () => basemapManager?.setNavigationActive(false)
   });
 
 let queenslandTownLabels = null;
@@ -465,7 +465,7 @@ basemapManager =
   createStormTrackerBasemapManager({
     Cesium,
     viewer,
-    mobileNavigation:coarsePointerNavigation,
+    suspendDetailDuringNavigation:true,
     storage:
       window.localStorage,
     onStatus:

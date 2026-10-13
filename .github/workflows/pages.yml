@@ -645,7 +645,7 @@ jobs:
           set -euo pipefail
           base="${PAGES_URL%/}"
           index="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/")"
-          grep -Fq 'label-gpu-v1' <<< "$index"
+          grep -Fq 'live3d-operational-v9.html' <<< "$index"
           runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/live3d-operational-v9.js")"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' <<< "$runtime"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' <<< "$runtime"

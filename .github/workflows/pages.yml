@@ -558,6 +558,12 @@ jobs:
           # Same Cesium, BoM, terrain, weather and context code as the prior
           # label-gpu experiment; only the path activates cached-source rescue.
           cp -a frontend/preview/label-gpu-guard/. "$destination/"
+          # Apply the isolated, pinned outage-hover WebGL pick guard ONLY to
+          # this preview; production and other QA previews remain unchanged.
+          curl --fail --silent --show-error --location --retry 3 \
+            https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/6fea656466eb56b56daba330daa7cefe35a4b77c/frontend/src/context-layers/power-outages-operational-v1.js \
+            -o "$destination/src/context-layers/power-outages-operational-v1.js"
+          grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/power-outages-operational-v1.js"
           printf 'BO M BOUNDED RADAR HISTORY QA %s; V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"

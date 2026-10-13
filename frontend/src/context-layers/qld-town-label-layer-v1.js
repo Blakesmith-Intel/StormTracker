@@ -30,7 +30,7 @@ export function cameraLookDownDegrees(camera,CesiumRef,ellipsoid) {
 export function createQueenslandTownLabelLayer({
   viewer,CesiumRef=globalThis.Cesium,fetchImpl=globalThis.fetch,
   documentRef=globalThis.document,container=viewer?.container?.parentElement,
-  mode="street",onStatus=()=>{}
+  mode="street",onStatus=()=>{},deferLocalityDuringNavigation=false
 }={}) {
   if(!viewer?.scene?.postRender || !CesiumRef?.SceneTransforms ||
      !CesiumRef?.EllipsoidalOccluder || !container ||
@@ -49,6 +49,7 @@ export function createQueenslandTownLabelLayer({
   let localityBusy=false,lastLocalityRequest=0,localityRequestVersion=0;
   let nswLocalityCoverage=null,nswLocalityBusy=false;
   let lastNswLocalityRequest=0,nswLocalityVersion=0;
+  let navigating=false,settleTimer=null,nextLocalityRetryAt=0,lastQldError=0;
   const elements=new Map();
   const activePlacements=new Map();
 
@@ -99,7 +100,9 @@ export function createQueenslandTownLabelLayer({
       c.clientWidth,c.clientHeight,currentMode,places.length].join(":");
   }
   function maybeLoadNearby(){
-    if(destroyed || localityBusy || !places.length)return;
+    if(destroyed || localityBusy || !places.length ||
+       (deferLocalityDuringNavigation && navigating) ||
+       Date.now()<nextLocalityRetryAt)return;
     const ellipsoid=scene.globe?.ellipsoid??CesiumRef.Ellipsoid?.WGS84;
     const view=qldLocalityViewBounds(scene.camera,CesiumRef,ellipsoid);
     if(!view||localityBoundsContain(localityCoverage,view))return;
@@ -131,13 +134,23 @@ export function createQueenslandTownLabelLayer({
       lastFingerprint="";
       draw(true);
     }).catch(error=>{
-      if(!destroyed)console.warn("Nearby QLD localities unavailable:",error);
+      if(destroyed)return;
+      // A saturated/temporarily unavailable upstream gazetteer is NOT a
+      // reason to repeat the same expensive query during active panning.
+      // Keep last known good labels; back off for sixty seconds.
+      if(deferLocalityDuringNavigation)nextLocalityRetryAt=Date.now()+60000;
+      if(!deferLocalityDuringNavigation ||
+         !lastQldError || Date.now()-lastQldError>60000) {
+        console.warn("Nearby QLD localities unavailable:",error?.message??error);
+        lastQldError=Date.now();
+      }
     }).finally(()=>{if(version===localityRequestVersion)localityBusy=false;});
   }
   // NSW localities follow the same small-scale, viewport-bounded gazetteer
   // rules as QLD. Both enter the SAME shared candidate list and collision pass.
   function maybeLoadNswNearby() {
-    if(destroyed||nswLocalityBusy||!places.length)return;
+    if(destroyed||nswLocalityBusy||!places.length ||
+      (deferLocalityDuringNavigation&&navigating))return;
     const ellipsoid=scene.globe?.ellipsoid??CesiumRef.Ellipsoid?.WGS84;
     const view=nswLocalityViewBounds(scene.camera,CesiumRef,ellipsoid);
     if(!view||localityBoundsContain(nswLocalityCoverage,view))return;
@@ -171,6 +184,9 @@ export function createQueenslandTownLabelLayer({
     // Camera tracking is deliberately not gated on the layout fingerprint
     // or the 170ms decluttering interval; this fixes map-pan label drift.
     followCamera();
+    // Geographic positions still follow EVERY Cesium frame, but don't
+    // rescan thousands of QLD/NSW label candidates mid-gesture.
+    if(deferLocalityDuringNavigation&&navigating)return selectedIds;
     const key=fingerprint();
     if(!force && key===lastFingerprint)return selectedIds;
     const now=Date.now();
@@ -216,6 +232,20 @@ export function createQueenslandTownLabelLayer({
     maybeLoadNearby();
     maybeLoadNswNearby();
     return selectedIds;
+  }
+  function setNavigationActive(active){
+    if(!deferLocalityDuringNavigation || destroyed)return;
+    if(settleTimer!==null){clearTimeout(settleTimer);settleTimer=null;}
+    navigating=Boolean(active);
+    if(!navigating){
+      // One settled screen-space declutter, followed by an optional
+      // viewport-bounded official locality load.
+      settleTimer=setTimeout(()=>{
+        settleTimer=null;
+        if(destroyed||navigating)return;
+        draw(true);
+      },650);
+    }
   }
   function setMode(nextMode){
     if(destroyed)return;
@@ -279,13 +309,14 @@ export function createQueenslandTownLabelLayer({
   function destroy(){
     if(destroyed)return;
     destroyed=true;localityRequestVersion++;nswLocalityVersion++;
+    if(settleTimer!==null){clearTimeout(settleTimer);settleTimer=null;}
     postRenderDisposer?.();
     if(resizeDisposer && typeof window!=="undefined")
       window.removeEventListener("resize",resizeDisposer);
     elements.clear();activePlacements.clear();
     root.remove();places=[];selectedIds=[];displayedPlaces=[];
   }
-  return {start,draw,setMode,destroy,
+  return {start,draw,setMode,setNavigationActive,destroy,
     get count(){return places.length;},
     get visibleCount(){return selectedIds.length;},
     get visibleIds(){return [...selectedIds];},

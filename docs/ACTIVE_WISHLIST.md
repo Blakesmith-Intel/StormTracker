@@ -1,75 +1,26 @@
-> **Current release note (V9.17.0, 13 October 2026):** V9.17.0 includes 22 BoM radar windows, the measured dBZ 2-D and inferred 3-D palette/height refinement, and minimalist radar-site map markers. Doppler for Brewarrina remains explicitly gated pending source transport/georegistration acceptance; Moree/Grafton have no integrated Doppler. All prior V9.13.4 and earlier "current" labels below are archival; use [HANDOVER_V9.17.0.md](HANDOVER_V9.17.0.md) for the actual outstanding items and P0/P1 priorities.
+# StormTracker — active roadmap after accepted V9.18 diagnostic (13 October 2026)
 
-# StormTracker — active wishlist and defect-first release policy
+The next baseline for development is `acfa0ebd3717a793369e3e887e2d1a54785620b7` (recovery branch `restore/v9.18-accepted-diagnostic-20261013`). The sealed production V9.18.0 remains separate.
 
-Updated: 8 October 2026 (AEST). The deployed starting point is V9.13.4.
-This file supersedes the older V9.9.1-era order in FUTURE_DEVELOPMENT_HANDOVER.md.
+## Priority order
 
-## Non-negotiable work order
+**P0 — Source integrity / operational safety.** Real BoM observations and source clocks only. Failure isolation for live radar, gauge history, outages and closures. Never show old-UTC secondary radar imagery next to a newer primary observation or synthetic interpolation as measured data.
 
-1. **P0 — operational safety, data integrity, false/missing incident information,
-   source failure or stale incident display.** Fix first and verify with tests.
-2. **P1 — user-reported product defects**: crashes, missing interactions, boundaries,
-   map label readability, broken polling, provider mismatches, performance regressions.
-3. **P2 — accepted wishlist enhancements.** Begin only when P0/P1 issues identified
-   during development have been addressed or isolated behind a safe rollback.
-4. Do not promote or seal a release without automated regression checks and
-   real browser/mobile acceptance. Keep the latest accepted production restore
-   point untouched until the new release is accepted.
+**P1 — Stability.** Regression-first resolution of browser freezes, WebGL texture lifetime, map navigation/satellite persistence, smooth frame handover, labels and paused visibility. The user's accepted V9.18 QA has cleared the major issues; reopen only on evidence of a regression.
 
-## Completed wishlist work (through V9.13.4)
+**P2 — V10 severe-weather candidates.** Use BoM-defined damaging/destructive-wind thresholds and source-faithful Doppler analysis, with yellow damaging straight-line winds, orange possible hook-echo, and red tornado/circulation icon. This is an experimental situational-awareness feature, not an official warning. Start with Gympie/Cooloola 24 November 2025 and Christmas 2023 Gold Coast storm/derecho cases; the saved local research fixtures and full tests must be validated before browser preview.
 
-- Queensland satellite/Street basemap, contextual labels and 3-D terrain.
-- Queensland flood-road closures from QLDTraffic with interactive information.
-- Queensland-only current unplanned power outages (Energex, Ergon, Essential
-  Energy), including polygon and point-only incidents with source links.
-- Exception-only BoM river-height/flood signals and interactive BoM gauge links.
-- Follow-on repairs to official state-border overlay and minor rural names.
+## Preserved design constraints
 
-## Active next work
+- Static GitHub Pages app with existing Cloudflare transport-only relay; no paid or server-side weather inference.
+- BoM reflectivity remains dBZ, including 2-D legend and inferred 3-D.
+- Primary radar owns tracks and Doppler. Up to three other windows display source-synchronised reflectivity with bounded empirical inferred 3-D; overlapping measured pixels must not duplicate volumes.
+- Inferred volume minimum **40 dBZ**, height scale defaults **1.0×**, strength-dependent presentation height, independent opacity.
+- No arbitrary 6 km² cell-area threshold; segment from connected observed 40 dBZ pixels.
+- Labels/track trails toggle on paused frames; separate threat-cone control persists.
+- QLD flood-road closures, unplanned current electricity outages, exceptional BoM river signals and QFD incident context remain operationally distinct.
+- Severe-weather detector is for situational awareness; review source support and false-positive risks before any alert deployment.
 
-1. **V9.14.0 high-priority source freshness and failure protection** (in progress):
-   expired road closures/outages must not masquerade as current; identify
-   last successful source check, partial results and refresh failures. Keep
-   radar and each provider independent. Do not replace real provider incidents
-   with synthetic events.
-2. **V9.15.0 public QFD incidents:** display only the three
-   ArcGIS `GroupedType` values `RESCUE TECHNICAL`, `RESCUE ROAD CRASH`
-   and `ASSIST PUBLIC`, in separate categories on the interactive map.
-   No unrelated fire or other group events. The server filter and browser
-   parser must both enforce the allowlist; incident cards show the actual
-   official public classification, response time, status and source.
-   QFD's map reports general-area locations, not precise rescue sites.
-   Official QFD GroupedType symbology is confirmed in the published
-   ESCAD `drawingInfo.renderer`: all three groups have embedded PNG
-   picture-marker samples. Reuse the publicly available publisher assets
-   directly in map, legend and information panels; on temporary source
-   failure, label any fallback symbol as provisional.
-   Continue to require functioning browser CORS, expiry safeguards,
-   current-only incident lifecycle and real mobile click validation.
-3. **Future detailed QFD rescue classes (blocked):** only when a legitimately
-   public source publishes the exact job type, consider separate water,
-   vertical, mountain, RTC large-multi and extreme-weather assistance types.
-   Never use internal-only CAD data, or infer precise subtypes from
-   `GroupedType` or environment/road reports. Road crash jobs are not
-   confirmed road closures without an authoritative traffic record.
+## Release gate
 
-## Permanently final wishlist item — observed lightning
-
-**Always keep actual observed lightning last, behind every other eligible
-wishlist feature and operational repair.** It may be revisited only when a
-genuinely public **and free**, reliable Australian strike/event feed exists
-with reuse rights, sufficient geographic coverage, real observed strike
-locations, and polling suitable for an operational browser-first map.
-No paid subscription, fragile scrape, inaccessible provider, guesswork
-or radar-inferred "lightning strikes" is an acceptable substitute.
-If these conditions are not met, retain its blocked status indefinitely.
-
-## Delivery constraints
-
-- Static GitHub Pages/browser runtime; existing Cloudflare CORS relay may
-  relay permitted public sources, but cannot replace a browser-native model
-  with a user-managed server.
-- Keep the measured radar/tracking and Doppler contracts intact.
-- Make every incident indicator clickable with accurate source links;
-  disclose partial, stale and unavailable data.
+No production promotion before full frontend/relay CI, GitHub Pages artifact verification, observable mobile/desktop playback and explicit acceptance. Do not re-enable obsolete release-preview workflows or historical installation packages.

@@ -224,7 +224,11 @@ export function createStormTrackerCameraController({
   onUnexpectedCorrection = null,
   onInteraction = () => {},
   onNavigationStart = () => {},
-  onNavigationEnd = () => {}
+  onNavigationEnd = () => {},
+  scheduleFrame = callback => typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame(callback) : setTimeout(callback,16),
+  cancelFrame = handle => typeof cancelAnimationFrame === "function"
+    ? cancelAnimationFrame(handle) : clearTimeout(handle)
 }) {
   if (!viewer || !container) {
     throw new Error("viewer and container are required.");
@@ -266,6 +270,30 @@ export function createStormTrackerCameraController({
   let wheelQuietTimer = null;
   let pointerNavigating = false;
   let wheelNavigating = false;
+  let pendingFrame = null;
+  let pendingDx = 0, pendingDy = 0, pendingMode = "pan";
+  let pendingCameraDirty = false;
+
+  // One Cesium camera.lookAt maximum per visual frame, even for bursty
+  // desktop pointermove and wheel input.
+  function flushCameraFrame() {
+    if(pendingFrame!==null){cancelFrame(pendingFrame);pendingFrame=null;}
+    const dx=pendingDx,dy=pendingDy,mode=pendingMode;
+    const dirty=pendingCameraDirty || dx!==0 || dy!==0;
+    pendingDx=0;pendingDy=0;pendingCameraDirty=false;
+    if(!dirty || destroyed)return;
+    if(dx!==0 || dy!==0){
+      if(mode==="pan")state=panTargetByScreenPixels(state,dx,dy,metresPerPixel());
+      else if(mode==="orbit")state=orbitStateByPixels(state,dx,dy);
+      else state=orbitStateByPixels(state,0,dy);
+    }
+    onInteraction();
+    applyState();
+  }
+  function requestCameraFrame() {
+    if(pendingFrame!==null)return;
+    pendingFrame=scheduleFrame(()=>{pendingFrame=null;flushCameraFrame();});
+  }
 
   function setNavigationSource(source, active) {
     const wasActive = pointerNavigating || wheelNavigating;
@@ -522,6 +550,7 @@ export function createStormTrackerCameraController({
       // Already released by browser.
     }
 
+    flushCameraFrame();
     activePointer = null;
     setNavigationSource("pointer", false);
     snapshotCamera();
@@ -550,6 +579,7 @@ export function createStormTrackerCameraController({
               : "pan"
           );
 
+    flushCameraFrame();
     activePointer = {
       pointerId: event.pointerId,
       mode,
@@ -615,15 +645,10 @@ export function createStormTrackerCameraController({
       setNavigationSource("pointer", true);
     }
 
-    onInteraction();
-
-    if (activePointer.mode === "pan") {
-      panPixels(dx, dy);
-    } else if (activePointer.mode === "orbit") {
-      orbitPixels(dx, dy);
-    } else {
-      tiltPixels(dy);
-    }
+    pendingDx+=dx;
+    pendingDy+=dy;
+    pendingMode=activePointer.mode;
+    requestCameraFrame();
   }
 
   function onPointerEnd(event) {
@@ -647,6 +672,7 @@ export function createStormTrackerCameraController({
         () => {
           wheelGestureOpen = false;
           wheelQuietTimer = null;
+          flushCameraFrame();
           setNavigationSource("wheel", false);
         },
         wheelGestureQuietMs
@@ -680,8 +706,6 @@ export function createStormTrackerCameraController({
           ? -1
           : 1;
 
-      onInteraction();
-
       for (
         let index = 0;
         index < Math.abs(
@@ -700,7 +724,8 @@ export function createStormTrackerCameraController({
           );
       }
 
-      applyState();
+      pendingCameraDirty=true;
+      requestCameraFrame();
       // Even discrete wheel wheels emit a burst of samples; do not restore
       // overlapping satellite sources between individual zoom ticks.
       closeWheelGestureLater();
@@ -713,11 +738,9 @@ export function createStormTrackerCameraController({
       wheelGestureOpen =
         true;
 
-      onInteraction();
-
-      zoomDirection(
-        wheel.steps
-      );
+      state=zoomStateByDirection(state,wheel.steps,{minimumRange,maximumRange});
+      pendingCameraDirty=true;
+      requestCameraFrame();
     }
 
     closeWheelGestureLater();
@@ -790,6 +813,8 @@ export function createStormTrackerCameraController({
     },
 
     destroy() {
+      if(pendingFrame!==null)cancelFrame(pendingFrame);
+      pendingFrame=null;pendingDx=0;pendingDy=0;pendingCameraDirty=false;
       destroyed = true;
       clearInterval(correctionTimer);
 

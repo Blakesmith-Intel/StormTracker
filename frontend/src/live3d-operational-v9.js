@@ -3705,7 +3705,7 @@ async function warmRadarHistoryCache(
       // with a refusing/unavailable BoM relay. Hold the known-good loop and
       // stop requesting more full mosaics until the next normal refresh.
       const relayUnavailable=pressureGuardActive &&
-        /HTTP (?:403|429|502|503|504)\\b/.test(String(error?.message??error));
+        /HTTP (?:403|429|502|503|504)\b/.test(String(error?.message??error));
       if(relayUnavailable){
         console.warn("BoM history cache warming paused after relay rejection:",
           region,observedUtc,String(error?.message??error));

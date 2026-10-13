@@ -3388,6 +3388,12 @@ function renderHybridTracks(index) {
   } finally {
     hybridSource.entities.resumeEvents();
     stormTrackLabelOverlay.setMarkers(stormTrackMarkers);
+    // Visibility must be honoured on paused frames AND after rebuilding a
+    // frame: no fresh trail, cone or track path can resurrect while labels off.
+    const trackAnnotationsVisible =
+      Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
+    stormTrackLabelOverlay.setVisible(trackAnnotationsVisible);
+    setStormTrackTrailVisibility(hybridSource.entities,trackAnnotationsVisible);
   }
   scene.requestRender();
 }

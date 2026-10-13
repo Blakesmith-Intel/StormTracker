@@ -169,7 +169,7 @@ import {
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.18.8-gpu-pick";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gateway-guard";
 
 import {
   initialiseOperationalQfdTechnicalRescues

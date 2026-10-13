@@ -41,6 +41,6 @@ Run `npm test` to validate the frontend and `node --check relay/worker.js` to va
 2. Run all regressions; publish to an isolated preview and obtain a real browser/mobile functional pass before promotion.
 3. Pin the accepted source SHA in the Pages workflow, verify `BUILD.txt`, and keep an immutable restore ref.
 4. Never replace genuine BoM source observations with extrapolated frames or other fabricated weather data.
-5. V10 wind/hook-echo threat candidates remain experimental until validated; see `docs/ACTIVE_WISHLIST.md`.
+5. V10 wind/hook-echo threat candidates remain experimental until validated; see `docs/ACTIVE_WISHLIST.md` and the [isolated V10 development plan](https://github.com/Blakesmith-Intel/StormTracker/blob/feature/v10-severe-weather-candidates/docs/V10_DEVELOPMENT_PLAN.md).
 
-The previous experimental installers, version-specific preview deployments and historical release notes remain recoverable through Git history and the protected pre-cleanup branch, rather than cluttering the current working tree and Pages deployment.
+The previous experimental installers, version-specific preview deployments and historical release notes remain recoverable through Git history and the pre-cleanup archive branch, rather than cluttering the current working tree and Pages deployment.

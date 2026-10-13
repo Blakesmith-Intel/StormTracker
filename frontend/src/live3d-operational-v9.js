@@ -98,10 +98,10 @@ import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./
 import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.11-atomic-volume";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.5-deferred-retire";
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
-} from "./multi-radar-display-v9.js?v=9.16.15-release-r1";
+} from "./multi-radar-display-v9.js?v=9.18.5-deferred-retire";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -138,7 +138,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.18-mobile-label-throttle";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.18.5-gazetteer-settle";
 
 import {
   createQueenslandStateBorderLayer
@@ -190,7 +190,7 @@ import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
-} from "./doppler-layer-transition-v1.js?v=9.16.13-opaque-crossfade";
+} from "./doppler-layer-transition-v1.js?v=9.18.5-deferred-retire";
 import {createDeferredImageryRetirement}
   from "./imagery-layer-retirement-v1.js?v=9.18.5-gpu-lifetime";
 

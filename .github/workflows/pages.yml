@@ -552,7 +552,7 @@ jobs:
       - name: Checkout pinned diagnostic hover guard (authenticated)
         uses: actions/checkout@v4
         with:
-          ref: 3d47d2e46635304b4ae604fa39e383f374a83fc4
+          ref: 8f9180ac8e9b0991704e192e7b204c55485505ef
           path: preview-builds/hover-gpu-guard
           persist-credentials: false
 
@@ -576,10 +576,14 @@ jobs:
           cp preview-builds/hover-gpu-guard/frontend/src/context-layers/river-gauge-layer-v1.js "$destination/src/context-layers/"
           cp preview-builds/hover-gpu-guard/frontend/src/storm-track-trail-visibility-v1.js "$destination/src/"
           cp preview-builds/hover-gpu-guard/frontend/src/live3d-operational-v9.js "$destination/src/"
+          cp preview-builds/hover-gpu-guard/frontend/live3d-operational-v9.html "$destination/"
+          cp preview-builds/hover-gpu-guard/frontend/index.html "$destination/"
+          grep -Fq 'webgl-track-river-20261013' "$destination/index.html"
+          grep -Fq 'webgl-track-river-20261013' "$destination/live3d-operational-v9.html"
           grep -Fq 'recentRelayBlockedUntil' "$destination/src/context-layers/river-gauge-layer-v1.js"
           grep -Fq 'TRACK_THREAT_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
           grep -Fq 'trackAnnotationsVisible' "$destination/src/live3d-operational-v9.js"
-          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' '3d47d2e46635304b4ae604fa39e383f374a83fc4' > "$destination/BUILD.txt"
+          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' '8f9180ac8e9b0991704e192e7b204c55485505ef' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -673,7 +677,7 @@ jobs:
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
           build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq '3d47d2e46635304b4ae604fa39e383f374a83fc4' <<< "$build"
+          grep -Fq '8f9180ac8e9b0991704e192e7b204c55485505ef' <<< "$build"
           picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
           grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
           tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"

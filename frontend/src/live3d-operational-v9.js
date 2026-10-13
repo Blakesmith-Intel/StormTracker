@@ -41,7 +41,7 @@ import {
 
 import {
   createStormTrackerCameraController
-} from "./stormtracker-camera-v1.js?v=9.18.2-desktop-navigation-events";
+} from "./stormtracker-camera-v1.js?v=9.18.3-desktop-navigation-raf";
 
 import {
   createStormTrackerTouchCameraGestures
@@ -445,9 +445,12 @@ const terrainManager =
       setTerrainStatus
   });
 
-// Only the isolated /preview/street-only/ route opts in. Every other
-// preview and sealed production path retains its normal basemap behaviour.
+// Controlled, browser-only A/B tests; NEVER active in the production root.
+// Street-flat differs from Street-only by precisely one variable: terrain.
+const FLAT_TERRAIN_PERFORMANCE_TEST =
+  window.location.pathname.includes("/preview/street-flat/");
 const STREET_ONLY_PERFORMANCE_TEST =
+  FLAT_TERRAIN_PERFORMANCE_TEST ||
   window.location.pathname.includes("/preview/street-only/");
 
 function setBasemapStatus(
@@ -4625,11 +4628,20 @@ async function initialise() {
   const terrainControl =
     $("terrainEnabled");
 
-  terrainManager
-    .initialise()
+  if(FLAT_TERRAIN_PERFORMANCE_TEST){
+    terrainControl.checked=false;
+    terrainControl.disabled=true;
+    terrainControl.setAttribute("aria-label",
+      "Flat-terrain performance test; 3-D elevation loading disabled");
+  }
+  (FLAT_TERRAIN_PERFORMANCE_TEST
+    ? terrainManager.setEnabled(false,{persist:false})
+    : terrainManager.initialise())
     .then(result => {
       terrainControl.checked =
         Boolean(result?.enabled);
+      if(FLAT_TERRAIN_PERFORMANCE_TEST)
+        setTerrainStatus("FLAT TERRAIN TEST · elevation tiles disabled","ok");
     })
     .catch(error => {
       console.warn(
@@ -4768,6 +4780,10 @@ $("terrainEnabled").addEventListener(
   "change",
   async event => {
     motionTransition.cancel();
+    if(FLAT_TERRAIN_PERFORMANCE_TEST){
+      event.target.checked=false;
+      return;
+    }
 
     const requested =
       event.target.checked;

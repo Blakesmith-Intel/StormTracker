@@ -184,6 +184,16 @@ assert.ok(
   )
 );
 
+const previousDownloads=createdProviders.length;
+store.set(TERRAIN_STORAGE_KEY,"on");
+const diagnosticFlat=await manager.setEnabled(false,{persist:false});
+assert.equal(diagnosticFlat.enabled,false);
+assert.ok(viewer.terrainProvider instanceof FakeEllipsoidTerrainProvider);
+assert.equal(createdProviders.length,previousDownloads,
+  "Flat A/B comparison must not construct/download an ArcGIS elevation provider");
+assert.equal(store.get(TERRAIN_STORAGE_KEY),"on",
+  "The flat-terrain preview must preserve the user's normal 3-D terrain preference");
+console.log("PASS diagnostic flat-terrain guard: no elevation requests and no persisted preference changes.");
 console.log(
   "Terrain manager checks passed: free ArcGIS World Elevation provider, persisted toggle, attribution and flat fallback."
 );

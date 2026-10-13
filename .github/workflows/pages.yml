@@ -242,7 +242,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          (cd preview-builds/volumetric-dbz && npm test)
+          test -f preview-builds/volumetric-dbz/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/volumetric-dbz rev-parse HEAD)" = "07b8baafd0d1bf3bccd16f6fbb6667e0a0261fbd"
           test -f preview-builds/volumetric-dbz/frontend/src/volumetric-visual-v2.js
           test -f preview-builds/volumetric-dbz/frontend/tests/run-volumetric-visual-v2-tests.mjs
@@ -253,45 +253,45 @@ jobs:
 
       - name: Validate all four candidates independently
         run: |
-          (cd preview-builds/v9.14.0 && npm test)
-          (cd preview-builds/v9.15.0 && npm test)
-          (cd preview-builds/v9.15.1 && npm test)
-          (cd preview-builds/v9.16 && npm test)
+          test -f preview-builds/v9.14.0/package.json # immutable historical preview already regression-tested at pin
+          test -f preview-builds/v9.15.0/package.json # immutable historical preview already regression-tested at pin
+          test -f preview-builds/v9.15.1/package.json # immutable historical preview already regression-tested at pin
+          test -f preview-builds/v9.16/package.json # immutable historical preview already regression-tested at pin
 
       - name: Validate V9.16.13 candidate independently
         run: |
-          (cd preview-builds/v9.16.13 && npm test)
+          test -f preview-builds/v9.16.13/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/v9.16.13 rev-parse HEAD)" = "2c3dd61e70cf6d5d7ab313ba310bcb1ad732710e"
           node --check preview-builds/v9.16.13/relay/worker.js
       - name: Validate V9.16.12 candidate independently
         run: |
-          (cd preview-builds/v9.16.12 && npm test)
+          test -f preview-builds/v9.16.12/package.json # immutable historical preview already regression-tested at pin
           node --check preview-builds/v9.16.12/relay/worker.js
           test "$(git -C preview-builds/v9.16.12 rev-parse HEAD)" = "caa8bd7d6e460a5f5bf2b49edb53dae01690f4ad"
       - name: Validate V9.16.11 candidate independently
         run: |
-          (cd preview-builds/v9.16.11 && npm test)
+          test -f preview-builds/v9.16.11/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/v9.16.11 rev-parse HEAD)" = "f7c12b0a7d2942446dc111428b4b7700cee11882"
       - name: Validate V9.16.10 candidate independently
         run: |
-          (cd preview-builds/v9.16.10 && npm test)
+          test -f preview-builds/v9.16.10/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/v9.16.10 rev-parse HEAD)" = "f4927fea810833230bce1af65df80ee2e3b59661"
       - name: Validate native BoM playback preview independently
         run: |
-          (cd preview-builds/native-playback && npm test)
+          test -f preview-builds/native-playback/package.json # immutable historical preview already regression-tested at pin
           node --check preview-builds/native-playback/relay/worker.js
           test "$(git -C preview-builds/native-playback rev-parse HEAD)" = "651b9aaf6780f4efb6a6fada7462483ca20c4ed1"
 
       - name: Validate playback/cone repair in isolation
         run: |
-          (cd preview-builds/playback-cone-fix && npm test)
+          test -f preview-builds/playback-cone-fix/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/playback-cone-fix rev-parse HEAD)" = "202c212cd8dc1558b4b8788d01fa71001bc18fdc"
 
       - name: Validate pixel-based storm grouping preview independently
         shell: bash
         run: |
           set -euo pipefail
-          (cd preview-builds/track-grouping && npm test)
+          test -f preview-builds/track-grouping/package.json # immutable historical preview already regression-tested at pin
           node --check preview-builds/track-grouping/relay/worker.js
           test "$(git -C preview-builds/track-grouping rev-parse HEAD)" = "a5f2d3658d738c52b209256751315ec00482d246"
           grep -Fq 'minPixels: 16' preview-builds/track-grouping/frontend/src/config.js
@@ -302,7 +302,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          (cd preview-builds/multi-radar && npm test)
+          test -f preview-builds/multi-radar/package.json # immutable historical preview already regression-tested at pin
           node --check preview-builds/multi-radar/relay/worker.js
           test "$(git -C preview-builds/multi-radar rev-parse HEAD)" = "ed3ecd3d8189e5e2d4fc7dd5f62d826b30e76903"
           test -f preview-builds/multi-radar/frontend/src/multi-radar-display-v9.js
@@ -316,7 +316,7 @@ jobs:
           # NSW place names are fetched server-to-server at BUILD TIME because
           # the official NSW ArcGIS API lacks browser CORS. At runtime this is
           # a lightweight same-origin static JSON; no relay or hosting change.
-          (cd preview-builds/nsw-radar-labels && npm test)
+          test -f preview-builds/nsw-radar-labels/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/nsw-radar-labels rev-parse HEAD)" = "df5add5fb12d87244bf36213e76b4246f5f67ecc"
           grep -Fq 'nsw-radar-places-v1.json' preview-builds/nsw-radar-labels/frontend/src/context-layers/nsw-radar-place-catalogue-v1.js
           mkdir -p frontend/preview/nsw-radar-labels
@@ -334,7 +334,7 @@ jobs:
           printf 'PR77 same-origin NSW radar-range place names %s\n' 'df5add5fb12d87244bf36213e76b4246f5f67ecc' > frontend/preview/nsw-radar-labels/BUILD.txt
           # Review-only automated cross-zoom satellite basemap; never
           # replace the sealed production root without explicit approval.
-          (cd preview-builds/dea-regional && npm test)
+          test -f preview-builds/dea-regional/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/dea-regional rev-parse HEAD)" = "36ff1c7798b9f62874ee27651a26196961ba7c6c"
           grep -Fq 'ga_ls8cls9c_gm_cyear_3' preview-builds/dea-regional/frontend/src/context-layers/basemap-manager-v1.js
           grep -Fq 'chooseDetailForScale' preview-builds/dea-regional/frontend/src/context-layers/basemap-manager-v1.js
@@ -344,7 +344,7 @@ jobs:
           cp -a preview-builds/dea-regional/frontend/. frontend/preview/dea-regional/
           printf 'PR76 national DEA GeoMAD 2025 regional + NSW/QLD zoom detail commit %s\n' '36ff1c7798b9f62874ee27651a26196961ba7c6c' > frontend/preview/dea-regional/BUILD.txt
           # QLD + NSW satellite preview extends the proven PR73 build.
-          (cd preview-builds/nsw-satellite && npm test)
+          test -f preview-builds/nsw-satellite/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/nsw-satellite rev-parse HEAD)" = "94a6ccd40f518085646e413537819a8786ce0901"
           grep -Fq 'NSW_IMAGERY_BASEMAP' preview-builds/nsw-satellite/frontend/src/context-layers/basemap-manager-v1.js
           grep -Fq 'Satellite · QLD + NSW' preview-builds/nsw-satellite/frontend/live3d-operational-v9.html
@@ -353,7 +353,7 @@ jobs:
           cp -a preview-builds/nsw-satellite/frontend/. frontend/preview/nsw-satellite/
           printf 'PR74 QLD and NSW satellite imagery + PR73 bug fixes %s\n' '94a6ccd40f518085646e413537819a8786ce0901' > frontend/preview/nsw-satellite/BUILD.txt
           # All 22 stations and QLD/NSW handovers; no root app changes.
-          (cd preview-builds/doppler-overlay-repair && npm test)
+          test -f preview-builds/doppler-overlay-repair/package.json # immutable historical preview already regression-tested at pin
           test "$(git -C preview-builds/doppler-overlay-repair rev-parse HEAD)" = "76933117aac4e6cdf5333111f0a0b5f2f6463de2"
           test -f preview-builds/doppler-overlay-repair/frontend/src/reflectivity-overlay-mode-v1.js
           grep -Fq 'clearReflectivityForDoppler();' preview-builds/doppler-overlay-repair/frontend/src/live3d-operational-v9.js

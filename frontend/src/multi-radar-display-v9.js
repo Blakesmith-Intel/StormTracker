@@ -60,7 +60,7 @@ export function fitSelectedRadarSites(primary,extras,sites) {
 // Supplemental handovers do NOT delay primary radar playback or tracking.
 export function createSupplementalRadarDisplay({
   imageryLayers,scene,loadFrame,prepareProvider,createLayer,
-  getWindow,onStatus=()=>{},maxCached=18
+  getWindow,onStatus=()=>{},maxCached=18,retireLayer=null
 }) {
   let primary="",extras=[],generation=0,lastKey="",opacity=1;
   const controllers=new Map(),cache=new Map();
@@ -68,7 +68,7 @@ export function createSupplementalRadarDisplay({
   function controllerFor(site) {
     if (!controllers.has(site)) {
       controllers.set(site,createRadarImageryHandover({
-        imageryLayers,scene
+        imageryLayers,scene,retireLayer
       }));
     }
     return controllers.get(site);

@@ -530,6 +530,23 @@ jobs:
           grep -Fq 'pressureGuardActive' "$destination/src/live3d-operational-v9.js"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
+      - name: Stage isolated QLD gazetteer and WebGL lifetime QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination=frontend/preview/label-gpu-guard
+          mkdir -p "$destination"
+          # Copy exact full-feature candidate including relay pressure guard;
+          # the path activates settled label work and delayed GPU cleanup.
+          cp -a frontend/preview/network-guard/. "$destination/"
+          printf 'LABEL GAZETTEER + WEBGL RETIREMENT QA %s; sealed production unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq 'LABEL_GPU_QA' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'deferLocalityDuringNavigation:LABEL_GPU_QA' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'createDeferredImageryRetirement' "$destination/src/imagery-layer-retirement-v1.js"
+          grep -Fq 'splitQldLocalityBounds' "$destination/src/context-layers/qld-nearby-localities-v1.js"
+          grep -Fq 'label-gpu-v1' "$destination/index.html"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |
@@ -556,6 +573,8 @@ jobs:
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
+          test -s published-site/preview/label-gpu-guard/data/nsw-radar-places-v1.json
+          grep -Fq 'createDeferredImageryRetirement' published-site/preview/label-gpu-guard/src/imagery-layer-retirement-v1.js
           test -s published-site/preview/network-guard/data/nsw-radar-places-v1.json
           grep -Fq 'createRadarRequestPressureGuard' published-site/preview/network-guard/src/radar-request-pressure-v1.js
           test -s published-site/preview/street-flat/data/nsw-radar-places-v1.json
@@ -597,6 +616,24 @@ jobs:
       - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify served QLD label/WebGL stability review
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          page="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/")"
+          grep -Fq 'label-gpu-v1' <<< "$page"
+          runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/src/live3d-operational-v9.js")"
+          grep -Fq 'LABEL_GPU_QA' <<< "$runtime"
+          grep -Fq '__stormtrackerGraphicsDiagnostics' <<< "$runtime"
+          labels="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/src/context-layers/qld-town-label-layer-v1.js")"
+          grep -Fq 'deferLocalityDuringNavigation' <<< "$labels"
+          retirement="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/label-gpu-guard/src/imagery-layer-retirement-v1.js")"
+          grep -Fq 'imageryLayers.remove(layer,false)' <<< "$retirement"
+          echo "Verified served label + GPU lifetime review; production pinned."
+
       - name: Verify served BoM relay pressure review
         shell: bash
         env:

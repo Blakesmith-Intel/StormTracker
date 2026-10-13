@@ -4,7 +4,8 @@ import { createRadarRequestPressureGuard } from "./radar-request-pressure-v1.js?
 const guardedRadarRequests=createRadarRequestPressureGuard();
 export function networkPressureDiagnostics(){return guardedRadarRequests.snapshot();}
 function isNetworkGuardPreview(){
-  return globalThis.location?.pathname?.includes("/preview/network-guard/")===true;
+  return ["/preview/network-guard/","/preview/label-gpu-guard/"].some(
+    route=>globalThis.location?.pathname?.includes(route)===true);
 }
 if(isNetworkGuardPreview())
   globalThis.__stormtrackerRelayPressureDiagnostics=networkPressureDiagnostics;

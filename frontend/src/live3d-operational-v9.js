@@ -98,10 +98,10 @@ import { buildSharedProductTimeline, buildRadarPrimaryProductTimeline } from "./
 import {
   canMotionInterpolateRadar,createRadarMotionTransition,radarMotionStepsForSpeed
 } from "./radar-motion-interpolation-v1.js?v=9.16.7-motion";
-import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.16.11-atomic-volume";
+import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.5-deferred-retire";
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
-} from "./multi-radar-display-v9.js?v=9.16.15-release-r1";
+} from "./multi-radar-display-v9.js?v=9.18.5-deferred-retire";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -138,7 +138,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.18-mobile-label-throttle";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.18.5-gazetteer-settle";
 
 import {
   createQueenslandStateBorderLayer
@@ -190,7 +190,9 @@ import {
   DEFAULT_DOPPLER_FADE_OUT_MS,
   dopplerOverlayFrameKey,
   createDopplerLayerTransition
-} from "./doppler-layer-transition-v1.js?v=9.16.13-opaque-crossfade";
+} from "./doppler-layer-transition-v1.js?v=9.18.5-deferred-retire";
+import {createDeferredImageryRetirement}
+  from "./imagery-layer-retirement-v1.js?v=9.18.5-gpu-lifetime";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -228,6 +230,25 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
+// The one isolated QA route compares deferred GPU cleanup and settled
+// gazetteer work with the current production code. Never enabled at root.
+const LABEL_GPU_QA =
+  window.location.pathname.includes("/preview/label-gpu-guard/");
+const deferredImageryRetirement=LABEL_GPU_QA
+  ? createDeferredImageryRetirement({imageryLayers:viewer.imageryLayers,scene})
+  : null;
+const graphicsDiagnostics={webglLost:0,webglRestored:0,renderErrors:0};
+if(LABEL_GPU_QA){
+  scene.canvas.addEventListener("webglcontextlost",()=>{graphicsDiagnostics.webglLost++;});
+  scene.canvas.addEventListener("webglcontextrestored",()=>{graphicsDiagnostics.webglRestored++;});
+  scene.renderError?.addEventListener?.(()=>{graphicsDiagnostics.renderErrors++;});
+  window.__stormtrackerGraphicsDiagnostics=()=>({
+    ...graphicsDiagnostics,
+    imageryLayers:viewer.imageryLayers.length,
+    retirement:deferredImageryRetirement.snapshot()
+  });
+  window.addEventListener("pagehide",()=>deferredImageryRetirement.destroy(),{once:true});
+}
 const stormTrackLabelOverlay = createStormTrackLabelOverlay({
   scene,
   CesiumRef: Cesium,
@@ -238,7 +259,8 @@ const stormTrackLabelOverlay = createStormTrackLabelOverlay({
 let visualMotionGeneration=0;
 const motionTransition={cancel(){visualMotionGeneration++;}};
 const radarImageryHandover = createRadarImageryHandover({
-  imageryLayers: viewer.imageryLayers, scene
+  imageryLayers: viewer.imageryLayers, scene,
+  retireLayer:deferredImageryRetirement?.retire
 });
 let additionalRadarSiteIds=[];
 let previousPrimaryRadarId=null;
@@ -248,6 +270,7 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   prepareProvider:prepareRadarSurfaceProvider,
   createLayer:provider=>new Cesium.ImageryLayer(provider),
   getWindow:reflectivityWindowForRegion,
+  retireLayer:deferredImageryRetirement?.retire,
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -326,8 +349,14 @@ const touchCameraGestures =
   createStormTrackerTouchCameraGestures({
     container: $("cesiumContainer"),
     getController: () => mapCamera,
-    onGestureStart: () => basemapManager?.setNavigationActive(true),
-    onGestureEnd: () => basemapManager?.setNavigationActive(false),
+    onGestureStart: () => {
+      basemapManager?.setNavigationActive(true);
+      queenslandTownLabels?.setNavigationActive(true);
+    },
+    onGestureEnd: () => {
+      basemapManager?.setNavigationActive(false);
+      queenslandTownLabels?.setNavigationActive(false);
+    },
     onGesture: () => {
       motionTransition.cancel();
       cameraPerformance.pulse();
@@ -347,8 +376,14 @@ mapCamera =
       CORE_HOME,
 
     onInteraction: () => cameraPerformance.pulse(),
-    onNavigationStart: () => basemapManager?.setNavigationActive(true),
-    onNavigationEnd: () => basemapManager?.setNavigationActive(false)
+    onNavigationStart: () => {
+      basemapManager?.setNavigationActive(true);
+      queenslandTownLabels?.setNavigationActive(true);
+    },
+    onNavigationEnd: () => {
+      basemapManager?.setNavigationActive(false);
+      queenslandTownLabels?.setNavigationActive(false);
+    }
   });
 
 let queenslandTownLabels = null;
@@ -380,6 +415,7 @@ function syncBasemapReferenceLayer(basemapId) {
     CesiumRef: Cesium,
     container: document.getElementById("mapPanel"),
     mode: basemapId,
+    deferLocalityDuringNavigation:LABEL_GPU_QA,
     onStatus: ({ kind, message }) => {
       if (kind === "warning") setBasemapStatus(message, "normal");
     }
@@ -741,6 +777,7 @@ const dopplerOverlayTransition =
     imageryLayers:
       viewer.imageryLayers,
     scene,
+    retireLayer:deferredImageryRetirement?.retire,
 
     requestRender:
       () =>

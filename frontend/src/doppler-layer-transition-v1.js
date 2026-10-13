@@ -61,7 +61,8 @@ export function createDopplerLayerTransition({
   now =
     () =>
       globalThis.performance?.now?.()
-      ?? Date.now()
+      ?? Date.now(),
+  retireLayer = null
 }) {
   if (!imageryLayers) {
     throw new TypeError(
@@ -98,6 +99,7 @@ export function createDopplerLayerTransition({
     );
 
     try {
+      if(retireLayer && retireLayer(layer))return;
       imageryLayers.remove(
         layer,
         true

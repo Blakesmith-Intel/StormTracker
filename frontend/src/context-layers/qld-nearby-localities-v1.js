@@ -67,16 +67,44 @@ export function normaliseQldLocalities(payload) {
   }
   return [...result.values()];
 }
+// ArcGIS truncates dense bounds at RECORD_LIMIT. Split only those bounds,
+// up to 3 binary levels, rather than throwing away the entire official
+// locality list and refetching the same over-limit viewport on every pan.
+export function splitQldLocalityBounds(bounds) {
+  const splitX=(bounds.east-bounds.west)>=(bounds.north-bounds.south);
+  if(splitX){
+    const mid=(bounds.west+bounds.east)/2;
+    return [{...bounds,east:mid},{...bounds,west:mid}];
+  }
+  const mid=(bounds.south+bounds.north)/2;
+  return [{...bounds,north:mid},{...bounds,south:mid}];
+}
 export async function fetchQldNearbyLocalities({bounds,fetchImpl=globalThis.fetch,
-    timeoutMs=13000,baseUrl=QLD_LOCALITY_QUERY_URL}={}) {
+    timeoutMs=13000,baseUrl=QLD_LOCALITY_QUERY_URL,maxSplitDepth=3}={}) {
   if (typeof fetchImpl!=="function") throw new Error("Gazetteer fetch unavailable");
   const controller=typeof AbortController==="function"?new AbortController():null;
   const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
-  try {
-    const response=await fetchImpl(qldLocalityQueryUrl(bounds,baseUrl),{
+  let queries=0;
+  async function query(box,depth){
+    // Maximum 15 official, viewport-bounded queries, never an unbounded
+    // recursive retry cycle. Signal a genuine incomplete catalogue.
+    if(++queries>15)throw Error("Gazetteer adaptive query budget exhausted");
+    const response=await fetchImpl(qldLocalityQueryUrl(box,baseUrl),{
       headers:{Accept:"application/geo+json,application/json"},signal:controller?.signal
     });
-    if (!response.ok) throw new Error("Gazetteer HTTP "+response.status);
-    return normaliseQldLocalities(await response.json());
-  } finally {if(timer!==null) clearTimeout(timer);}
+    if(!response.ok)throw Error("Gazetteer HTTP "+response.status);
+    const payload=await response.json();
+    const overflowing=payload?.exceededTransferLimit===true ||
+      (Array.isArray(payload?.features)&&payload.features.length>=RECORD_LIMIT);
+    if(overflowing && depth<maxSplitDepth){
+      const halves=splitQldLocalityBounds(box);
+      // Serial reads keep the gazetteer bounded even at dense suburbs.
+      return [...await query(halves[0],depth+1),...await query(halves[1],depth+1)];
+    }
+    return normaliseQldLocalities(payload);
+  }
+  try{
+    const records=await query(bounds,0);
+    return [...new Map(records.map(item=>[item.id,item])).values()];
+  }finally{if(timer!==null)clearTimeout(timer);}
 }

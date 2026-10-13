@@ -2,7 +2,7 @@ import {addOfficialSourceRow,bomGaugePlotUrl,OFFICIAL_SOURCE_LINKS} from "./offi
 import {
   createRiverGaugeLayer,
   riverGaugeOperationalSummary
-} from "./river-gauge-layer-v1.js?v=9.13.2";
+} from "./river-gauge-layer-v1.js?v=9.18.8-gateway-failopen";
 
 import {
   BOM_RIVER_TIDE_GAUGE_ATTRIBUTION

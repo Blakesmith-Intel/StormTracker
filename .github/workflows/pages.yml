@@ -500,6 +500,21 @@ jobs:
           grep -Fq 'baseLayer: false' "$destination/src/live3d-operational-v9.js"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
+      - name: Stage Street-only flat-terrain navigation stress comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Compare with /street-only/ using the exact same operational JS.
+          # Route guard is the ONLY difference: ellipsoid instead of ArcGIS 3-D.
+          destination=frontend/preview/street-flat
+          mkdir -p "$destination"
+          cp -a frontend/preview/street-only/. "$destination/"
+          printf 'STREET ONLY + FLAT TERRAIN QA; source %s; sealed V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq 'FLAT_TERRAIN_PERFORMANCE_TEST' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'terrainManager.setEnabled(false,{persist:false})' "$destination/src/live3d-operational-v9.js"
+          grep -Fq '9.18.3-desktop-navigation-raf' "$destination/src/live3d-operational-v9.js"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |
@@ -526,6 +541,9 @@ jobs:
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
+          test -s published-site/preview/street-flat/data/nsw-radar-places-v1.json
+          grep -Fq 'FLAT_TERRAIN_PERFORMANCE_TEST' published-site/preview/street-flat/src/live3d-operational-v9.js
+          grep -Fq '9.18.3-desktop-navigation-raf' published-site/preview/street-flat/src/live3d-operational-v9.js
           test -s published-site/preview/street-only/data/nsw-radar-places-v1.json
           grep -Fq 'forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST' published-site/preview/street-only/src/live3d-operational-v9.js
           grep -Fq 'forceStreetOnly ? BASEMAP_IDS.STREET' published-site/preview/street-only/src/context-layers/basemap-manager-v1.js
@@ -562,6 +580,23 @@ jobs:
       - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify publicly served no-satellite flat-terrain stress preview
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          index="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/street-flat/")"
+          grep -Fq 'live3d-operational-v9.html' <<< "$index"
+          runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/street-flat/src/live3d-operational-v9.js")"
+          grep -Fq 'terrainManager.setEnabled(false,{persist:false})' <<< "$runtime"
+          grep -Fq 'FLAT_TERRAIN_PERFORMANCE_TEST' <<< "$runtime"
+          grep -Fq 'forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST' <<< "$runtime"
+          cam="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/street-flat/src/stormtracker-camera-v1.js")"
+          grep -Fq 'function flushCameraFrame()' <<< "$cam"
+          echo "Verified Street-only flat-terrain preview, desktop RAF and production isolation."
+
       - name: Verify published Street-only no-satellite A/B control
         shell: bash
         env:

@@ -1,0 +1,35 @@
+name: V10 AURA historical evidence audit (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      event:
+        description: Historical event / radar
+        required: true
+        type: choice
+        options:
+          - gympie-2025
+          - goldcoast-2023
+          - marburg-2023
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install offline scientific reader
+        run: python -m pip install 'requests>=2.31,<3' 'h5py>=3.10,<4' 'numpy>=1.26,<3'
+      - name: Attempt measured archive retrieval and ODIM audit
+        run: |
+          python scripts/aura-v10-volume-audit.py --event '${{ inputs.event }}' --max-files 2 --output aura-evidence
+      - name: Preserve machine-readable findings even on access failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-${{ inputs.event }}-audit
+          path: aura-evidence/*.json
+          if-no-files-found: warn

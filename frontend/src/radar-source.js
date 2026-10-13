@@ -1,4 +1,11 @@
 import { decodeReflectivityImageData, decodeDopplerImageData } from "./palette.js?v=live-bom-v1";
+import { createRadarRequestPressureGuard } from "./radar-request-pressure-v1.js?v=9.18.4";
+
+const guardedRadarRequests=createRadarRequestPressureGuard();
+export function networkPressureDiagnostics(){return guardedRadarRequests.snapshot();}
+function isNetworkGuardPreview(){
+  return globalThis.location?.pathname?.includes("/preview/network-guard/")===true;
+}
 
 function createCanvas(width, height) {
   if (typeof OffscreenCanvas !== "undefined") {
@@ -53,6 +60,7 @@ async function blobToImageData(blob) {
 }
 
 export async function fetchReadableImage(url) {
+  const read=async()=>{
   let response;
 
   try {
@@ -67,10 +75,18 @@ export async function fetchReadableImage(url) {
   }
 
   if (!response.ok) {
-    throw new Error(`Image request failed: HTTP ${response.status}`);
+    const error=new Error(`Image request failed: HTTP ${response.status}`);
+    error.status=response.status;
+    throw error;
   }
 
   return blobToImageData(await response.blob());
+  };
+  // Radar scan source is unchanged. Only bound request pressure in this
+  // isolated review path; all previously approved previews stay identical.
+  if(isNetworkGuardPreview() && /\/wmts\?/i.test(String(url)))
+    return guardedRadarRequests.run(String(url),read);
+  return read();
 }
 
 export async function fileToImageData(file) {

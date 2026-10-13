@@ -64,7 +64,8 @@ await assert.rejects(()=>fetchQldNearbyLocalities({
 assert.equal(boundedCalls,4,"An over-limit leftmost quadrant fails immediately at depth three");
 assert.ok(boundedCalls<=15,"No branch can exceed a hard 15-query bound");
 const CesiumMath={toDegrees:v=>v};
-const camera={positionCartographic:{height:55000},computeViewRectangle:()=>region};
+let activeRegion=region;
+const camera={positionCartographic:{height:55000},computeViewRectangle:()=>activeRegion};
 assert.deepEqual(qldLocalityViewBounds(camera,{Math:CesiumMath},{}),region);
 assert.equal(qldLocalityViewBounds({...camera,positionCartographic:{height:300000}},
   {Math:CesiumMath},{}),null,"No statewide gazetteer download");
@@ -120,7 +121,8 @@ const documentRef={createElement(){
 }};
 const layer=createQueenslandTownLabelLayer({
   viewer:{scene,container:{parentElement:container}},
-  CesiumRef,fetchImpl,mode:"qld-imagery",container,documentRef
+  CesiumRef,fetchImpl,mode:"qld-imagery",container,documentRef,
+  deferLocalityDuringNavigation:true
 });
 await layer.start();
 for(let t=0;t<100&&layer.gazetteerCount===0;t++)await new Promise(r=>setTimeout(r,10));
@@ -134,5 +136,16 @@ layer.draw(true);
 assert.equal(loads,before,"Viewport coverage must prevent repeat fetches");
 layer.setMode("street");
 assert.ok(layer.visibleCount>=2,"Street shows supplemental rural localities too");
+const previousFetches=loads;
+layer.setNavigationActive(true);
+activeRegion={west:141,east:141.7,south:-26.15,north:-25.65};
+scene.camera.positionWC.x++;
+layer.draw(true);
+assert.equal(loads,previousFetches,
+  "Rapid camera movement must not send locality queries while dragging");
+layer.setNavigationActive(false);
+await new Promise(resolve=>setTimeout(resolve,720));
+assert.ok(loads>previousFetches,
+  "Settled navigation performs one viewport-bounded locality update");
 layer.destroy();
 console.log("QLD locality checks passed: bounded official gazetteer query, rural additions in both Street and imagery, dedupe and DOM cleanup.");

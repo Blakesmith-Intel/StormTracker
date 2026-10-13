@@ -13,6 +13,8 @@ import {
 import {
   RadarWorkerClient
 } from "./worker-client.js?v=core-v6-pixeltrack-prod-r1";
+import { resolveSourceDiscovery }
+  from "./radar-source-fallback-v1.js?v=9.18.7-real-cache-recovery";
 
 import {
   SOURCE_PALETTES
@@ -3871,19 +3873,18 @@ async function loadHybridSequence(automatic = false) {
       return [];
     })
   ]);
-  if(BOUNDED_RADAR_RECOVERY_QA && sourceResult.error && automatic) {
+  const resolvedSource=BOUNDED_RADAR_RECOVERY_QA
+    ? resolveSourceDiscovery({outcome:sourceResult,cachedFrames,automatic})
+    : {times:sourceResult.times,keepCurrent:false,cachedOnly:false};
+  if(resolvedSource.keepCurrent) {
     $("autoRefreshNote").textContent =
       "BoM new imagery currently unavailable · retaining last genuine displayed radar scan";
     return;
   }
-  if(BOUNDED_RADAR_RECOVERY_QA && sourceResult.error && !cachedFrames.length)
-    throw new Error("BoM published reflectivity unavailable, and there is no prior "+
-      "genuine radar observation cached in this browser. "+
-      String(sourceResult.error?.message??sourceResult.error));
-  if(BOUNDED_RADAR_RECOVERY_QA && sourceResult.error)
+  if(resolvedSource.cachedOnly)
     $("autoRefreshNote").textContent =
       "BoM live scan unavailable · genuine locally cached observations only";
-  const discoveredTimes = sourceResult.times??[];
+  const discoveredTimes=resolvedSource.times;
   if(BOUNDED_RADAR_RECOVERY_QA && !discoveredTimes.length && !cachedFrames.length)
     throw Error("No verified BoM reflectivity frames available; nothing fabricated");
   const sources = { histories:new Map(),palettes:new Map(),

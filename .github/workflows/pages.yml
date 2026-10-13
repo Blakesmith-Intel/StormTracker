@@ -465,9 +465,23 @@ jobs:
           # Reuse the validated same-origin official NSW place catalogue.
           cp sealed-production/v9.18.0/frontend/data/nsw-radar-places-v1.json "$destination/data/nsw-radar-places-v1.json"
           printf 'Mobile navigation review; source commit %s; sealed production unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
-          grep -Fq 'mobile-navigation-review1' "$destination/index.html"
-          grep -Fq 'mobile-navigation-review1' "$destination/live3d-operational-v9.html"
+          grep -Fq 'satellite-navigation-v2-desktop-mobile' "$destination/index.html"
+          grep -Fq 'satellite-navigation-v2-desktop-mobile' "$destination/live3d-operational-v9.html"
           grep -Fq 'scheduleGesture' "$destination/src/touch-camera-gestures-v1.js"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
+      - name: Stage shared desktop and mobile satellite-panning QA preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use the already staged exact same candidate without extra hosting.
+          destination=frontend/preview/satellite-navigation
+          mkdir -p "$destination"
+          cp -a frontend/preview/mobile-navigation/. "$destination/"
+          printf 'Desktop and mobile satellite pan-stall QA; source commit %s; sealed production unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq 'satellite-navigation-v2-desktop-mobile' "$destination/index.html"
+          grep -Fq 'onNavigationStart' "$destination/src/stormtracker-camera-v1.js"
+          grep -Fq 'suspendDetailDuringNavigation' "$destination/src/context-layers/basemap-manager-v1.js"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
@@ -496,6 +510,9 @@ jobs:
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
+          test -s published-site/preview/satellite-navigation/data/nsw-radar-places-v1.json
+          grep -Fq 'suspendDetailDuringNavigation' published-site/preview/satellite-navigation/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'onNavigationStart' published-site/preview/satellite-navigation/src/stormtracker-camera-v1.js
           test -f published-site/preview/dea-regional/src/context-layers/basemap-manager-v1.js
           grep -Fq '36ff1c7798b9f62874ee27651a26196961ba7c6c' published-site/preview/dea-regional/BUILD.txt
           test -f published-site/preview/nsw-satellite/src/context-layers/basemap-manager-v1.js
@@ -526,6 +543,22 @@ jobs:
       - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify isolated cross-device satellite navigation candidate is publicly served
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          index="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/satellite-navigation/")"
+          grep -Fq 'satellite-navigation-v2-desktop-mobile' <<< "$index"
+          runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/satellite-navigation/src/live3d-operational-v9.js")"
+          grep -Fq 'suspendDetailDuringNavigation:true' <<< "$runtime"
+          grep -Fq 'onNavigationStart' <<< "$runtime"
+          manager="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/satellite-navigation/src/context-layers/basemap-manager-v1.js")"
+          grep -Fq 'show=false' <<< "$manager"
+          echo "Verified isolated desktop/mobile satellite navigation candidate; production stays sealed."
+
       - name: Verify served standalone volumetric V2 preview
         shell: bash
         env:

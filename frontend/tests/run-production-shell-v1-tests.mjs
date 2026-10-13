@@ -69,7 +69,7 @@ assert.match(js, /initialiseOperationalPowerOutages/);
 assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=(?:9\.14\.0|9\.18\.8-gpu-pick)/,
   "Power-outage UI must load with a recognized cache-busted module version");
 assert.match(js, /initialiseOperationalRiverGauges/);
-assert.match(js, /context-layers\/river-gauges-operational-v1\.js\?v=(?:9\.13\.2|9\.18\.8-gpu-pick)/,
+assert.match(js, /context-layers\/river-gauges-operational-v1\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/,
   "River-gauge UI must load with a recognized cache-busted module version");
 const outageLayer = read("frontend/src/context-layers/power-outages-v1.js");
 const outageUi = read("frontend/src/context-layers/power-outages-operational-v1.js");

@@ -685,6 +685,7 @@ jobs:
           echo "Verified isolated source-history QA; original production root remains pinned."
 
       - name: Verify served QLD label/WebGL stability review
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -706,6 +707,7 @@ jobs:
           echo "Verified served label + GPU lifetime review; production pinned."
 
       - name: Verify served BoM relay pressure review
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -721,6 +723,7 @@ jobs:
           echo "BoM relay pressure QA served; sealed V9.18.0 production unchanged."
 
       - name: Verify publicly served no-satellite flat-terrain stress preview
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -738,6 +741,7 @@ jobs:
           echo "Verified Street-only flat-terrain preview, desktop RAF and production isolation."
 
       - name: Verify published Street-only no-satellite A/B control
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -755,6 +759,7 @@ jobs:
           echo "Served Street-only no-satellite preview; sealed V9.18.0 root unchanged."
 
       - name: Verify isolated cross-device satellite navigation candidate is publicly served
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -771,6 +776,7 @@ jobs:
           echo "Verified isolated desktop/mobile satellite navigation candidate; production stays sealed."
 
       - name: Verify served standalone volumetric V2 preview
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -783,6 +789,7 @@ jobs:
           echo "Verified independent volumetric V2 preview; pinned production unchanged."
 
       - name: Verify publicly served dBZ volumetric preview without touching production
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -828,6 +835,7 @@ jobs:
           echo "Isolated BoM dBZ volume preview is public; pinned production unchanged."
 
       - name: Verify publicly served NSW radar-range labels are same-origin and valid
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -855,6 +863,7 @@ jobs:
           echo "PR77 NSW place-name preview served; sealed V9.18.0 production intact."
 
       - name: Verify national DEA regional WMTS tile is available to browser
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -868,6 +877,7 @@ jobs:
           echo "Verified historical 2025 DEA GeoMAD imagery as real browser-compatible PNG."
 
       - name: Verify isolated national DEA + local detail preview is live
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -891,6 +901,7 @@ jobs:
           echo "PR76 isolated DEA regional satellite and official local detail publicly verified; V9.18.0 production intact."
 
       - name: Verify NSW source tiles and CORS for browser-only satellite preview
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -907,6 +918,7 @@ jobs:
           echo "Official NSW live tile and browser CORS validated."
 
       - name: Verify NSW satellite review preview publicly served
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -930,6 +942,7 @@ jobs:
           echo "PR74 QLD/NSW satellite preview live. Sealed V9.18.0 production root unchanged."
 
       - name: Verify PR73 isolated preview is publicly served (V9.18.0 sealed root unchanged)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1027,12 +1040,14 @@ jobs:
           echo "Verified BoM Doppler and accepted multiple-radar selection in production commit 66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
 
       - name: Verify published V9.16 research preview and current sealed production
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           PRODUCTION_MARKER="sidebar-hardcut-v14" EXPECTED_PREVIEW_SHA="$(git -C preview-builds/v9.16 rev-parse HEAD)" node scripts/smoke-v9-16-preview.mjs
 
       - name: Verify published 40 dBZ pixel-based track-grouping preview
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1054,6 +1069,7 @@ jobs:
           echo "Verified PR #64 isolated browser preview with unchanged sealed production root."
 
       - name: Verify publicly served multi-radar site preview and sealed production
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1076,6 +1092,7 @@ jobs:
           echo "Verified multi-radar V9.18.0 production and retained isolated pre-release preview; storm pixel-tracking intact."
 
       - name: Verify V9.18.0 recovery branch and create lightweight release tag via GitHub API
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1119,6 +1136,7 @@ jobs:
           echo "Sealed V9.18.0 public production, immutable tag and restore/v9.18.0; V9.17.0 preserved."
 
       - name: Verify published V9.16.13 labels and native Doppler
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1136,6 +1154,7 @@ jobs:
           grep -Fq 'z-index:var(--stormtracker-geo-label-z)' <<< "$css"
           echo "Verified V9.16.13 new preview and 100% wind; sealed V9.15.1 root unchanged"
       - name: Verify published V9.16.12 foreground place labels
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1150,6 +1169,7 @@ jobs:
           grep -Fq 'container' <<< "$layer"
           echo "Verified V9.16.12 foreground labels at isolated preview; sealed V9.15.1 root untouched"
       - name: Verify published V9.16.11 genuine Doppler-only preview
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1165,6 +1185,7 @@ jobs:
           grep -Fq 'await dopplerOverlayTransition.replacePrepared' <<< "$js"
           echo "Verified V9.16.11 Doppler-only preview; sealed V9.15.1 public root unchanged"
       - name: Verify published V9.16.10 candidate
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1178,6 +1199,7 @@ jobs:
           grep -Fq "setStormTrackTrailVisibility(hybridSource.entities, show)" <<< "$js"
           echo "Isolated V9.16.10 candidate available at $base/; production source unchanged."
       - name: Verify published native BoM playback preview
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -1197,6 +1219,7 @@ jobs:
           echo "Verified isolated native playback preview at $base/; live production root unchanged."
 
       - name: Verify deployed playback/cone repair preview (root unchanged)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}

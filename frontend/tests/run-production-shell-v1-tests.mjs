@@ -37,7 +37,7 @@ assert.match(html, /id="basemapSelect"/);
 assert.match(html, /Satellite · DEA Regional \+ Local Detail/,
   "Existing satellite selector must advertise coverage in both states");
 assert.match(html, /value="qld-imagery"/);
-assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=9\.18\.2-mobile-navigation-tiles/);
+assert.match(js, /context-layers\/basemap-manager-v1\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/, "Basemap source must have a cache-busted import URL");
 assert.doesNotMatch(js, /createReferenceLabelProvider/, "No duplicate global label overlay on Queensland imagery.");
 assert.match(js, /createQueenslandTownLabelLayer/);
 assert.doesNotMatch(js, /createQueenslandPlaceLabelProvider/);

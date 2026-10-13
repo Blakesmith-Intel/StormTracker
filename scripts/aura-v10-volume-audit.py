@@ -90,33 +90,50 @@ def main():
         dataset=next((e for e in root.iter() if e.attrib.get("name") in names and "urlPath" in e.attrib),None)
         if dataset is None:raise RuntimeError("No downloadable THREDDS dataset urlPath")
         download=BASE+"/fileServer/"+dataset.attrib["urlPath"].lstrip("/")
-        response=get(download)
-        # Bound the research job: no large unbounded archive downloads.
-        if len(response.content)>500_000_000:raise RuntimeError("Archive exceeds 500 MB research cap")
-        report["archive_sha256"]=hashlib.sha256(response.content).hexdigest()
+        import tempfile
+        # Stream to temporary disk instead of holding a large daily archive in RAM.
+        # Cap transfer even if the remote server omits Content-Length.
+        MAX_BYTES=2_000_000_000
         report["archive_url"]=download
-        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-            members=[n for n in z.namelist() if n.endswith((".pvol.h5",".h5"))]
-            if args.target_utc:
-                hhmm=args.target_utc.replace(":","")
-                if not re.fullmatch(r"[0-2][0-9][0-5][0-9]",hhmm) or int(hhmm[:2])>=24:
-                    raise ValueError("--target-utc must be HH:MM in UTC")
-                target=int(hhmm[:2])*3600+int(hhmm[2:])*60
-                def distance(name):
-                    match=re.search(r"_(\d{6})\.pvol\.h5$",name)
-                    if not match:return 999999
-                    t=match.group(1)
-                    seconds=int(t[:2])*3600+int(t[2:4])*60+int(t[4:])
-                    return abs(seconds-target)
-                members=sorted(members,key=distance)
-            else:
-                members=sorted(members)
-            report["volume_count"]=len(members)
-            report["selection_method"]="nearest-observed-UTC" if args.target_utc else "first-by-filename"
-            report["target_utc"]=args.target_utc
-            for n in members[:max(0,min(args.max_files,5))]:
-                data=z.read(n)
-                report["scans"].append(decode_volume(data,n,hashlib.sha256(data).hexdigest()))
+        with tempfile.TemporaryDirectory() as scratch:
+            archive=Path(scratch)/"daily.pvol.zip"
+            digest=hashlib.sha256()
+            transferred=0
+            with requests.get(download,timeout=(30,120),stream=True) as response:
+                response.raise_for_status()
+                declared=int(response.headers.get("Content-Length","0") or "0")
+                if declared>MAX_BYTES:raise RuntimeError("Archive exceeds 2 GB disk download cap")
+                with archive.open("wb") as fd:
+                    for chunk in response.iter_content(chunk_size=1024*1024):
+                        if not chunk:continue
+                        transferred+=len(chunk)
+                        if transferred>MAX_BYTES:raise RuntimeError("Archive exceeds 2 GB disk download cap")
+                        digest.update(chunk)
+                        fd.write(chunk)
+            report["archive_size_bytes"]=transferred
+            report["archive_sha256"]=digest.hexdigest()
+            with zipfile.ZipFile(archive) as z:
+                members=[n for n in z.namelist() if n.endswith((".pvol.h5",".h5"))]
+                if args.target_utc:
+                    hhmm=args.target_utc.replace(":","")
+                    if not re.fullmatch(r"[0-2][0-9][0-5][0-9]",hhmm) or int(hhmm[:2])>=24:
+                        raise ValueError("--target-utc must be HH:MM in UTC")
+                    target=int(hhmm[:2])*3600+int(hhmm[2:])*60
+                    def distance(name):
+                        match=re.search(r"_(\d{6})\.pvol\.h5$",name)
+                        if not match:return 999999
+                        t=match.group(1)
+                        seconds=int(t[:2])*3600+int(t[2:4])*60+int(t[4:])
+                        return abs(seconds-target)
+                    members=sorted(members,key=distance)
+                else:
+                    members=sorted(members)
+                report["volume_count"]=len(members)
+                report["selection_method"]="nearest-observed-UTC" if args.target_utc else "first-by-filename"
+                report["target_utc"]=args.target_utc
+                for n in members[:max(0,min(args.max_files,5))]:
+                    data=z.read(n)
+                    report["scans"].append(decode_volume(data,n,hashlib.sha256(data).hexdigest()))
         report["volume_inspected"]=bool(report["scans"])
     except Exception as exc:
         report["error"]=f"{type(exc).__name__}: {exc}"

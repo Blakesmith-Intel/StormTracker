@@ -138,7 +138,7 @@ import {
 
 import {
   createQueenslandTownLabelLayer
-} from "./context-layers/qld-town-label-layer-v1.js?v=9.18.0-nsw-radar-region";
+} from "./context-layers/qld-town-label-layer-v1.js?v=9.18-mobile-label-throttle";
 
 import {
   createQueenslandStateBorderLayer

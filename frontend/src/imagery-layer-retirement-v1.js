@@ -39,7 +39,7 @@ export function createDeferredImageryRetirement({
   const detach=scene.postRender.addEventListener(()=>{
     renderCount++;
     sweep();
-    if(retired.size)scene.requestRender?.();
+  // Timer requests the next scene boundary if necessary; no continuous frames.
   });
   function retire(layer){
     if(!layer||retired.has(layer)||disposed)return false;

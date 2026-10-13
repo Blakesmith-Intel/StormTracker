@@ -66,9 +66,11 @@ assert.match(css, /\.river-gauge-key/);
 assert.match(js, /createStormTrackerTerrainManager/);
 assert.match(js, /initialiseOperationalFloodRoadClosures/);
 assert.match(js, /initialiseOperationalPowerOutages/);
-assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=9\.14\.0/);
+assert.match(js, /context-layers\/power-outages-operational-v1\.js\?v=(?:9\.14\.0|9\.18\.8-gpu-pick)/,
+  "Power-outage UI must load with a recognized cache-busted module version");
 assert.match(js, /initialiseOperationalRiverGauges/);
-assert.match(js, /context-layers\/river-gauges-operational-v1\.js\?v=9\.13\.2/);
+assert.match(js, /context-layers\/river-gauges-operational-v1\.js\?v=(?:9\.13\.2|9\.18\.8-gpu-pick)/,
+  "River-gauge UI must load with a recognized cache-busted module version");
 const outageLayer = read("frontend/src/context-layers/power-outages-v1.js");
 const outageUi = read("frontend/src/context-layers/power-outages-operational-v1.js");
 assert.match(outageLayer, /VwEnergexOutages\/FeatureServer\/0\/query/);

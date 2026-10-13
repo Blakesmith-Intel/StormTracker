@@ -202,6 +202,37 @@ assert.deepEqual(controller.visibleSites,[]);
 passed++;
 console.log("PASS multi radar rain coverage removed in native Doppler-only display");
 
+// Next primary remains on the old measured frame until all real secondary
+// source images are staged; the commit then changes all visible UTCs together.
+controller.configure("primary",["secondary"]);
+const stageUtc="2026-10-10T01:25:00Z";
+let staged=await controller.prepare(stageUtc);
+assert.deepEqual(staged,["secondary"]);
+assert.deepEqual(controller.visibleSites,[],"staged future UTC remains invisible before primary commit");
+controller.commit(stageUtc,{alpha:.6});
+assert.deepEqual(controller.visibleSites,["secondary"]);
+assert.equal(controller.displayedTimes.secondary,stageUtc);
+assert.equal(layers[0].alpha,.6);
+const beforeAtomic=layers[0];
+const newestUtc="2026-10-10T01:30:00Z";
+const wait=deferred();
+sources.set("secondary",wait.promise);
+const future=controller.prepare(newestUtc);
+await Promise.resolve();
+assert.equal(layers[0],beforeAtomic,"no early removal or alpha flicker");
+assert.equal(layers[0].show,true,"current measured window stays visible with current primary");
+assert.equal(controller.displayedTimes.secondary,stageUtc);
+wait.resolve(frame("secondary",newestUtc));
+await future;
+assert.equal(controller.displayedTimes.secondary,stageUtc,"staging never advances visible clock");
+controller.commit(newestUtc);
+assert.equal(controller.displayedTimes.secondary,newestUtc);
+assert.deepEqual(controller.visibleSites,["secondary"]);
+assert.equal(layers.length,1,"atomic commit retires previous secondary layer");
+sources.delete("secondary");
+passed++;
+console.log("PASS synchronized staged secondary scan switches UTC atomically with the primary, without blank flicker");
+
 const html=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",import.meta.url)),"utf8");
 const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
 assert.match(html,/id="multiRadarSelectButton"/);
@@ -221,7 +252,9 @@ assert.match(html,/id="clearMultiRadars"/);
 assert.match(runtime,/function showSupplementalRadarSites\(frame\)/);
 assert.match(runtime,/frame\.sourceMetadata\?\.temporalInference/);
 assert.match(runtime,/supplementalRadarDisplay\.setOpacity/);
-assert.match(runtime,/hybridFrameIndex=requestedIndex;\s*latestFrame=frame;\s*showSupplementalRadarSites\(frame\)/);
+assert.match(runtime,/supplementalRadarDisplay\.prepare\(frame\.observedUtc\)/);
+assert.match(runtime,/supplementalRadarDisplay\.commit\(frame\.observedUtc/);
+assert.match(runtime,/hybridFrameIndex=requestedIndex;\s*latestFrame=frame/);
 assert.match(runtime,/showSupplementalRadarSites\(null\)/);
 assert.match(html,/id="dopplerOverlayRadar" value="66"/);
 passed++;

@@ -92,8 +92,10 @@ test("Browser release entrypoints bust old module and stylesheet caches", () => 
   const controller=src("../src/live3d-operational-v9.js");
   assert.match(html,/live3d-operational-v9\.js\?v=9\.16-bom-native-rain30-v1/);
   assert.match(html,/operational-dashboard-v9-1\.css\?v=9\.16\.13-top-geography/);
-  assert.match(controller,/flood-road-closures-operational-v1\.js\?v=9\.15\.0-unplanned/);
-  assert.match(controller,/power-outages-operational-v1\.js\?v=9\.14\.0/);
+  assert.match(controller,/context-layers\/flood-road-closures-operational-v1\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/,
+    "flood-road-closures-operational-v1 must be cache-busted without prescribing a historical build version");
+  assert.match(controller,/context-layers\/power-outages-operational-v1\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/,
+    "power-outages-operational-v1 must be cache-busted without prescribing a historical build version");
 });
 test("Incident cards do not tunnel clicks to other contextual layers", () => {
   const road=src("../src/context-layers/flood-road-closures-operational-v1.js");

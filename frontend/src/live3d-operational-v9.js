@@ -196,6 +196,8 @@ import {
 } from "./doppler-layer-transition-v1.js?v=9.18.5-deferred-retire";
 import {createDeferredImageryRetirement}
   from "./imagery-layer-retirement-v1.js?v=9.18.5-gpu-lifetime";
+import {createSupplementalRadarVolumes}
+  from "./supplemental-radar-volume-v1.js?v=9.18.10-bounded-source-3d";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -270,6 +272,7 @@ const radarImageryHandover = createRadarImageryHandover({
 });
 let additionalRadarSiteIds=[];
 let previousPrimaryRadarId=null;
+let supplementalVolumeDisplay=null;
 const supplementalRadarDisplay=createSupplementalRadarDisplay({
   imageryLayers:viewer.imageryLayers,scene,
   loadFrame:loadBomReflectivityMosaicAtTime,
@@ -277,6 +280,8 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   createLayer:provider=>new Cesium.ImageryLayer(provider),
   getWindow:reflectivityWindowForRegion,
   retireLayer:deferredImageryRetirement?.retire,
+  onDisplay:(site,frame,utc)=>supplementalVolumeDisplay?.render(site,frame,utc),
+  onHide:site=>supplementalVolumeDisplay?.hide(site),
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -578,6 +583,20 @@ try {
 }
 
 let model = null;
+supplementalVolumeDisplay=createSupplementalRadarVolumes({
+  Cesium,scene,getModel:()=>model,
+  getSettings:()=>({
+    blob:useBlobVolume(),
+    occupancyThreshold:Number($("occupancyThreshold").value),
+    minimumDbzh:volumeDisplayThresholdDbz($("minimumDbzh").value),
+    pointSize:Number($("pointSize").value),
+    verticalScale:Number($("verticalScale").value),
+    volumePercent:Number($("volumeOpacity").value)
+  }),
+  inferColumn,representativeDbzForCategory,pixelCentreMercator,
+  webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
+  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity
+});
 let validation = null;
 let latestFrame = null;
 let inferredCollection = null;
@@ -1197,9 +1216,16 @@ function showSupplementalRadarSites(frame){
     void supplementalRadarDisplay.show(null,{enabled:false});
     return;
   }
-  void supplementalRadarDisplay.show(frame.observedUtc,{
-    enabled:true,alpha:Number($("radarOpacity").value)/100
-  });
+  // A user selecting another radar while paused may reveal its matching
+  // measured scan once staged. Playback frame changes instead use the
+  // atomic commit inside primary radar's beforeReveal transaction.
+  const utc=frame.observedUtc;
+  void supplementalRadarDisplay.prepare(utc).then(()=>{
+    if(latestFrame?.observedUtc===utc && !isNativeDopplerPlayback())
+      supplementalRadarDisplay.commit(utc,{
+        alpha:Number($("radarOpacity").value)/100
+      });
+  }).catch(error=>console.warn("Extra radar staging unavailable",error));
 }
 function clearMultiRadarSelectionWarning(){
   const warning=$("multiRadarStatus");
@@ -3508,6 +3534,14 @@ async function showHybridFrame(index) {
     previousFrame, frame, hybridCombinedSchedule.length > 0, Boolean(surfaceLayer)
   );
   motionTransition.cancel();
+  // Start decoding original supplemental windows while primary wind/volume
+  // preparation proceeds. The PRIMARY image remains at its old timestamp
+  // until all available secondary tiles can reveal atomically.
+  const supplementalMeasurable=Boolean(additionalRadarSiteIds.length) &&
+    !frame?.sourceMetadata?.temporalInference && !isNativeDopplerPlayback();
+  const extraPreparation=supplementalMeasurable
+    ? supplementalRadarDisplay.prepare(frame.observedUtc)
+    : Promise.resolve([]);
   const motionGeneration=visualMotionGeneration;
   // A display-only motion-warp rain image has NO matching measured 3-D
   // geometry. Never show it when inferred volumetric structure is visible:
@@ -3561,6 +3595,11 @@ async function showHybridFrame(index) {
     return false;
   }
   if(renderToken!==hybridSceneRenderToken)return;
+  // Bounded individual supplemental deadlines avoid holding the primary
+  // indefinitely on a failed optional BoM tile. The genuine scan may then
+  // commit without the unavailable site, never using old-UTC pixels.
+  await extraPreparation;
+  if(renderToken!==hybridSceneRenderToken)return;
   const radarStart=performance.now();
   let surfaceApplied=false,geometryCommitted=false;
   const commitMeasuredGeometry=()=>{
@@ -3574,6 +3613,13 @@ async function showHybridFrame(index) {
     applyHybridVolumeMode(requestedIndex);
     renderHybridTracks(requestedIndex);
     syncSevereStormAlerts(requestedIndex);
+    if(supplementalMeasurable){
+      supplementalRadarDisplay.commit(frame.observedUtc,{
+        alpha:Number($("radarOpacity").value)/100
+      });
+    }else{
+      void supplementalRadarDisplay.show(null,{enabled:false});
+    }
     volumeConstructionMs=performance.now()-began;
     geometryCommitted=true;
   };
@@ -3610,7 +3656,8 @@ async function showHybridFrame(index) {
   // clocks finally advance together, never at the beginning of a render.
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
-  showSupplementalRadarSites(frame);
+  // Supplemental image+volume reveal already happened synchronously inside
+  // primary beforeReveal; never run a second asynchronous show/hide here.
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
   // The handover has already presented the matching measured 3-D geometry
   // in the same Cesium frame as this source raster. Wind-only events reuse it.
@@ -4975,6 +5022,7 @@ $("volumeOpacity").addEventListener("input", event => {
   setVolumeDisplayOpacity(inferredCollection,percent);
   setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
   setVolumeDisplayOpacity(hybridTrackFootprintCollection,percent);
+  supplementalVolumeDisplay?.setOpacity(percent);
   scene.requestRender();
 });
 

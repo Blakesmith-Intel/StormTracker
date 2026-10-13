@@ -5,7 +5,8 @@
 // Never expose the bare basemap between successive radar observations.
 export function createRadarImageryHandover({
   imageryLayers, scene, setTimeoutImpl = setTimeout,
-  clearTimeoutImpl = clearTimeout
+  clearTimeoutImpl = clearTimeout,
+  retireLayer = null
 }) {
   if (!imageryLayers || !scene?.postRender) {
     throw new TypeError("Radar imagery handover needs Cesium imagery and render events");
@@ -16,7 +17,10 @@ export function createRadarImageryHandover({
 
   function safeRemove(layer) {
     if (!layer) return;
-    try { imageryLayers.remove(layer, true); } catch { /* view reset */ }
+    try {
+      if(retireLayer && retireLayer(layer))return;
+      imageryLayers.remove(layer,true);
+    } catch { /* view reset */ }
   }
   function cancelPending() {
     generation++;

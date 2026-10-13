@@ -104,7 +104,7 @@ import {
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.5-deferred-retire";
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
-} from "./multi-radar-display-v9.js?v=9.18.5-deferred-retire-frame-sync-v1";
+} from "./multi-radar-display-v9.js?v=9.18.9-primary-utc-sync";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -137,7 +137,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.18.2-mobile-navigation-tiles-pan-retain-v1";
+} from "./context-layers/basemap-manager-v1.js?v=9.18.9-pan-persist";
 
 import {
   createQueenslandTownLabelLayer

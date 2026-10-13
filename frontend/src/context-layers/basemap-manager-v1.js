@@ -377,9 +377,9 @@ export function createStormTrackerBasemapManager({
   }
   function updateForCamera(){
     if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return "street";
-    // Mobile panning should never multiply new tile requests across the
-    // overlapping QLD and NSW high-resolution providers. Leave the genuine
-    // DEA regional layer visible until this touch gesture has settled.
+    // Do not change detail mode mid-gesture. Keep existing satellite layers
+    // visible and let Cesium load new tiles as the camera moves; neither DEA
+    // regional coverage nor official state detail is forcibly unloaded.
     if(navigationActive)return "navigation";
     const target=chooseDetailForScale(detailTarget,estimatedCameraMetresPerPixel(scene));
     if(target!==detailTarget){
@@ -418,15 +418,13 @@ export function createStormTrackerBasemapManager({
     if(active){
       if(navigationActive)return true;
       navigationActive=true;
-      // show=false actually suspends imagery requests; alpha=0 alone does not.
-      // Retain the layer/provider for fast reactivation and do not touch any
-      // radar/Doppler/volume imagery above these background layers.
-      if(currentId===BASEMAP_IDS.QLD_IMAGERY){
-        if(qldDetailLayer)qldDetailLayer.show=false;
-        if(nswDetailLayer)nswDetailLayer.show=false;
-        detailTarget=false;detailStaging=false;detailBlend=0;readyFrames=0;
-        render();
-      }
+      // Never hide or unload satellite layers simply because the camera is
+      // being dragged or zoomed. That produced a visibly blank map and could
+      // persist when gesture-settled was missed. Keep the existing QLD/NSW
+      // detail and DEA fallback continuously composited during navigation.
+      // updateForCamera() defers switching detail resolution until settled;
+      // Cesium manages visible tile requests and the camera governor lowers
+      // terrain workload while movement is active.
       return true;
     }
     if(!navigationActive)return false;
@@ -434,8 +432,8 @@ export function createStormTrackerBasemapManager({
       resumeTimer=null;
       if(destroyed)return;
       navigationActive=false;
-      // Re-evaluate the FINAL camera position and stage local detail only
-      // after navigation stops, retaining official DEA regional underneath.
+      // Re-evaluate the FINAL camera position and fade between regional and
+      // detail imagery only after navigation settles. No mid-pan unloading.
       updateForCamera();
       render();
     },resumeDetailDelayMs);

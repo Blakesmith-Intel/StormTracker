@@ -46,3 +46,13 @@ Implemented `scripts/aura-v10-volume-audit.py` and manual `.github/workflows/v10
 **Workflow dispatch caveat:** GitHub may require workflow files to exist on the repository's default branch to display or accept manual dispatch. Do not merge experimental detector code or replace pinned Pages builds merely to enable this job. A narrowly scoped default-branch workflow registration or isolated GitHub CLI invocation can be separately reviewed.
 
 **Candidate status:** no measured radial couplets or validated candidate locations yet. The offline scanner intentionally does not declare velocity-alias correction or classify tornadoes from raw arrays. Next: verify an actual archive download; select and inspect consecutive scans; implement azimuth/range-aware spatial reconstruction and validated velocity processing; then run the existing V10 research detector with genuine metadata and score findings against both event reports.
+
+## 14 October — event-window audit improvements
+
+The manual AURA audit now accepts `--target-utc HH:MM` and selects up to three source HDF5 volumes closest to the specified UTC time, recording selected filenames and their checksums. Defaults in the manual workflow are **04:00 UTC for Gympie 2025 (14:00 AEST)** and **10:30 UTC for Christmas 2023 (20:30 AEST)**, as research sampling starting points—not verified storm peak times. The site/date catalogue still needs to return a real archive before any processing claims can be made.
+
+Execution blocker reproduced: NCI `dapds00.nci.org.au` DNS resolution fails in the current execution environment; web retrieval of both historical catalogues also failed. Connected GitHub access does not offer a workflow-dispatch write operation. Repository CI success checks Node regression/syntax, **not** successful AURA volume retrieval nor verified Python scientific results.
+
+Manual execution once registered in GitHub Actions: navigate to `Actions → V10 AURA historical evidence audit (manual) → Run workflow`, choose `feature/v10-severe-weather-candidates` if offered, select an event, then obtain the `aura-<event>-audit` artifact. If GitHub does not show the dispatch control (workflow not registered on the default branch), do not merge experimental detector code simply to enable it; use a narrowly scoped workflow registration or execute the script in a permitted research environment.
+
+**Caution:** the research script currently inventories raw velocity ranges, gains and missing-value sentinels. It does not yet perform polar-coordinate georegistration or scientifically justified velocity dealiasing, and must not emit measured tornado/circulation candidates until that stage is completed.

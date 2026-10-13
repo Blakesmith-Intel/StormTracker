@@ -36,3 +36,13 @@ The repo's `christmas-2023-derecho-scenario-v1.js` explicitly states its radar f
 | Historical sensitivity and specificity calculated | No | No |
 
 **Outcome:** quantitative historic validation is not yet complete. V10 circulation and wind candidates stay research-only and fail-closed. No production promotion.
+
+## 14 October 2026: retrieval tooling and execution limitations
+
+Implemented `scripts/aura-v10-volume-audit.py` and manual `.github/workflows/v10-aura-evidence.yml` on `feature/v10-severe-weather-candidates`. The script attempts NCI THREDDS catalogue discovery, downloads a matching daily AURA ZIP, checks source checksums and extracts ODIM HDF5 velocity quantities, gains, offsets and missing-value sentinels for a limited number of volumes. Report JSON is preserved as a workflow artifact even when access fails.
+
+**Not yet executed on genuine downloaded data:** NCI network access failed from the model's execution environment. GitHub's normal feature-branch regression CI has passed, but that does not mean the AURA retrieval job ran, nor does it establish meteorological performance.
+
+**Workflow dispatch caveat:** GitHub may require workflow files to exist on the repository's default branch to display or accept manual dispatch. Do not merge experimental detector code or replace pinned Pages builds merely to enable this job. A narrowly scoped default-branch workflow registration or isolated GitHub CLI invocation can be separately reviewed.
+
+**Candidate status:** no measured radial couplets or validated candidate locations yet. The offline scanner intentionally does not declare velocity-alias correction or classify tornadoes from raw arrays. Next: verify an actual archive download; select and inspect consecutive scans; implement azimuth/range-aware spatial reconstruction and validated velocity processing; then run the existing V10 research detector with genuine metadata and score findings against both event reports.

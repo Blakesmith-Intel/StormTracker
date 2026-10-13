@@ -1,35 +1,46 @@
-# StormTracker — V9.17.0 production
+# StormTracker — V9.18.0 production / accepted V9.18 diagnostic
 
-**Live:** https://blakesmith-intel.github.io/StormTracker/
+StormTracker is a **browser-only, Queensland and southern-border weather situational-awareness viewer**. It is not an official warning service or an emergency-management decision-making system. BoM reflectivity is retained in **dBZ**; Doppler radial velocity is not storm movement speed; inferred 3-D volumes are modelled visualisations, not observed radar echo-top measurements.
 
-Browser-only Queensland and border-region situational-awareness radar display. Uses original public Bureau of Meteorology (BoM) **reflectivity in dBZ throughout** (not estimated mm/h), optional Doppler radial velocity, empirically **inferred** (not measured) 3-D radar echoes and observed-pixel storm tracking. GitHub Pages serves the application; the existing Cloudflare Worker relays permitted source files only.
+## The two supported browser builds
 
-## Current capabilities
+| Build | URL | Immutable source |
+| --- | --- | --- |
+| Sealed production V9.18.0 | https://blakesmith-intel.github.io/StormTracker/ | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` |
+| **User-accepted diagnostic V9.18** (future development base) | https://blakesmith-intel.github.io/StormTracker/preview/radar-history-fix/ | `acfa0ebd3717a793369e3e887e2d1a54785620b7` |
 
-- **22 selectable radar coverage windows:** all 19 existing Queensland stations plus **Brewarrina (93), Moree (53) and Grafton (28)** in NSW. These locations select windows of the *national BoM WMTS mosaic*, not independent fused radar scans. Source reflectivity and 2-D history are unchanged.
-- The selected **primary** radar controls tracked storms, inferred 3-D, radar clock and supported Doppler. Add **up to three** other 2-D reflectivity windows. Overlap, stale timestamps and supplemental-load failures cannot manufacture a new primary observation.
-- **Small single-colour SVG radar-dish markers** on the map are clickable/tappable to select the primary source. The name is available in the dropdown, accessible button label and hover tooltip. Map towns stay separate.
-- **Rounded cloud-like inferred 3-D sprites** use the **same 15-category original BoM dBZ colour palette** as 2-D imagery; volumes display only at **≥40 dBZ**. No rain-rate conversions and no synthetic cloud-top measurements.
-- **Per-source-pixel intensity** controls each rendered column's *presentation-only* height multiplier (1.0–1.4). Weaker echoes appear shorter; strong cores appear taller. The independent manual vertical-exaggeration control defaults to **1.0×**. Empirical five-event AURA vertical profiles, confidence, occupancy and source-pixel dBZ remain unchanged.
-- Connected-pixel storm tracking: 40 dBZ threshold, ≥16 **observed** connected pixels, gap joining within two raster pixels, independent strong-core protections, track IDs, labels and motion cones.
-- Original BoM Doppler winds, double-buffered frame presentation and source timestamps; 08/50/66 remain the only geographically calibrated footprint-wind analysis sites. All other nominally aligned wind displays are **not** calibrated for footprint analysis.
-- **Brewarrina Doppler is NOT enabled in V9.17.0:** BoM publishes `IDR93I` but its separate Cloudflare preview Worker is not deployed/verified. It is whitelisted in source code only and explicitly gated (`dopplerIntegrated:false`). Moree and Grafton are reflectivity-only.
-- Rolling source-backed radar history, independent source polling (~five minutes), timeline scrub, speed/loop choices and safe playback recovery.
-- Street/imagery basemaps, terrain, official geography and town labels, current unplanned road closures and power outages, BoM flood signals and public QFD grouped rescue/assistance indicators (subject to source availability and each layer's existing filters).
+The accepted recovery branch is `restore/v9.18-accepted-diagnostic-20261013`. Production stays sealed until an explicit release decision. The archived pre-cleanup repository state is `archive/pre-cleanup-20261013`. Build sources are pinned; neither is derived implicitly from `main`.
 
-## Read first
+## Current accepted diagnostic behaviour
 
-- [V9.17.0 end-user guide](docs/USER_GUIDE_V9.17.0.md)
-- [Release notes and change log](docs/CHANGELOG_V9.17.0.md)
-- [Production baseline and recovery](docs/PRODUCTION_BASELINE_V9.17.0.md)
-- [Engineering / operational handover](docs/HANDOVER_V9.17.0.md)
-- [Scientific integrity contract](docs/SCIENTIFIC_CONTRACT.md)
-- [Historical operational release archive](docs/OPERATIONAL_RELEASE.md)
+- National BoM WMTS reflectivity display: Queensland sites and Brewarrina, Moree and Grafton (22 radar coverage windows), with one primary and at most three supplementary sites.
+- Genuine BoM reflectivity frames synchronised to a primary observed UTC; decoded supplementary radar imagery transitions atomically and cannot fabricate intermediate frames.
+- Inferred 3-D for the primary **and selected supplementary radar footprints**, using the existing profile model, same BoM dBZ palette, ≥40 dBZ threshold, 1.0× baseline vertical exaggeration and bounded Cesium primitives.
+- Original supported Doppler history, primary-only storm tracking, labels and optional +90-minute motion cones.
+- Retained regional DEA satellite under official Queensland / NSW detail, three-dimensional terrain and same-origin geographic place names.
+- Queensland traffic closures, current unplanned outages, exception-only BoM flood signals and QFD incident context; upstream failures do not fabricate events or block the radar viewer.
+- Browser-responsive navigation with the accepted Cesium hover-pick and GPU-resource guards.
 
-## Validation and scientific limits
+Known **non-blocking** console messages at acceptance: Edge third-party CDN storage prevention; unsupported clamped terrain outlines; isolated optional BoM river station-history HTTP 502 subject to serial fallback/cooldown.
 
-`npm test` validates browser source/relay and meteorological display contracts (Node.js is used **only for development**, not the user runtime). Original BoM reflectivity alone determines reported 2-D intensity and measured-cell segmentation. Live 3-D is a **display-model inference**, not a direct vertical radar scan. Stronger low-level dBZ does **not prove** greater real cloud height. Doppler is radial velocity, not storm travel speed; exploratory severe/circulation features do not constitute warnings. Display-only interpolated radar frames cannot generate new measured tracks or measured 3-D claims.
+## Repository structure
 
-## Deploy / rollback
+- `frontend/` — operational browser source, official data model, scientific research fixtures and regression tests.
+- `relay/` — the existing Cloudflare CORS/transport Worker (never meteorological modelling).
+- `scripts/` — scientific validation, source auditing, NSW same-origin place-name builder and frontend regression runner.
+- `docs/` — current release/user guide, scientific contract, accepted handover, rollback procedure and V10 priorities.
+- `.github/workflows/pages.yml` — only the pinned production and accepted QA preview are published.
+- `.github/workflows/deploy-relay.yml` — **manual only** Worker deployment after full tests.
+- `.github/workflows/review-validation.yml` and `validate-feature-branches.yml` — browser and relay regression gates.
 
-The GitHub Pages workflow publishes an **exact pinned release commit**, never whatever happens to be newest on main. The public `/BUILD.txt` identifies that exact production source. An immutable `v9.17.0` tag and `restore/v9.17.0` branch are sealed only after live deployment checks. Historical `v9.16.15` remains available for rollback. No local hosting, paid data, backend meteorological processing or unrelated Cloudflare Worker changes are required.
+Run `npm test` to validate the frontend and `node --check relay/worker.js` to validate the relay. GitHub Pages requires no separate local server.
+
+## Release discipline
+
+1. Work on a new feature/fix branch based on the **accepted diagnostic source**. Do not edit an accepted recovery ref or existing tag.
+2. Run all regressions; publish to an isolated preview and obtain a real browser/mobile functional pass before promotion.
+3. Pin the accepted source SHA in the Pages workflow, verify `BUILD.txt`, and keep an immutable restore ref.
+4. Never replace genuine BoM source observations with extrapolated frames or other fabricated weather data.
+5. V10 wind/hook-echo threat candidates remain experimental until validated; see `docs/ACTIVE_WISHLIST.md`.
+
+The previous experimental installers, version-specific preview deployments and historical release notes remain recoverable through Git history and the protected pre-cleanup branch, rather than cluttering the current working tree and Pages deployment.

@@ -63,7 +63,8 @@ export function createSupplementalRadarDisplay({
   getWindow,onStatus=()=>{},maxCached=18,retireLayer=null
 }) {
   let primary="",extras=[],generation=0,lastKey="",opacity=1;
-  const controllers=new Map(),cache=new Map();
+  let targetUtc=null;
+  const controllers=new Map(),cache=new Map(),displayedUtc=new Map();
 
   function controllerFor(site) {
     if (!controllers.has(site)) {
@@ -77,6 +78,8 @@ export function createSupplementalRadarDisplay({
   function reset() {
     generation++;
     lastKey="";
+    targetUtc=null;
+    displayedUtc.clear();
     for (const controller of controllers.values()) controller.reset();
     controllers.clear();
     scene.requestRender();
@@ -122,10 +125,24 @@ export function createSupplementalRadarDisplay({
     }
     const key=primary+"|"+extras.join(",")+"|"+utc;
     if(key===lastKey) return Promise.resolve(
-      [...controllers.entries()].filter(([,c])=>c.currentLayer).map(([id])=>id)
+      [...controllers.entries()].filter(([id,c])=>
+        c.currentLayer?.show!==false && displayedUtc.get(id)===utc).map(([id])=>id)
     );
-    // Invalidate older asynchronous operations WITHOUT clearing the source
-    // image currently displayed. A stale frame can never win a later handover.
+    // Match the PRIMARY displayed scan, not the timestamp of the last
+    // successfully fetched supplemental tile. Immediately HIDE (but retain
+    // for rollback) old-UTC layers while the requested observed scan loads.
+    // This prevents different BoM times from appearing side-by-side on pan,
+    // pause, scrubbing and rapid playback. Never fabricate missing scans.
+    targetUtc=utc;
+    let hidden=0;
+    for(const [id,controller] of controllers) {
+      const layer=controller.currentLayer;
+      if(layer && displayedUtc.get(id)!==utc && layer.show!==false){
+        layer.show=false;
+        hidden++;
+      }
+    }
+    if(hidden)scene.requestRender();
     const mine=++generation;
     lastKey=key;
     const prior=[getWindow(primary)];
@@ -152,6 +169,7 @@ export function createSupplementalRadarDisplay({
             (siteWindow.colEnd-siteWindow.colStart+1)){
           if(mine===generation) {
             controllerFor(site).reset();
+            displayedUtc.delete(site);
             covered++;onStatus(summary());
           }
           return null;
@@ -168,6 +186,10 @@ export function createSupplementalRadarDisplay({
         if(mine!==generation || key!==lastKey) return null;
         if(!ready) throw new Error("New source scan was not ready for atomic handover");
         controllerFor(site).setOpacity(opacity);
+        const active=controllerFor(site).currentLayer;
+        if(active)active.show=true;
+        displayedUtc.set(site,utc);
+        scene.requestRender();
         success++;onStatus(summary());
         return site;
       }catch(error){
@@ -175,6 +197,7 @@ export function createSupplementalRadarDisplay({
         // An unavailable new source is not replaced with a different UTC.
         // Do not indefinitely misrepresent an old scan as the current scan.
         controllerFor(site).reset();
+        displayedUtc.delete(site);
         cache.delete(site+"@"+utc);
         fail++;
         console.warn("Additional BoM radar site unavailable",site,utc,error);
@@ -188,8 +211,12 @@ export function createSupplementalRadarDisplay({
   return {
     configure,show,reset,setOpacity,
     get visibleSites(){
-      return [...controllers.entries()].filter(([,c])=>c.currentLayer).map(([id])=>id);
+      return [...controllers.entries()].filter(([id,c])=>
+        c.currentLayer && c.currentLayer.show!==false &&
+        displayedUtc.get(id)===targetUtc).map(([id])=>id);
     },
+    get displayedTimes(){return Object.fromEntries(displayedUtc);},
+    get targetTime(){return targetUtc;},
     get selectedSites(){return [...extras];},
     get generation(){return generation;}
   };

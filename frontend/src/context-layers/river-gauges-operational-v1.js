@@ -730,47 +730,22 @@ export function initialiseOperationalRiverGauges({
         canvas
       );
 
-  let lastHoverPickAt =
-    0;
-
-  hoverHandler
-    .setInputAction(
-      movement => {
-        const now =
-          performance.now();
-
-        if (
-          now
-          - lastHoverPickAt
-          < 80
-        ) {
-          return;
-        }
-
-        lastHoverPickAt =
-          now;
-
-        const gaugeId =
-          gaugeIdNearPosition({
-            viewer,
-            position:
-              movement
-                .endPosition,
-            width:
-              18,
-            height:
-              18
-          });
-
-        if (gaugeId) {
-          canvas.style.cursor =
-            "pointer";
-        }
-      },
-      CesiumRef
-        .ScreenSpaceEventType
-        .MOUSE_MOVE
-    );
+  // No synchronous Cesium GPU picking on every pointer movement in the
+  // isolated WebGL diagnostic preview. Gauge click inspection remains enabled.
+  const suppressHoverGpuPicking =
+    globalThis.location?.pathname?.includes("/preview/radar-history-fix/") === true;
+  if (!suppressHoverGpuPicking) {
+    let lastHoverPickAt = 0;
+    hoverHandler.setInputAction(movement => {
+      const now = performance.now();
+      if (now - lastHoverPickAt < 160) return;
+      lastHoverPickAt = now;
+      const gaugeId = gaugeIdNearPosition({
+        viewer, position: movement.endPosition, width: 18, height: 18
+      });
+      canvas.style.cursor = gaugeId ? "pointer" : "";
+    }, CesiumRef.ScreenSpaceEventType.MOUSE_MOVE);
+  }
 
   checkbox
     ?.addEventListener(

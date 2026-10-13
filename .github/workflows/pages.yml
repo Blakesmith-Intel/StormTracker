@@ -552,7 +552,7 @@ jobs:
       - name: Checkout pinned diagnostic hover guard (authenticated)
         uses: actions/checkout@v4
         with:
-          ref: 51057b789b8d34ced80b0bf0a3201ff21e4e886c
+          ref: 3d47d2e46635304b4ae604fa39e383f374a83fc4
           path: preview-builds/hover-gpu-guard
           persist-credentials: false
 
@@ -567,11 +567,19 @@ jobs:
           cp -a frontend/preview/label-gpu-guard/. "$destination/"
           # Copy reviewed fixes from an authenticated checkout; unauthenticated
           # raw.githubusercontent.com requests can 404 for private repositories.
+          # Test the EXACT isolated source that supplies the patched preview.
+          (cd preview-builds/hover-gpu-guard && npm test)
           for filename in power-outages-operational-v1.js river-gauges-operational-v1.js flood-road-closures-operational-v1.js; do
             cp "preview-builds/hover-gpu-guard/frontend/src/context-layers/$filename" "$destination/src/context-layers/$filename"
             grep -Fq 'suppressHoverGpuPicking' "$destination/src/context-layers/$filename"
           done
-          printf 'BO M BOUNDED RADAR HISTORY QA %s; V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          cp preview-builds/hover-gpu-guard/frontend/src/context-layers/river-gauge-layer-v1.js "$destination/src/context-layers/"
+          cp preview-builds/hover-gpu-guard/frontend/src/storm-track-trail-visibility-v1.js "$destination/src/"
+          cp preview-builds/hover-gpu-guard/frontend/src/live3d-operational-v9.js "$destination/src/"
+          grep -Fq 'recentRelayBlockedUntil' "$destination/src/context-layers/river-gauge-layer-v1.js"
+          grep -Fq 'TRACK_THREAT_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
+          grep -Fq 'trackAnnotationsVisible' "$destination/src/live3d-operational-v9.js"
+          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' '3d47d2e46635304b4ae604fa39e383f374a83fc4' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -664,6 +672,12 @@ jobs:
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' <<< "$runtime"
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
+          build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
+          grep -Fq '3d47d2e46635304b4ae604fa39e383f374a83fc4' <<< "$build"
+          picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
+          grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
+          tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"
+          grep -Fq 'TRACK_THREAT_ENTITY_PREFIX' <<< "$tracks"
           echo "Verified isolated source-history QA; original production root remains pinned."
 
       - name: Verify served QLD label/WebGL stability review

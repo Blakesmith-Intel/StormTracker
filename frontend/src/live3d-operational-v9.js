@@ -3705,7 +3705,7 @@ async function warmRadarHistoryCache(
 
   let warmedCount = 0;
   const pressureGuardActive =
-    window.location.pathname.includes("/preview/network-guard/");
+    LABEL_GPU_QA || window.location.pathname.includes("/preview/network-guard/");
 
   for (const observedUtc of candidates) {
     if (

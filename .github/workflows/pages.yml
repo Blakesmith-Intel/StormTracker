@@ -451,6 +451,25 @@ jobs:
           git diff --exit-code -- frontend/index.html frontend/live3d-operational-v9.html
           echo "Authorised-origin previews staged. Production root unchanged."
 
+      - name: Stage isolated mobile-navigation review (never production root)
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination=frontend/preview/mobile-navigation
+          mkdir -p "$destination/data"
+          # The working-tree frontend is the reviewed main-branch candidate.
+          # Do not recurse into frontend/preview or replace the pinned root.
+          for asset in index.html live3d-operational-v9.html app.css src 3d-data 3d-models; do
+            cp -a "frontend/$asset" "$destination/$asset"
+          done
+          # Reuse the validated same-origin official NSW place catalogue.
+          cp sealed-production/v9.18.0/frontend/data/nsw-radar-places-v1.json "$destination/data/nsw-radar-places-v1.json"
+          printf 'Mobile navigation review; source commit %s; sealed production unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq 'mobile-navigation-review1' "$destination/index.html"
+          grep -Fq 'mobile-navigation-review1' "$destination/live3d-operational-v9.html"
+          grep -Fq 'scheduleGesture' "$destination/src/touch-camera-gestures-v1.js"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |

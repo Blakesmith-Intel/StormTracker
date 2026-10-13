@@ -358,37 +358,42 @@ export function createRiverGaugeLayer({
       .slice(0,Math.max(0,Math.min(24,48-recentRequested.size)));
     if(!candidates.length)return null;
     recentLoading=(async()=>{
-      let next=0,success=0,failures=0;
-      await Promise.all(Array.from({length:Math.min(4,candidates.length)},async()=>{
-        while(next<candidates.length && now()>=recentRelayBlockedUntil){
-          const target=candidates[next++];
-          recentRequested.add(target.id);
-          try{
-            const observations=await fetchBoMRecentHistory(target,{
-              fetchImpl,timeoutMs:10000
-            });
-            if(!observations.length){failures++;continue;}
-            // Prefer identical timestamps already obtained from current
-            // bulletins instead of replacing them with historical duplicates.
-            const existing=new Map((history[target.id]??[])
-              .map(x=>[x.time,x.height]));
-            for(const obs of observations){
-              if(!existing.has(obs.time))existing.set(obs.time,obs.height);
-            }
-            history[target.id]=[...existing].sort((a,b)=>a[0]-b[0])
-              .map(([time,height])=>({time,height}));
-            success++;
-          }catch(error){
-            failures++;
-            const message=String(error?.message??error);
-            if(/BoM recent data HTTP (403|429|502|503|504)\b/.test(message))
-              recentRelayBlockedUntil=now()+15*60*1000;
-            // A single genuine failure is sufficient; avoid filling browser
-            // consoles with repeats while an optional upstream feed is down.
-            if(failures===1)console.warn("BoM recent history relay unavailable; optional station backfill paused:",message);
+      let success=0,failures=0;
+      // One optional BoM history lookup at a time. Previously four requests
+      // were already in flight when the first upstream 502 armed cooldown,
+      // generating repeated failures on an otherwise functional map.
+      // A bad gateway is a relay/source failure, NOT a reason to keep
+      // probing other stations in this same refresh.
+      for(const target of candidates){
+        if(now()<recentRelayBlockedUntil)break;
+        recentRequested.add(target.id);
+        try{
+          const observations=await fetchBoMRecentHistory(target,{
+            fetchImpl,timeoutMs:10000
+          });
+          if(!observations.length){failures++;continue;}
+          const existing=new Map((history[target.id]??[])
+            .map(x=>[x.time,x.height]));
+          for(const obs of observations){
+            if(!existing.has(obs.time))existing.set(obs.time,obs.height);
           }
+          history[target.id]=[...existing].sort((a,b)=>a[0]-b[0])
+            .map(([time,height])=>({time,height}));
+          success++;
+        }catch(error){
+          failures++;
+          const message=String(error?.message??error);
+          const gatewayFailure=/BoM recent data HTTP (403|429|502|503|504)\b/.test(message);
+          if(gatewayFailure)recentRelayBlockedUntil=now()+15*60*1000;
+          // Native browser GET logs still show one genuine HTTP rejection.
+          // Do not add redundant warnings or continue a failing request
+          // burst; current official BoM bulletins remain authoritative.
+          if(failures===1)console.warn(
+            "Optional BoM station history unavailable; current flood bulletins retained:",message
+          );
+          if(gatewayFailure)break;
         }
-      }));
+      }
       history=compactFloodHistory(history,latestSourceFeatures,now());
       persistHistory();
       // A 15-minute poll may have arrived while a station page loaded.

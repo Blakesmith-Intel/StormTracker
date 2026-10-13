@@ -250,7 +250,7 @@ assert.equal(streetOnly.setNavigationActive(true),false,
   "street-only mode performs no imagery-detail handover on camera movement");
 assert.equal(streetOnly.updateForCamera(),"street");
 assert.ok(streetOnlyStatuses.some(([message])=>
-  message.includes("satellite") && message.includes("disabled")));
+  /satellite/i.test(message) && message.includes("disabled")));
 streetOnly.destroy();
 assert.equal(layers.length,0);
 console.log("PASS street-only A/B mode: satellite preference ignored but preserved, DEA/NSW/QLD providers never instantiated, selector switch rejected, no fade, single OSM layer.");

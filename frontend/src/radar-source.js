@@ -6,6 +6,8 @@ export function networkPressureDiagnostics(){return guardedRadarRequests.snapsho
 function isNetworkGuardPreview(){
   return globalThis.location?.pathname?.includes("/preview/network-guard/")===true;
 }
+if(isNetworkGuardPreview())
+  globalThis.__stormtrackerRelayPressureDiagnostics=networkPressureDiagnostics;
 
 function createCanvas(width, height) {
   if (typeof OffscreenCanvas !== "undefined") {

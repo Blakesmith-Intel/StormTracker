@@ -549,6 +549,23 @@ jobs:
           grep -Fq 'label-gpu-v2-live-window' "$destination/index.html"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
+      - name: Stage bounded source-history and genuine-cache fallback browser QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination=frontend/preview/radar-history-fix
+          mkdir -p "$destination"
+          # Same Cesium, BoM, terrain, weather and context code as the prior
+          # label-gpu experiment; only the path activates cached-source rescue.
+          cp -a frontend/preview/label-gpu-guard/. "$destination/"
+          printf 'BO M BOUNDED RADAR HISTORY QA %s; V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
+          grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
+          grep -Fq '/preview/radar-history-fix/' "$destination/src/radar-source.js"
+          grep -Fq 'no prior ' "$destination/src/live3d-operational-v9.js"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |
@@ -575,6 +592,8 @@ jobs:
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
+          test -s published-site/preview/radar-history-fix/data/nsw-radar-places-v1.json
+          grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' published-site/preview/radar-history-fix/src/live3d-operational-v9.js
           test -s published-site/preview/label-gpu-guard/data/nsw-radar-places-v1.json
           grep -Fq 'createDeferredImageryRetirement' published-site/preview/label-gpu-guard/src/imagery-layer-retirement-v1.js
           test -s published-site/preview/network-guard/data/nsw-radar-places-v1.json
@@ -618,6 +637,22 @@ jobs:
       - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify served bounded radar-history browser QA and sealed production
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          index="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/")"
+          grep -Fq 'label-gpu-v1' <<< "$index"
+          runtime="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/live3d-operational-v9.js")"
+          grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' <<< "$runtime"
+          grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' <<< "$runtime"
+          wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
+          grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
+          echo "Verified isolated source-history QA; original production root remains pinned."
+
       - name: Verify served QLD label/WebGL stability review
         shell: bash
         env:

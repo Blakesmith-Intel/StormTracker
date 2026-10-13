@@ -3667,6 +3667,8 @@ async function warmRadarHistoryCache(
     );
 
   let warmedCount = 0;
+  const pressureGuardActive =
+    window.location.pathname.includes("/preview/network-guard/");
 
   for (const observedUtc of candidates) {
     if (
@@ -3699,9 +3701,17 @@ async function warmRadarHistoryCache(
 
       warmedCount++;
     } catch (error) {
-      // Probe-readable timestamps can still fail if one tile in the complete
-      // mosaic disappears. Cache warming is best-effort and never affects the
-      // currently displayed loop.
+      // A single 403/429/502/503 means background warming is now competing
+      // with a refusing/unavailable BoM relay. Hold the known-good loop and
+      // stop requesting more full mosaics until the next normal refresh.
+      const relayUnavailable=pressureGuardActive &&
+        /HTTP (?:403|429|502|503|504)\b/.test(String(error?.message??error));
+      if(relayUnavailable){
+        console.warn("BoM history cache warming paused after relay rejection:",
+          region,observedUtc,String(error?.message??error));
+        break;
+      }
+      // A missing 400 tile invalidates that real frame, not other frames.
       console.warn(
         `Unable to warm radar history cache for ${region} at ${observedUtc}`,
         error

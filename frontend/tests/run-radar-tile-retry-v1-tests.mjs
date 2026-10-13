@@ -34,4 +34,19 @@ assert.equal(failed,true,"missing real radar pixel tile must reject entire scan"
 await assert.rejects(loadCompleteRadarTiles([],async()=>image),TypeError);
 await assert.rejects(loadCompleteRadarTiles(tasks,async()=>({width:0,height:0}),
  {wait:async()=>{}}),/empty radar tile/);
+let deniedAttemptCount=0;
+const denialLoader=async url=>{
+  deniedAttemptCount++;
+  if(url==="tile-b"){
+    const err=new Error("Image request failed: HTTP 403");err.status=403;
+    throw err;
+  }
+  return image;
+};
+await assert.rejects(
+  loadCompleteRadarTiles(tasks,denialLoader,{stopOnPermanent:true,wait:async()=>{}}),
+  /Incomplete BoM reflectivity mosaic.*403/
+);
+assert.equal(deniedAttemptCount,3,"permanent failed tile is not refetched under QA guard");
+console.log("PASS hard relay 403 fails complete source scan without duplicate attempts or fabricated pixels.");
 console.log("PASS selective WMTS tile retry; existing real tiles retained; no missing-pixel fabrication.");

@@ -515,6 +515,21 @@ jobs:
           grep -Fq '9.18.3-desktop-navigation-raf' "$destination/src/live3d-operational-v9.js"
           test -s "$destination/data/nsw-radar-places-v1.json"
 
+      - name: Stage isolated BoM relay pressure review
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination=frontend/preview/network-guard
+          mkdir -p "$destination"
+          # Full normal map: unlike Street-only tests this keeps all basemap
+          # and terrain choices. Only /network-guard/ changes WMTS scheduling.
+          cp -a frontend/preview/street-flat/. "$destination/"
+          printf 'BO M RELAY REQUEST PRESSURE REVIEW %s; V9.18.0 unchanged\n' "$GITHUB_SHA" > "$destination/BUILD.txt"
+          grep -Fq '/preview/network-guard/' "$destination/src/radar-source.js"
+          grep -Fq 'createRadarRequestPressureGuard' "$destination/src/radar-request-pressure-v1.js"
+          grep -Fq 'pressureGuardActive' "$destination/src/live3d-operational-v9.js"
+          test -s "$destination/data/nsw-radar-places-v1.json"
+
       - name: Construct published site from V9.18.0 SEALED production plus isolated previews
         shell: bash
         run: |
@@ -541,6 +556,8 @@ jobs:
           test -f published-site/preview/nsw-radar-labels/data/nsw-radar-places-v1.json
           test -f published-site/preview/nsw-radar-labels/src/context-layers/nsw-radar-place-catalogue-v1.js
           grep -Fq 'df5add5fb12d87244bf36213e76b4246f5f67ecc' published-site/preview/nsw-radar-labels/BUILD.txt
+          test -s published-site/preview/network-guard/data/nsw-radar-places-v1.json
+          grep -Fq 'createRadarRequestPressureGuard' published-site/preview/network-guard/src/radar-request-pressure-v1.js
           test -s published-site/preview/street-flat/data/nsw-radar-places-v1.json
           grep -Fq 'FLAT_TERRAIN_PERFORMANCE_TEST' published-site/preview/street-flat/src/live3d-operational-v9.js
           grep -Fq '9.18.3-desktop-navigation-raf' published-site/preview/street-flat/src/live3d-operational-v9.js
@@ -580,6 +597,21 @@ jobs:
       - name: Deploy sealed V9.18.0 root and isolated previews
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify served BoM relay pressure review
+        shell: bash
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_URL%/}"
+          page="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/network-guard/")"
+          grep -Fq 'live3d-operational-v9.html' <<< "$page"
+          guard="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/network-guard/src/radar-request-pressure-v1.js")"
+          grep -Fq 'maxConcurrent=3' <<< "$guard"
+          radar="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/network-guard/src/radar-source.js")"
+          grep -Fq '/preview/network-guard/' <<< "$radar"
+          echo "BoM relay pressure QA served; sealed V9.18.0 production unchanged."
+
       - name: Verify publicly served no-satellite flat-terrain stress preview
         shell: bash
         env:

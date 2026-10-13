@@ -31,7 +31,7 @@ jobs:
       - name: Checkout pinned diagnostic preview source
         uses: actions/checkout@v4
         with:
-          ref: 8a3a56af00f0228a1c83be356b1ff9a542d57fb8
+          ref: e449e87f19ac2889b673f3d6d82d1aa79eae2e5f
           path: preview-builds/hover-gpu-guard
           persist-credentials: false
       - name: Validate complete diagnostic preview regressions first
@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           (cd preview-builds/hover-gpu-guard && npm test)
           node --check preview-builds/hover-gpu-guard/relay/worker.js
-          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "8a3a56af00f0228a1c83be356b1ff9a542d57fb8"
+          test "$(git -C preview-builds/hover-gpu-guard rev-parse HEAD)" = "e449e87f19ac2889b673f3d6d82d1aa79eae2e5f"
       - name: Validate current development source
         run: npm test
       - name: Checkout sealed V9.18.0 pixel-tracking production source
@@ -586,9 +586,9 @@ jobs:
           grep -Fq 'webgl-track-river-20261013' "$destination/index.html"
           grep -Fq 'webgl-track-river-20261013' "$destination/live3d-operational-v9.html"
           grep -Fq 'recentRelayBlockedUntil' "$destination/src/context-layers/river-gauge-layer-v1.js"
-          grep -Fq 'TRACK_THREAT_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
+          grep -Fq 'TRACK_TRAIL_ENTITY_PREFIX' "$destination/src/storm-track-trail-visibility-v1.js"
           grep -Fq 'trackAnnotationsVisible' "$destination/src/live3d-operational-v9.js"
-          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' '8a3a56af00f0228a1c83be356b1ff9a542d57fb8' > "$destination/BUILD.txt"
+          printf 'V9.18 WEBGL + TRACK + RIVER DIAGNOSTIC commit %s; production V9.18.0 unchanged\n' 'e449e87f19ac2889b673f3d6d82d1aa79eae2e5f' > "$destination/BUILD.txt"
           grep -Fq 'BOUNDED_RADAR_RECOVERY_QA' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'discoverBoundedBomReflectivityHistory(now,5,region)' "$destination/src/live3d-operational-v9.js"
           grep -Fq 'cachedFrames.length' "$destination/src/live3d-operational-v9.js"
@@ -682,11 +682,11 @@ jobs:
           wmts="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/bom-wmts-loop-v2.js")"
           grep -Fq 'discoverBoundedBomReflectivityHistory' <<< "$wmts"
           build="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq '8a3a56af00f0228a1c83be356b1ff9a542d57fb8' <<< "$build"
+          grep -Fq 'e449e87f19ac2889b673f3d6d82d1aa79eae2e5f' <<< "$build"
           picker="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/context-layers/river-gauges-operational-v1.js")"
           grep -Fq 'suppressHoverGpuPicking' <<< "$picker"
           tracks="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/src/storm-track-trail-visibility-v1.js")"
-          grep -Fq 'TRACK_THREAT_ENTITY_PREFIX' <<< "$tracks"
+          grep -Fq 'TRACK_TRAIL_ENTITY_PREFIX' <<< "$tracks"
           echo "Verified isolated source-history QA; original production root remains pinned."
 
       - name: Verify served QLD label/WebGL stability review

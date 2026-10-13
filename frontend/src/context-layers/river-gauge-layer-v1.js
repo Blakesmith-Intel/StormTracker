@@ -338,6 +338,9 @@ export function createRiverGaugeLayer({
   // observations and flood classification remain entirely in the browser.
   const recentRequested = new Set();
   let recentLoading = null;
+  // Optional historical station pages must never flood the relay or hold up
+  // the core radar map when an upstream 403/429/502/503/504 occurs.
+  let recentRelayBlockedUntil = 0;
   let latestSourceFeatures = [];
 
   function persistHistory(){
@@ -348,17 +351,18 @@ export function createRiverGaugeLayer({
   async function backfillRecentBoMHistory(features){
     if(recentLoading)return recentLoading;
     const nowMs=now();
+    if(nowMs<recentRelayBlockedUntil)return null;
     const list=features.map(f=>recentFloodHistoryCandidate(f,history,nowMs))
       .filter(Boolean).sort((a,b)=>Number(a.tidal)-Number(b.tidal));
     const candidates=list.filter(item=>!recentRequested.has(item.id))
       .slice(0,Math.max(0,Math.min(24,48-recentRequested.size)));
     if(!candidates.length)return null;
-    for(const c of candidates)recentRequested.add(c.id);
     recentLoading=(async()=>{
       let next=0,success=0,failures=0;
       await Promise.all(Array.from({length:Math.min(4,candidates.length)},async()=>{
-        while(next<candidates.length){
+        while(next<candidates.length && now()>=recentRelayBlockedUntil){
           const target=candidates[next++];
+          recentRequested.add(target.id);
           try{
             const observations=await fetchBoMRecentHistory(target,{
               fetchImpl,timeoutMs:10000
@@ -376,8 +380,12 @@ export function createRiverGaugeLayer({
             success++;
           }catch(error){
             failures++;
-            console.warn("BoM recent station unavailable:",target.id,
-              error?.message??error);
+            const message=String(error?.message??error);
+            if(/BoM recent data HTTP (403|429|502|503|504)\b/.test(message))
+              recentRelayBlockedUntil=now()+15*60*1000;
+            // A single genuine failure is sufficient; avoid filling browser
+            // consoles with repeats while an optional upstream feed is down.
+            if(failures===1)console.warn("BoM recent history relay unavailable; optional station backfill paused:",message);
           }
         }
       }));

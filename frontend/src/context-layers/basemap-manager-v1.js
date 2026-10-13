@@ -324,7 +324,7 @@ export function basemapLabel(
 
 export function createStormTrackerBasemapManager({
   Cesium,viewer,storage=globalThis.localStorage,onStatus=()=>{},
-  mobileNavigation=false,
+  suspendDetailDuringNavigation=false,
   resumeDetailDelayMs=700,
   schedule=setTimeout,cancel=clearTimeout
 }) {
@@ -410,7 +410,7 @@ export function createStormTrackerBasemapManager({
     return detailStaging?"staging":detailBlend>0?"detailed":"regional";
   }
   function setNavigationActive(active) {
-    if(destroyed||!mobileNavigation)return false;
+    if(destroyed||!suspendDetailDuringNavigation)return false;
     if(resumeTimer!==null){cancel(resumeTimer);resumeTimer=null;}
     if(active){
       if(navigationActive)return true;

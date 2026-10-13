@@ -71,7 +71,8 @@ def decode_volume(payload,filename,sha):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--event",choices=EVENTS,required=True)
-    ap.add_argument("--max-files",type=int,default=2)
+    ap.add_argument("--max-files",type=int,default=3)
+    ap.add_argument("--target-utc",default=None,help="HH:MM UTC; prioritise consecutive volumes around event")
     ap.add_argument("--output",default="aura-evidence")
     args=ap.parse_args()
     radar,year,day=EVENTS[args.event]
@@ -96,7 +97,23 @@ def main():
         report["archive_url"]=download
         with zipfile.ZipFile(io.BytesIO(response.content)) as z:
             members=[n for n in z.namelist() if n.endswith((".pvol.h5",".h5"))]
+            if args.target_utc:
+                hhmm=args.target_utc.replace(":","")
+                if not re.fullmatch(r"[0-2][0-9][0-5][0-9]",hhmm) or int(hhmm[:2])>=24:
+                    raise ValueError("--target-utc must be HH:MM in UTC")
+                target=int(hhmm[:2])*3600+int(hhmm[2:])*60
+                def distance(name):
+                    match=re.search(r"_(\\d{6})\\.pvol\\.h5$",name)
+                    if not match:return 999999
+                    t=match.group(1)
+                    seconds=int(t[:2])*3600+int(t[2:4])*60+int(t[4:])
+                    return abs(seconds-target)
+                members=sorted(members,key=distance)
+            else:
+                members=sorted(members)
             report["volume_count"]=len(members)
+            report["selection_method"]="nearest-observed-UTC" if args.target_utc else "first-by-filename"
+            report["target_utc"]=args.target_utc
             for n in members[:max(0,min(args.max_files,5))]:
                 data=z.read(n)
                 report["scans"].append(decode_volume(data,n,hashlib.sha256(data).hexdigest()))

@@ -827,44 +827,23 @@ export function initialiseOperationalFloodRoadClosures({
       canvas
     );
 
-  let lastHoverPickAt =
-    0;
-
-  hoverHandler.setInputAction(
-    movement => {
-      const now =
-        performance.now();
-
-      if (
-        now - lastHoverPickAt
-        < 80
-      ) {
-        return;
-      }
-
-      lastHoverPickAt =
-        now;
-
-      const closureId =
-        closureIdNearPosition({
-          viewer,
-          CesiumRef,
-          position:
-            movement.endPosition,
-          width:
-            18,
-          height:
-            18
-        });
-
-      canvas.style.cursor =
-        closureId
-          ? "pointer"
-          : "";
-    },
-    CesiumRef.ScreenSpaceEventType
-      .MOUSE_MOVE
-  );
+  // Isolated GPU diagnostic: browser-wide mouse movement must never
+  // synchronously execute a Cesium GPU pick against retired imagery.
+  // Road-closure LEFT_CLICK information remains unchanged.
+  const suppressHoverGpuPicking =
+    globalThis.location?.pathname?.includes("/preview/radar-history-fix/") === true;
+  if (!suppressHoverGpuPicking) {
+    let lastHoverPickAt = 0;
+    hoverHandler.setInputAction(movement => {
+      const now = performance.now();
+      if (now - lastHoverPickAt < 160) return;
+      lastHoverPickAt = now;
+      const closureId = closureIdNearPosition({
+        viewer, CesiumRef, position:movement.endPosition, width:18, height:18
+      });
+      canvas.style.cursor = closureId ? "pointer" : "";
+    }, CesiumRef.ScreenSpaceEventType.MOUSE_MOVE);
+  }
 
   checkbox?.addEventListener(
     "change",

@@ -435,7 +435,7 @@ export function evaluateChronologicalTrackThreatCone(
           steeringHeadingDegrees:evidence.motion.heading_degrees}
       : buildOptions;
     evaluation=controller.evaluate(
-      historicalTrack,history[index],buildCone,options
+      historicalTrack,history[index],options
     );
   }
   return evaluation;

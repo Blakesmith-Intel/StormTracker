@@ -78,9 +78,13 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "frontend/$asset" "$candidate/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "$candidate/data/"
-for filename in power-outages-operational-v1.js river-gauges-operational-v1.js flood-road-closures-operational-v1.js river-gauge-layer-v1.js basemap-manager-v1.js; do
-  cp "$accepted/src/context-layers/$filename" "$candidate/src/context-layers/"
-done
+# The candidate uses its reviewed satellite and context interaction modules.
+# Keep ONLY the unchanged source-backed gauge data layer from accepted QA.
+cp "$accepted/src/context-layers/river-gauge-layer-v1.js" "$candidate/src/context-layers/"
+grep -Fq '"/preview/next-baseline/"' "$candidate/src/context-layers/power-outages-operational-v1.js"
+grep -Fq '"/preview/next-baseline/"' "$candidate/src/context-layers/flood-road-closures-operational-v1.js"
+grep -Fq '"/preview/next-baseline/"' "$candidate/src/context-layers/river-gauges-operational-v1.js"
+grep -Fq 'Keep all currently visible satellite layers' "$candidate/src/context-layers/basemap-manager-v1.js"
 printf 'CANDIDATE StormTracker next baseline source %s\\n' "$(git rev-parse HEAD)" > "$candidate/BUILD.txt"
 grep -Fq 'supplementalObservedAnchor' "$candidate/src/live3d-operational-v9.js"
 grep -Fq 'observedExitMarginKm:0.5' "$candidate/src/live3d-operational-v9.js"

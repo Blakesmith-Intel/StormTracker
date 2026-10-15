@@ -105,7 +105,9 @@ import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.1
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
 } from "./multi-radar-display-v9.js?v=9.18.10-atomic-3d";
-import { supplementalObservedAnchor } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic";
+import {
+  supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
+} from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -3584,7 +3586,7 @@ async function showHybridFrame(index) {
   // (or repeat unsuccessful requests for each 5-minute synthetic step).
   // Genuine observed steps still synchronise measured secondary imagery
   // before the primary atomic reveal, as before.
-  const extraPreparation=supplementalMeasurable && !supplementalAnchor.held
+  const extraPreparation=shouldPrepareSupplementalForPlayback(supplementalAnchor)
     ? supplementalRadarDisplay.prepare(supplementalAnchor.observedUtc)
     : Promise.resolve([]);
   const motionGeneration=visualMotionGeneration;

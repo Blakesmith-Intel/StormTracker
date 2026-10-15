@@ -343,6 +343,54 @@ export function measuredTrackMotionAtObservation(track, observation) {
     : null;
 }
 
+// A single small connected-pixel centroid shift can produce almost any
+// bearing. Only extrapolate +90m motion when a real, source-time measurement
+// meets either the per-scan evidence threshold, or the TWO agreeing scan
+// threshold. Never use interpolation or a future observation to qualify it.
+export function credibleMeasuredMotionAtObservation(track, observation, {
+  minimumInstantaneousDistanceKm=1.25,
+  minimumInstantaneousSpeedKmh=12,
+  maximumCredibleSpeedKmh=160,
+  maximumSustainedTurnDegrees=25,
+  maximumSustainedLatestErrorDegrees=20
+}={}) {
+  const history=observationsThrough(track,observation);
+  if(history.length<2)
+    return {motion:null,reason:"insufficient-history",source:"none"};
+  const latest=geodesicMotion(history.at(-2),history.at(-1));
+  if(!latest || !(latest.speed_kmh>0) ||
+     latest.speed_kmh>maximumCredibleSpeedKmh)
+    return {motion:null,reason:"implausible-motion",source:"none"};
+  if(latest.distance_km>=minimumInstantaneousDistanceKm &&
+     latest.speed_kmh>=minimumInstantaneousSpeedKmh)
+    return {motion:latest,reason:"supported-single-scan",source:"instantaneous"};
+
+  const sustained=sustainedMeasuredSteering({ ...track, history },observation);
+  if(!sustained)
+    return {motion:null,reason:"low-motion-confidence",source:"none"};
+
+  const penultimate=geodesicMotion(history.at(-3),history.at(-2));
+  if(!penultimate ||
+     bearingDelta(penultimate.heading_degrees,latest.heading_degrees)>
+       maximumSustainedTurnDegrees ||
+     bearingDelta(sustained.heading_degrees,latest.heading_degrees)>
+       maximumSustainedLatestErrorDegrees)
+    return {motion:null,reason:"inconsistent-motion",source:"none"};
+
+  // All values originate from genuine measured centroids; the longer
+  // interval has enough displacement to estimate a meaningful bearing.
+  return {
+    motion:{
+      heading_degrees:sustained.heading_degrees,
+      speed_kmh:sustained.speed_kmh,
+      distance_km:sustained.net_km,
+      elapsed_seconds:sustained.span_minutes*60
+    },
+    reason:"supported-sustained-motion",
+    source:"sustained"
+  };
+}
+
 export function evaluateChronologicalTrackThreatCone(
   track,
   observation,
@@ -364,19 +412,30 @@ export function evaluateChronologicalTrackThreatCone(
     rebased:false
   };
   for (let index=1; index<history.length; index++) {
-    const motion = geodesicMotion(history[index-1], history[index]);
-    if (!motion) continue;
-    // Restrict BOTH the heading calculation and directional smoothing to
-    // what had actually been measured at this scan.
-    const historicalTrack = {
-      ...track,
-      history:history.slice(0,index+1),
-      motion
+    const historicalHistory=history.slice(0,index+1);
+    const evidence=credibleMeasuredMotionAtObservation(
+      {...track,history:historicalHistory},history[index]
+    );
+    if(!evidence.motion){
+      // An old cone is NOT an acceptable fallback when the most recent
+      // observed motion is no longer supported. A potentially misleading
+      // +90-minute path disappears until new observations qualify it.
+      controller.clear(track.track_id);
+      evaluation={cone:null,reason:evidence.reason,rebased:false};
+      continue;
+    }
+    // Restrict EVERY component, including speed and smoothing, to genuine
+    // sources up to this moment. Sustained headings are not allowed to
+    // revert to one low-confidence scan at the next frame.
+    const historicalTrack={
+      ...track,history:historicalHistory,motion:evidence.motion
     };
+    const options=evidence.source==="sustained"
+      ? {...buildOptions,forceMeasuredHeading:true,
+          steeringHeadingDegrees:evidence.motion.heading_degrees}
+      : buildOptions;
     evaluation=controller.evaluate(
-      historicalTrack,
-      history[index],
-      buildOptions
+      historicalTrack,history[index],buildCone,options
     );
   }
   return evaluation;

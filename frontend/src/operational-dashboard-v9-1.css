@@ -947,3 +947,11 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   }
   #supplementalHoldNote {left:5px;bottom:49px;font-size:9px;}
 }
+
+/* Severity applies to qualifying current BoM classifications (even when the
+   tendency is steady/falling). Rapid-minor and anomalous tide are screening. */
+.flood-severity-legend {line-height:1.35;}
+.flood-severity-legend .flood-green {color:#2db76f;}
+.flood-severity-legend .flood-yellow {color:#ffd43b;}
+.flood-severity-legend .flood-red {color:#e53935;}
+.flood-severity-legend .flood-cyan {color:#45c7e8;}

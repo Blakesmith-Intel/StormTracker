@@ -240,10 +240,6 @@ export function createAdaptiveThreatConeController({
       // Reissuing with the same smoothed heading leaves the cone pointed in
       // the wrong direction even when a measured turn is recognised.
       // Only force the actual heading with sufficient displacement/speed.
-      const reliableBreachSteering = reason === "observed-outside" &&
-        Number(track?.motion?.distance_km) >= minimumSteeringMotionKm &&
-        Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh &&
-        Number.isFinite(Number(proposed.measured_heading_degrees));
       const instantaneousSteeringSupported =
         Number(track?.motion?.distance_km) >= minimumSteeringMotionKm &&
         Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh;

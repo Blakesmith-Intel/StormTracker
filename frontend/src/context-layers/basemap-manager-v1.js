@@ -377,9 +377,10 @@ export function createStormTrackerBasemapManager({
   }
   function updateForCamera(){
     if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return "street";
-    // Mobile panning should never multiply new tile requests across the
-    // overlapping QLD and NSW high-resolution providers. Leave the genuine
-    // DEA regional layer visible until this touch gesture has settled.
+    // Do not change zoom/detail modes while the user is navigating. Most
+    // importantly, never hide a satellite layer in the middle of a pan:
+    // regional DEA may still be resolving a tile, exposing Street beneath.
+    // Retain the already displayed provider, alpha and imagery cache.
     if(navigationActive)return "navigation";
     const target=chooseDetailForScale(detailTarget,estimatedCameraMetresPerPixel(scene));
     if(target!==detailTarget){
@@ -418,15 +419,11 @@ export function createStormTrackerBasemapManager({
     if(active){
       if(navigationActive)return true;
       navigationActive=true;
-      // show=false actually suspends imagery requests; alpha=0 alone does not.
-      // Retain the layer/provider for fast reactivation and do not touch any
-      // radar/Doppler/volume imagery above these background layers.
-      if(currentId===BASEMAP_IDS.QLD_IMAGERY){
-        if(qldDetailLayer)qldDetailLayer.show=false;
-        if(nswDetailLayer)nswDetailLayer.show=false;
-        detailTarget=false;detailStaging=false;detailBlend=0;readyFrames=0;
-        render();
-      }
+      // Keep all currently visible satellite layers present throughout the
+      // gesture. Hiding state imagery caused an immediate street-map flash,
+      // especially in northern Queensland while DEA tiles were still pending.
+      // The ordinary camera performance governor reduces terrain pressure
+      // instead; the detail scale decision is frozen until movement settles.
       return true;
     }
     if(!navigationActive)return false;
@@ -434,8 +431,8 @@ export function createStormTrackerBasemapManager({
       resumeTimer=null;
       if(destroyed)return;
       navigationActive=false;
-      // Re-evaluate the FINAL camera position and stage local detail only
-      // after navigation stops, retaining official DEA regional underneath.
+      // Re-evaluate the FINAL camera scale after navigation settles.
+      // Existing imagery never disappeared while the camera was moving.
       updateForCamera();
       render();
     },resumeDetailDelayMs);

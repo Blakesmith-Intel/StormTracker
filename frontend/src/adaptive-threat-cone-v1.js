@@ -100,6 +100,25 @@ export function sustainedMeasuredSteering(track, observation, {
       );
     }
     if(!valid || !(pathKm>0))continue;
+    // Evidence must come from at least TWO successive measured moves in
+    // approximately the new direction. One sideways jump following an
+    // earlier straight run is NOT a sustained new steering trend.
+    const lastThree=recent.slice(-3);
+    const stepEvidence=[];
+    for(let i=1;i<lastThree.length;i++){
+      const older=lastThree[i-1],newer=lastThree[i];
+      stepEvidence.push({
+        length:distanceKm(
+          Number(older.centroid_longitude),Number(older.centroid_latitude),
+          Number(newer.centroid_longitude),Number(newer.centroid_latitude)),
+        heading:initialBearingDegrees(
+          Number(older.centroid_longitude),Number(older.centroid_latitude),
+          Number(newer.centroid_longitude),Number(newer.centroid_latitude))
+      });
+    }
+    if(stepEvidence.length!==2 || stepEvidence.some(step=>step.length<0.3) ||
+       bearingDelta(stepEvidence[0].heading,stepEvidence[1].heading)>40)
+      continue;
     const netKm=distanceKm(
       Number(first.centroid_longitude),Number(first.centroid_latitude),
       Number(latest.centroid_longitude),Number(latest.centroid_latitude)
@@ -112,7 +131,8 @@ export function sustainedMeasuredSteering(track, observation, {
       Number(first.centroid_longitude),Number(first.centroid_latitude),
       Number(latest.centroid_longitude),Number(latest.centroid_latitude)
     );
-    if(!Number.isFinite(heading))continue;
+    if(!Number.isFinite(heading) ||
+       bearingDelta(heading,stepEvidence.at(-1).heading)>35)continue;
     return {
       heading_degrees:heading,speed_kmh:speedKmh,net_km:netKm,
       straightness,span_minutes:spanMinutes,segment_count:segments

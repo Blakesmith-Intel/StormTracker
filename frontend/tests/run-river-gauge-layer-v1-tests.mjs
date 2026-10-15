@@ -133,6 +133,21 @@ for (
   );
 }
 
+// Flood-risk palette is severity-based, not a claim that a steady/falling
+// major-level river is safe. Tidal anomalies remain a separate screening type.
+const decoded=state=>decodeURIComponent(createRiverGaugeMarkerImage(state));
+for(const [state,color]of Object.entries({
+  "rapid-rise":"#2db76f",minor:"#2db76f",
+  moderate:"#ffd43b",major:"#e53935",
+  "tidal-anomaly":"#45c7e8"
+})){
+  assert.ok(decoded(state).includes('fill="'+color+'"'),
+    state+" must render the agreed severity/screening colour");
+}
+assert.match(decoded("major"),/stroke="#ffffff"/,
+  "Red major-flood waves must remain high-contrast white");
+assert.match(decoded("moderate"),/stroke="#111111"/,
+  "Yellow moderate-flood waves must be dark enough to read");
 console.log(
   "River gauge layer checks passed: operational summaries preserve live context and all display states produce self-contained marker images."
 );

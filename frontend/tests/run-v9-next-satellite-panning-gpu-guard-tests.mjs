@@ -14,10 +14,12 @@ const index=read("../index.html");
 assert.match(index,/live3d-operational-v9\.html\?v=[^"]*regional-satellite-v3/);
 assert.match(html,/live3d-operational-v9\.js\?v=[^"]*regional-satellite-v3/);
 assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*regional-satellite-coverage-v3/);
-for(const part of ["power-outages","flood-road-closures","river-gauges"]){
+for(const part of ["power-outages","flood-road-closures"]){
   assert.match(controller,new RegExp(part+"-operational-v1\\.js\\?v=[^\\\"]*hover-qa-v2"),
-    "every context module must carry a new guarded JS cache key");
+    "closure/power hover guard imports must carry fresh cache keys");
 }
+assert.match(controller,/river-gauges-operational-v1\.js\?v=9\.18\.11-gauge-green-yellow-red-v2/,
+  "flood gauge cache key must include latest colours and GPU picking safeguards");
 
 
 assert.match(basemap,/if\(navigationActive\)return "navigation";/);

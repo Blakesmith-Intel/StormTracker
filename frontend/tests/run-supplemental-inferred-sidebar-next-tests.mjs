@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
-import {supplementalObservedAnchor} from "../src/supplemental-observed-anchor-v1.js";
+import {supplementalObservedAnchor,shouldPrepareSupplementalForPlayback} from "../src/supplemental-observed-anchor-v1.js";
 const source=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
 const html=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",import.meta.url)),"utf8");
 const css=readFileSync(fileURLToPath(new URL("../src/operational-dashboard-v9-1.css",import.meta.url)),"utf8");
@@ -11,6 +11,11 @@ const obs=(minute,region="66")=>({observedUtc:utc(minute),
 const inferred=(minute,region="66")=>({observedUtc:utc(minute),
   sourceMetadata:{region,temporalInference:{method:"category-interpolation"}}});
 const frames=[obs(0),inferred(5),inferred(10),obs(15),inferred(20)];
+assert.equal(shouldPrepareSupplementalForPlayback({observedUtc:utc(0),held:false}),true,
+  "genuine observed steps can synchronise new supplemental scans");
+assert.equal(shouldPrepareSupplementalForPlayback({observedUtc:utc(0),held:true}),false,
+  "inferred steps must never await optional secondary radar imagery");
+assert.equal(shouldPrepareSupplementalForPlayback(null),false);
 assert.deepEqual(supplementalObservedAnchor(frames[1],frames),
   {observedUtc:utc(0),held:true,ageMinutes:5},
   "first inferred display frame holds genuine preceding BoM observation");
@@ -35,6 +40,8 @@ assert.equal(supplementalObservedAnchor(frames[2],frames,5),null,
   "maximum hold threshold can be lowered");
 assert.match(source,/function supplementalAnchorForFrame\(frame\)/);
 assert.match(source,/supplementalObservedAnchor\(frame,hybridFrames,15\)/);
+assert.match(source,/shouldPrepareSupplementalForPlayback\(supplementalAnchor\)/,
+  "inferred steps must bypass awaited secondary staging");
 assert.match(source,/supplementalRadarDisplay\.prepare\(supplementalAnchor\.observedUtc\)/,
   "primary playback stages a real supplemental observation even for inferred frames");
 assert.match(source,/supplementalRadarDisplay\.commit\(supplementalAnchor\.observedUtc/,
@@ -56,4 +63,6 @@ assert.match(css,/@media\(max-width:700px\)\s*\{\s*#app\.sidebar-collapsed/,
   "full-map toggle must override normal stacked mobile layout");
 assert.match(source,/reissueOnObservedExit:true, observedExitMarginKm:0\.5/,
   "cone breach fix must ship together with the next-baseline candidate");
+assert.match(source,/supplementalAnchor\.held &&[\s\S]{0,110}supplementalRadarDisplay\.targetTime!==supplementalAnchor\.observedUtc/,
+  "inferred steps cannot force unprepared new-UTC radar commits");
 console.log("PASS inferred supplemental hold uses only genuine source stamps with 15-minute bound; atomic playback and paused selection; restored map-width controls; included cone breach.");

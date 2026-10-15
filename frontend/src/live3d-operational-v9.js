@@ -105,7 +105,9 @@ import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.1
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
 } from "./multi-radar-display-v9.js?v=9.18.10-atomic-3d";
-import { supplementalObservedAnchor } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic";
+import {
+  supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
+} from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -170,7 +172,7 @@ import {
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gateway-guard-hover-qa-v2";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gauge-green-yellow-red-v2";
 
 import {
   initialiseOperationalQfdTechnicalRescues
@@ -3578,7 +3580,13 @@ async function showHybridFrame(index) {
   const supplementalAnchor=additionalRadarSiteIds.length
     ? supplementalAnchorForFrame(frame):null;
   const supplementalMeasurable=Boolean(supplementalAnchor);
-  const extraPreparation=supplementalMeasurable
+  // Inferred primary images are display-only and carry no NEW source scan.
+  // Their secondary windows already belong to the last measured anchor;
+  // never hold the playback clock waiting on 1–3 optional WMTS downloads
+  // (or repeat unsuccessful requests for each 5-minute synthetic step).
+  // Genuine observed steps still synchronise measured secondary imagery
+  // before the primary atomic reveal, as before.
+  const extraPreparation=shouldPrepareSupplementalForPlayback(supplementalAnchor)
     ? supplementalRadarDisplay.prepare(supplementalAnchor.observedUtc)
     : Promise.resolve([]);
   const motionGeneration=visualMotionGeneration;
@@ -3653,10 +3661,19 @@ async function showHybridFrame(index) {
     renderHybridTracks(requestedIndex);
     syncSevereStormAlerts(requestedIndex);
     if(supplementalMeasurable){
-      supplementalRadarDisplay.commit(supplementalAnchor.observedUtc,{
-        alpha:Number($("radarOpacity").value)/100
-      });
-      displaySupplementalHoldStatus(supplementalAnchor);
+      if(supplementalAnchor.held &&
+         supplementalRadarDisplay.targetTime!==supplementalAnchor.observedUtc){
+        // An inferred step cannot initiate its own time-changing secondary
+        // handover. A missing genuine anchor will be retried by a later
+        // observed scan or an explicit paused selection, never by this step.
+        void supplementalRadarDisplay.show(null,{enabled:false});
+        displaySupplementalHoldStatus(null);
+      }else{
+        supplementalRadarDisplay.commit(supplementalAnchor.observedUtc,{
+          alpha:Number($("radarOpacity").value)/100
+        });
+        displaySupplementalHoldStatus(supplementalAnchor);
+      }
     }else{
       void supplementalRadarDisplay.show(null,{enabled:false});
       displaySupplementalHoldStatus(null);

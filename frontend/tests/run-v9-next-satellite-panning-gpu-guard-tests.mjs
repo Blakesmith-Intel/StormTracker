@@ -8,6 +8,17 @@ const power=read("../src/context-layers/power-outages-operational-v1.js");
 const road=read("../src/context-layers/flood-road-closures-operational-v1.js");
 const gauge=read("../src/context-layers/river-gauges-operational-v1.js");
 const build=read("../../scripts/build-current-site.sh");
+const controller=read("../src/live3d-operational-v9.js");
+const html=read("../live3d-operational-v9.html");
+const index=read("../index.html");
+assert.match(index,/live3d-operational-v9\.html\?v=[^"]*satellite-pan-v2/);
+assert.match(html,/live3d-operational-v9\.js\?v=[^"]*satellite-pan-v2/);
+assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*satellite-pan-v2/);
+for(const part of ["power-outages","flood-road-closures","river-gauges"]){
+  assert.match(controller,new RegExp(part+"-operational-v1\\.js\\?v=[^\\\"]*hover-qa-v2"),
+    "every context module must carry a new guarded JS cache key");
+}
+
 
 assert.match(basemap,/if\(navigationActive\)return "navigation";/);
 const nav=basemap.slice(basemap.indexOf("function setNavigationActive("),basemap.indexOf("function setBasemap("));

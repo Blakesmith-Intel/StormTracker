@@ -138,7 +138,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.18.9-pan-persist";
+} from "./context-layers/basemap-manager-v1.js?v=9.18.9-pan-persist-satellite-pan-v2";
 
 import {
   createQueenslandTownLabelLayer
@@ -162,15 +162,15 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.18.8-gpu-pick";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.18.8-gpu-pick-hover-qa-v2";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.18.8-gpu-pick";
+} from "./context-layers/power-outages-operational-v1.js?v=9.18.8-gpu-pick-hover-qa-v2";
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gateway-guard";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gateway-guard-hover-qa-v2";
 
 import {
   initialiseOperationalQfdTechnicalRescues

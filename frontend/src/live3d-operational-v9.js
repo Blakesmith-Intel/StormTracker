@@ -172,7 +172,7 @@ import {
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gateway-guard-hover-qa-v2";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gauge-green-yellow-red-v2";
 
 import {
   initialiseOperationalQfdTechnicalRescues

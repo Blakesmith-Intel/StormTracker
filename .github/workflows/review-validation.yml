@@ -31,16 +31,18 @@ jobs:
           ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
           path: checked/accepted-v9.18
           persist-credentials: false
-      - name: Checkout exact sealed production source for package audit
+      - name: Checkout exact V9.19.0 release source for package audit
         uses: actions/checkout@v4
         with:
-          ref: 66d3da447ef7a4df53e7df49aa1ac06f86cb5afd
-          path: checked/production-v9.18.0
+          ref: d317c17a6a8f706a0d867cb852db1e8d3f9ffac0
+          path: checked/production-v9.19.0
           persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
           bash scripts/build-current-site.sh
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
-          test -f _site/preview/next-baseline/BUILD.txt
-          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
+          test ! -e _site/preview/next-baseline/BUILD.txt
+          grep -Fq 'SEALED StormTracker V9.19.0 source d317c17a6a8f706a0d867cb852db1e8d3f9ffac0' _site/BUILD.txt
+          grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' _site/src/live3d-operational-v9.js
+          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1

@@ -221,6 +221,49 @@ assert.equal(resume,null,"destroy cancels pending detail restore");
 assert.equal(layers.length,0);
 console.log("PASS satellite panning preserves visible QLD/NSW imagery + alpha without Street flash; zoom staging, cancellation, source/credit/fade retained.");
 
+// Candidate-only regional satellite continuity: QLD tiles exist from level 4,
+ // so use the official cache at regional scale as well as close-up.  The OSM
+ // base is retained as a hidden layer, never visible through a WMTS DEA gap.
+const regional=createStormTrackerBasemapManager({
+  Cesium,viewer,storage,suspendDetailDuringNavigation:true,
+  persistentSatelliteCoverage:true,
+  schedule(cb,delay){resume=cb;return 31;},
+  cancel(){cancelled++;resume=null;}
+});
+viewer.scene.camera.positionCartographic.height=600000;
+regional.setBasemap(BASEMAP_IDS.QLD_IMAGERY);
+assert.equal(regional.persistentSatelliteCoverage,true);
+assert.equal(layers.length,4,"do not create a second set of QLD/NSW providers");
+assert.equal(layers[0].show,false,"OSM must NEVER appear behind missing DEA satellite tiles");
+assert.equal(layers[1].show,true,"DEA still fills state-free regional coverage");
+assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
+  "regional zoom retains genuine QLD and NSW imagery at full opacity");
+assert.equal(layers[3].imageryProvider.options.minimumLevel,4,
+  "QLD government cache begins at zoom level 4");
+assert.equal(regional.detailMode,"detailed");
+assert.equal(listeners.size,0,
+  "continuous satellite coverage does not run a per-frame opacity compositor");
+const initialLayers=layers.slice();
+regional.setNavigationActive(true);
+viewer.scene.camera.positionCartographic.height=8500;
+assert.equal(regional.updateForCamera(),"detailed");
+assert.deepEqual(layers,initialLayers,"panning must not change layer order or replace providers");
+assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
+  "QLD satellite must remain opaque while the map moves");
+regional.setNavigationActive(false);
+const regionSettle=resume;
+assert.ok(regionSettle,"camera settling remains bounded");
+regionSettle();
+assert.equal(layers[0].show,false);
+assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
+  "satellite continuity survives zoom changes and delayed settle");
+regional.setBasemap(BASEMAP_IDS.STREET);
+assert.equal(layers.length,1);
+assert.equal(layers[0].show,true,"explicit Street selection must restore Street basemap");
+regional.destroy();
+assert.equal(layers.length,0);
+console.log("PASS state imagery remains at full alpha throughout regional Queensland camera moves, DEA fallback and deliberate Street selection.");
+
 // Isolated street-only control group: previously selected Satellite in
 // localStorage and even an explicit future satellite switch must not
 // instantiate ANY DEA, NSW or QLD imagery provider or fetch their tiles.

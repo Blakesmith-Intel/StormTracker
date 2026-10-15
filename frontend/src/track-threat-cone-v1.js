@@ -222,9 +222,15 @@ export function buildTrackThreatCone(
     recent_motion_segment_count: recent.length,
     samples,
     centreline: samples.map(item => item.centre),
+    // This is a FORWARD threat cone, not a swept-width polygon with a
+    // disconnected looking flat back edge. Start the visible envelope at
+    // the exact current measured centroid (+0m). Subsequent 30/60/90m
+    // cross-sections retain the measured footprint and uncertainty spread.
+    // The centreline and the storm-ID dot now share a visible cone tip.
     polygon: [
-      ...samples.map(item => item.left),
-      ...samples.slice().reverse().map(item => item.right)
+      samples[0].centre,
+      ...samples.slice(1).map(item => item.left),
+      ...samples.slice(1).reverse().map(item => item.right)
     ],
     interpretation:
       "Motion extrapolation from measured ST centroids, not movement of individual rain cells. Routine jitter is smoothed; significant turns or independently verified steering divergence orient the cone to the latest measured heading. Width reflects current footprint and historical heading variability; not a forecast probability."

@@ -78,9 +78,14 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "frontend/$asset" "$candidate/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "$candidate/data/"
-# The candidate uses its reviewed satellite and context interaction modules.
-# Keep ONLY the unchanged source-backed gauge data layer from accepted QA.
-cp "$accepted/src/context-layers/river-gauge-layer-v1.js" "$candidate/src/context-layers/"
+# The candidate uses its reviewed satellite, context interaction and
+# recoloured flood gauge modules. The gauge layer on the branch was based on
+# the accepted serial BoM history implementation; do NOT replace it with the
+# old accepted marker colours when staging the candidate.
+grep -Fq 'for(const target of candidates)' "$candidate/src/context-layers/river-gauge-layer-v1.js"
+grep -Fq '"#e53935"' "$candidate/src/context-layers/river-gauge-layer-v1.js"
+grep -Fq '"#2db76f"' "$candidate/src/context-layers/river-gauge-layer-v1.js"
+grep -Fq 'shouldPrepareSupplementalForPlayback' "$candidate/src/live3d-operational-v9.js"
 grep -Fq '"/preview/next-baseline/"' "$candidate/src/context-layers/power-outages-operational-v1.js"
 grep -Fq '"/preview/next-baseline/"' "$candidate/src/context-layers/flood-road-closures-operational-v1.js"
 grep -Fq '"/preview/next-baseline/"' "$candidate/src/context-layers/river-gauges-operational-v1.js"

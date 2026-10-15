@@ -128,7 +128,7 @@ const STATE_STYLE =
     major:
       Object.freeze({
         fill:
-          "#bd2fff",
+          "#e53935",
         symbol:
           "flood"
       }),
@@ -136,7 +136,7 @@ const STATE_STYLE =
     moderate:
       Object.freeze({
         fill:
-          "#ff4d4d",
+          "#ffd43b",
         symbol:
           "flood"
       }),
@@ -144,18 +144,18 @@ const STATE_STYLE =
     minor:
       Object.freeze({
         fill:
-          "#ff8c1a",
+          "#2db76f",
         symbol:
           "flood"
       }),
 
-    "rapid-rise": Object.freeze({fill:"#ffab23",symbol:"up"}),
-    "tidal-anomaly": Object.freeze({fill:"#ffcf40",symbol:"tidal-up"}),
+    "rapid-rise": Object.freeze({fill:"#2db76f",symbol:"up"}),
+    "tidal-anomaly": Object.freeze({fill:"#45c7e8",symbol:"tidal-up"}),
 
     rising:
       Object.freeze({
         fill:
-          "#ffd43b",
+          "#2db76f",
         symbol:
           "up"
       }),
@@ -194,7 +194,8 @@ const STATE_STYLE =
   });
 
 function svgSymbol(
-  symbol
+  symbol,
+  contrast = "#111111"
 ) {
   if (
     symbol === "up"
@@ -225,8 +226,8 @@ function svgSymbol(
     symbol === "flood"
   ) {
     return `
-      <path d="M17 37 C22 31 26 43 32 37 C38 31 42 43 48 37" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-      <path d="M17 46 C22 40 26 52 32 46 C38 40 42 52 48 46" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+      <path d="M17 37 C22 31 26 43 32 37 C38 31 42 43 48 37" fill="none" stroke="${contrast}" stroke-width="4" stroke-linecap="round"/>
+      <path d="M17 46 C22 40 26 52 32 46 C38 40 42 52 48 46" fill="none" stroke="${contrast}" stroke-width="4" stroke-linecap="round"/>
     `;
   }
 
@@ -249,7 +250,7 @@ export function createRiverGaugeMarkerImage(
       <circle cx="32" cy="32" r="28" fill="#ffffff"/>
       <circle cx="32" cy="32" r="24" fill="#111111"/>
       <circle cx="32" cy="32" r="20" fill="${style.fill}"/>
-      ${svgSymbol(style.symbol)}
+      ${svgSymbol(style.symbol,state==="major"?"#ffffff":"#111111")}
     </svg>`;
 
   return (

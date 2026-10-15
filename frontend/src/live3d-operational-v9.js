@@ -132,7 +132,7 @@ import {
   createLiveLoopRefresh
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=9.16.10";
-import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=v9-isa-sustained-steering-v2";
+import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=v9-cone-observed-tip-v3";
 import {
   evaluateChronologicalTrackThreatCone,
   measuredTrackMotionAtObservation
@@ -3147,6 +3147,30 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
   const colour = trackColour(track.track_id);
   const coneAltitude = displayAltitude(STORM_TRACK_ANCHOR_ALTITUDE_METRES);
   const coneColour = colour.withAlpha(heldObservedUtc ? 0.20 : 0.30);
+  // Native Cesium +0m indicator uses EXACTLY the same world Cartesian as
+  // the DOM storm dot. This makes camera-parallax / incorrect origin visibly
+  // diagnosable and gives the forecast a true point of departure on the map.
+  const coneOrigin = cone.samples?.[0]?.centre;
+  if (!coneOrigin) return false;
+  hybridSource.entities.add({
+    id: `hybrid-threat-origin-${track.track_id}`,
+    position:Cesium.Cartesian3.fromDegrees(
+      coneOrigin.longitude,coneOrigin.latitude,coneAltitude
+    ),
+    point:{
+      pixelSize:14,color:Cesium.Color.WHITE.withAlpha(0.06),
+      outlineColor:colour,outlineWidth:3,
+      disableDepthTestDistance:Number.POSITIVE_INFINITY
+    },
+    label:{
+      text:"0m",font:"11px sans-serif",
+      pixelOffset:new Cesium.Cartesian2(0,18),
+      fillColor:Cesium.Color.WHITE,
+      showBackground:true,
+      backgroundColor:Cesium.Color.BLACK.withAlpha(0.72),
+      disableDepthTestDistance:Number.POSITIVE_INFINITY
+    }
+  });
   hybridSource.entities.add({
     id: `hybrid-threat-cone-${track.track_id}`,
     polygon: {
@@ -3244,7 +3268,9 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
 const THREAT_CONE_CONTROLLER_OPTIONS=Object.freeze({
   rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5,
   reissueOnObservedExit:true, observedExitMarginKm:0.5,
-  followMeasuredPosition:true
+  // Keep the +0m origin on the ACTUAL measured storm rather than allowing
+  // a former 500m reanchor deadband to accumulate visible 3-D parallax.
+  followMeasuredPosition:true, minimumMeasuredReanchorKm:0.15
 });
 function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
   const at = Date.parse(hybridFrames[index]?.observedUtc);

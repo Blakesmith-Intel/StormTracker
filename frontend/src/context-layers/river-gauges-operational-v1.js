@@ -2,7 +2,7 @@ import {addOfficialSourceRow,bomGaugePlotUrl,OFFICIAL_SOURCE_LINKS} from "./offi
 import {
   createRiverGaugeLayer,
   riverGaugeOperationalSummary
-} from "./river-gauge-layer-v1.js?v=9.13.2";
+} from "./river-gauge-layer-v1.js?v=9.18.11-serial-gateway";
 
 import {
   BOM_RIVER_TIDE_GAUGE_ATTRIBUTION
@@ -730,47 +730,23 @@ export function initialiseOperationalRiverGauges({
         canvas
       );
 
-  let lastHoverPickAt =
-    0;
-
-  hoverHandler
-    .setInputAction(
-      movement => {
-        const now =
-          performance.now();
-
-        if (
-          now
-          - lastHoverPickAt
-          < 80
-        ) {
-          return;
-        }
-
-        lastHoverPickAt =
-          now;
-
-        const gaugeId =
-          gaugeIdNearPosition({
-            viewer,
-            position:
-              movement
-                .endPosition,
-            width:
-              18,
-            height:
-              18
-          });
-
-        if (gaugeId) {
-          canvas.style.cursor =
-            "pointer";
-        }
-      },
-      CesiumRef
-        .ScreenSpaceEventType
-        .MOUSE_MOVE
-    );
+  // No synchronous Cesium GPU picking on every pointer movement in the
+  // isolated WebGL diagnostic preview. Gauge click inspection remains enabled.
+  const suppressHoverGpuPicking =
+    ["/preview/radar-history-fix/", "/preview/next-baseline/"].some(
+      path=>globalThis.location?.pathname?.includes(path)===true);
+  if (!suppressHoverGpuPicking) {
+    let lastHoverPickAt = 0;
+    hoverHandler.setInputAction(movement => {
+      const now = performance.now();
+      if (now - lastHoverPickAt < 160) return;
+      lastHoverPickAt = now;
+      const gaugeId = gaugeIdNearPosition({
+        viewer, position: movement.endPosition, width: 18, height: 18
+      });
+      canvas.style.cursor = gaugeId ? "pointer" : "";
+    }, CesiumRef.ScreenSpaceEventType.MOUSE_MOVE);
+  }
 
   checkbox
     ?.addEventListener(

@@ -115,7 +115,12 @@ assert.match(javascript, /stormTrackLabelOverlay\.setVisible\(show\)/);
 assert.match(javascript, /setStormTrackTrailVisibility\(hybridSource\.entities, show\)/);
 assert.match(javascript, /stormTrackMarkers\.push\(\{/);
 assert.doesNotMatch(javascript, /id: \`hybrid-\$\{index\}-\$\{track\.track_id\}\`/);
-assert.match(html, /id="showTrackLabels" type="checkbox" checked/);
+assert.match(html, /id="showTrackLabels" type="checkbox"/,
+  "The existing storm label toggle must stay available");
+assert.doesNotMatch(html, /id="showTrackLabels"[^>]*\bchecked\b/,
+  "Storm-cell labels and linked points must be off by default");
+assert.match(html, /id="trackLabelsScopeNote"[^>]*>Storm IDs, tracks and labels currently use the primary radar only\./,
+  "Explain primary-radar-only storm tracking immediately beside the Labels function");
 assert.match(html, /v=(?:9\.16-bom-native-rain30-v1|v9-next-inferred-mosaic-sidebar-cone)/);
 assert.match(iframe, /v=9\.16-bom-native-rain30-v1/);
 console.log("Foreground storm marker overlay tests passed: opacity-independent, paired dots and labels; paused toggle; camera updates; horizon; frame swap; cache bust.");

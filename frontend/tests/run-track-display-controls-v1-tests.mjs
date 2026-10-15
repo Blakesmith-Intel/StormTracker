@@ -5,7 +5,11 @@ const root=new URL("../../",import.meta.url);
 const read=p=>readFileSync(fileURLToPath(new URL(p,root)),"utf8");
 const html=read("frontend/live3d-operational-v9.html");
 const js=read("frontend/src/live3d-operational-v9.js");
-assert.match(html,/id="showTrackLabels"[^>]*checked/);
+assert.match(html,/id="showTrackLabels" type="checkbox"/);
+assert.doesNotMatch(html,/id="showTrackLabels"[^>]*\bchecked\b/,
+  "The existing storm label toggle must be unchecked on fresh load");
+assert.match(html,/id="trackLabelsScopeNote"[^>]*>Storm IDs, tracks and labels currently use the primary radar only\./,
+  "The Labels control must explain that supplemental sites are imagery-only");
 assert.match(html,/id="trackDisplayFilter"/);
 assert.match(html,/id="showTrackThreatCone"/);
 assert.match(html,/pointSizeValue[^>]*>3</);

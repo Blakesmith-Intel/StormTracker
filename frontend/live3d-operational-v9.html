@@ -64,10 +64,11 @@
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label><input id="showSevereRadarAlerts" type="checkbox" disabled> Radar alerts ≥90 km/h — research preview only</label></div>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label title="Unvalidated scientific research"><input id="showExperimentalHookAlerts" type="checkbox" disabled> Hook-shape candidates (research preview only)</label></div>
       <div class="track-display-controls">
-        <label title="Show or hide both storm-track points and labels"><input id="showTrackLabels" type="checkbox" checked> Labels</label>
+        <label title="Show or hide primary-radar storm points and labels (off by default)"><input id="showTrackLabels" type="checkbox"> Labels</label>
         <select id="trackDisplayFilter" aria-label="Displayed storm track"><option value="">All tracks</option></select>
         <label><input id="showTrackThreatCone" type="checkbox" disabled> +90m cone</label>
       </div>
+      <div id="trackLabelsScopeNote" class="note" role="note">Storm IDs, tracks and labels currently use the primary radar only. Additional radars provide imagery without storm labels.</div>
       <div id="trackThreatConeStatus" class="note">Select one track to enable the +90-minute motion cone.</div>
       <div class="opacity-controls">
         <label for="radarOpacity">Radar opacity <output id="radarOpacityValue" for="radarOpacity">65%</output></label>

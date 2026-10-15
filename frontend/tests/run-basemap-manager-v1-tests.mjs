@@ -63,7 +63,7 @@ assert.equal(qldPlaces.options.layers,"20");
 assert.equal(normaliseBasemapId("ga-satellite"),BASEMAP_IDS.QLD_IMAGERY);
 assert.equal(basemapLabel(BASEMAP_IDS.STREET),"Street · OpenStreetMap");
 
-const listeners=new Set(),layers=[],events=[];
+const listeners=new Set(),cameraChangeListeners=new Set(),layers=[],events=[];
 const viewer={
   imageryLayers:{
     addImageryProvider(provider,index=layers.length){
@@ -83,7 +83,11 @@ const viewer={
     canvas:{clientHeight:900},
     camera:{
       positionCartographic:{height:500000},
-      frustum:{fovy:Math.PI/3}
+      frustum:{fovy:Math.PI/3},
+      changed:{addEventListener(fn){
+        cameraChangeListeners.add(fn);
+        return()=>cameraChangeListeners.delete(fn);
+      }}
     },
     postRender:{addEventListener(fn){listeners.add(fn);return()=>listeners.delete(fn);}},
     requestRender(){events.push(["render"]);},
@@ -236,33 +240,49 @@ assert.equal(regional.persistentSatelliteCoverage,true);
 assert.equal(layers.length,4,"do not create a second set of QLD/NSW providers");
 assert.equal(layers[0].show,false,"OSM must NEVER appear behind missing DEA satellite tiles");
 assert.equal(layers[1].show,true,"DEA still fills state-free regional coverage");
-assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
-  "regional zoom retains genuine QLD and NSW imagery at full opacity");
+assert.equal(layers[2].show,false,
+  "distant NSW uses homogeneous 2025 DEA rather than mixed-age aerial photography");
+assert.equal(layers[3].show,true,
+  "Queensland still has its official imagery at all regional zooms");
+assert.equal(layers[3].alpha,1);
 assert.equal(layers[3].imageryProvider.options.minimumLevel,4,
   "QLD government cache begins at zoom level 4");
 assert.equal(regional.detailMode,"detailed");
 assert.equal(listeners.size,0,
   "continuous satellite coverage does not run a per-frame opacity compositor");
+assert.equal(cameraChangeListeners.size,1,
+  "only subscribe to Cesium camera movement events for NSW zoom transitions");
 const initialLayers=layers.slice();
 regional.setNavigationActive(true);
 viewer.scene.camera.positionCartographic.height=8500;
-assert.equal(regional.updateForCamera(),"detailed");
+assert.equal(regional.updateForCamera(),"navigation",
+  "no aerial-detail switch in the middle of camera navigation");
 assert.deepEqual(layers,initialLayers,"panning must not change layer order or replace providers");
-assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
-  "QLD satellite must remain opaque while the map moves");
+assert.equal(layers[2].show,false,"NSW detail remains off until gesture settles");
+assert.equal(layers[3].show,true,"QLD remains present throughout the gesture");
 regional.setNavigationActive(false);
 const regionSettle=resume;
 assert.ok(regionSettle,"camera settling remains bounded");
 regionSettle();
 assert.equal(layers[0].show,false);
 assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
-  "satellite continuity survives zoom changes and delayed settle");
+  "NSW detail arrives only after settling at close zoom; QLD remains visible");
+viewer.scene.camera.positionCartographic.height=600000;
+cameraChangeListeners.forEach(fn=>fn());
+assert.equal(layers[2].show,false,
+  "returning to regional scale restores consistent NSW DEA instead of aerial tiles");
+assert.equal(layers[3].show,true,
+  "Queensland remains filled by real official imagery at regional scale");
+assert.equal(layers[1].show,true,
+  "DEA remains the underlying cross-border satellite composite");
 regional.setBasemap(BASEMAP_IDS.STREET);
 assert.equal(layers.length,1);
 assert.equal(layers[0].show,true,"explicit Street selection must restore Street basemap");
+assert.equal(cameraChangeListeners.size,0,
+  "switching basemaps removes the NSW zoom-change handler");
 regional.destroy();
 assert.equal(layers.length,0);
-console.log("PASS state imagery remains at full alpha throughout regional Queensland camera moves, DEA fallback and deliberate Street selection.");
+console.log("PASS QLD satellite remains opaque, NSW uses seamless DEA at regional zoom and official detailed imagery at close range; no camera-gesture flash and clean Street return.");
 
 // Isolated street-only control group: previously selected Satellite in
 // localStorage and even an explicit future satellite switch must not

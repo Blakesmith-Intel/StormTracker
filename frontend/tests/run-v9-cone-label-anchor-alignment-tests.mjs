@@ -22,7 +22,7 @@ assert.match(marker,/position = Cesium\.Cartesian3\.fromDegrees\(\s*observation\
 assert.match(geometry,/cone\.polygon\.map\(point => Cesium\.Cartesian3\.fromDegrees\(\s*point\.longitude, point\.latitude, coneAltitude\s*\)/);
 assert.doesNotMatch(geometry,/const coneAltitude = displayAltitude\(350\)/,
   "old low-level 350m cone plane causes large apparent offset at oblique camera angles");
-assert.match(geometry,/id: `hybrid-threat-origin-${track.track_id}`/,
+assert.match(geometry,/id: `hybrid-threat-origin-\$\{track\.track_id\}`/,
   "3D map must show a real 0m marker at the sourced track centroid");
 assert.match(geometry,/coneOrigin.longitude,coneOrigin.latitude,coneAltitude/,
   "0m native Cesium anchor and DOM storm dot must occupy one 3D location");

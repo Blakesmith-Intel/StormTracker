@@ -7,7 +7,9 @@ const start=source.indexOf('function renderHybridTracks(index)');
 const end=source.indexOf('\nfunction updateHybridSourceMetrics',start);
 assert.ok(start>=0&&end>start,'renderHybridTracks block missing');
 const block=source.slice(start,end);
-assert.match(block,/const altitude =\s*1200;/);
+assert.match(source,/const STORM_TRACK_ANCHOR_ALTITUDE_METRES = 1200;/);
+assert.match(block,/const altitude = STORM_TRACK_ANCHOR_ALTITUDE_METRES;/,
+  'track markers use the same altitude as the forecast cone');
 assert.doesNotMatch(block,/const altitude =\s*volume/);
 assert.match(source,/createStormTrackLabelOverlay/,
   'track identifier dots and text must use the foreground overlay above 3-D primitives');

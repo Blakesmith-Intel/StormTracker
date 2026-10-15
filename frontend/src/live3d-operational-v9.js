@@ -3136,11 +3136,16 @@ function formatSignedKmh(
 // Render the same source-measured polygon on both observed frames and
 // intervening display-only interpolation. Holding is purely visual; the cone
 // is NEVER advanced, re-timestamped or re-scored from an inferred image.
+// The +90m cone and the selected storm label MUST share one 3-D anchor
+// plane. Rendering the cone at 350m but the actual centroid label at 1200m
+// made a correctly geolocated cone LOOK detached when the oblique camera
+// projected the two heights to different screen pixels.
+const STORM_TRACK_ANCHOR_ALTITUDE_METRES = 1200;
 function renderIssuedThreatCone(track, projection, heldObservedUtc = null, currentObservation = null) {
   const cone = projection?.cone;
   if (!cone) return false;
   const colour = trackColour(track.track_id);
-  const coneAltitude = displayAltitude(350);
+  const coneAltitude = displayAltitude(STORM_TRACK_ANCHOR_ALTITUDE_METRES);
   const coneColour = colour.withAlpha(heldObservedUtc ? 0.20 : 0.30);
   hybridSource.entities.add({
     id: `hybrid-threat-cone-${track.track_id}`,
@@ -3317,7 +3322,7 @@ function renderHybridTracks(index) {
       const volume = volumeRecord?.volume ?? null;
       const trend = volumeRecord?.trend ?? null;
       const colour = trackColour(track.track_id);
-      const altitude = 1200;
+      const altitude = STORM_TRACK_ANCHOR_ALTITUDE_METRES;
       const position = Cesium.Cartesian3.fromDegrees(
         observation.centroid_longitude,
         observation.centroid_latitude,

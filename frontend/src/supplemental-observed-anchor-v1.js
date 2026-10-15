@@ -19,3 +19,10 @@ export function supplementalObservedAnchor(frame,frames=[],maximumHoldMinutes=15
   if(ageMinutes>maxAge)return null;
   return {observedUtc:source.observedUtc,held:true,ageMinutes};
 }
+
+// Optional secondary scans must never stall a DISPLAY-ONLY inferred primary
+// time step. Only original observed steps may synchronise a fresh multi-site
+// handover; held sites retain their last genuine source stamp as-is.
+export function shouldPrepareSupplementalForPlayback(anchor) {
+  return Boolean(anchor && !anchor.held);
+}

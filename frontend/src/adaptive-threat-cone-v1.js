@@ -69,6 +69,58 @@ export function pointWithinIssuedThreatCone(cone, point, marginKm = 0) {
     lateral <= radius + spread * Math.max(0, forward) + tolerance;
 }
 
+// A gradual storm turn can consist of several genuine 5-minute centroid
+// shifts below the single-scan 1.25 km steering threshold. Check SHORT,
+// chronological measured windows instead of projecting the latest jitter.
+// No interpolated display frames, future samples or Doppler wind estimates.
+export function sustainedMeasuredSteering(track, observation, {
+  minimumNetKm=1.25, minimumSpeedKmh=6, minimumStraightness=0.70,
+  maximumGapMinutes=12, maximumLookbackMinutes=20
+}={}) {
+  const history=observationsThrough(track,observation);
+  if(history.length<3)return null;
+  const latest=history.at(-1);
+  const latestEpoch=Date.parse(latest.observed_utc);
+  // Prefer the shortest supported window: a real new direction should
+  // override older segments after two or three agreeing observations.
+  for(const segments of [2,3,4]){
+    if(history.length<=segments)continue;
+    const recent=history.slice(-(segments+1));
+    const first=recent[0],firstEpoch=Date.parse(first.observed_utc);
+    const spanMinutes=(latestEpoch-firstEpoch)/60000;
+    if(!(spanMinutes>=8 && spanMinutes<=maximumLookbackMinutes))continue;
+    let pathKm=0,valid=true;
+    for(let i=1;i<recent.length;i++){
+      const dt=(Date.parse(recent[i].observed_utc)-
+        Date.parse(recent[i-1].observed_utc))/60000;
+      if(!(dt>0 && dt<=maximumGapMinutes)){valid=false;break;}
+      pathKm+=distanceKm(
+        Number(recent[i-1].centroid_longitude),Number(recent[i-1].centroid_latitude),
+        Number(recent[i].centroid_longitude),Number(recent[i].centroid_latitude)
+      );
+    }
+    if(!valid || !(pathKm>0))continue;
+    const netKm=distanceKm(
+      Number(first.centroid_longitude),Number(first.centroid_latitude),
+      Number(latest.centroid_longitude),Number(latest.centroid_latitude)
+    );
+    const speedKmh=netKm*60/spanMinutes;
+    const straightness=netKm/pathKm;
+    if(netKm<minimumNetKm || speedKmh<minimumSpeedKmh ||
+        straightness<minimumStraightness || speedKmh>160)continue;
+    const heading=initialBearingDegrees(
+      Number(first.centroid_longitude),Number(first.centroid_latitude),
+      Number(latest.centroid_longitude),Number(latest.centroid_latitude)
+    );
+    if(!Number.isFinite(heading))continue;
+    return {
+      heading_degrees:heading,speed_kmh:speedKmh,net_km:netKm,
+      straightness,span_minutes:spanMinutes,segment_count:segments
+    };
+  }
+  return null;
+}
+
 export function createAdaptiveThreatConeController({
   buildCone,
   rolloverMinutes = 30,
@@ -108,6 +160,7 @@ export function createAdaptiveThreatConeController({
     }
 
     const previous = issued.get(id);
+    const sustainedSteering=sustainedMeasuredSteering(track,observation);
     let reason = null;
     if (!previous) reason = "initial";
     else if (observedEpoch < previous.lastObservedEpoch) reason = "timeline-rewound";
@@ -150,6 +203,12 @@ export function createAdaptiveThreatConeController({
       );
       const steeringChanged = steeringEvidence
         && steeringErrorDegrees >= steeringChangeThresholdDegrees;
+      // A slow but sustained sideways drift is genuine steering evidence,
+      // even if each 5-minute centroid displacement is below 1.25 km.
+      // Compare measured net motion with the last ACTUALLY DRAWN centreline.
+      const sustainedHeadingChange = sustainedSteering &&
+        bearingDelta(sustainedSteering.heading_degrees,
+          previous.cone.heading_degrees) >= turnThresholdDegrees;
       // A broad 90-minute envelope can contain many successive storm cores,
       // leaving its original starting point visually stranded. Advance the
       // forecast with a meaningfully displaced measured centroid even when
@@ -169,6 +228,7 @@ export function createAdaptiveThreatConeController({
       else if (prospectiveOutside) reason = "projected-track-outside";
       else if (turning) reason = "direction-change";
       else if (steeringChanged) reason = "steering-change";
+      else if (sustainedHeadingChange) reason = "sustained-steering-change";
       else if (elapsed >= rolloverMinutes) reason = "rolling-refresh";
       else if (translated) reason = "storm-advanced";
       else if (followMeasuredPosition && elapsed >= 1 &&
@@ -184,11 +244,29 @@ export function createAdaptiveThreatConeController({
         Number(track?.motion?.distance_km) >= minimumSteeringMotionKm &&
         Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh &&
         Number.isFinite(Number(proposed.measured_heading_degrees));
-      if (reliableBreachSteering || reason === "steering-change" ||
-          (reason === "direction-change" &&
-          Number(track?.motion?.distance_km) >= minimumSteeringMotionKm)) {
+      const instantaneousSteeringSupported =
+        Number(track?.motion?.distance_km) >= minimumSteeringMotionKm &&
+        Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh;
+      const shouldReorient = reason === "observed-outside" ||
+        reason === "sustained-steering-change" ||
+        reason === "steering-change" ||
+        reason === "direction-change";
+      // A convincing two/three-interval displacement gives us a measured
+      // orientation when the last individual step is too small to qualify.
+      // If neither single-scan nor sustained motion is trustworthy, an
+      // observed escape reanchors but does NOT invent a direction.
+      const headingEvidence=shouldReorient
+        ? (sustainedSteering && (!instantaneousSteeringSupported ||
+            reason==="sustained-steering-change")
+            ? sustainedSteering.heading_degrees
+            : instantaneousSteeringSupported
+              ? Number(proposed.measured_heading_degrees)
+              : null)
+        : null;
+      if (Number.isFinite(headingEvidence)) {
         proposed = buildCone(track, observation, {
-          ...buildOptions, forceMeasuredHeading:true
+          ...buildOptions,forceMeasuredHeading:true,
+          steeringHeadingDegrees:headingEvidence
         }) ?? proposed;
       }
       issued.set(id,{

@@ -19,11 +19,11 @@ assert.match(nav,/navigationActive=false;[\s\S]*?updateForCamera\(\)/,
   "final zoom/detail decision resumes when panning settles");
 for(const [name,source] of [["power",power],["road",road],["gauge",gauge]]){
   assert.match(source,/const suppressHoverGpuPicking\s*=\s*\[/);
-  assert.match(source,/"/preview\/radar-history-fix\/"/);
-  assert.match(source,/"/preview\/next-baseline\/"/);
+  assert.ok(source.includes('"/preview/radar-history-fix/"'));
+  assert.ok(source.includes('"/preview/next-baseline/"'));
   assert.match(source,/if \(!suppressHoverGpuPicking\)\s*\{/,
     name+" mousemove must not synchronously call Cesium drillPick on QA map gestures");
-  assert.match(source,/\.LEFT_CLICK/,
+  assert.match(source,/LEFT_CLICK/,
     name+" must keep explicit marker click interaction functional");
 }
 assert.match(build,/grep -Fq 'Keep all currently visible satellite layers' "\$candidate\/src\/context-layers\/basemap-manager-v1\.js"/);

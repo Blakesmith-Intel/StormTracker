@@ -250,9 +250,14 @@ function setSidebarCollapsed(collapsed){
   requestAnimationFrame(()=>{viewer.resize();scene.requestRender();});
 }
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.hidden));
-// The one isolated QA route compares deferred GPU cleanup and settled
-// gazetteer work with the current production code. Never enabled at root.
+// V9.19.0 production inherits the browser-approved QA guards. The release
+// runs inside live3d-operational-v9.html at the GitHub Pages site root;
+// the old immutable V9.18.0 build retains its own unaffected source files.
+const PUBLISHED_PRODUCTION_RUNTIME =
+  /\/live3d-operational-v9\.html$/.test(window.location.pathname) &&
+  !window.location.pathname.includes("/preview/");
 const BOUNDED_RADAR_RECOVERY_QA =
+  PUBLISHED_PRODUCTION_RUNTIME ||
   window.location.pathname.includes("/preview/radar-history-fix/") ||
   window.location.pathname.includes("/preview/next-baseline/");
 const LABEL_GPU_QA =
@@ -537,8 +542,10 @@ basemapManager =
     Cesium,
     viewer,
     suspendDetailDuringNavigation:true,
-    // QA only: retain official QLD/NSW imagery even at regional camera scale.
+    // Preserve the visually accepted continuous Queensland satellite source
+    // and coherent DEA NSW regional imagery on the production route, too.
     persistentSatelliteCoverage:
+      PUBLISHED_PRODUCTION_RUNTIME ||
       window.location.pathname.includes("/preview/next-baseline/"),
     forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST,
     storage:

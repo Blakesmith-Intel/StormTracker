@@ -3666,6 +3666,7 @@ async function showHybridFrame(index) {
         // An inferred step cannot initiate its own time-changing secondary
         // handover. A missing genuine anchor will be retried by a later
         // observed scan or an explicit paused selection, never by this step.
+        void supplementalRadarDisplay.show(null,{enabled:false});
         displaySupplementalHoldStatus(null);
       }else{
         supplementalRadarDisplay.commit(supplementalAnchor.observedUtc,{

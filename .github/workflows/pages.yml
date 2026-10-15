@@ -103,19 +103,19 @@ jobs:
           grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$preview"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \
-            | grep -Fq 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500'
+            | grep -F 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/src/live3d-operational-v9.js" | grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME'
+            "$base/src/live3d-operational-v9.js" | grep -F 'PUBLISHED_PRODUCTION_RUNTIME' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/src/adaptive-threat-cone-v1.js" | grep -Fq 'credibleMeasuredMotionAtObservation'
+            "$base/src/adaptive-threat-cone-v1.js" | grep -F 'credibleMeasuredMotionAtObservation' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/src/supplemental-observed-anchor-v1.js" | grep -Fq 'shouldPrepareSupplementalForPlayback'
+            "$base/src/supplemental-observed-anchor-v1.js" | grep -F 'shouldPrepareSupplementalForPlayback' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/live3d-operational-v9.html" | grep -Fq 'trackLabelsScopeNote'
+            "$base/live3d-operational-v9.html" | grep -F 'trackLabelsScopeNote' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/src/context-layers/river-gauge-layer-v1.js" | grep -Fq '"#e53935"'
+            "$base/src/context-layers/river-gauge-layer-v1.js" | grep -F '"#e53935"' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/data/nsw-radar-places-v1.json" | grep -Fq 'StormTrackerNSWRadarPlacesV1'
+            "$base/data/nsw-radar-places-v1.json" | grep -F 'StormTrackerNSWRadarPlacesV1' >/dev/null
           echo 'Verified exact V9.19.0 production root and historical accepted V9.18 diagnostic.'
 
       - name: Seal V9.19.0 annotated tag only after public verification

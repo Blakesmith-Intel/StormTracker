@@ -3174,6 +3174,18 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
   return true;
 }
 
+// Every genuine storm point is checked against the PREVIOUS issued 90m
+// drawn polygon, allowing half a kilometre for radar centroid noise.
+// Playback may still re-anchor on genuine forward translation as before.
+const THREAT_CONE_CONTROLLER_OPTIONS = Object.freeze({
+  rolloverMinutes:30,
+  turnThresholdDegrees:12,
+  breachMarginKm:0.5,
+  reissueOnObservedExit:true,
+  observedExitMarginKm:0.5,
+  followMeasuredPosition:true
+});
+
 function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
   const at = Date.parse(hybridFrames[index]?.observedUtc);
   if (!Number.isFinite(at) || !trackId) return null;
@@ -3192,7 +3204,7 @@ function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
     const projection = evaluateChronologicalTrackThreatCone(
       track, observation, buildTrackThreatCone,
       { horizonMinutes:90, directionChangeThresholdDegrees:12 },
-      { rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5, followMeasuredPosition:true }
+      THREAT_CONE_CONTROLLER_OPTIONS
     );
     if (projection.cone) return {track, projection, sourceUtc};
   }
@@ -3346,7 +3358,7 @@ function renderHybridTracks(index) {
         const projection = evaluateChronologicalTrackThreatCone(
           track, observation, buildTrackThreatCone,
           { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
-          { rolloverMinutes: 30, turnThresholdDegrees: 12, breachMarginKm: 0.5, followMeasuredPosition: true }
+          THREAT_CONE_CONTROLLER_OPTIONS
         );
         renderIssuedThreatCone(track, projection, null, observation);
       }

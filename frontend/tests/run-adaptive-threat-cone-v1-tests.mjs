@@ -208,3 +208,70 @@ const jitterResult=steeringController.evaluate(lowSpeed,jitter);
 assert.equal(jitterResult.reason,"inside-envelope","tiny slow centroid jitter must not swing cone north");
 assert.equal(jitterResult.cone.heading_degrees,accumulatedTurn.cone.heading_degrees);
 console.log("PASS cumulative sub-12-degree steering, actual reorientation, deterministic rewind and low-speed jitter suppression.");
+
+
+// A breach is measured against the actual displayed polygon, not an
+// unpainted radius-length extension behind the issued origin / beyond +90m.
+const displayedConeController=createAdaptiveThreatConeController({
+  buildCone:buildTrackThreatCone,rolloverMinutes:30,
+  observedExitMarginKm:0.5,minimumTranslationKm:100,
+  followMeasuredPosition:false
+});
+const polygonStart={...observation(0,origin),sampled_area_km2:1};
+const polygonIssue=displayedConeController.evaluate(track(),polygonStart);
+assert.equal(polygonIssue.reason,"initial");
+assert.ok(polygonIssue.cone.polygon.length>=6);
+assert.ok(pointWithinIssuedThreatCone(polygonIssue.cone,step(origin,270,0.35),0.5),
+  "sub-500m centroid wobble behind the visible cone does not force a breach");
+assert.equal(pointWithinIssuedThreatCone(polygonIssue.cone,step(origin,270,1),0.5),false,
+  "a centroid 1km behind the drawn boundary is outside, even inside the old wedge cap");
+assert.equal(pointWithinIssuedThreatCone(polygonIssue.cone,step(origin,90,61),0.5),false,
+  "a centroid beyond the displayed +90m closing edge is outside");
+const behind={...observation(5,step(origin,270,1)),sampled_area_km2:1};
+const escaped=displayedConeController.evaluate(track(),behind);
+assert.equal(escaped.reason,"observed-outside");
+assert.equal(escaped.rebased,true);
+assert.ok(distanceKm(escaped.cone.samples[0].centre.longitude,
+  escaped.cone.samples[0].centre.latitude,
+  behind.centroid_longitude,behind.centroid_latitude)<0.01,
+  "the reissued forecast starts at the new observed centroid");
+const noExitController=createAdaptiveThreatConeController({
+  buildCone:buildTrackThreatCone,reissueOnObservedExit:false,
+  rolloverMinutes:30,minimumTranslationKm:100,followMeasuredPosition:false
+});
+noExitController.evaluate(track(),polygonStart);
+assert.equal(noExitController.evaluate(track(),behind).reason,"inside-envelope",
+  "boundary-trigger parameter can be disabled independently of scheduled refreshes");
+
+// A confirmed breakout must not keep an obsolete smoothed heading when its
+// new measured displacement and speed provide reliable steering evidence.
+const reluctantBuilder=(t,obs,options={})=>{
+  const heading=options.forceMeasuredHeading?t.motion.heading_degrees:90;
+  const built=fakeBuild({...t,motion:{...t.motion,heading_degrees:heading}},obs);
+  return {...built,measured_heading_degrees:t.motion.heading_degrees};
+};
+const forcedController=createAdaptiveThreatConeController({
+  buildCone:reluctantBuilder,followMeasuredPosition:false,
+  minimumTranslationKm:100
+});
+forcedController.evaluate(track(),observation(0,origin));
+const northMotion=track(0,60);
+northMotion.motion.distance_km=5;
+const northExit=forcedController.evaluate(northMotion,
+  observation(5,step(origin,0,10)));
+assert.equal(northExit.reason,"observed-outside");
+assert.equal(northExit.cone.heading_degrees,0,
+  "recalculated cone must face the latest reliable steering after breach");
+const weakController=createAdaptiveThreatConeController({
+  buildCone:reluctantBuilder,followMeasuredPosition:false,
+  minimumTranslationKm:100
+});
+weakController.evaluate(track(),observation(0,origin));
+const weakMotion=track(0,3);
+weakMotion.motion.distance_km=0.2;
+const weakExit=weakController.evaluate(weakMotion,
+  observation(5,step(origin,0,10)));
+assert.equal(weakExit.reason,"observed-outside");
+assert.equal(weakExit.cone.heading_degrees,90,
+  "unreliable low-speed steering must not redirect the cone on a spatial breach");
+console.log("PASS displayed cone boundary, 500m grace, observed-exit parameter, forced supported steering and weak-motion restraint.");

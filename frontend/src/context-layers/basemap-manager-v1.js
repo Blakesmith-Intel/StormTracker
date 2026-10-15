@@ -345,11 +345,13 @@ export function createStormTrackerBasemapManager({
     qldDetailLayer=null,nswDetailLayer=null;
   let sourceListeners=[],postRenderUnlisten=null;
   let detailTarget=false,detailStaging=false,detailBlend=0,readyFrames=0;
+  let nswRegionalDetailActive=false,cameraChangeUnlisten=null;
   let destroyed=false,navigationActive=false,resumeTimer=null;
   function remove(layer){if(layer)imagery.remove(layer,true);}
   function render(){scene?.requestRender?.();}
   function detach(){
     postRenderUnlisten?.();postRenderUnlisten=null;
+    cameraChangeUnlisten?.();cameraChangeUnlisten=null;
     for(const dispose of sourceListeners)dispose();
     sourceListeners=[];
   }
@@ -362,6 +364,7 @@ export function createStormTrackerBasemapManager({
     qldDetailLayer=null;nswDetailLayer=null;
     regionalLayer=null;streetLayer=null;
     detailTarget=false;detailStaging=false;detailBlend=0;readyFrames=0;
+    nswRegionalDetailActive=false;
     render();
   }
   function attach(provider,label){
@@ -384,9 +387,24 @@ export function createStormTrackerBasemapManager({
   function updateForCamera(){
     if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return "street";
     if(persistentSatelliteCoverage){
-      // One state source per jurisdiction, from regional zoom through detail.
-      // Never swap layers, request extra copies, or reveal the street fallback.
-      return "detailed";
+      // Keep genuine Queensland imagery across all regional zooms because
+      // DEA can lack land tiles in north QLD. NSW source is a heterogeneous
+      // aerial-photo mosaic: at regional scale its dated project seams are
+      // much more intrusive than the homogeneous DEA 2025 geomedian.
+      // Avoid repeated source changes *during* interaction; only transition
+      // near the point where native DEA 30m pixels become undersampled.
+      if(navigationActive)return "navigation";
+      const nextNswDetailed=chooseDetailForScale(nswRegionalDetailActive,
+        estimatedCameraMetresPerPixel(scene));
+      if(nextNswDetailed!==nswRegionalDetailActive){
+        nswRegionalDetailActive=nextNswDetailed;
+        if(nswDetailLayer){
+          nswDetailLayer.show=nextNswDetailed;
+          nswDetailLayer.alpha=1;
+        }
+        render();
+      }
+      return nextNswDetailed?"detailed":"regional-nsw";
     }
     // Do not change zoom/detail modes while the user is navigating. Most
     // importantly, never hide a satellite layer in the middle of a pan:
@@ -486,24 +504,32 @@ export function createStormTrackerBasemapManager({
     nswDetailLayer=nextNsw;qldDetailLayer=nextQld;
     currentId=id;
     if(id===BASEMAP_IDS.QLD_IMAGERY && persistentSatelliteCoverage){
-      // The QLD cache carries state-wide imagery at regional scales (from
-      // zoom 4), while NSW similarly covers its published jurisdiction.
-      // DEA remains below both for surrounding Australia.  OSM is NOT an
-      // appropriate visible fallback within the Satellite basemap.
+      // QLD official tiles remain continuous even at regional scales. NSW
+      // aerial mosaics belong only at close detail zoom, where they have a
+      // genuine resolution advantage over the 30m DEA regional composite.
+      // At regional range, one consistent geomedian avoids rectangular
+      // mixed-date aerial-photo blocks visible in northern NSW.
       streetLayer.show=false;
       if(qldDetailLayer){qldDetailLayer.show=true;qldDetailLayer.alpha=1;}
-      if(nswDetailLayer){nswDetailLayer.show=true;nswDetailLayer.alpha=1;}
+      nswRegionalDetailActive=false;
+      if(nswDetailLayer){nswDetailLayer.show=false;nswDetailLayer.alpha=1;}
       detailTarget=true;detailStaging=false;detailBlend=1;readyFrames=0;
     }
     for(const [provider,label] of subscriptions)attach(provider,label);
     if(id===BASEMAP_IDS.QLD_IMAGERY && !persistentSatelliteCoverage &&
         scene?.postRender?.addEventListener)
       postRenderUnlisten=scene.postRender.addEventListener(updateForCamera);
+    // Event-driven, NOT a per-render blend compositor. Only zoom/detail
+    // boundary changes can reveal the NSW detail provider. Other gestures
+    // leave the imagery layers and Cesium texture cache untouched.
+    if(id===BASEMAP_IDS.QLD_IMAGERY && persistentSatelliteCoverage &&
+        scene?.camera?.changed?.addEventListener)
+      cameraChangeUnlisten=scene.camera.changed.addEventListener(updateForCamera);
     // A test route must not overwrite the user's real map preference.
     if(persist && !forceStreetOnly)persistBasemap(storage,id);
     onStatus(id===BASEMAP_IDS.QLD_IMAGERY
       ? persistentSatelliteCoverage
-        ? "Satellite: continuous official QLD/NSW coverage · DEA regional underneath"
+        ? "Satellite: QLD continuous imagery · DEA regional NSW · NSW detailed on close zoom"
         : "Satellite: DEA regional (2025) · automatic official QLD/NSW detail on zoom"
       : forceStreetOnly
         ? "STREET-ONLY TEST · Satellite basemaps disabled (no DEA/QLD/NSW tile downloads)"
@@ -527,6 +553,7 @@ export function createStormTrackerBasemapManager({
     get navigationActive(){return navigationActive;},
     get forceStreetOnly(){return forceStreetOnly;},
     get persistentSatelliteCoverage(){return persistentSatelliteCoverage;},
+    get nswRegionalDetailActive(){return nswRegionalDetailActive;},
     get regionalLayer(){return regionalLayer;}
   };
 }

@@ -11,9 +11,9 @@ const build=read("../../scripts/build-current-site.sh");
 const controller=read("../src/live3d-operational-v9.js");
 const html=read("../live3d-operational-v9.html");
 const index=read("../index.html");
-assert.match(index,/live3d-operational-v9\.html\?v=[^"]*regional-satellite-v3/);
-assert.match(html,/live3d-operational-v9\.js\?v=[^"]*regional-satellite-v3/);
-assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*regional-satellite-coverage-v3/);
+assert.match(index,/live3d-operational-v9\.html\?v=[^"]*nsw-regional-dea-v5/);
+assert.match(html,/live3d-operational-v9\.js\?v=[^"]*nsw-regional-dea-v5/);
+assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*nsw-regional-dea-v4/);
 for(const part of ["power-outages","flood-road-closures"]){
   assert.match(controller,new RegExp(part+"-operational-v1\\.js\\?v=[^\\\"]*hover-qa-v2"),
     "closure/power hover guard imports must carry fresh cache keys");
@@ -26,7 +26,12 @@ assert.match(basemap,/if\(navigationActive\)return "navigation";/);
 assert.match(controller,/persistentSatelliteCoverage:[\s\S]*?\/preview\/next-baseline\//);
 assert.match(basemap,/streetLayer\.show=false;/);
 assert.match(basemap,/qldDetailLayer\.show=true;qldDetailLayer\.alpha=1;/);
-assert.match(basemap,/nswDetailLayer\.show=true;nswDetailLayer\.alpha=1;/);
+assert.match(basemap,/nswDetailLayer\.show=false;nswDetailLayer\.alpha=1;/,
+  "regional NSW must stay on uniform DEA rather than a forced mixed-age aerial mosaic");
+assert.match(basemap,/const nextNswDetailed=chooseDetailForScale\(nswRegionalDetailActive/,
+  "NSW aerial photos appear only when zoom justifies their native resolution");
+assert.match(basemap,/cameraChangeUnlisten=scene\.camera\.changed\.addEventListener\(updateForCamera\)/,
+  "NSW imagery switches via lightweight camera events, not per-frame GPU polling");
 const nav=basemap.slice(basemap.indexOf("function setNavigationActive("),basemap.indexOf("function setBasemap("));
 assert.doesNotMatch(nav,/qldDetailLayer\.show\s*=\s*false|nswDetailLayer\.show\s*=\s*false/);
 assert.doesNotMatch(nav,/detailTarget\s*=\s*false|detailBlend\s*=\s*0/,

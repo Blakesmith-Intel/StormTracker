@@ -138,7 +138,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.18.9-pan-persist-satellite-pan-v2";
+} from "./context-layers/basemap-manager-v1.js?v=9.18.9-regional-satellite-coverage-v3";
 
 import {
   createQueenslandTownLabelLayer
@@ -535,6 +535,9 @@ basemapManager =
     Cesium,
     viewer,
     suspendDetailDuringNavigation:true,
+    // QA only: retain official QLD/NSW imagery even at regional camera scale.
+    persistentSatelliteCoverage:
+      window.location.pathname.includes("/preview/next-baseline/"),
     forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST,
     storage:
       window.localStorage,

@@ -300,6 +300,8 @@ export function createDetailedQldProvider(Cesium){
 
       maximumLevel:
         QLD_IMAGERY_BASEMAP.maximumLevel,
+      // Queensland's published cache starts at zoom level 4.
+      minimumLevel:4,
 
       rectangle:
         qldImageryRectangle(
@@ -325,6 +327,10 @@ export function basemapLabel(
 export function createStormTrackerBasemapManager({
   Cesium,viewer,storage=globalThis.localStorage,onStatus=()=>{},
   suspendDetailDuringNavigation=false,
+  // Keep state-owned satellite tiles present at regional camera scales.
+  // Prevents DEA missing tiles exposing OSM across northern Queensland.
+  // Enabled only for the next-baseline browser preview until visual QA.
+  persistentSatelliteCoverage=false,
   // Isolated A/B QA: never instantiate DEA/QLD/NSW satellite basemap
   // providers even when storage retained a previous satellite selection.
   forceStreetOnly=false,
@@ -377,6 +383,11 @@ export function createStormTrackerBasemapManager({
   }
   function updateForCamera(){
     if(destroyed||currentId!==BASEMAP_IDS.QLD_IMAGERY)return "street";
+    if(persistentSatelliteCoverage){
+      // One state source per jurisdiction, from regional zoom through detail.
+      // Never swap layers, request extra copies, or reveal the street fallback.
+      return "detailed";
+    }
     // Do not change zoom/detail modes while the user is navigating. Most
     // importantly, never hide a satellite layer in the middle of a pan:
     // regional DEA may still be resolving a tile, exposing Street beneath.
@@ -474,13 +485,26 @@ export function createStormTrackerBasemapManager({
     streetLayer=nextStreet;regionalLayer=nextRegional;
     nswDetailLayer=nextNsw;qldDetailLayer=nextQld;
     currentId=id;
+    if(id===BASEMAP_IDS.QLD_IMAGERY && persistentSatelliteCoverage){
+      // The QLD cache carries state-wide imagery at regional scales (from
+      // zoom 4), while NSW similarly covers its published jurisdiction.
+      // DEA remains below both for surrounding Australia.  OSM is NOT an
+      // appropriate visible fallback within the Satellite basemap.
+      streetLayer.show=false;
+      if(qldDetailLayer){qldDetailLayer.show=true;qldDetailLayer.alpha=1;}
+      if(nswDetailLayer){nswDetailLayer.show=true;nswDetailLayer.alpha=1;}
+      detailTarget=true;detailStaging=false;detailBlend=1;readyFrames=0;
+    }
     for(const [provider,label] of subscriptions)attach(provider,label);
-    if(id===BASEMAP_IDS.QLD_IMAGERY && scene?.postRender?.addEventListener)
+    if(id===BASEMAP_IDS.QLD_IMAGERY && !persistentSatelliteCoverage &&
+        scene?.postRender?.addEventListener)
       postRenderUnlisten=scene.postRender.addEventListener(updateForCamera);
     // A test route must not overwrite the user's real map preference.
     if(persist && !forceStreetOnly)persistBasemap(storage,id);
     onStatus(id===BASEMAP_IDS.QLD_IMAGERY
-      ? "Satellite: DEA regional (2025) · automatic official QLD/NSW detail on zoom"
+      ? persistentSatelliteCoverage
+        ? "Satellite: continuous official QLD/NSW coverage · DEA regional underneath"
+        : "Satellite: DEA regional (2025) · automatic official QLD/NSW detail on zoom"
       : forceStreetOnly
         ? "STREET-ONLY TEST · Satellite basemaps disabled (no DEA/QLD/NSW tile downloads)"
         : "Basemap: Street · OpenStreetMap","ok");
@@ -502,6 +526,7 @@ export function createStormTrackerBasemapManager({
     get detailBlend(){return detailBlend;},
     get navigationActive(){return navigationActive;},
     get forceStreetOnly(){return forceStreetOnly;},
+    get persistentSatelliteCoverage(){return persistentSatelliteCoverage;},
     get regionalLayer(){return regionalLayer;}
   };
 }

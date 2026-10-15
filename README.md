@@ -1,46 +1,36 @@
-# StormTracker — V9.18.0 production / accepted V9.18 diagnostic
+# StormTracker — V9.19.0 production release source
 
-StormTracker is a **browser-only, Queensland and southern-border weather situational-awareness viewer**. It is not an official warning service or an emergency-management decision-making system. BoM reflectivity is retained in **dBZ**; Doppler radial velocity is not storm movement speed; inferred 3-D volumes are modelled visualisations, not observed radar echo-top measurements.
+StormTracker is a **browser-only Queensland and southern-border BoM radar situational-awareness viewer**, not an official warning service or emergency management decision-making tool. Original radar reflectivity is in **dBZ**; Doppler measures radial velocity rather than storm motion; 3-D volumes and storm cones are inferred visualisations, not authoritative forecasts.
 
-## The two supported browser builds
+## Release and supported browser sites
 
-| Build | URL | Immutable source |
+| Build | URL | Source policy |
 | --- | --- | --- |
-| Sealed production V9.18.0 | https://blakesmith-intel.github.io/StormTracker/ | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` |
-| **User-accepted diagnostic V9.18** (future development base) | https://blakesmith-intel.github.io/StormTracker/preview/radar-history-fix/ | `acfa0ebd3717a793369e3e887e2d1a54785620b7` |
+| **StormTracker V9.19.0 production** | https://blakesmith-intel.github.io/StormTracker/ | Immutable V9.19.0 source commit, pinned in Pages workflow and `/BUILD.txt` |
+| Historical accepted diagnostic (V9.18) | https://blakesmith-intel.github.io/StormTracker/preview/radar-history-fix/ | Immutable `acfa0ebd3717a793369e3e887e2d1a54785620b7` |
 
-The accepted recovery branch is `restore/v9.18-accepted-diagnostic-20261013`. Production stays sealed until an explicit release decision. The archived pre-cleanup repository state is `archive/pre-cleanup-20261013`. Build sources are pinned; neither is derived implicitly from `main`.
+The last sealed production release, **V9.18.0**, remains at commit `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` with immutable tag/restore branch, available for rollback. The previously accepted `next-baseline` preview was explicitly approved by the operator on 15 October 2026 and is promoted **only after production-path safety parity, full CI and public deployment verification**. Its preview URL may be withdrawn after successful promotion.
 
-## Current accepted diagnostic behaviour
+## V9.19.0 behaviour
 
-- National BoM WMTS reflectivity display: Queensland sites and Brewarrina, Moree and Grafton (22 radar coverage windows), with one primary and at most three supplementary sites.
-- Genuine BoM reflectivity frames synchronised to a primary observed UTC; decoded supplementary radar imagery transitions atomically and cannot fabricate intermediate frames.
-- Inferred 3-D for the primary **and selected supplementary radar footprints**, using the existing profile model, same BoM dBZ palette, ≥40 dBZ threshold, 1.0× baseline vertical exaggeration and bounded Cesium primitives.
-- Original supported Doppler history, primary-only storm tracking, labels and optional +90-minute motion cones.
-- Retained regional DEA satellite under official Queensland / NSW detail, three-dimensional terrain and same-origin geographic place names.
-- Queensland traffic closures, current unplanned outages, exception-only BoM flood signals and QFD incident context; upstream failures do not fabricate events or block the radar viewer.
-- Browser-responsive navigation with the accepted Cesium hover-pick and GPU-resource guards.
+- Primary + up to **three** additional original BoM radar reflectivity sites; atomic source-timestamp handover and bounded hold during display-only inferred frames. Primary playback never blocks waiting for optional supplemental WMTS.
+- Stable browser Cesium navigation, deferred resource cleanup, suppressed high-cost GPU hover picking, bounded upstream radar requests, graceful failure isolation, responsive hide/show sidebar.
+- Original BoM dBZ and >=40 dBZ inferred rounded 3-D storm volumes with independent opacity and terrain; regional satellite QLD continuity and DEA regional NSW imagery with NSW detail at close scale.
+- **Storm ID Labels off by default**; storm tracking, labels and +90-minute cones are generated only from the **primary** radar. Secondary radars contribute imagery/inferred volume but **not** storm IDs or cones.
+- +90-minute predicted motion uses only real measured centroid history; 0m origin, 30/60/90m markers and a confidence gate. Unsupported/abrupt low-speed motion **withholds** extrapolation, rather than showing misleading predictions.
+- QLD unplanned road closures and power outages, BoM flood signals (green rapid above minor, yellow moderate, red major, cyan unusual tidal screening), selected QFD incidents. BoM bulletins are authoritative.
 
-Known **non-blocking** console messages at acceptance: Edge third-party CDN storage prevention; unsupported clamped terrain outlines; isolated optional BoM river station-history HTTP 502 subject to serial fallback/cooldown.
+## Files and maintenance
 
-## Repository structure
+- `frontend/` — static browser app and regression tests.
+- `relay/` — existing Cloudflare transport-only CORS Worker, unchanged for this release.
+- `scripts/` — Pages builder and scientific/operational source audits.
+- `docs/RELEASE_NOTES_V9.19.0.md`, `HANDOVER_V9.19.0.md`, `USER_GUIDE_V9.19.0.md` — current release details.
+- `docs/BASELINE_RESTORE.md`, `CURRENT_ACCEPTED_BASELINE.md` — immutable release recovery instructions and exact SHA pins.
+- `.github/workflows/pages.yml` — publishes the site root from an **exact** sealed production SHA; `main` is not implicitly production.
 
-- `frontend/` — operational browser source, official data model, scientific research fixtures and regression tests.
-- `relay/` — the existing Cloudflare CORS/transport Worker (never meteorological modelling).
-- `scripts/` — scientific validation, source auditing, NSW same-origin place-name builder and frontend regression runner.
-- `docs/` — current release/user guide, scientific contract, accepted handover, rollback procedure and V10 priorities.
-- `.github/workflows/pages.yml` — only the pinned production and accepted QA preview are published.
-- `.github/workflows/deploy-relay.yml` — **manual only** Worker deployment after full tests.
-- `.github/workflows/review-validation.yml` and `validate-feature-branches.yml` — browser and relay regression gates.
-
-Run `npm test` to validate the frontend and `node --check relay/worker.js` to validate the relay. GitHub Pages requires no separate local server.
+Validation: `npm test`, `node --check relay/worker.js`, deterministic Pages artifact tests and `/BUILD.txt` public verification. Do not replace genuine BoM observations with extrapolated weather frames. Experimental V10 wind/circulation candidate detection remains separate pending authentic BoM AURA volume validation.
 
 ## Release discipline
 
-1. Work on a new feature/fix branch based on the **accepted diagnostic source**. Do not edit an accepted recovery ref or existing tag.
-2. Run all regressions; publish to an isolated preview and obtain a real browser/mobile functional pass before promotion.
-3. Pin the accepted source SHA in the Pages workflow, verify `BUILD.txt`, and keep an immutable restore ref.
-4. Never replace genuine BoM source observations with extrapolated frames or other fabricated weather data.
-5. V10 wind/hook-echo threat candidates remain experimental until validated; see `docs/ACTIVE_WISHLIST.md` and the [isolated V10 development plan](https://github.com/Blakesmith-Intel/StormTracker/blob/feature/v10-severe-weather-candidates/docs/V10_DEVELOPMENT_PLAN.md).
-
-The previous experimental installers, version-specific preview deployments and historical release notes remain recoverable through Git history and the pre-cleanup archive branch, rather than cluttering the current working tree and Pages deployment.
+Use a feature branch and preview; test changes, obtain visual functional acceptance, then update **pinned production source** through reviewed changes. Preserve tags/rollback branches. If rollback is required, restore V9.18.0's immutable source SHA and redeploy rather than moving the old tag.

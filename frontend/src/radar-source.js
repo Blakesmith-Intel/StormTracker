@@ -4,8 +4,13 @@ import { createRadarRequestPressureGuard } from "./radar-request-pressure-v1.js?
 const guardedRadarRequests=createRadarRequestPressureGuard();
 export function networkPressureDiagnostics(){return guardedRadarRequests.snapshot();}
 function isNetworkGuardPreview(){
+  // Production V9.19.0 uses the same bounded WMTS request pressure as its
+  // accepted preview, not the obsolete unguarded V9.18 network path.
   return ["/preview/network-guard/","/preview/label-gpu-guard/","/preview/radar-history-fix/","/preview/next-baseline/"].some(
-    route=>globalThis.location?.pathname?.includes(route)===true);
+    route=>globalThis.location?.pathname?.includes(route)===true) ||
+    (/\/live3d-operational-v9\.html$/.test(
+      String(globalThis.location?.pathname??"")) &&
+      !String(globalThis.location?.pathname??"").includes("/preview/"));
 }
 if(isNetworkGuardPreview())
   globalThis.__stormtrackerRelayPressureDiagnostics=networkPressureDiagnostics;

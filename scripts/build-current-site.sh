@@ -49,6 +49,12 @@ for filename in storm-track-trail-visibility-v1.js multi-radar-display-v9.js rad
 done
 cp "$accepted/index.html" "$preview/"
 cp "$accepted/live3d-operational-v9.html" "$preview/"
+# Retain the accepted QA's original cone and networking code even after the
+# next-baseline candidate advances these files on the maintenance branch.
+for filename in adaptive-threat-cone-v1.js radar-source.js; do
+  cp "$accepted/src/$filename" "$preview/src/"
+done
+cp "$accepted/src/operational-dashboard-v9-1.css" "$preview/src/"
 printf 'ACCEPTED V9.18 diagnostic source %s\n' \
   'acfa0ebd3717a793369e3e887e2d1a54785620b7' > "$preview/BUILD.txt"
 
@@ -63,4 +69,25 @@ node --check "$preview/src/live3d-operational-v9.js"
 node --check "_site/src/live3d-operational-v9.js"
 test -s "$preview/data/nsw-radar-places-v1.json"
 test -s "_site/data/nsw-radar-places-v1.json"
-test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1
+# Separately staged NEXT production candidate; root and accepted are sealed.
+# It intentionally contains the observed-boundary cone update, a collapsible
+# sidebar, and continuous supplemental coverage over bounded inferred gaps.
+candidate="_site/preview/next-baseline"
+mkdir -p "$candidate/data"
+for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
+  cp -a "frontend/$asset" "$candidate/$asset"
+done
+cp "$production/data/nsw-radar-places-v1.json" "$candidate/data/"
+for filename in power-outages-operational-v1.js river-gauges-operational-v1.js flood-road-closures-operational-v1.js river-gauge-layer-v1.js basemap-manager-v1.js; do
+  cp "$accepted/src/context-layers/$filename" "$candidate/src/context-layers/"
+done
+printf 'CANDIDATE StormTracker next baseline source %s\\n' "$(git rev-parse HEAD)" > "$candidate/BUILD.txt"
+grep -Fq 'supplementalObservedAnchor' "$candidate/src/live3d-operational-v9.js"
+grep -Fq 'observedExitMarginKm:0.5' "$candidate/src/live3d-operational-v9.js"
+grep -Fq 'id="sidebarToggle"' "$candidate/live3d-operational-v9.html"
+grep -Fq '/preview/next-baseline/' "$candidate/src/radar-source.js"
+grep -Fq 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500' "$candidate/src/supplemental-radar-volume-v1.js"
+node --check "$candidate/src/live3d-operational-v9.js"
+node --check "$candidate/src/supplemental-observed-anchor-v1.js"
+test -s "$candidate/data/nsw-radar-places-v1.json"
+test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2

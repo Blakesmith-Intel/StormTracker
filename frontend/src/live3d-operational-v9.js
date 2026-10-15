@@ -104,13 +104,14 @@ import {
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.5-deferred-retire";
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
-} from "./multi-radar-display-v9.js?v=9.18.5-deferred-retire";
+} from "./multi-radar-display-v9.js?v=9.18.10-atomic-3d";
+import { supplementalObservedAnchor } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
 import { stormTrackPresentation } from "./storm-track-presentation-v1.js?v=40dbz-v1";
-import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.16.10";
+import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.js?v=9.18.8-track-visibility";
 import { clearReflectivityOverlaysForDoppler } from "./reflectivity-overlay-mode-v1.js?v=20261013";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
@@ -137,7 +138,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.18.2-mobile-navigation-tiles";
+} from "./context-layers/basemap-manager-v1.js?v=9.18.9-pan-persist";
 
 import {
   createQueenslandTownLabelLayer
@@ -161,15 +162,15 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=9.15.0-unplanned";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=9.18.8-gpu-pick";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.14.0";
+} from "./context-layers/power-outages-operational-v1.js?v=9.18.8-gpu-pick";
 
 import {
   initialiseOperationalRiverGauges
-} from "./context-layers/river-gauges-operational-v1.js?v=9.13.2";
+} from "./context-layers/river-gauges-operational-v1.js?v=9.18.11-gateway-guard";
 
 import {
   initialiseOperationalQfdTechnicalRescues
@@ -196,6 +197,8 @@ import {
 } from "./doppler-layer-transition-v1.js?v=9.18.5-deferred-retire";
 import {createDeferredImageryRetirement}
   from "./imagery-layer-retirement-v1.js?v=9.18.5-gpu-lifetime";
+import {createSupplementalRadarVolumes}
+  from "./supplemental-radar-volume-v1.js?v=9.18.10-bounded-source-3d";
 
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
@@ -233,6 +236,18 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
+// An independent map control remains reachable even when the sidebar is hidden.
+const controlsSidebar=$("controlSidebar");
+const sidebarToggle=$("sidebarToggle");
+function setSidebarCollapsed(collapsed){
+  $("app").classList.toggle("sidebar-collapsed",Boolean(collapsed));
+  controlsSidebar.hidden=Boolean(collapsed);
+  sidebarToggle.setAttribute("aria-expanded",String(!collapsed));
+  sidebarToggle.textContent=collapsed?"Show controls":"Hide controls";
+  sidebarToggle.title=collapsed?"Restore radar and layer controls":"Maximise weather map";
+  requestAnimationFrame(()=>{viewer.resize();scene.requestRender();});
+}
+sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.hidden));
 // The one isolated QA route compares deferred GPU cleanup and settled
 // gazetteer work with the current production code. Never enabled at root.
 const BOUNDED_RADAR_RECOVERY_QA =
@@ -270,6 +285,7 @@ const radarImageryHandover = createRadarImageryHandover({
 });
 let additionalRadarSiteIds=[];
 let previousPrimaryRadarId=null;
+let supplementalVolumeDisplay=null;
 const supplementalRadarDisplay=createSupplementalRadarDisplay({
   imageryLayers:viewer.imageryLayers,scene,
   loadFrame:loadBomReflectivityMosaicAtTime,
@@ -277,6 +293,8 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   createLayer:provider=>new Cesium.ImageryLayer(provider),
   getWindow:reflectivityWindowForRegion,
   retireLayer:deferredImageryRetirement?.retire,
+  onDisplay:(site,frame,utc)=>supplementalVolumeDisplay?.render(site,frame,utc),
+  onHide:site=>supplementalVolumeDisplay?.hide(site),
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -578,6 +596,20 @@ try {
 }
 
 let model = null;
+supplementalVolumeDisplay=createSupplementalRadarVolumes({
+  Cesium,scene,getModel:()=>model,
+  getSettings:()=>({
+    blob:useBlobVolume(),
+    occupancyThreshold:Number($("occupancyThreshold").value),
+    minimumDbzh:volumeDisplayThresholdDbz($("minimumDbzh").value),
+    pointSize:Number($("pointSize").value),
+    verticalScale:Number($("verticalScale").value),
+    volumePercent:Number($("volumeOpacity").value)
+  }),
+  inferColumn,representativeDbzForCategory,pixelCentreMercator,
+  webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
+  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity
+});
 let validation = null;
 let latestFrame = null;
 let inferredCollection = null;
@@ -1189,17 +1221,39 @@ function refreshAdditionalRadarChoices(){
     (1+additionalRadarSiteIds.length)+" BoM radar sites selected";
   supplementalRadarDisplay.configure(primary,additionalRadarSiteIds);
 }
+function supplementalAnchorForFrame(frame){
+  return frame && frame.sourceMetadata?.region===selectedRadarRegion() &&
+    !isNativeDopplerPlayback()
+    ? supplementalObservedAnchor(frame,hybridFrames,15) : null;
+}
+function displaySupplementalHoldStatus(anchor){
+  const note=$("supplementalHoldNote");
+  const sites=supplementalRadarDisplay.visibleSites;
+  const holding=Boolean(anchor?.held && sites.length);
+  note.hidden=!holding;
+  if(holding)note.textContent=
+    "Additional radars: original BoM image held at "+
+    formatProductTime(anchor.observedUtc,{compact:true})+
+    " (+"+Math.round(anchor.ageMinutes)+" min display gap)";
+}
 function showSupplementalRadarSites(frame){
-  // No obsolete source area or stale rain inside Doppler-only playback.
-  if(!frame || frame.sourceMetadata?.region!==selectedRadarRegion() ||
-     frame.sourceMetadata?.temporalInference || isNativeDopplerPlayback()){
-    // Supplemental sites never inherit interpolated source timestamps.
+  // Temporal interpolation is PRIMARY display-only; secondary sites retain
+  // their most recent authentic scan for at most 15 minutes, never relabelled
+  // with the inferred timestamp. A new selection while paused also works.
+  const anchor=supplementalAnchorForFrame(frame);
+  if(!anchor){
     void supplementalRadarDisplay.show(null,{enabled:false});
+    displaySupplementalHoldStatus(null);
     return;
   }
-  void supplementalRadarDisplay.show(frame.observedUtc,{
-    enabled:true,alpha:Number($("radarOpacity").value)/100
-  });
+  void supplementalRadarDisplay.prepare(anchor.observedUtc).then(()=>{
+    if(latestFrame===frame && !isNativeDopplerPlayback()){
+      supplementalRadarDisplay.commit(anchor.observedUtc,{
+        alpha:Number($("radarOpacity").value)/100
+      });
+      displaySupplementalHoldStatus(anchor);
+    }
+  }).catch(error=>console.warn("Extra radar staging unavailable",error));
 }
 function clearMultiRadarSelectionWarning(){
   const warning=$("multiRadarStatus");
@@ -3174,18 +3228,12 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
   return true;
 }
 
-// Every genuine storm point is checked against the PREVIOUS issued 90m
-// drawn polygon, allowing half a kilometre for radar centroid noise.
-// Playback may still re-anchor on genuine forward translation as before.
-const THREAT_CONE_CONTROLLER_OPTIONS = Object.freeze({
-  rolloverMinutes:30,
-  turnThresholdDegrees:12,
-  breachMarginKm:0.5,
-  reissueOnObservedExit:true,
-  observedExitMarginKm:0.5,
+// One shared deterministic rule for ordinary and held measured cones.
+const THREAT_CONE_CONTROLLER_OPTIONS=Object.freeze({
+  rolloverMinutes:30, turnThresholdDegrees:12, breachMarginKm:0.5,
+  reissueOnObservedExit:true, observedExitMarginKm:0.5,
   followMeasuredPosition:true
 });
-
 function precedingMeasuredThreatCone(index, trackId, maximumHoldMinutes = 15) {
   const at = Date.parse(hybridFrames[index]?.observedUtc);
   if (!Number.isFinite(at) || !trackId) return null;
@@ -3400,6 +3448,12 @@ function renderHybridTracks(index) {
   } finally {
     hybridSource.entities.resumeEvents();
     stormTrackLabelOverlay.setMarkers(stormTrackMarkers);
+    // Visibility must be honoured on paused frames AND after rebuilding a
+    // frame: no fresh history trail can reappear while labels are off.
+    const trackAnnotationsVisible =
+      Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
+    stormTrackLabelOverlay.setVisible(trackAnnotationsVisible);
+    setStormTrackTrailVisibility(hybridSource.entities,trackAnnotationsVisible);
   }
   scene.requestRender();
 }
@@ -3514,6 +3568,15 @@ async function showHybridFrame(index) {
     previousFrame, frame, hybridCombinedSchedule.length > 0, Boolean(surfaceLayer)
   );
   motionTransition.cancel();
+  // Start decoding original supplemental windows while primary wind/volume
+  // preparation proceeds. The PRIMARY image remains at its old timestamp
+  // until all available secondary tiles can reveal atomically.
+  const supplementalAnchor=additionalRadarSiteIds.length
+    ? supplementalAnchorForFrame(frame):null;
+  const supplementalMeasurable=Boolean(supplementalAnchor);
+  const extraPreparation=supplementalMeasurable
+    ? supplementalRadarDisplay.prepare(supplementalAnchor.observedUtc)
+    : Promise.resolve([]);
   const motionGeneration=visualMotionGeneration;
   // A display-only motion-warp rain image has NO matching measured 3-D
   // geometry. Never show it when inferred volumetric structure is visible:
@@ -3567,6 +3630,11 @@ async function showHybridFrame(index) {
     return false;
   }
   if(renderToken!==hybridSceneRenderToken)return;
+  // Bounded individual supplemental deadlines avoid holding the primary
+  // indefinitely on a failed optional BoM tile. The genuine scan may then
+  // commit without the unavailable site, never using old-UTC pixels.
+  await extraPreparation;
+  if(renderToken!==hybridSceneRenderToken)return;
   const radarStart=performance.now();
   let surfaceApplied=false,geometryCommitted=false;
   const commitMeasuredGeometry=()=>{
@@ -3580,6 +3648,15 @@ async function showHybridFrame(index) {
     applyHybridVolumeMode(requestedIndex);
     renderHybridTracks(requestedIndex);
     syncSevereStormAlerts(requestedIndex);
+    if(supplementalMeasurable){
+      supplementalRadarDisplay.commit(supplementalAnchor.observedUtc,{
+        alpha:Number($("radarOpacity").value)/100
+      });
+      displaySupplementalHoldStatus(supplementalAnchor);
+    }else{
+      void supplementalRadarDisplay.show(null,{enabled:false});
+      displaySupplementalHoldStatus(null);
+    }
     volumeConstructionMs=performance.now()-began;
     geometryCommitted=true;
   };
@@ -3616,7 +3693,8 @@ async function showHybridFrame(index) {
   // clocks finally advance together, never at the beginning of a render.
   hybridFrameIndex=requestedIndex;
   latestFrame=frame;
-  showSupplementalRadarSites(frame);
+  // Supplemental image+volume reveal already happened synchronously inside
+  // primary beforeReveal; never run a second asynchronous show/hide here.
   const temporalInferred=isTemporallyInferredRadarFrame(frame);
   // The handover has already presented the matching measured 3-D geometry
   // in the same Cesium frame as this source raster. Wind-only events reuse it.
@@ -4582,16 +4660,33 @@ async function loadLatest() {
   const renderToken =
     ++hybridSceneRenderToken;
 
+  // Latest-only stays source-atomic, and never invents supplemental scans.
+  const latestSupplementalAnchor=additionalRadarSiteIds.length
+    ? supplementalAnchorForFrame(frame):null;
+  if(latestSupplementalAnchor)
+    await supplementalRadarDisplay.prepare(latestSupplementalAnchor.observedUtc);
+  if(renderToken!==hybridSceneRenderToken)return;
   const surfaceApplied =
     await renderSurface(
       frame,
-      renderToken
+      renderToken,{
+        onBeforeReveal:()=>{
+          if(latestSupplementalAnchor){
+            supplementalRadarDisplay.commit(latestSupplementalAnchor.observedUtc,{
+              alpha:Number($("radarOpacity").value)/100
+            });
+            displaySupplementalHoldStatus(latestSupplementalAnchor);
+          }else{
+            void supplementalRadarDisplay.show(null,{enabled:false});
+            displaySupplementalHoldStatus(null);
+          }
+        }
+      }
     );
 
   if (!surfaceApplied) {
     return;
   }
-  showSupplementalRadarSites(frame);
 
   renderInferredVolume(
     frame
@@ -4981,6 +5076,7 @@ $("volumeOpacity").addEventListener("input", event => {
   setVolumeDisplayOpacity(inferredCollection,percent);
   setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
   setVolumeDisplayOpacity(hybridTrackFootprintCollection,percent);
+  supplementalVolumeDisplay?.setOpacity(percent);
   scene.requestRender();
 });
 
@@ -4998,6 +5094,7 @@ $("minimumDbzh").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(
@@ -5025,6 +5122,7 @@ $("occupancyThreshold").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(
@@ -5052,6 +5150,7 @@ $("verticalScale").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(
@@ -5077,6 +5176,7 @@ $("pointSize").addEventListener(
       renderInferredVolume(
         latestFrame
       );
+      supplementalVolumeDisplay?.refresh();
 
       if (hybridResults.length) {
         applyHybridVolumeMode(

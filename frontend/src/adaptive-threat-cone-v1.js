@@ -267,18 +267,23 @@ export function createAdaptiveThreatConeController({
         reason === "sustained-steering-change" ||
         reason === "steering-change" ||
         reason === "direction-change";
-      // A convincing two/three-interval displacement gives us a measured
-      // orientation when the last individual step is too small to qualify.
-      // If neither single-scan nor sustained motion is trustworthy, an
-      // observed escape reanchors but does NOT invent a direction.
-      const headingEvidence=shouldReorient
-        ? (sustainedSteering && (!instantaneousSteeringSupported ||
-            reason==="sustained-steering-change")
-            ? sustainedSteering.heading_degrees
-            : instantaneousSteeringSupported
-              ? Number(proposed.measured_heading_degrees)
-              : null)
-        : null;
+      // Crucial: ONCE a slow sustained turn has reoriented the cone, the
+      // next measured-position reanchor must NOT silently rebuild from the
+      // old short-history smoother. Keep supported cumulative steering on
+      // ALL subsequent reissues until the observed direction changes.
+      // Instantaneous measured steering still wins when that single scan
+      // provides a strong, credible displacement.
+      const sustainedNeedsOverride=Boolean(sustainedSteering) &&
+        bearingDelta(sustainedSteering.heading_degrees,
+          proposed.heading_degrees)>=steeringChangeThresholdDegrees;
+      const headingEvidence = sustainedSteering &&
+        (!instantaneousSteeringSupported ||
+         reason==="sustained-steering-change") &&
+        (shouldReorient || sustainedNeedsOverride)
+        ? sustainedSteering.heading_degrees
+        : shouldReorient && instantaneousSteeringSupported
+          ? Number(proposed.measured_heading_degrees)
+          : null;
       if (Number.isFinite(headingEvidence)) {
         proposed = buildCone(track, observation, {
           ...buildOptions,forceMeasuredHeading:true,

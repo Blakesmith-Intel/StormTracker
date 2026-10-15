@@ -1,31 +1,35 @@
-# Accepted StormTracker V9.18 diagnostic — 13 October 2026
+# StormTracker V9.19.0 — user-accepted production baseline (15 October 2026)
 
-**Functional acceptance:** user confirmed the browser performance, radar frame synchronisation, satellite persistence, secondary radar inferred volumes, and optional river-history backoff were working sufficiently to continue development.
+**User approval:** after the 15 October source-faithful Mt Isa ST0003 cone-confidence QA and earlier preview testing, the operator explicitly accepted the `next-baseline` candidate and requested that it become the new sealed production baseline. The exact V9.19.0 release source was separately validated for production-route guard parity.
 
-| Reference | Commit | Purpose |
+| Reference | Immutable commit | Purpose |
 | --- | --- | --- |
-| Sealed production V9.18.0 | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` | Public application root, unchanged |
-| Accepted diagnostic | `acfa0ebd3717a793369e3e887e2d1a54785620b7` | Next development base, `/preview/radar-history-fix/` |
-| Recovery branch | `restore/v9.18-accepted-diagnostic-20261013` | Immutable working recovery point |
-| Pre-cleanup state | `archive/pre-cleanup-20261013` | Access to historic experiments and installers |
+| **Sealed production V9.19.0** | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` | Public root `https://blakesmith-intel.github.io/StormTracker/`, pinned build |
+| **Release tag** | `v9.19.0` | Must dereference to the exact production source SHA |
+| **Recovery branch** | `restore/v9.19.0` | New immutable recovery point at the same source |
+| Historical sealed production V9.18.0 | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` | Preserve tag `v9.18.0` and branch `restore/v9.18.0` for rollback |
+| Historical accepted V9.18 diagnostic | `acfa0ebd3717a793369e3e887e2d1a54785620b7` | Remains accessible at `/preview/radar-history-fix/` |
+| Repository archive | `archive/pre-cleanup-20261013` | Historical previews/installers if needed |
 
-## Accepted behaviour
+## Release acceptance
 
-- Reliable mobile/desktop Cesium navigation and weather playback; no recurring deleted-texture errors observed in final acceptance logs.
-- Primary and up to three additional BoM radar windows use the **same actual observed UTC** and a staged, atomic handover to prevent flashes or mixed-time imagery.
-- Same regional satellite background and official QLD/NSW detail remain visible through camera movement.
-- Empirical inferred 3-D for primary and additional non-overlapping radar footprints, >=40 dBZ, limited glyph budgets and stable Cesium collection reuse.
-- Existing primary-only storm tracks, Doppler calibration constraints, selected +90-minute cone, labels and paused-frame trail toggle remain unchanged.
-- River-history station tables are optional: failure is serialised and stops further requests for a 15-minute cooldown; BoM public bulletin classifications remain authoritative.
+- Genuine BoM reflectivity (dBZ), source-time stability, multi-radar nonblocking playback and <=3 additional radar windows.
+- Continuous satellite regional view: Queensland official imagery; coherent DEA NSW at regional scale, NSW official detail at closer zoom.
+- Responsive Cesium with guarded graphics/hover interaction, deferred imagery retirement, bounded data history and incidental upstream error isolation.
+- Sidebar collapse/restore; storm Labels off by default, primary-radar-only explanatory note. Geographical names independent.
+- Displayed storm 0m centroid marker plus +30/+60/+90m forecast segments. Cones issued only on reliable source-measured motion; withheld on unsupported low-speed/abrupt centroid turns, including the reviewed Mt Isa scenario.
+- Flood gauge colours green qualifying minor rapid rise / yellow BoM moderate / red BoM major / cyan unusual tidal screening.
+- Road closures, unplanned electricity outages, flood context and selected QFD response incidents preserved.
 
-## Known non-blockers
+**Warnings:** Interpolated display frames are not meteorological measurements; secondary radar imagery does not generate extra storm IDs. A storm cone is a modelled trend envelope, not an official BoM warning. Doppler radial velocity is not storm translation speed.
 
-- Microsoft Edge third-party storage/tracking warnings for Cesium assets served from unpkg.
-- Cesium warns when an unsupported geometry outline is clamped to terrain. No confirmed functional impact.
-- One genuine upstream BoM recent river station-history request may still return HTTP 502; later requests do not burst following rejection.
+## Source/release integrity rules
 
-## Development and release rules
+1. `scripts/build-current-site.sh` must copy the public root from **the exact V9.19.0 release commit**, never from mutable `main`.
+2. `.github/workflows/pages.yml` must verify the production `/BUILD.txt`, source guard assets, source-data integrity and historical QA `BUILD.txt` before sealing.
+3. The `v9.19.0` release tag is created **only after the public website verifies successfully**; it must resolve to `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0`.
+4. The previous V9.18.0 tag and recovery branch must never move.
+5. Do not silently publish mutable `/preview/next-baseline/` alongside the sealed release. The historical accepted V9.18 diagnostic remains.
+6. Changes for V10 experimental Doppler/wind/circulation detection require new branches and validated archived authentic AURA measurements.
 
-Create each new feature from the accepted diagnostic source. Never change either pinned accepted or production source SHA. Run all frontend and relay tests, publish a new isolated preview as needed, review native BoM source-time integrity and scientific claims, and obtain browser/mobile approval before production promotion.
-
-Current V10 priorities: damaging/destructive straight-line winds and hook-echo/tornadic circulation candidates using historical Queensland storm cases. See `ACTIVE_WISHLIST.md`, `HANDOVER_V9.18.0.md` and `SCIENTIFIC_CONTRACT.md` for current architecture and constraints.
+Documentation: `docs/RELEASE_NOTES_V9.19.0.md`, `HANDOVER_V9.19.0.md`, `USER_GUIDE_V9.19.0.md`, `BASELINE_RESTORE.md`.

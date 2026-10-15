@@ -1,4 +1,4 @@
-name: Deploy StormTracker — sealed production and accepted V9.18 QA
+name: Deploy StormTracker — sealed V9.19.0 production and historical V9.18 QA
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -49,23 +49,33 @@ jobs:
           node --check checked/accepted-v9.18/relay/worker.js
           test "$(git -C checked/accepted-v9.18 rev-parse HEAD)" = "acfa0ebd3717a793369e3e887e2d1a54785620b7"
 
-      - name: Checkout sealed production source
+      - name: Checkout sealed V9.19.0 production source
         uses: actions/checkout@v4
         with:
-          ref: 66d3da447ef7a4df53e7df49aa1ac06f86cb5afd
-          path: checked/production-v9.18.0
+          ref: d317c17a6a8f706a0d867cb852db1e8d3f9ffac0
+          path: checked/production-v9.19.0
           persist-credentials: false
 
-      - name: Validate sealed production source
+      - name: Validate sealed V9.19.0 production source
         run: |
           set -euo pipefail
-          (cd checked/production-v9.18.0 && npm test)
-          node --check checked/production-v9.18.0/relay/worker.js
-          test "$(git -C checked/production-v9.18.0 rev-parse HEAD)" = "66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
-          test -f checked/production-v9.18.0/docs/HANDOVER_V9.18.0.md
-          test -f checked/production-v9.18.0/docs/USER_GUIDE_V9.18.0.md
+          (cd checked/production-v9.19.0 && npm test)
+          node --check checked/production-v9.19.0/relay/worker.js
+          test "$(git -C checked/production-v9.19.0 rev-parse HEAD)" = "d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
+          test -f checked/production-v9.19.0/docs/HANDOVER_V9.19.0.md
+          test -f checked/production-v9.19.0/docs/USER_GUIDE_V9.19.0.md
+          test -f checked/production-v9.19.0/docs/RELEASE_NOTES_V9.19.0.md
+          grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' checked/production-v9.19.0/frontend/src/live3d-operational-v9.js
 
-      - name: Build sealed production, accepted QA, and isolated next-baseline preview
+      - name: Verify historical V9.18.0 rollback source is immutable
+        run: |
+          set -euo pipefail
+          tag_commit="$(git ls-remote origin refs/tags/v9.18.0 | cut -f1)"
+          branch_commit="$(git ls-remote origin refs/heads/restore/v9.18.0 | cut -f1)"
+          test "$tag_commit" = "66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
+          test "$branch_commit" = "66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
+
+      - name: Build exact sealed production and historical accepted QA
         run: bash scripts/build-current-site.sh
 
       - name: Configure GitHub Pages
@@ -80,7 +90,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Verify sealed production and both separate QA previews
+      - name: Verify sealed V9.19.0 production and historical V9.18 QA
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -89,14 +99,43 @@ jobs:
           base="${PAGES_URL%/}"
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq '66d3da447ef7a4df53e7df49aa1ac06f86cb5afd' <<< "$root"
+          grep -Fq 'SEALED StormTracker V9.19.0 source d317c17a6a8f706a0d867cb852db1e8d3f9ffac0' <<< "$root"
           grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$preview"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \
-            | grep -Fq 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500'
-          candidate="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/next-baseline/BUILD.txt")"
-          grep -Fq 'CANDIDATE StormTracker next baseline source' <<< "$candidate"
+            | grep -F 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
-            "$base/preview/next-baseline/src/supplemental-observed-anchor-v1.js" \
-            | grep -Fq 'supplementalObservedAnchor'
-          echo 'Verified sealed production, accepted diagnostic, and next-baseline candidate.'
+            "$base/src/live3d-operational-v9.js" | grep -F 'PUBLISHED_PRODUCTION_RUNTIME' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/adaptive-threat-cone-v1.js" | grep -F 'credibleMeasuredMotionAtObservation' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/supplemental-observed-anchor-v1.js" | grep -F 'shouldPrepareSupplementalForPlayback' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/live3d-operational-v9.html" | grep -F 'trackLabelsScopeNote' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/context-layers/river-gauge-layer-v1.js" | grep -F '"#e53935"' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/data/nsw-radar-places-v1.json" | grep -F 'StormTrackerNSWRadarPlacesV1' >/dev/null
+          echo 'Verified exact V9.19.0 production root and historical accepted V9.18 diagnostic.'
+
+      - name: Seal V9.19.0 annotated tag only after public verification
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          release_sha="d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
+          tag="v9.19.0"
+          restore="$(git ls-remote origin refs/heads/restore/v9.19.0 | cut -f1)"
+          test "$restore" = "$release_sha"
+          git fetch --no-tags origin "$release_sha"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-list -n 1 "$tag")" = "$release_sha"
+            echo "Existing release tag points to the sealed V9.19.0 source."
+          else
+            git -c user.name="StormTracker Release Automation" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                tag -a "$tag" "$release_sha" \
+                -m "StormTracker V9.19.0 — visually accepted production baseline (15 October 2026)"
+            git push origin "refs/tags/$tag"
+            echo "Created annotated $tag at $release_sha"
+          fi

@@ -48,9 +48,15 @@ for(const [name,source] of [["power",power],["road",road],["gauge",gauge]]){
   assert.match(source,/LEFT_CLICK/,
     name+" must keep explicit marker click interaction functional");
 }
-assert.match(build,/grep -Fq 'Keep all currently visible satellite layers' "\$candidate\/src\/context-layers\/basemap-manager-v1\.js"/);
-assert.doesNotMatch(build,/cp "\$accepted\/src\/context-layers\/basemap-manager-v1\.js" "\$candidate/,
-  "candidate deployment must not replace the fixed satellite navigation manager");
-assert.doesNotMatch(build,/for filename in power-outages-operational-v1\.js river-gauges-operational-v1\.js flood-road-closures-operational-v1\.js river-gauge-layer-v1\.js basemap-manager-v1\.js;/,
-  "candidate deployment must not replace GPU hover guard with the accepted-only version");
-console.log("PASS continuous regional satellite imagery while panning, unchanged click picks, disabled repeated hover picks and candidate build source wiring.");
+assert.match(build,/production="checked\/production-v9\.19\.0\/frontend"/,
+  "the public site must copy the tested V9.19.0 release source");
+assert.match(build,/grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' "_site\/src\/live3d-operational-v9\.js"/,
+  "published production must preserve preview safety behavior");
+assert.match(build,/grep -Fq 'persistentSatelliteCoverage:' "_site\/src\/live3d-operational-v9\.js"/,
+  "satellite continuation must be part of the sealed root");
+assert.doesNotMatch(build,/candidate="_site\/preview\/next-baseline"/,
+  "old mutable next-baseline preview is retired when production is sealed");
+assert.match(build,/grep -Fq 'const suppressHoverGpuPicking' "_site\/src\/context-layers\/power-outages-operational-v1\.js"/);
+assert.match(build,/grep -Fq 'const suppressHoverGpuPicking' "_site\/src\/context-layers\/flood-road-closures-operational-v1\.js"/);
+assert.match(build,/grep -Fq 'const suppressHoverGpuPicking' "_site\/src\/context-layers\/river-gauges-operational-v1\.js"/);
+console.log("PASS QLD/NSW satellite continuity, GPU-safe click interactions and exact V9.19.0 source-based production build.");

@@ -65,7 +65,7 @@ jobs:
           test -f checked/production-v9.18.0/docs/HANDOVER_V9.18.0.md
           test -f checked/production-v9.18.0/docs/USER_GUIDE_V9.18.0.md
 
-      - name: Build exactly the two supported browser sites
+      - name: Build sealed production, accepted QA, and isolated next-baseline preview
         run: bash scripts/build-current-site.sh
 
       - name: Configure GitHub Pages
@@ -80,7 +80,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Verify both public build markers
+      - name: Verify sealed production and both separate QA previews
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -94,4 +94,9 @@ jobs:
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \
             | grep -Fq 'SUPPLEMENTAL_VOLUME_MAX_GLYPHS=1500'
-          echo 'Verified sealed production and accepted diagnostic browser build.'
+          candidate="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/next-baseline/BUILD.txt")"
+          grep -Fq 'CANDIDATE StormTracker next baseline source' <<< "$candidate"
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/preview/next-baseline/src/supplemental-observed-anchor-v1.js" \
+            | grep -Fq 'supplementalObservedAnchor'
+          echo 'Verified sealed production, accepted diagnostic, and next-baseline candidate.'

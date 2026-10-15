@@ -914,3 +914,36 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
   .radar-site-label {width:36px;height:36px}
   .radar-site-glyph {width:22px;height:22px}
 }
+
+
+/* Next baseline preview: a map-first layout on desktop AND mobile.
+   The button stays in #nav so a hidden sidebar never traps its own opener. */
+#app.sidebar-collapsed {
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);
+}
+#app.sidebar-collapsed > #controlSidebar {display:none!important;}
+#app.sidebar-collapsed > #mapPanel {
+  grid-column:1;grid-row:1;min-width:0;min-height:0;
+}
+#sidebarToggle {white-space:nowrap; flex:0 0 auto;}
+#supplementalHoldNote {
+  position:absolute;z-index:var(--stormtracker-control-z);
+  left:8px;bottom:53px;max-width:min(460px,calc(100% - 16px));
+  padding:4px 7px;border:1px solid #d8bd6d8a;border-radius:5px;
+  color:#ffe4a3;background:#091720e8;font-size:10px;pointer-events:none;
+}
+@media(max-width:700px) {
+  #app.sidebar-collapsed {
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr);
+  }
+  #nav #sidebarToggle {
+    min-width:34px;max-width:34px;padding:3px 5px;
+    font-size:0;overflow:hidden;
+  }
+  #nav #sidebarToggle::before {
+    content:"☰";font-size:17px;line-height:1;
+  }
+  #supplementalHoldNote {left:5px;bottom:49px;font-size:9px;}
+}

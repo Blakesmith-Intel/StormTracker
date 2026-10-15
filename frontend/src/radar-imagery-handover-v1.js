@@ -156,8 +156,26 @@ export function createRadarImageryHandover({
     return true;
   }
 
+  // A decoded supplemental tile is already staged underneath its previous
+  // measured scan. The primary radar's beforeReveal callback calls this
+  // synchronously, so every selected source changes observation time within
+  // ONE Cesium render transaction. No premature hide/reveal flicker.
+  function adoptPrepared(layer,{alpha=1}={}) {
+    if(!layer || imageryLayers.indexOf(layer)<0)
+      throw new Error("Only a staged Cesium imagery layer may be adopted");
+    cancelPending();
+    const previous=activeLayer;
+    layer.alpha=Math.max(0,Math.min(1,Number(alpha)||0));
+    layer.show=true;
+    imageryLayers.raiseToTop(layer);
+    activeLayer=layer;
+    if(previous && previous!==layer)safeRemove(previous);
+    scene.requestRender();
+    return activeLayer;
+  }
+
   return {
-    replace, reset, setOpacity,
+    replace, reset, setOpacity, adoptPrepared,
     get currentLayer() { return activeLayer; }
   };
 }

@@ -21,5 +21,5 @@ assert.match(labels,/container\.appendChild\(root\)/);
 assert.match(labels,/root\.className="qld-place-foreground"/);
 assert.match(runtime,/container: document\.getElementById\("mapPanel"\)/);
 assert.match(css,/\.qld-place-foreground\s*\{[^}]*pointer-events:none/);
-assert.match(html,/operational-dashboard-v9-1\.css\?v=9\.16\.13-top-geography/);
+assert.match(html,/operational-dashboard-v9-1\.css\?v=(?:9\.16\.13-top-geography|v9-next-full-map-controls)/);
 console.log("PASS permanent foreground labels above Cesium and future weather layers with clickable UI/attribution reserved higher.");

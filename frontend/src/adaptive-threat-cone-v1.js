@@ -7,11 +7,52 @@ import { geodesicMotion } from "./tracking.js";
 const bearingDelta = (a, b) =>
   Math.abs(((Number(a) - Number(b) + 540) % 360) - 180);
 
+// Use the polygon actually drawn on the map when one is available; the
+// previous infinite-wedge approximation included an invisible extension
+// behind the storm and past the final +90m marker. The local ENU-style
+// projection is sufficient for the bounded regional envelopes we display.
+function withinDisplayedConePolygon(cone, point, marginKm) {
+  const origin=cone?.samples?.[0]?.centre;
+  const boundary=cone?.polygon;
+  if(!origin || !Array.isArray(boundary) || boundary.length<3)return null;
+  const xy=position=>{
+    const distance=distanceKm(origin.longitude,origin.latitude,
+      Number(position.longitude),Number(position.latitude));
+    const bearing=initialBearingDegrees(origin.longitude,origin.latitude,
+      Number(position.longitude),Number(position.latitude))*Math.PI/180;
+    return {x:distance*Math.sin(bearing),y:distance*Math.cos(bearing)};
+  };
+  const vertices=boundary.map(xy);
+  const target=xy(point);
+  if(![target,...vertices].every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)))
+    return null;
+  const tolerance=Math.max(0,Number(marginKm)||0);
+  let inside=false;
+  for(let i=0,j=vertices.length-1;i<vertices.length;j=i++){
+    const a=vertices[j],b=vertices[i];
+    const dx=b.x-a.x,dy=b.y-a.y;
+    const lengthSquared=dx*dx+dy*dy;
+    const t=lengthSquared>0
+      ?Math.max(0,Math.min(1,((target.x-a.x)*dx+(target.y-a.y)*dy)/lengthSquared))
+      :0;
+    if(Math.hypot(target.x-(a.x+t*dx),target.y-(a.y+t*dy))<=tolerance+1e-7)
+      return true;
+    if((a.y>target.y)!==(b.y>target.y)){
+      const crossing=a.x+(target.y-a.y)*(b.x-a.x)/(b.y-a.y);
+      if(target.x<crossing)inside=!inside;
+    }
+  }
+  return inside;
+}
+
 export function pointWithinIssuedThreatCone(cone, point, marginKm = 0) {
   const origin = cone?.samples?.[0]?.centre;
   const longitude = Number(point?.longitude ?? point?.centroid_longitude);
   const latitude = Number(point?.latitude ?? point?.centroid_latitude);
   if (!origin || !Number.isFinite(longitude) || !Number.isFinite(latitude)) return false;
+  const polygonResult=withinDisplayedConePolygon(cone,{longitude,latitude},marginKm);
+  if(polygonResult!==null)return polygonResult;
+  // Older synthetic / legacy cones may expose only sampled centres.
   const distance = distanceKm(origin.longitude, origin.latitude, longitude, latitude);
   const bearing = distance > 0.00001
     ? initialBearingDegrees(origin.longitude, origin.latitude, longitude, latitude)
@@ -36,6 +77,8 @@ export function createAdaptiveThreatConeController({
   minimumSteeringSpeedKmh = 12,
   minimumSteeringMotionKm = 1.25,
   breachMarginKm = 0.5,
+  reissueOnObservedExit = true,
+  observedExitMarginKm = breachMarginKm,
   minimumTranslationKm = 4,
   minimumTranslationMinutes = 5,
   followMeasuredPosition = false,
@@ -76,7 +119,8 @@ export function createAdaptiveThreatConeController({
       };
     } else {
       const elapsed = (observedEpoch - previous.issueEpoch) / 60000;
-      const centreOutside = !pointWithinIssuedThreatCone(previous.cone, observation, breachMarginKm);
+      const centreOutside = reissueOnObservedExit &&
+        !pointWithinIssuedThreatCone(previous.cone, observation, observedExitMarginKm);
       const prospectiveOutside = proposed.samples.some(sample => {
         // A forecast extending beyond the previous 90-minute horizon cannot
         // be called a breach; the periodic rollover handles ageing cones.
@@ -136,7 +180,12 @@ export function createAdaptiveThreatConeController({
       // Reissuing with the same smoothed heading leaves the cone pointed in
       // the wrong direction even when a measured turn is recognised.
       // Only force the actual heading with sufficient displacement/speed.
-      if (reason === "steering-change" || (reason === "direction-change" &&
+      const reliableBreachSteering = reason === "observed-outside" &&
+        Number(track?.motion?.distance_km) >= minimumSteeringMotionKm &&
+        Number(track?.motion?.speed_kmh) >= minimumSteeringSpeedKmh &&
+        Number.isFinite(Number(proposed.measured_heading_degrees));
+      if (reliableBreachSteering || reason === "steering-change" ||
+          (reason === "direction-change" &&
           Number(track?.motion?.distance_km) >= minimumSteeringMotionKm)) {
         proposed = buildCone(track, observation, {
           ...buildOptions, forceMeasuredHeading:true

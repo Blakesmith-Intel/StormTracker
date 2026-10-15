@@ -90,10 +90,10 @@ test("Both operational data sources invalidate expired map entities", () => {
 test("Browser release entrypoints bust old module and stylesheet caches", () => {
   const html=src("../live3d-operational-v9.html");
   const controller=src("../src/live3d-operational-v9.js");
-  assert.match(html,/live3d-operational-v9\.js\?v=9\.16-bom-native-rain30-v1/);
-  assert.match(html,/operational-dashboard-v9-1\.css\?v=9\.16\.13-top-geography/);
-  assert.match(controller,/flood-road-closures-operational-v1\.js\?v=9\.15\.0-unplanned/);
-  assert.match(controller,/power-outages-operational-v1\.js\?v=9\.14\.0/);
+  assert.match(html,/live3d-operational-v9\.js\?v=(?:9\.16-bom-native-rain30-v1|v9-next-inferred-mosaic-sidebar-cone)/);
+  assert.match(html,/operational-dashboard-v9-1\.css\?v=(?:9\.16\.13-top-geography|v9-next-full-map-controls)/);
+  assert.match(controller,/flood-road-closures-operational-v1\.js\?v=(?:9\.15\.0-unplanned|9\.18\.8-gpu-pick)/);
+  assert.match(controller,/power-outages-operational-v1\.js\?v=(?:9\.14\.0|9\.18\.8-gpu-pick)/);
 });
 test("Incident cards do not tunnel clicks to other contextual layers", () => {
   const road=src("../src/context-layers/flood-road-closures-operational-v1.js");

@@ -213,7 +213,10 @@ assert.match(html,/id="clearMultiRadars"/);
 assert.match(runtime,/function showSupplementalRadarSites\(frame\)/);
 assert.match(runtime,/frame\.sourceMetadata\?\.temporalInference/);
 assert.match(runtime,/supplementalRadarDisplay\.setOpacity/);
-assert.match(runtime,/hybridFrameIndex=requestedIndex;\s*latestFrame=frame;\s*showSupplementalRadarSites\(frame\)/);
+assert.match(runtime,/onBeforeReveal:commitMeasuredGeometry/,
+  "Secondary radar windows must commit inside the primary single-tile reveal");
+assert.match(runtime,/supplementalRadarDisplay\.commit\(supplementalAnchor\.observedUtc/,
+  "Supplemental site handovers use the authentic observation clock, even on inferred primary frames");
 assert.match(runtime,/showSupplementalRadarSites\(null\)/);
 assert.match(html,/id="dopplerOverlayRadar" value="66"/);
 passed++;

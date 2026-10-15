@@ -170,9 +170,10 @@ manager.destroy();
 assert.equal(layers.length,0);
 assert.equal(listeners.size,0);
 assert.ok(statuses.some(([msg])=>msg.includes("DEA regional")));
-// Regression: during sustained iOS panning the overlapping official QLD
-// and NSW detail sources must NOT issue more Cesium tile requests. DEA remains
-// available for orientation, and only the final settled view stages detail.
+// Regression: the last fully displayed QLD/NSW satellite imagery MUST remain
+// visible on every movement frame. Hiding detail exposes the Street fallback
+// where DEA regional tiles have not downloaded (notably northern Queensland).
+// Only the detail-versus-regional SCALE decision is frozen until settled.
 let resume=null,cancelled=0;
 const phone=createStormTrackerBasemapManager({
   Cesium,viewer,storage,suspendDetailDuringNavigation:true,
@@ -194,11 +195,11 @@ assert.equal(stateLayers.length,2);
 assert.ok(stateLayers.every(l=>l.show),"both state details visible when idle");
 assert.equal(phone.setNavigationActive(true),true);
 assert.equal(phone.navigationActive,true);
-assert.ok(stateLayers.every(l=>l.show===false),"gesture hides both overlapping state detail sources");
-assert.equal(phone.updateForCamera(),"navigation","post-render cannot reactivate hidden detail while dragging");
+assert.ok(stateLayers.every(l=>l.show&&l.alpha===1),"drag preserves satellite layers at their existing opacity");
+assert.equal(phone.updateForCamera(),"navigation","post-render cannot change detail scaling during drag");
 viewer.scene.camera.positionCartographic.height=7000;
 for(let n=0;n<12;n++)listeners.forEach(fn=>fn());
-assert.ok(stateLayers.every(l=>l.show===false),"sustained navigation causes zero new detail loading");
+assert.ok(stateLayers.every(l=>l.show&&l.alpha===1),"repeated drag renders cannot expose street fallback");
 assert.equal(layers[1].show,true,"official DEA stays available throughout drag");
 phone.setNavigationActive(false);
 assert.ok(resume,"release schedules one delayed high-detail recovery");
@@ -210,15 +211,15 @@ const settle=resume;
 viewer.scene.camera.positionCartographic.height=11000;
 settle();
 assert.equal(phone.navigationActive,false);
-assert.equal(phone.detailMode,"staging");
-assert.ok(stateLayers.every(l=>l.show),"detail resumes for the final camera location");
+assert.equal(phone.detailMode,"detailed");
+assert.ok(stateLayers.every(l=>l.show&&l.alpha===1),"detail persists after camera settles, not re-downloaded");
 assert.equal(layers[1].show,true,"regional imagery remains under detail");
 phone.setNavigationActive(true);
 phone.setNavigationActive(false);
 phone.destroy();
 assert.equal(resume,null,"destroy cancels pending detail restore");
 assert.equal(layers.length,0);
-console.log("PASS satellite mobile gesture suspends redundant NSW/QLD tile requests and resumes settled detail; source/credit/fade contracts retained.");
+console.log("PASS satellite panning preserves visible QLD/NSW imagery + alpha without Street flash; zoom staging, cancellation, source/credit/fade retained.");
 
 // Isolated street-only control group: previously selected Satellite in
 // localStorage and even an explicit future satellite switch must not

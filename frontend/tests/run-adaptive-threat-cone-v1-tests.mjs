@@ -275,3 +275,66 @@ assert.equal(weakExit.reason,"observed-outside");
 assert.equal(weakExit.cone.heading_degrees,90,
   "unreliable low-speed steering must not redirect the cone on a spatial breach");
 console.log("PASS displayed cone boundary, 500m grace, observed-exit parameter, forced supported steering and weak-motion restraint.");
+
+// Mt Isa ST0003 reproduction: a real cell first travels east, then turns
+// north in repeated 0.7-km / 5-minute source observations. None of those
+// sideways steps reaches the old 1.25km single-scan steering gate.
+// The cone must turn from multiple measured observations, even when the
+// previously issued polygon is wide enough to still contain the centroid.
+const isa={longitude:139.49,latitude:-20.73};
+const isaSamples=[{
+  ...observation(0,isa),sampled_area_km2:300
+}];
+const appendIsa=(m,bearing,km)=>{
+  const previous=isaSamples.at(-1);
+  const xy=step({longitude:previous.centroid_longitude,
+    latitude:previous.centroid_latitude},bearing,km);
+  isaSamples.push({...observation(m,xy),sampled_area_km2:300});
+};
+appendIsa(5,90,2);
+appendIsa(10,90,2);
+appendIsa(15,0,0.7);
+appendIsa(20,0,0.7);
+appendIsa(25,0,0.7);
+const isaTrack={track_id:"ST0003",history:isaSamples};
+const isaOptions={
+  rolloverMinutes:30,turnThresholdDegrees:12,
+  observedExitMarginKm:0.5,followMeasuredPosition:true
+};
+const isaAt=index=>evaluateChronologicalTrackThreatCone(isaTrack,
+  isaSamples[index],buildTrackThreatCone,{horizonMinutes:90},isaOptions);
+const earlyIsa=isaAt(2);
+assert.ok(Math.abs(earlyIsa.cone.heading_degrees-90)<3,
+  "original Mt Isa ST0003 cone should point east");
+const isaBeforeTurn=isaAt(3);
+assert.ok(Math.abs(isaBeforeTurn.cone.heading_degrees-90)<5,
+  "one 0.7-km shift must not force a noisy northward heading");
+const isaTurn=isaAt(4);
+assert.equal(isaTurn.reason,"sustained-steering-change",
+  "two genuine slow sideward steps must reissue without requiring a 1.25-km single frame");
+assert.ok(isaTurn.rebased);
+assert.ok(Math.abs(isaTurn.cone.heading_degrees)<4,
+  "ST0003 cone orientation must now point along measured northward motion");
+assert.equal(isaTurn.cone.steering_evidence,"sustained-measured-observations");
+assert.ok(distanceKm(
+  isaTurn.cone.samples[0].centre.longitude,isaTurn.cone.samples[0].centre.latitude,
+  isaSamples[4].centroid_longitude,isaSamples[4].centroid_latitude)<0.01,
+  "the reoriented cone must also originate at the CURRENT measured ST0003 centroid");
+assert.deepEqual(isaAt(4),isaTurn,
+  "scrubbing back and playing Mt Isa frames must not alter issued orientation");
+const isaLater=isaAt(5);
+assert.ok(Math.abs(isaLater.cone.heading_degrees)<4,
+  "once reoriented, the cone must not swing east again due to prior motion history");
+const sidewaysDrift=isaSamples.slice(0,4).concat([
+  {...observation(20,step(
+    {longitude:isaSamples[3].centroid_longitude,
+     latitude:isaSamples[3].centroid_latitude},0,0.10)),sampled_area_km2:300}
+]);
+const slowJitter=evaluateChronologicalTrackThreatCone(
+  {track_id:"ST0003",history:sidewaysDrift},sidewaysDrift.at(-1),
+  buildTrackThreatCone,{horizonMinutes:90},isaOptions);
+assert.ok(Math.abs(slowJitter.cone.heading_degrees-90)<5,
+  "small centroid noise without sustained 1.25km northward travel stays smoothed");
+console.log("PASS Mt Isa ST0003 slow sideways turn: 0.7km scans reorient measured cone, no jitter, deterministic source-time replay.");
+
+

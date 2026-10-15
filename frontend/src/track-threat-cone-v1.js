@@ -77,7 +77,8 @@ export function buildTrackThreatCone(
     directionChangeThresholdDegrees = 12,
     smoothingSegments = 3,
     maximumCredibleSpeedKmh = 160,
-    forceMeasuredHeading = false
+    forceMeasuredHeading = false,
+    steeringHeadingDegrees = null
   } = {}
 ) {
   const motion = track?.motion;
@@ -127,9 +128,13 @@ export function buildTrackThreatCone(
   ) ?? measuredHeadingDegrees;
   // A verified new steering heading must be allowed to overrule the
   // three-segment smoother. The smoother remains for ordinary noisy frames.
-  const headingDegrees = forceMeasuredHeading || directionChangeDetected
-    ? measuredHeadingDegrees
-    : smoothedHeadingDegrees;
+  const alternateMeasuredHeading =
+    steeringHeadingDegrees != null && Number.isFinite(Number(steeringHeadingDegrees))
+      ? ((Number(steeringHeadingDegrees)%360)+360)%360 : null;
+  const headingDegrees = forceMeasuredHeading
+    ? (alternateMeasuredHeading ?? measuredHeadingDegrees)
+    : directionChangeDetected ? measuredHeadingDegrees
+      : smoothedHeadingDegrees;
 
   const recentHeadingDeviation = headingHistory.length
     ? Math.max(
@@ -207,6 +212,11 @@ export function buildTrackThreatCone(
     direction_change_degrees: directionChangeDegrees,
     direction_change_detected: directionChangeDetected,
     steering_heading_applied: Boolean(forceMeasuredHeading),
+    steering_evidence: forceMeasuredHeading
+      ? alternateMeasuredHeading == null ? "latest-observation"
+        : "sustained-measured-observations"
+      : directionChangeDetected ? "significant-measured-turn"
+        : "short-history-smoothed",
     heading_half_angle_degrees: headingHalfAngleDegrees,
     footprint_radius_km: baseRadiusKm,
     recent_motion_segment_count: recent.length,

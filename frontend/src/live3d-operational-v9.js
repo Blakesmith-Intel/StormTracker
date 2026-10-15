@@ -132,11 +132,11 @@ import {
   createLiveLoopRefresh
 } from "./live-loop-refresh-v1.js?v=9.9.0-4";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=9.16.10";
-import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=9.16.10";
+import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=v9-isa-sustained-steering-v2";
 import {
   evaluateChronologicalTrackThreatCone,
   measuredTrackMotionAtObservation
-} from "./adaptive-threat-cone-v1.js?v=9.16.10";
+} from "./adaptive-threat-cone-v1.js?v=v9-isa-sustained-steering-v2";
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
@@ -3216,6 +3216,7 @@ function renderIssuedThreatCone(track, projection, heldObservedUtc = null, curre
       "projected-track-outside": "repositioned: updated motion leaves earlier cone",
       "direction-change": "repositioned: storm changed direction",
       "steering-change": "reoriented: verified updated steering",
+      "sustained-steering-change": "reoriented: sustained measured movement across multiple radar scans",
       "storm-advanced": "repositioned: measured storm advanced",
       "measured-position": "anchored to current measured storm position",
       "rolling-refresh": "repositioned: 30-min refresh",

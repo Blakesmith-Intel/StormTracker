@@ -832,7 +832,10 @@ export function initialiseOperationalFloodRoadClosures({
   // Road-closure LEFT_CLICK information remains unchanged.
   const suppressHoverGpuPicking =
     ["/preview/radar-history-fix/", "/preview/next-baseline/"].some(
-      path=>globalThis.location?.pathname?.includes(path)===true);
+      path=>globalThis.location?.pathname?.includes(path)===true) ||
+      (/\/live3d-operational-v9\.html$/.test(
+        String(globalThis.location?.pathname??"")) &&
+        !String(globalThis.location?.pathname??"").includes("/preview/"));
   if (!suppressHoverGpuPicking) {
     let lastHoverPickAt = 0;
     hoverHandler.setInputAction(movement => {

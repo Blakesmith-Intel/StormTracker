@@ -136,7 +136,7 @@ import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=v9-cone-observ
 import {
   evaluateChronologicalTrackThreatCone,
   measuredTrackMotionAtObservation
-} from "./adaptive-threat-cone-v1.js?v=v9-isa-sustained-steering-v2";
+} from "./adaptive-threat-cone-v1.js?v=v9-isa-sustained-steering-motion-confidence-v5";
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
@@ -3446,7 +3446,19 @@ function renderHybridTracks(index) {
           { horizonMinutes: 90, directionChangeThresholdDegrees: 12 },
           THREAT_CONE_CONTROLLER_OPTIONS
         );
-        renderIssuedThreatCone(track, projection, null, observation);
+        if (!projection.cone) {
+          // Avoid leaving a stale earlier forecast-status message on screen
+          // when the current genuinely observed centroid cannot support
+          // credible storm steering. The storm label itself stays visible.
+          const status=$("trackThreatConeStatus");
+          if(status) status.textContent =
+            `${track.track_id}: +90m cone withheld · latest measured storm motion is `+
+            `too slow or changes direction too abruptly to support a `+
+            `reliable extrapolation. Waiting for consistent measured scans; `+
+            `rain imagery and the ST label remain available.`;
+        } else {
+          renderIssuedThreatCone(track, projection, null, observation);
+        }
       }
 
       const top40Text = volume?.high_support_top_40_m_amsl != null

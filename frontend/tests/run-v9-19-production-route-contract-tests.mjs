@@ -5,6 +5,7 @@ import {fileURLToPath} from "node:url";
 const read=path=>readFileSync(fileURLToPath(new URL(path,import.meta.url)),"utf8");
 const runtime=read("../src/live3d-operational-v9.js");
 const radar=read("../src/radar-source.js");
+const adaptive=read("../src/adaptive-threat-cone-v1.js");
 const basemap=read("../src/context-layers/basemap-manager-v1.js");
 const html=read("../live3d-operational-v9.html");
 const contexts=[
@@ -31,7 +32,7 @@ assert.match(runtime,/persistentSatelliteCoverage:\s*PUBLISHED_PRODUCTION_RUNTIM
   "production must preserve official QLD/NSW satellite presentation");
 assert.match(runtime,/shouldPrepareSupplementalForPlayback\(supplementalAnchor\)/,
   "production must not block inferred frames on supplementary radar requests");
-assert.match(runtime,/credibleMeasuredMotionAtObservation/,
+assert.match(adaptive,/credibleMeasuredMotionAtObservation/,
   "production must provide the accepted motion-confidence cone safeguard");
 assert.match(runtime,/minimumMeasuredReanchorKm:0\.15/,
   "production must preserve the user-approved 0m cone reanchoring");

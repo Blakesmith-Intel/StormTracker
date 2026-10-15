@@ -251,7 +251,8 @@ sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.
 // The one isolated QA route compares deferred GPU cleanup and settled
 // gazetteer work with the current production code. Never enabled at root.
 const BOUNDED_RADAR_RECOVERY_QA =
-  window.location.pathname.includes("/preview/radar-history-fix/");
+  window.location.pathname.includes("/preview/radar-history-fix/") ||
+  window.location.pathname.includes("/preview/next-baseline/");
 const LABEL_GPU_QA =
   BOUNDED_RADAR_RECOVERY_QA ||
   window.location.pathname.includes("/preview/label-gpu-guard/");

@@ -22,6 +22,15 @@ assert.match(marker,/position = Cesium\.Cartesian3\.fromDegrees\(\s*observation\
 assert.match(geometry,/cone\.polygon\.map\(point => Cesium\.Cartesian3\.fromDegrees\(\s*point\.longitude, point\.latitude, coneAltitude\s*\)/);
 assert.doesNotMatch(geometry,/const coneAltitude = displayAltitude\(350\)/,
   "old low-level 350m cone plane causes large apparent offset at oblique camera angles");
+assert.match(geometry,/id: `hybrid-threat-origin-${track.track_id}`/,
+  "3D map must show a real 0m marker at the sourced track centroid");
+assert.match(geometry,/coneOrigin.longitude,coneOrigin.latitude,coneAltitude/,
+  "0m native Cesium anchor and DOM storm dot must occupy one 3D location");
+assert.match(geometry,/text:"0m"/,
+  "user can visually inspect where the forecast starts");
+assert.match(runtime,/minimumMeasuredReanchorKm:0\.15/,
+  "forecast tip must keep up with new genuine measured observations");
+
 
 // Actual source geometry: the +0 minute origin is NOT the radar hotspot or
 // the side of the polygon. It must be the SAME measured connected-pixel

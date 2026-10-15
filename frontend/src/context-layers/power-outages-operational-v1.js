@@ -704,46 +704,25 @@ export function initialiseOperationalPowerOutages({
         canvas
       );
 
-  let lastHoverPickAt =
-    0;
-
-  hoverHandler
-    .setInputAction(
-      movement => {
-        const now =
-          performance.now();
-
-        if (
-          now - lastHoverPickAt
-          < 80
-        ) {
-          return;
-        }
-
-        lastHoverPickAt =
-          now;
-
-        const outageId =
-          outageIdNearPosition({
-            viewer,
-            position:
-              movement
-                .endPosition,
-            width:
-              18,
-            height:
-              18
-          });
-
-        if (outageId) {
-          canvas.style.cursor =
-            "pointer";
-        }
-      },
-      CesiumRef
-        .ScreenSpaceEventType
-        .MOUSE_MOVE
-    );
+  // Diagnostic preview: Cesium drillPick on every mouse movement can trigger
+  // a synchronous WebGL pick render while weather imagery is being retired.
+  // Keep outage click inspection intact, but disable GPU-backed hover picking
+  // on the isolated radar-history-fix preview until texture lifecycle is proven.
+  const suppressHoverGpuPicking =
+    ["/preview/radar-history-fix/", "/preview/next-baseline/"].some(
+      path=>globalThis.location?.pathname?.includes(path)===true);
+  if (!suppressHoverGpuPicking) {
+    let lastHoverPickAt = 0;
+    hoverHandler.setInputAction(movement => {
+      const now = performance.now();
+      if (now - lastHoverPickAt < 160) return;
+      lastHoverPickAt = now;
+      const outageId = outageIdNearPosition({
+        viewer, position: movement.endPosition, width: 18, height: 18
+      });
+      canvas.style.cursor = outageId ? "pointer" : "";
+    }, CesiumRef.ScreenSpaceEventType.MOUSE_MOVE);
+  }
 
   checkbox
     ?.addEventListener(

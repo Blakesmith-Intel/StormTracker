@@ -307,11 +307,11 @@ const earlyIsa=isaAt(2);
 assert.ok(Math.abs(earlyIsa.cone.heading_degrees-90)<3,
   "original Mt Isa ST0003 cone should point east");
 const isaBeforeTurn=isaAt(3);
-assert.ok(Math.abs(isaBeforeTurn.cone.heading_degrees-90)<5,
-  "one 0.7-km shift must not force a noisy northward heading");
+assert.equal(isaBeforeTurn.cone,null,
+  "one unsupported 0.7km sideways scan must temporarily WITHHOLD the forecast");
 const isaTurn=isaAt(4);
-assert.equal(isaTurn.reason,"sustained-steering-change",
-  "two genuine slow sideward steps must reissue without requiring a 1.25-km single frame");
+assert.equal(isaTurn.reason,"initial",
+  "two agreeing genuine low-speed scans restore a reliable new cone after withholding");
 assert.ok(isaTurn.rebased);
 assert.ok(Math.abs(isaTurn.cone.heading_degrees)<4,
   "ST0003 cone orientation must now point along measured northward motion");
@@ -333,8 +333,8 @@ const sidewaysDrift=isaSamples.slice(0,4).concat([
 const slowJitter=evaluateChronologicalTrackThreatCone(
   {track_id:"ST0003",history:sidewaysDrift},sidewaysDrift.at(-1),
   buildTrackThreatCone,{horizonMinutes:90},isaOptions);
-assert.ok(Math.abs(slowJitter.cone.heading_degrees-90)<5,
-  "small centroid noise without sustained 1.25km northward travel stays smoothed");
+assert.equal(slowJitter.cone,null,
+  "small 0.1km centroid jitter must WITHHOLD rather than retain an unreliable old forecast");
 console.log("PASS Mt Isa ST0003 slow sideways turn: 0.7km scans reorient measured cone, no jitter, deterministic source-time replay.");
 
 

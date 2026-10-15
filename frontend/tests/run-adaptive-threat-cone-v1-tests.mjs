@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { directPoint } from "../src/geo.js";
+import { directPoint, distanceKm } from "../src/geo.js";
 import { geodesicMotion } from "../src/tracking.js";
 import { buildTrackThreatCone } from "../src/track-threat-cone-v1.js";
 import {

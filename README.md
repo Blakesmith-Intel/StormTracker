@@ -6,10 +6,10 @@ StormTracker is a **browser-only Queensland and southern-border BoM radar situat
 
 | Build | URL | Source policy |
 | --- | --- | --- |
-| **StormTracker V9.19.0 production** | https://blakesmith-intel.github.io/StormTracker/ | Immutable V9.19.0 source commit, pinned in Pages workflow and `/BUILD.txt` |
+| **StormTracker V9.19.0 production** | https://blakesmith-intel.github.io/StormTracker/ | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` (pinned; `v9.19.0` tag, `restore/v9.19.0`) |
 | Historical accepted diagnostic (V9.18) | https://blakesmith-intel.github.io/StormTracker/preview/radar-history-fix/ | Immutable `acfa0ebd3717a793369e3e887e2d1a54785620b7` |
 
-The last sealed production release, **V9.18.0**, remains at commit `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` with immutable tag/restore branch, available for rollback. The previously accepted `next-baseline` preview was explicitly approved by the operator on 15 October 2026 and is promoted **only after production-path safety parity, full CI and public deployment verification**. Its preview URL may be withdrawn after successful promotion.
+The last sealed production release, **V9.18.0**, remains at commit `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` with immutable tag/restore branch, available for rollback. The previous `next-baseline` preview was explicitly approved by the operator on 15 October 2026. The V9.19.0 production pin includes the same source features plus required root-path stability guards. Its superseded candidate preview is retired; only the historical accepted V9.18 QA path is retained.
 
 ## V9.19.0 behaviour
 

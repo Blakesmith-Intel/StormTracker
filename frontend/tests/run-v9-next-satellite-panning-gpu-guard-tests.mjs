@@ -11,9 +11,9 @@ const build=read("../../scripts/build-current-site.sh");
 const controller=read("../src/live3d-operational-v9.js");
 const html=read("../live3d-operational-v9.html");
 const index=read("../index.html");
-assert.match(index,/live3d-operational-v9\.html\?v=[^"]*satellite-pan-v2/);
-assert.match(html,/live3d-operational-v9\.js\?v=[^"]*satellite-pan-v2/);
-assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*satellite-pan-v2/);
+assert.match(index,/live3d-operational-v9\.html\?v=[^"]*regional-satellite-v3/);
+assert.match(html,/live3d-operational-v9\.js\?v=[^"]*regional-satellite-v3/);
+assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*regional-satellite-coverage-v3/);
 for(const part of ["power-outages","flood-road-closures","river-gauges"]){
   assert.match(controller,new RegExp(part+"-operational-v1\\.js\\?v=[^\\\"]*hover-qa-v2"),
     "every context module must carry a new guarded JS cache key");
@@ -21,6 +21,10 @@ for(const part of ["power-outages","flood-road-closures","river-gauges"]){
 
 
 assert.match(basemap,/if\(navigationActive\)return "navigation";/);
+assert.match(controller,/persistentSatelliteCoverage:[\s\S]*?\/preview\/next-baseline\//);
+assert.match(basemap,/streetLayer\.show=false;/);
+assert.match(basemap,/qldDetailLayer\.show=true;qldDetailLayer\.alpha=1;/);
+assert.match(basemap,/nswDetailLayer\.show=true;nswDetailLayer\.alpha=1;/);
 const nav=basemap.slice(basemap.indexOf("function setNavigationActive("),basemap.indexOf("function setBasemap("));
 assert.doesNotMatch(nav,/qldDetailLayer\.show\s*=\s*false|nswDetailLayer\.show\s*=\s*false/);
 assert.doesNotMatch(nav,/detailTarget\s*=\s*false|detailBlend\s*=\s*0/,

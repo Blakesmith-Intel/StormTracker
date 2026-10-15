@@ -42,4 +42,5 @@ jobs:
           bash scripts/build-current-site.sh
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
-          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1
+          test -f _site/preview/next-baseline/BUILD.txt
+          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2

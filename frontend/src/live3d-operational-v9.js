@@ -550,7 +550,8 @@ basemapManager =
     // and coherent DEA NSW regional imagery on the production route, too.
     persistentSatelliteCoverage:
       PUBLISHED_PRODUCTION_RUNTIME ||
-      window.location.pathname.includes("/preview/next-baseline/"),
+      window.location.pathname.includes("/preview/next-baseline/") ||
+      INCREMENTAL_VOLUME_PREVIEW,
     forceStreetOnly:STREET_ONLY_PERFORMANCE_TEST,
     storage:
       window.localStorage,

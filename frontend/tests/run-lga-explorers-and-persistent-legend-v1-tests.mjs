@@ -25,10 +25,6 @@ assert.match(officialLocalityUrl(["Ormeau"]),/outFields=locality%2Clga/);
 assert.equal(localityKey("Ormeau"),"ORMEAU");
 assert.equal(new URL(officialLocalityUrl(["CLONCURRY","Giru","Ormeau"]))
   .searchParams.get("where"),"UPPER(locality) IN ('CLONCURRY','GIRU','ORMEAU')");
-assert.match(outageUi,/outage-suburb-map/);
-assert.match(outageUi,/focusPublishedOutages\(group\.items\)/);
-assert.match(outageUi,/event\.stopPropagation\(\)/);
-assert.match(outageUi,/CesiumRef\.Rectangle\.fromDegrees/);
 
 assert.throws(()=>parseOfficialLocalities({features:[],exceededTransferLimit:true},names));
 function outage(id,suburbs){
@@ -62,6 +58,11 @@ const html=read("../live3d-operational-v9.html");
 const css=read("../src/lga-sidebar-legend-v1.css");
 const controller=read("../src/live3d-operational-v9.js");
 const outageUi=read("../src/context-layers/power-outage-suburb-explorer-v1.js");
+assert.match(outageUi,/outage-suburb-map/);
+assert.match(outageUi,/focusPublishedOutages\(group\.items\)/);
+assert.match(outageUi,/event\.stopPropagation\(\)/);
+assert.match(outageUi,/CesiumRef\.Rectangle\.fromDegrees/);
+
 const roadUi=read("../src/context-layers/road-closure-lga-explorer-v1.js");
 const closureIntegration=read("../src/context-layers/flood-road-closures-operational-v1.js");
 const legend=read("../src/persistent-weather-legend-v1.js");

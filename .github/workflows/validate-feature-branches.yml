@@ -29,3 +29,6 @@ jobs:
       - name: Validate relay worker syntax
         run: node --check relay/worker.js
 
+      - name: Verify Queensland LGA polygon intersects (QA only)
+        run: node scripts/probe-outage-spatial-lga.mjs
+

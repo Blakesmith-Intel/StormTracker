@@ -121,6 +121,6 @@ assert.doesNotMatch(html, /id="showTrackLabels"[^>]*\bchecked\b/,
   "Storm-cell labels and linked points must be off by default");
 assert.match(html, /id="trackLabelsScopeNote"[^>]*>Storm IDs, tracks and labels currently use the primary radar only\./,
   "Explain primary-radar-only storm tracking immediately beside the Labels function");
-assert.match(html, /v=(?:9\.16-bom-native-rain30-v1|v9-next-inferred-mosaic-sidebar-cone)/);
+assert.match(html, /v=(?:9\.16-bom-native-rain30-v1|v9-next-inferred-mosaic-sidebar-cone|delta-reuse-20261016-v2)/);
 assert.match(iframe, /v=9\.16-bom-native-rain30-v1/);
 console.log("Foreground storm marker overlay tests passed: opacity-independent, paired dots and labels; paused toggle; camera updates; horizon; frame swap; cache bust.");

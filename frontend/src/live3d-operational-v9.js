@@ -182,6 +182,7 @@ import {
 
 import {
   addVolumeDisplayPoint,
+  updateVolumeDisplayPoint,
   setVolumeDisplayOpacity
 } from "./volume-display-opacity-v1.js?v=9.15.0-volume-opacity";
 import {
@@ -1199,6 +1200,19 @@ function addVolumeGlyph(collection,options,sourceAlpha,percent,sizeDbz,support=1
   return addVolumeDisplayPoint(collection,options,sourceAlpha,percent);
 }
 
+// Mutate an existing billboard/point when source dBZ changes. Never add a
+// second ghost cloud or set the active cloud's alpha to zero between scans.
+function updateVolumeGlyph(glyph,options,sourceAlpha,percent,sizeDbz,support=1){
+  if(useBlobVolume()){
+    const diameter=volumeBlobDiameterPx($("pointSize").value,sizeDbz,support);
+    const {pixelSize:unusedPixelSize,...spriteOptions}=options;
+    return updateVolumeDisplayPoint(glyph,{
+      ...spriteOptions,width:diameter,height:diameter
+    },Math.min(1,sourceAlpha*.8),percent);
+  }
+  return updateVolumeDisplayPoint(glyph,options,sourceAlpha,percent);
+}
+
 function refreshReflectivityLegend(){
   const holder=$("reflectivityLegend");
   if(!holder)return;
@@ -1648,7 +1662,7 @@ function renderInferredVolume(frame) {
     inferredCollection=incrementalVolumeRenderer.begin(
       identity,
       ()=>useBlobVolume()?new Cesium.BillboardCollection():new Cesium.PointPrimitiveCollection(),
-      playback.isPlaying() && !isTemporallyInferredRadarFrame(frame)
+      false // No double-buffer or fade; unchanged source cells must never blink.
     );
     inferredCollection.show=true;
   }
@@ -1715,22 +1729,14 @@ function renderInferredVolume(frame) {
         continue;
       }
 
-      const mercator =
-        pixelCentreMercator(
-          frame,
-          column,
-          row
-        );
-
-      const geographic =
-        webMercatorToDegrees(
-          mercator.x,
-          mercator.y
-        );
-
       renderedColumns++;
-      const newGlyphs=INCREMENTAL_VOLUME_PREVIEW &&
-        incrementalVolumeRenderer.unchanged(pixelIndex,category)?null:[];
+      const sameGlyphs=INCREMENTAL_VOLUME_PREVIEW &&
+        incrementalVolumeRenderer.unchanged(pixelIndex,category);
+      const nextSpecs=INCREMENTAL_VOLUME_PREVIEW&&!sameGlyphs?[]:null;
+      const mercator=(!INCREMENTAL_VOLUME_PREVIEW||!sameGlyphs)
+        ?pixelCentreMercator(frame,column,row):null;
+      const geographic=mercator
+        ?webMercatorToDegrees(mercator.x,mercator.y):null;
       for (const point of displayedInferred) {
         const supportStyle =
           styleForInferredPoint(
@@ -1744,20 +1750,24 @@ function renderInferredVolume(frame) {
             }
           );
 
-        const colour=colourForDbzh(point.dbzh);
-
-        if(newGlyphs!==null) {
-          const glyph=addVolumeGlyph(inferredCollection,{
+        if(!INCREMENTAL_VOLUME_PREVIEW||!sameGlyphs){
+          const options={
             position:Cesium.Cartesian3.fromDegrees(
               geographic.longitude,geographic.latitude,
               displayedVolumeAltitude(
                 point.altitude_m_amsl,inputDbzh,Number($("verticalScale").value))
             ),
-            color:colour,
+            color:colourForDbzh(point.dbzh),
             pixelSize:supportStyle.pixelSize,
             disableDepthTestDistance:0
-          },supportStyle.alpha,volumePercent,point.dbzh,Math.min(1.3,supportStyle.pixelSize/3));
-          if(INCREMENTAL_VOLUME_PREVIEW)newGlyphs.push(glyph);
+          };
+          const support=Math.min(1.3,supportStyle.pixelSize/3);
+          if(INCREMENTAL_VOLUME_PREVIEW){
+            nextSpecs.push({options,alpha:supportStyle.alpha,dbz:point.dbzh,support});
+          }else{
+            addVolumeGlyph(inferredCollection,options,supportStyle.alpha,
+              volumePercent,point.dbzh,support);
+          }
         }
         renderedPoints++;
         confidenceSum +=
@@ -1837,8 +1847,14 @@ function renderInferredVolume(frame) {
             point.altitude_m_amsl;
         }
       }
-      if(INCREMENTAL_VOLUME_PREVIEW)
-        incrementalVolumeRenderer.touch(pixelIndex,category,newGlyphs??[]);
+      if(INCREMENTAL_VOLUME_PREVIEW){
+        if(sameGlyphs) incrementalVolumeRenderer.touch(pixelIndex,category);
+        else incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs,
+          spec=>addVolumeGlyph(inferredCollection,spec.options,spec.alpha,
+            volumePercent,spec.dbz,spec.support),
+          (glyph,spec)=>updateVolumeGlyph(glyph,spec.options,spec.alpha,
+            volumePercent,spec.dbz,spec.support));
+      }
     }
   }
 
@@ -2070,7 +2086,10 @@ function applyHybridVolumeMode(
   const useTrackSpecific = useTrackSpecificVolume(index);
 
   if (inferredCollection) {
-    inferredCollection.show =
+    // QA always presents the SAME frame-wide inference geometry on observed
+    // and gap-fill frames. Previous observed-track / gap-fill alternation
+    // switched whole clouds on and off every scan (video-proven flicker).
+    inferredCollection.show=INCREMENTAL_VOLUME_PREVIEW ? true :
       temporalInferred
         ? true
         : wanted && trackVolumesRequested
@@ -3428,7 +3447,7 @@ function renderHybridTracks(index) {
   const stormTrackMarkers = [];
   hybridSource.entities.suspendEvents();
   clearHybridTrackVolumeCollection();
-  const showTrackVolumes = useTrackSpecificVolume(index);
+  const showTrackVolumes = !INCREMENTAL_VOLUME_PREVIEW && useTrackSpecificVolume(index);
   const volumePercent=Number($("volumeOpacity").value);
   if (showTrackVolumes) {
     hybridTrackVolumeCollection=scene.primitives.add(

@@ -58,6 +58,11 @@ assert.match(view,/dialog\.showModal\(\)/);
 assert.match(view,/status\.kind==="error"/);
 assert.match(view,/outageLocation\(item\.feature\)/);
 assert.match(view,/viewer\.camera\.flyTo/);
+assert.ok(view.includes('const suburbName=create("button","outage-suburb-map"'));
+assert.ok(view.includes("focusPublishedOutages(group.items)"));
+assert.ok(view.includes("event.stopPropagation()"));
+assert.ok(view.includes('byId("showPowerOutages")'));
+
 assert.ok(view.includes('const title=create("button","outage-row-locate"'));
 assert.ok(view.includes('row.addEventListener("click"'));
 assert.ok(view.includes('event.target.closest("button,a,summary,details")'));

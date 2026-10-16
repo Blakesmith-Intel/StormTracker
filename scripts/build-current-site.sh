@@ -88,4 +88,21 @@ node --check "_site/src/live3d-operational-v9.js"
 node --check "_site/src/context-layers/basemap-manager-v1.js"
 node --check "_site/src/radar-source.js"
 node --check "_site/src/adaptive-threat-cone-v1.js"
-test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1
+# Independent source candidate. The release root remains copied from the
+# immutable V9.19.0 commit above; QA is the only mutable output.
+delta="_site/preview/incremental-3d"
+mkdir -p "$delta/data"
+for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
+  cp -a "frontend/$asset" "$delta/$asset"
+done
+cp "$production/data/nsw-radar-places-v1.json" "$delta/data/"
+printf 'EXPERIMENTAL incremental 3-D QA source %s; sealed V9.19.0 unchanged\\n' \\
+  "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
+grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
+grep -Fq 'createIncrementalVolumeRenderer' "$delta/src/incremental-volume-renderer-v1.js"
+grep -Fq 'incremental:INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
+node --check "$delta/src/incremental-volume-renderer-v1.js"
+node --check "$delta/src/supplemental-radar-volume-v1.js"
+node --check "$delta/src/live3d-operational-v9.js"
+test -s "$delta/data/nsw-radar-places-v1.json"
+test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2

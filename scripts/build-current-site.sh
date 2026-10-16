@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Source pins checked out by CI: approved production V9.19.0, immutable accepted V9.18 QA. Never build root implicitly from main.
+# Source pins checked out by CI: approved production V9.20.0, immutable accepted V9.18 QA. Never build root implicitly from main.
 # Exactly the same deterministic package is built in PR dry-runs and Pages deploys.
 set -euo pipefail
-python checked/production-v9.19.0/scripts/build-nsw-radar-places.py \
-  --output checked/production-v9.19.0/frontend/data/nsw-radar-places-v1.json
+python checked/production-v9.20.0/scripts/build-nsw-radar-places.py \
+  --output checked/production-v9.20.0/frontend/data/nsw-radar-places-v1.json
 python - <<'PY'
 import json
 from pathlib import Path
-p=Path("checked/production-v9.19.0/frontend/data/nsw-radar-places-v1.json")
+p=Path("checked/production-v9.20.0/frontend/data/nsw-radar-places-v1.json")
 data=json.loads(p.read_text(encoding="utf-8"))
 assert data.get("schema")=="StormTrackerNSWRadarPlacesV1"
 assert len(data.get("places",[]))>=500
@@ -17,18 +17,18 @@ assert p.stat().st_size<300000
 PY
 
 set -euo pipefail
-production="checked/production-v9.19.0/frontend"
+production="checked/production-v9.20.0/frontend"
 accepted="checked/accepted-v9.18/frontend"
 preview="_site/preview/radar-history-fix"
 mkdir -p _site "$preview/data" "_site/data"
 
-# Sealed root is always generated from its immutable release.
+# Sealed root is always generated from its immutable V9.20.0 release source.
 for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "$production/$asset" "_site/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "_site/data/"
-printf 'SEALED StormTracker V9.19.0 source %s\n' \
-  'd317c17a6a8f706a0d867cb852db1e8d3f9ffac0' > _site/BUILD.txt
+printf 'SEALED StormTracker V9.20.0 source %s\n' \
+  'aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1' > _site/BUILD.txt
 
 # Identical recipe to the previously accepted QA preview:
 # main frontend supplies path-activated rescue guards, accepted SHA
@@ -69,7 +69,7 @@ node --check "$preview/src/live3d-operational-v9.js"
 node --check "_site/src/live3d-operational-v9.js"
 test -s "$preview/data/nsw-radar-places-v1.json"
 test -s "_site/data/nsw-radar-places-v1.json"
-# V9.19.0 is now the public baseline. Do not keep a mutable candidate
+# V9.20.0 is now the public baseline. Do not keep a mutable candidate
 # preview alongside the sealed root; historical accepted V9.18 QA stays.
 grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' "_site/src/live3d-operational-v9.js"
 grep -Fq 'persistentSatelliteCoverage:' "_site/src/live3d-operational-v9.js"
@@ -88,15 +88,15 @@ node --check "_site/src/live3d-operational-v9.js"
 node --check "_site/src/context-layers/basemap-manager-v1.js"
 node --check "_site/src/radar-source.js"
 node --check "_site/src/adaptive-threat-cone-v1.js"
-# Independent source candidate. The release root remains copied from the
-# immutable V9.19.0 commit above; QA is the only mutable output.
+# Optional ongoing delta-preview test route, independent of the
+# immutable V9.20.0 production root. Archived V9.19.0 remains recoverable.
 delta="_site/preview/incremental-3d"
 mkdir -p "$delta/data"
 for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "frontend/$asset" "$delta/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "$delta/data/"
-printf 'EXPERIMENTAL incremental 3-D QA source %s; sealed V9.19.0 unchanged\n' "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
+printf 'EXPERIMENTAL incremental 3-D QA source %s; separate from pinned V9.20.0 production\n' "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
 grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
 grep -Fq 'createIncrementalVolumeRenderer' "$delta/src/incremental-volume-renderer-v1.js"
 grep -Fq 'incremental:INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
@@ -105,3 +105,18 @@ node --check "$delta/src/supplemental-radar-volume-v1.js"
 node --check "$delta/src/live3d-operational-v9.js"
 test -s "$delta/data/nsw-radar-places-v1.json"
 test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
+
+# Exact accepted V9.20.0 optimised renderer and memory bounds are deployed
+# from the PINNED source, never from the evolving maintenance/QA branch.
+grep -Fq 'const INCREMENTAL_VOLUME_PREVIEW =' "_site/src/live3d-operational-v9.js"
+grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' "_site/src/live3d-operational-v9.js"
+grep -Fq 'const showTrackVolumes = !INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
+grep -Fq 'const retainedVolume=INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
+grep -Fq 'Memory diagnostics' "_site/src/live3d-operational-v9.js"
+grep -Fq 'function upsert(key,category,specs,create,patch)' "_site/src/incremental-volume-renderer-v1.js"
+grep -Fq 'function pruneSites(selectedIds=[])' "_site/src/supplemental-radar-volume-v1.js"
+grep -Fq 'v9.20.0-optimised-3d-prod' "_site/index.html"
+grep -Fq 'v9.20.0-optimised-3d-prod' "_site/live3d-operational-v9.html"
+node --check "_site/src/incremental-volume-renderer-v1.js"
+node --check "_site/src/supplemental-radar-volume-v1.js"
+node --check "_site/src/volume-display-opacity-v1.js"

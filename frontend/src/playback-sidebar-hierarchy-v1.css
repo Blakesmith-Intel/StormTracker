@@ -147,6 +147,10 @@ body.simple-ui #controlSidebar .loop-controls > #dualSourceTimes {
 body.simple-ui #controlSidebar .storm-controls {
   display:block!important;
 }
+/* Layers remain reachable by scrolling the short mobile sidebar; the map
+   keeps its existing dominant viewport allocation. */
+body.simple-ui #controlSidebar .layer-controls {display:block!important;}
+
 body.simple-ui #controlSidebar .layer-controls > .qfd-incident-key,
 body.simple-ui #controlSidebar .layer-controls > #riverGaugeSeverityLegend {
   display:block!important;

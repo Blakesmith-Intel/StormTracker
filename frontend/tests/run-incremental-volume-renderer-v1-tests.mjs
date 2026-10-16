@@ -71,4 +71,13 @@ assert.match(live,/incrementalVolumeRenderer\.touch\(pixelIndex,category,newGlyp
 assert.match(live,/stablePrimaryVolumeStride/);
 assert.match(live,/incrementalVolumeRenderer\.end\(\)/);
 assert.match(live,/sourceMetadata\?\.temporalInference/);
+const radar=readFileSync(new URL("../src/radar-source.js",import.meta.url),"utf8");
+assert.match(live,/PUBLISHED_PRODUCTION_RUNTIME \\|\\| INCREMENTAL_VOLUME_PREVIEW/);
+assert.match(radar,/preview\\/incremental-3d\\//);
+for(const name of ["power-outages-operational-v1.js",
+  "flood-road-closures-operational-v1.js","river-gauges-operational-v1.js"]){
+  const content=readFileSync(new URL("../src/context-layers/"+name,import.meta.url),"utf8");
+  assert.ok(content.includes("/preview/incremental-3d/"),
+    name+" must preserve production's safe Cesium hover-picking behaviour in the preview");
+}
 console.log("Persistent glyph identity, partial-change morph, disappearance, overflow and reset verified.");

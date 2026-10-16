@@ -1,12 +1,11 @@
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
   from "./power-outage-suburb-model-v1.js?v=suburb-explorer-20261017-v1";
-import {formatPowerOutageTime} from "./power-outages-operational-v1.js?v=9.18.8-gpu-pick-hover-qa-v2";
 
 // View over the EXISTING layer snapshot; no duplicate requests, no map pick,
 // no new Cesium entities, no weather-frame redraws.
 export function createPowerOutageSuburbExplorer({
-  viewer,CesiumRef,refresh=()=>Promise.resolve(),getLoadedAt=()=>0
+  viewer,CesiumRef,refresh=()=>Promise.resolve(),getLoadedAt=()=>0,formatTime=()=>""
 }={}){
   const byId=id=>document.getElementById(id);
   const dialog=byId("powerOutageExplorer");
@@ -90,8 +89,8 @@ export function createPowerOutageSuburbExplorer({
         field(attrs,"Status",info.status);
         field(attrs,"Street(s)",info.streets);
         field(attrs,"Reason",info.reason);
-        field(attrs,"Started",formatPowerOutageTime(info.start,info.provider));
-        field(attrs,"Estimated restoration",formatPowerOutageTime(info.estimatedFix,info.provider));
+        field(attrs,"Started",formatTime(info.start,info.provider));
+        field(attrs,"Estimated restoration",formatTime(info.estimatedFix,info.provider));
         field(attrs,"Provider",info.attribution);
         detail.append(attrs);
         if(item.shared)detail.append(create("p","outage-suburb-note","Reported customer count covers the entire event, not this suburb alone."));
@@ -126,7 +125,7 @@ export function createPowerOutageSuburbExplorer({
         const customers=create("td","outage-customers",number(info.customersAffected));
         if(item.shared)customers.title="Shared incident: affected customer count is not assigned per suburb";
         const eta=create("td","outage-eta",
-          formatPowerOutageTime(info.estimatedFix,info.provider)||"Not supplied");
+          formatTime(info.estimatedFix,info.provider)||"Not supplied");
         row.append(eventCell,customers,eta);tbody.append(row);
       }
       table.append(tbody);inner.append(table);section.append(inner);
@@ -142,6 +141,7 @@ export function createPowerOutageSuburbExplorer({
   }
   function updateStatus(next){
     if(next)status=next;
+    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||""))hasSnapshot=false;
     const kind=status.kind||"normal";
     state.dataset.kind=kind;
     state.textContent=status.message||"Current unplanned outage data";

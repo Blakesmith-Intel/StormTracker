@@ -1,0 +1,55 @@
+/* V10 QA: two full-width live incident actions rather than cramped 3-column chips. */
+#controlSidebar .dashboard-heading{
+ display:flex!important;align-items:center;justify-content:space-between;
+ min-width:0;gap:8px;flex-wrap:nowrap;
+}
+#controlSidebar .dashboard-heading .simple-brand{
+ flex:1 1 auto;min-width:0;
+}
+#controlSidebar .dashboard-heading #simpleModeToggle{
+ flex:0 0 auto;min-width:90px;max-width:118px;
+ margin:0;min-height:38px;padding:6px 8px;
+ white-space:normal;line-height:1.2;font-size:11px;
+}
+#controlSidebar .sidebar-shortcuts{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ gap:7px!important;margin:0!important;padding:0;width:100%;
+}
+#controlSidebar .sidebar-shortcuts #openPowerOutageExplorer,
+#controlSidebar .sidebar-shortcuts #openRoadLgaExplorer{
+ display:flex!important;flex-direction:column;justify-content:center;align-items:stretch;
+ width:100%;min-width:0;min-height:67px;max-height:none;
+ padding:9px 12px!important;text-align:left;gap:6px;
+ border-radius:12px;font-size:13px!important;line-height:1.3;
+}
+#controlSidebar .sidebar-shortcuts .incident-button-name{
+ font-weight:800;font-size:14px;line-height:1.25;color:#f5fbff;
+}
+#controlSidebar .sidebar-shortcuts .incident-button-numbers{
+ display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;
+ column-gap:9px;row-gap:3px;width:100%;
+}
+#controlSidebar .sidebar-shortcuts .incident-button-numbers strong{
+ font-size:13px;color:#c7f3ff;font-weight:800;
+ font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+#controlSidebar .sidebar-shortcuts .incident-button-numbers small{
+ font-size:11px;color:#d0e6f0;font-weight:550;
+ font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere;
+}
+#controlSidebar .sidebar-shortcuts #openRoadLgaExplorer{background:#263d4c;}
+#controlSidebar .sidebar-shortcuts #openPowerOutageExplorer{background:#214356;}
+@media(max-width:700px){
+ #controlSidebar .dashboard-heading{gap:6px;}
+ #controlSidebar .dashboard-heading #simpleModeToggle{
+  min-height:34px;max-width:104px;min-width:83px;padding:4px 6px;font-size:10px;
+ }
+ #controlSidebar .sidebar-shortcuts{gap:4px!important;}
+ #controlSidebar .sidebar-shortcuts #openPowerOutageExplorer,
+ #controlSidebar .sidebar-shortcuts #openRoadLgaExplorer{
+  padding:5px 8px!important;min-height:48px;gap:1px;
+ }
+ #controlSidebar .sidebar-shortcuts .incident-button-name{font-size:11px;}
+ #controlSidebar .sidebar-shortcuts .incident-button-numbers strong{font-size:10px;}
+ #controlSidebar .sidebar-shortcuts .incident-button-numbers small{font-size:10px;}
+}

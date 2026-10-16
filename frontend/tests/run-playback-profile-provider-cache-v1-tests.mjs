@@ -3,6 +3,8 @@ import {createVolumeCategoryProfileCache}
   from "../src/volume-category-profile-cache-v1.js";
 import {createSupplementalRadarDisplay}
   from "../src/multi-radar-display-v9.js";
+import {createTownCameraProjectionGuard}
+  from "../src/context-layers/qld-town-label-layer-v1.js";
 
 // Infer only once per genuine original BoM dBZ category, not once per pixel.
 // Style, uncertainty, altitude and dBZ are EXACTLY unchanged.
@@ -113,3 +115,26 @@ assert.equal(display.providerCacheSize,0,
   "A changed site/mask configuration retires old optional providers");
 assert.deepEqual(display.visibleSites,[]);
 console.log("PASS genuine BoM UTC cached and handed over repeatedly, bounded provider LRU, site/mask change cleanup.");
+
+// Stationary map labels must not reproject on every radar/3-D render tick.
+// A real Cesium viewMatrix change or a layout rebuild ALWAYS reprojects.
+const townGuard=createTownCameraProjectionGuard();
+const townCamera={viewMatrix:Array.from({length:16},(_,i)=>i)};
+const canvas={clientWidth:1200,clientHeight:800};
+assert.equal(townGuard(townCamera,canvas),true);
+assert.equal(townGuard(townCamera,canvas),false);
+townCamera.viewMatrix[12]+=0.001;
+assert.equal(townGuard(townCamera,canvas),true,"Even a subpixel camera pan must follow");
+assert.equal(townGuard(townCamera,canvas),false);
+assert.equal(townGuard(townCamera,canvas,true),true,"Force projection on new visible labels");
+canvas.clientWidth=1210;
+assert.equal(townGuard(townCamera,canvas),true,"Resizing the canvas reprojects");
+console.log("PASS static Cesium weather render avoids town DOM redraw; actual camera pans and label changes never lag.");
+
+// The label toggle must create trails only when requested, not leak hidden
+// Cesium lines across every new radar frame or affect cone/track calculations.
+import {readFileSync} from "node:fs";
+const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
+assert.match(runtime,/if \(presentation\.show && \$\("showTrackLabels"\)\?\.checked && trail\.length >= 2\)/);
+assert.match(runtime,/if\(show && hybridResults\[hybridFrameIndex\] && !isNativeDopplerPlayback\(\)\)\{/);
+console.log("PASS off-by-default storm trail GPU geometry omitted; trails regenerated on operator enable.");

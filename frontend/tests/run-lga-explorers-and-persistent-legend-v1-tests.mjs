@@ -23,6 +23,13 @@ assert.equal(resolved.get("NOT FOUND"),UNKNOWN_LGA);
 assert.match(officialLocalityUrl(["Ormeau"]),/AdministrativeBoundaries\/MapServer\/2\/query/);
 assert.match(officialLocalityUrl(["Ormeau"]),/outFields=locality%2Clga/);
 assert.equal(localityKey("Ormeau"),"ORMEAU");
+assert.equal(new URL(officialLocalityUrl(["CLONCURRY","Giru","Ormeau"]))
+  .searchParams.get("where"),"UPPER(locality) IN ('CLONCURRY','GIRU','ORMEAU')");
+assert.match(outageUi,/outage-suburb-map/);
+assert.match(outageUi,/focusPublishedOutages\(group\.items\)/);
+assert.match(outageUi,/event\.stopPropagation\(\)/);
+assert.match(outageUi,/CesiumRef\.Rectangle\.fromDegrees/);
+
 assert.throws(()=>parseOfficialLocalities({features:[],exceededTransferLimit:true},names));
 function outage(id,suburbs){
  return {id:"energex:"+id,properties:{

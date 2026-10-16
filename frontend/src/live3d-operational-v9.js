@@ -114,7 +114,7 @@ import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
 import {mountHistoricalCycloneQA} from "./historical-cyclone-overlay-v1.js?v=representative-cyclone-qa-v1";
-import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=simple-ui-20261017-v1";
+import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=simple-ui-20261017-v2";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";

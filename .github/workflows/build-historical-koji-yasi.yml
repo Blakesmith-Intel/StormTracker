@@ -1,0 +1,39 @@
+name: Build verified historical Koji/Yasi QA snapshots
+
+on:
+  push:
+    branches: [feature/historical-cyclone-koji-yasi-qa-20261016]
+    paths:
+      - scripts/build-historical-koji-yasi-snapshots.mjs
+      - .github/workflows/build-historical-koji-yasi.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  source-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/historical-cyclone-koji-yasi-qa-20261016
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Fetch and validate archived original storm positions and wind polygons
+        run: node scripts/build-historical-koji-yasi-snapshots.mjs
+      - name: Commit small source-provenance historical QA fixtures to feature branch only
+        run: |
+          set -euo pipefail
+          git config user.name "StormTracker Source QA"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/data/cyclone-history/koji-2026.json frontend/data/cyclone-history/yasi-2011.json
+          if git diff --cached --quiet; then
+            echo "Historical source fixtures unchanged."
+          else
+            git commit -m "Historical QA: source-backed Koji wind areas and Yasi best-track, no forecasts"
+            git push origin HEAD:feature/historical-cyclone-koji-yasi-qa-20261016
+          fi

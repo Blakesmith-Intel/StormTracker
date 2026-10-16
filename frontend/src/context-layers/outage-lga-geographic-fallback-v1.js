@@ -82,7 +82,8 @@ export async function resolveOutageCouncilNames(unresolved,suburbGroups,{
  if(!names.length)return new Map();
  const official=await resolveQueenslandLocalityLgas(names,{fetchImpl,timeoutMs});
  const joined=new Map([...existing,...official]);
- const pending=names.filter(key=>official.get(key)===UNKNOWN_LGA);
+ const pending=names.filter(key=>!official.has(key)||official.get(key)===UNKNOWN_LGA);
+ for(const key of pending)if(!official.has(key))official.set(key,UNKNOWN_LGA);
  const byKey=new Map((suburbGroups||[]).map(s=>[localityKey(s.name),s]));
  // Deduplicate repeated event-point requests; at most 3 concurrent requests.
  const placeCache=new Map();

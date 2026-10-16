@@ -6,13 +6,15 @@
   <title>StormTracker — V9.18.0 QLD/NSW regional situation viewer</title>
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
   <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=v9-next-full-map-controls-gauge-severity-v4-edge-sidebar-terrainfix-v1">
+  <link rel="stylesheet" href="./src/friendly-ui-v1.css?v=simple-ui-20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
-<body>
+<body class="simple-ui">
 <div id="app">
   <aside id="controlSidebar" aria-label="Live weather controls">
-    <header class="dashboard-heading"><strong>Live weather</strong><span>Measured 2-D · inferred 3-D</span></header>
+    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div><button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button></header>
+    <div class="simple-intro" aria-label="Quick start">Choose a radar above the map, press <strong>Play</strong>, or tap <strong>Measure</strong> to check a distance.</div>
     <section class="card overview">
       <div class="metric">
         <span>Display</span><strong id="operationalSourceMode">Latest frame</strong>
@@ -22,7 +24,7 @@
         <span>Frames / tracks</span><strong><span id="operationalFramesLoaded">0</span> / <span id="operationalActiveTracks">—</span></strong>
       </div>
     </section>
-    <section class="card loop-controls">
+    <section class="card loop-controls"><h2 class="section-title">▶ Watch radar</h2>
       <div class="control-grid">
         <label for="loopDurationMinutes">Available window
           <select id="loopDurationMinutes" disabled><option value="">Checking radar history…</option></select>
@@ -38,7 +40,7 @@
       <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span id="radarClockGroup">Radar <strong id="radarPlaybackTime">—</strong></span><span id="windClockGroup" hidden>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Independent source time comparison" hidden></span></div>
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
-    <section class="card layer-controls">
+    <section class="card layer-controls"><h2 class="section-title">◫ What to show</h2>
       <div class="layer-row basemap-row"><label for="basemapSelect">Basemap</label><select id="basemapSelect" aria-label="Map basemap"><option value="street">Street</option><option value="qld-imagery">Satellite · DEA Regional + Local Detail</option></select></div>
       <div id="basemapStatus" class="note" role="status">Street · OpenStreetMap</div>
       <div class="layer-row terrain-row"><label><input id="terrainEnabled" type="checkbox" checked> 3-D terrain</label><span>Elevation</span></div>
@@ -100,6 +102,14 @@
     <div id="cesiumContainer"></div>
     <div id="cesiumCredits" class="cesium-widget-credits" aria-label="Map attribution"></div>
     <div id="nav"><button type="button" id="sidebarToggle" aria-controls="controlSidebar" aria-expanded="true" title="Maximise weather map">Hide controls</button><select id="radarSite" aria-label="Primary radar site in Queensland or northern New South Wales"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
+    <div id="mapTools" aria-label="Map tools"><button id="measureToggle" type="button" aria-pressed="false" aria-controls="mapMeasurePanel">Measure</button></div>
+    <div id="measureSurface" aria-label="Tap locations to measure distance on the map" hidden></div>
+    <section id="mapMeasurePanel" aria-label="Measure map distances" hidden>
+      <header><strong>📏 Measure distance</strong><button type="button" id="measureClose" aria-label="Close distance tool">×</button></header>
+      <p id="measureStatus" role="status" aria-live="polite">Tap your starting point on the map.</p>
+      <div class="measure-actions"><button type="button" id="measureUndo" disabled>Undo point</button><button type="button" id="measureClear" disabled>Clear</button><button type="button" id="measureDone" disabled>Done · pan map</button></div>
+      <small>Distance follows the Earth’s surface in a straight line between points, not roads or slopes. Done returns map panning.</small>
+    </section>
     <section id="multiRadarPanel" class="multi-radar-panel" aria-label="Additional radar sites" hidden>
       <header class="multi-radar-heading"><strong>Display radar coverage</strong><button type="button" id="closeMultiRadarPanel" aria-label="Close radar selection">×</button></header>
       <p class="note">Primary radar controls storm tracks, inferred 3-D and any supported Doppler. Add up to three more BoM reflectivity windows, including northern NSW.</p><p class="note">Tap a radar marker to make it primary. Station names are available on hover or in the radar dropdown.</p>
@@ -125,6 +135,7 @@
       <div id="riverGaugeInfoRows" class="metric"></div>
     </section>
     <div id="supplementalHoldNote" role="status" aria-live="off" hidden></div>
+    <div id="mapScaleBar" role="status" aria-label="Map scale" title="Approximate horizontal ground scale" hidden><span id="mapScaleLabel">—</span><span id="mapScaleLine" aria-hidden="true"></span></div>
     <div id="mapTruthLabel">Measured BoM reflectivity · dBZ / inferred 3-D structure</div>
   </main>
 </div>
@@ -286,6 +297,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v1"></script>
 </body>
 </html>

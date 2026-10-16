@@ -1,0 +1,34 @@
+name: Build representative Alfred Narelle Jasper cyclone QA archives
+on:
+  push:
+    branches: [research/cyclone-sample-selection-20261016]
+    paths:
+      - scripts/build-representative-cyclone-archives.mjs
+      - .github/workflows/build-representative-cyclone-archives.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  source-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/cyclone-sample-selection-20261016
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Export genuine original BoM-sourced cyclone geometry with full vertices
+        run: node scripts/build-representative-cyclone-archives.mjs
+      - name: Commit source-provenance and unchanged geometry QA archives to development only
+        run: |
+          set -euo pipefail
+          git config user.name "StormTracker Source QA"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/data/cyclone-history/alfred-2025.json frontend/data/cyclone-history/narelle-2026.json frontend/data/cyclone-history/jasper-2023.json
+          if ! git diff --cached --quiet; then
+            git commit -m "QA: source-backed historical Alfred Narelle Jasper cyclone archives"
+            git push origin HEAD:research/cyclone-sample-selection-20261016
+          fi

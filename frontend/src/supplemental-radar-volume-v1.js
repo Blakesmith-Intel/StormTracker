@@ -1,4 +1,5 @@
 import {createIncrementalVolumeRenderer} from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
+import {selectSupplementalVolumeSampleIndices} from "./supplemental-volume-sampling-v1.js?v=secondary-coverage-fix-1";
 
 // Display-only empirical 3-D over genuine, source-time-matched supplemental
 // BoM reflectivity. Never supplies tracks, threats, Doppler or observed heights.
@@ -75,45 +76,45 @@ export function createSupplementalRadarVolumes({
       collection.removeAll();
     }
 
-    // Count ONLY actual observed high-dBZ pixels (including the 40 dBZ
-    // threshold). Then take deterministic samples throughout each measured
-    // source footprint, not an invented interpolation between sites.
+    // The classic V9.19.0 branch still uses the eligible-pixel stride.
+    // The production incremental renderer samples exactly up to 250 actual
+    // high-dBZ BoM pixels with a source-indexed stable hash, so a sparse echo
+    // cannot land entirely between fixed modulo-lattice points.
     const threshold=Math.max(40,Number(settings.minimumDbzh)||40);
-    let eligible=0;
     const categories=frame.categories;
-    for(let i=0;i<categories.length;i++){
-      const dbz=representativeDbzForCategory(categories[i]);
-      if(dbz!==null && dbz!==undefined && dbz>=threshold)eligible++;
+    const sampled=incremental
+      ?selectSupplementalVolumeSampleIndices(categories,
+        representativeDbzForCategory,threshold,SUPPLEMENTAL_VOLUME_MAX_COLUMNS)
+      :null;
+    let eligible=sampled?.eligible??0;
+    if(!incremental){
+      for(let i=0;i<categories.length;i++){
+        const dbz=representativeDbzForCategory(categories[i]);
+        if(dbz!==null && dbz!==undefined && dbz>=threshold)eligible++;
+      }
     }
-    const desiredEvery=Math.max(1,Math.ceil(eligible/SUPPLEMENTAL_VOLUME_MAX_COLUMNS));
-    // Freeze the sampling lattice across ordinary scan changes, but adapt
-    // if an expanding echo would exceed the bounded point budget.
-    // Lock the geographic lattice for this site's lifetime; changing its
-    // density with each scan recreated the entire 3-D cloud and made it pop.
-    const sampleEvery=incremental
-      ?(state.sampleEvery??desiredEvery):desiredEvery;
-    state.sampleEvery=sampleEvery;
+    const sampleEvery=Math.max(1,Math.ceil(eligible/SUPPLEMENTAL_VOLUME_MAX_COLUMNS));
     if(incremental){
       const geo=frame.georef||{};
       const identity=[site,frame.width,frame.height,geo.projection,
-        geo.minX,geo.maxX,geo.minY,geo.maxY,mode,sampleEvery,
+        geo.minX,geo.maxX,geo.minY,geo.maxY,mode,
         settings.occupancyThreshold,settings.minimumDbzh,
         settings.pointSize,settings.verticalScale].join(":");
       collection=state.delta.begin(identity,
         ()=>settings.blob?new Cesium.BillboardCollection():
           new Cesium.PointPrimitiveCollection(),
-        Boolean(state.frame && state.utc!==utc));
+        false); // Never alpha-fade an entire secondary cloud between scans.
       state.collections.clear();
       state.collections.set(mode,collection);
     }
     let seen=0,columns=0,glyphs=0;
     const width=frame.width;
-    outer:for(let i=0;i<categories.length;i++){
+    const count=incremental?sampled.indices.length:categories.length;
+    outer:for(let offset=0;offset<count;offset++){
+      const i=incremental?sampled.indices[offset]:offset;
       const inputDbzh=representativeDbzForCategory(categories[i]);
       if(inputDbzh==null || inputDbzh<threshold)continue;
-      // Stable spatial sampling: earlier cells entering or leaving the
-      // threshold cannot shift every subsequent sampled column.
-      if(incremental ? i%sampleEvery!==0 : seen++%sampleEvery!==0)continue;
+      if(!incremental && seen++%sampleEvery!==0)continue;
       const levelPoints=inferColumn(model,inputDbzh,{
         occupancyThreshold:settings.occupancyThreshold,
         minimumOutputDbz:30
@@ -187,6 +188,10 @@ export function createSupplementalRadarVolumes({
   }
   return {
     render,hide,hideAll,pruneSites,refresh,setOpacity,
+    get siteGlyphs(){return Object.fromEntries([...siteStates].map(([site,s])=>[
+      site,s.visible?[...s.collections.values()].reduce(
+        (total,c)=>total+(c.show?(c.length??0):0),0):0
+    ]));},
     get visibleSites(){return [...siteStates].filter(([,s])=>s.visible).map(([id])=>id);},
     get glyphs(){return [...siteStates.values()].reduce((n,s)=>
       n+(s.visible?[...s.collections.values()].reduce(

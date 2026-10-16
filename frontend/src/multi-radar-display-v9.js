@@ -236,7 +236,10 @@ export function createSupplementalRadarDisplay({
       if(!valid() || !ready){
         if(valid() && !ready)cacheStats.stagingTimeouts++;
         // A timed-out staged image may have a stale decoded provider.
-        if(valid())providerCache.delete(providerKey(site,utc));
+        if(valid()){
+          providerCache.delete(providerKey(site,utc));
+          stageTimings.set(site,{utc,elapsedMs:Date.now()-began,result:"not-ready"});
+        }
         removeStagedLayer(layer);
         return null;
       }
@@ -275,7 +278,14 @@ export function createSupplementalRadarDisplay({
         return [];
       }
       for(const item of results)if(item)staged.set(item.site,item);
-      return results.filter(Boolean).map(x=>x.site);
+      const prepared=results.filter(Boolean).map(x=>x.site);
+      // A failed optional source must be retryable at the SAME original UTC
+      // after the upstream recovers; don't cache an empty promise forever.
+      if(!prepared.length){
+        preparingPromise=null;
+        preparingKey="";
+      }
+      return prepared;
     });
     return preparingPromise;
   }

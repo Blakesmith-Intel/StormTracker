@@ -1,5 +1,5 @@
 import {addOfficialSourceRow,powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
-import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=official-lga-20261017-v1";
+import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=case-insensitive-lga-20261017-v2";
 import {
   createPowerOutageLayer,
   powerOutageSummary

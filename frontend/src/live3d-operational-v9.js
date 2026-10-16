@@ -175,7 +175,7 @@ import {
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=official-lga-20261017-v1";
+} from "./context-layers/power-outages-operational-v1.js?v=case-insensitive-lga-20261017-v2";
 
 import {
   initialiseOperationalRiverGauges

@@ -1,5 +1,5 @@
 import {groupOutagesByLga,filterLgaGroups,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
- from "./incident-lga-model-v1.js?v=official-lga-20261017-v1";
+ from "./incident-lga-model-v1.js?v=case-insensitive-lga-20261017-v2";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
   from "./power-outage-suburb-model-v1.js?v=suburb-explorer-20261017-v1";
@@ -32,6 +32,41 @@ export function createPowerOutageSuburbExplorer({
   let status={kind:"loading",message:"Waiting for live outage feed…"};
   let openKeys=new Set(),visibleLimit=60,hasSnapshot=false;
   let loading=false,disposed=false;
+  // Suburb name is a direct route to its published outage geometry.
+  // The disclosure arrow/count remain for expanding the incident table.
+  function focusPublishedOutages(items){
+    const points=[...new Map((items||[]).map(item=>[item.id,item])
+      .map(([id,item])=>[id,outageLocation(item.feature)])
+      .filter(([,coord])=>coord)).values()];
+    if(!points.length)return false;
+    dialog.close();
+    if(byId("measureToggle")?.getAttribute("aria-pressed")==="true")
+      byId("measureClose")?.click();
+    // Reuse the existing map layer visibility control. Never change map
+    // picking, polygon handlers or the provider's incident geometries.
+    const checkbox=byId("showPowerOutages");
+    if(checkbox && !checkbox.checked)checkbox.click();
+    if(points.length===1){
+      const point=points[0];
+      viewer.camera.flyTo({
+        destination:CesiumRef.Cartesian3.fromDegrees(
+          point.longitude,point.latitude,13000),
+        orientation:{heading:0,pitch:CesiumRef.Math.toRadians(-80),roll:0},
+        duration:0.9
+      });
+    }else{
+      const lons=points.map(point=>point.longitude);
+      const lats=points.map(point=>point.latitude);
+      viewer.camera.flyTo({
+        destination:CesiumRef.Rectangle.fromDegrees(
+          Math.min(...lons)-0.06,Math.min(...lats)-0.05,
+          Math.max(...lons)+0.06,Math.max(...lats)+0.05),
+        duration:1
+      });
+    }
+    return true;
+  }
+
   function field(grid,label,value){
     const text=String(value??"").trim();
     if(!text)return;
@@ -76,8 +111,22 @@ export function createPowerOutageSuburbExplorer({
         else openKeys.delete(group.key);
       });
       const title=create("summary","outage-suburb-title");
+      const suburbName=create("button","outage-suburb-map",group.name+" ↗");
+      suburbName.type="button";
+      const hasMappedEvent=group.items.some(item=>Boolean(outageLocation(item.feature)));
+      suburbName.disabled=!hasMappedEvent;
+      suburbName.title=hasMappedEvent
+        ?"Show this suburb's published outage locations on the map"
+        :"No geographic outage location was published";
+      suburbName.setAttribute("aria-label",
+        "Show outages for "+group.name+" on the map");
+      suburbName.addEventListener("click",event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        focusPublishedOutages(group.items);
+      });
       title.append(
-        create("span","outage-suburb-name",group.name),
+        suburbName,
         create("span","outage-suburb-count",
           `${group.items.length} outage${group.items.length===1?"":"s"}`)
       );
@@ -101,18 +150,7 @@ export function createPowerOutageSuburbExplorer({
         const coords=outageLocation(item.feature);
         // Incident title is the primary map-navigation action; expanding the
         // suburb or the secondary Details expander never navigates.
-        const navigate=()=>{
-          if(!coords)return;
-          dialog.close();
-          if(byId("measureToggle")?.getAttribute("aria-pressed")==="true")
-            byId("measureClose")?.click();
-          viewer.camera.flyTo({
-            destination:CesiumRef.Cartesian3.fromDegrees(
-              coords.longitude,coords.latitude,22000),
-            orientation:{heading:0,pitch:CesiumRef.Math.toRadians(-75),roll:0},
-            duration:0.9
-          });
-        };
+        const navigate=()=>focusPublishedOutages([item]);
         const title=create("button","outage-row-locate",
           info.provider+(info.eventId?` · #${info.eventId}`:" · Fault"));
         title.type="button";
@@ -168,7 +206,10 @@ export function createPowerOutageSuburbExplorer({
     more.hidden=visibleLimit>=matching.length;
     if(!more.hidden)more.textContent=`Show more council areas (${matching.length-visibleLimit} remaining)`;
   }
+  let latestFeatures=[];
+  function updateFeaturesFromLatest(){updateFeatures(latestFeatures);}
   function updateFeatures(features){
+    latestFeatures=features;
     suburbGroups=groupOutagesBySuburb(features);
     groups=groupOutagesByLga(suburbGroups,lgaCache);
     // A missing or ambiguous locality remains explicitly unverified.
@@ -180,6 +221,7 @@ export function createPowerOutageSuburbExplorer({
     if(unknown.length&&!lookupBusy){
       unknown.forEach(name=>attempted.add(localityKey(name)));
       lookupBusy=true;
+      state.textContent=(status.message||"")+" · Verifying council areas…";
       resolveQueenslandLocalityLgas(unknown).then(result=>{
         if(disposed)return;
         for(const [key,value] of result)lgaCache.set(key,value);
@@ -188,7 +230,19 @@ export function createPowerOutageSuburbExplorer({
       }).catch(error=>{
         console.warn("Official outage LGA lookup unavailable:",error.message);
         state.textContent=(status.message||"")+" · Council lookup unavailable (unverified shown)";
-      }).finally(()=>{lookupBusy=false;});
+      }).finally(()=>{
+        lookupBusy=false;
+        // A newer outage snapshot may have arrived while the lookup was in
+        // progress. Resolve its additional localities without waiting for
+        // another 15-minute polling cycle.
+        if(!disposed && hasSnapshot){
+          const remaining=suburbGroups.map(g=>g.name).filter(name=>{
+            const key=localityKey(name);
+            return key!=="SUBURB NOT SUPPLIED"&&!lgaCache.has(key)&&!attempted.has(key);
+          });
+          if(remaining.length)updateFeaturesFromLatest();
+        }
+      });
     }
     hasSnapshot=true; // [] from the layer means none, or stale data was removed.
     if(dialog.open)render();
@@ -217,12 +271,19 @@ export function createPowerOutageSuburbExplorer({
       }).finally(()=>{loading=false;});
     }
   }
-  const onOpen=()=>open();
+  const onOpen=()=>{
+    // Give a previously failed official lookup another chance whenever the
+    // user opens this panel, without a hot-loop of automatic retries.
+    attempted.clear();
+    if(hasSnapshot)updateFeaturesFromLatest();
+    open();
+  };
   const onClose=()=>dialog.close();
   const onSearch=()=>{visibleLimit=60;render();};
   const onMore=()=>{visibleLimit+=60;render();};
   const onRefresh=()=>{
     if(loading)return;
+    attempted.clear();
     loading=true;reload.disabled=true;
     refresh().catch(()=>{
       if(!hasSnapshot)state.textContent="Unable to load outages. Try Refresh.";

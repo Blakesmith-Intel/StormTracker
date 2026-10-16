@@ -634,7 +634,7 @@ supplementalVolumeDisplay=createSupplementalRadarVolumes({
   }),
   inferColumn,representativeDbzForCategory,pixelCentreMercator,
   webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
-  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity,
+  colourForDbzh,addVolumeGlyph,updateVolumeGlyph,setVolumeDisplayOpacity,
   incremental:INCREMENTAL_VOLUME_PREVIEW
 });
 let validation = null;

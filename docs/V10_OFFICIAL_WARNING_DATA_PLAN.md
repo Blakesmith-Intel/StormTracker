@@ -4,6 +4,12 @@
 
 ## 1. Tropical cyclone track map data (highest priority)
 
+**Implementation progress:** `frontend/src/official-cyclone-track-contract-v1.js` and `frontend/tests/run-official-cyclone-track-contract-v1-tests.mjs` provide a new *pure validation boundary* for decoded, authentic BoM cyclone GML geometry. They enforce official product identity, issue UTC, valid centre/line/uncertainty polygon types, source bulletin URL, forecast horizon, category 0–5 and stale/expired removal. The tests use clearly-labelled synthetic fixtures ONLY to verify the code; NO synthetic cyclone is ever rendered in the browser.
+
+**Unresolved LIVE source dependency:** Public BoM CXML/GML product identifiers are documented but seasonal issuance means genuine current files may be absent outside cyclone events. Operational GIS2Web documentation also describes registered-user credentials, and the Queensland government's PUBLIC production service currently lists historical cyclones but not its UAT active-cyclone service. Do not use UAT or QFES/QDMA-restricted source as the real-time public product. Verify a public, lawful, reproducible actual GML source file, sample geometry CRS/schema and the deployment's anonymous relay transport before wiring any active overlay. The new contract is deliberately **not connected to live radar UI** until this source validation succeeds.
+
+## 1. Tropical cyclone track map data (highest priority)
+
 **Target:** Live BoM forecast track map with exact centre observations and forecast fixes, issued-time metadata, uncertainty/possible-centre-movement envelope, category and cyclone name, official Watch/Warning zones if those particular source geometries are supplied. Historical tracks can be a separate later toggle; **do not confuse historical QLD CycloneHistorical with live warning forecasts.** StormTracker is situational awareness, not a BoM warnings replacement.
 
 Confirmed public references:

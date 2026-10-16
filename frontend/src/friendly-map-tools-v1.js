@@ -69,9 +69,12 @@ export function createFriendlyMapTools({viewer,Cesium}) {
   }
   function setStatus(){
     if (!points.length) {
-      status.textContent="Tap your starting point on the map.";
+      status.textContent=active?"Tap the map to start.":"Tap Measure to start.";
     } else {
-      status.textContent=`${formatMapDistance(segmentLength(points))} · ${points.length} point${points.length===1?"":"s"} · Tap to extend.`;
+      const length=formatMapDistance(segmentLength(points));
+      status.textContent=active
+        ? `${length} · Tap the map for the next point.`
+        : `${length} · Measurement finished.`;
     }
     el("measureUndo").disabled=points.length===0;
     el("measureDone").disabled=!active;
@@ -129,11 +132,10 @@ export function createFriendlyMapTools({viewer,Cesium}) {
     panel.hidden=false;
     startButton.setAttribute("aria-pressed",String(active));
     startButton.textContent=active?"Measuring…":"Measure";
-    el("measureDone").textContent=active?"Done · pan map":"Done";
-    if(!active){
-      if(previewEntity){source.entities.remove(previewEntity);previewEntity=null;}
-      setStatus();
-    }
+    el("measureDone").textContent="Done";
+    el("measureDone").setAttribute("aria-label","Finish measuring and return to map navigation");
+    if(!active && previewEntity){source.entities.remove(previewEntity);previewEntity=null;}
+    setStatus();
     scene.requestRender();
   }
   startButton.addEventListener("click",()=>{

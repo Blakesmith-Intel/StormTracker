@@ -88,7 +88,7 @@ export function createPowerOutageSuburbExplorer({
           if(!coords)return;
           dialog.close();
           if(byId("measureToggle")?.getAttribute("aria-pressed")==="true")
-            byId("measureDone")?.click();
+            byId("measureClose")?.click();
           viewer.camera.flyTo({
             destination:CesiumRef.Cartesian3.fromDegrees(
               coords.longitude,coords.latitude,22000),

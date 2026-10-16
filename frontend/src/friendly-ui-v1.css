@@ -42,7 +42,7 @@ body.simple-ui #hybridPlayButton {flex:1;min-width:84px;background:#146e50;borde
 body.simple-ui #jumpLatestButton {flex:1;min-width:84px;}
 body.simple-ui .playback-row label {display:none;}
 body.simple-ui #hybridFrameSlider {height:30px;margin-top:8px;}
-body.simple-ui .layer-controls > :not(.section-title):not(.basemap-row):not(.terrain-row):not(.flood-road-row):not(.power-outage-row):not(.river-gauge-row) {display:none!important;}
+body.simple-ui .layer-controls > :not(.section-title):not(.basemap-row):not(.terrain-row):not(.flood-road-row):not(.power-outage-row):not(.river-gauge-row):not(.qfd-rescue-row) {display:none!important;}
 body.simple-ui .layer-controls .layer-row {
   padding:6px 0;margin:0;min-height:42px;display:flex;align-items:center;flex-wrap:nowrap;
   border-bottom:1px solid #ffffff19;

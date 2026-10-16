@@ -269,7 +269,8 @@ const PUBLISHED_PRODUCTION_RUNTIME =
 const BOUNDED_RADAR_RECOVERY_QA =
   PUBLISHED_PRODUCTION_RUNTIME ||
   window.location.pathname.includes("/preview/radar-history-fix/") ||
-  window.location.pathname.includes("/preview/next-baseline/");
+  window.location.pathname.includes("/preview/next-baseline/") ||
+  INCREMENTAL_VOLUME_PREVIEW;
 const LABEL_GPU_QA =
   BOUNDED_RADAR_RECOVERY_QA ||
   window.location.pathname.includes("/preview/label-gpu-guard/");
@@ -313,6 +314,7 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   retireLayer:deferredImageryRetirement?.retire,
   onDisplay:(site,frame,utc)=>supplementalVolumeDisplay?.render(site,frame,utc),
   onHide:site=>supplementalVolumeDisplay?.hide(site),
+  maxCached:INCREMENTAL_VOLUME_PREVIEW?8:18,
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -1417,6 +1419,44 @@ const measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW
   ?createBoundedRenderProviderCache({
     limit:window.matchMedia?.("(max-width:700px)").matches?3:6
   }):new WeakMap();
+// On-demand browser diagnostics. Chromium may expose JS heap but GPU process
+// memory is NOT tab-attributable via web APIs. No persistent polling/allocations.
+if(INCREMENTAL_VOLUME_PREVIEW){
+  window.__stormtrackerMemoryDiagnostics=()=>{
+    const unique=new Set();
+    let radarCategoryBytes=0;
+    for(const frame of [...hybridFrames,...radarFrameCache.values()]){
+      const buffer=frame?.categories?.buffer;
+      if(buffer && !unique.has(buffer)){
+        unique.add(buffer);
+        radarCategoryBytes+=buffer.byteLength;
+      }
+    }
+    const mem=performance.memory;
+    const heap=mem && Number.isFinite(mem.usedJSHeapSize)
+      ?{usedMb:Math.round(mem.usedJSHeapSize/1048576),
+         limitMb:Math.round(mem.jsHeapSizeLimit/1048576)}:null;
+    return {
+      source:"browser-estimate; GPU process is shared and cannot be measured per tab",
+      jsHeap:heap,
+      activeRadarFrames:hybridFrames.length,
+      radarFrameCache:radarFrameCache.size,
+      radarResultCache:radarResultCache.size,
+      activeCategoryMb:Math.round(radarCategoryBytes/1048576),
+      cachedProviderCount:measuredRadarProviderCache.size,
+      livePrimaryGlyphs:inferredCollection?.length??0,
+      secondaryGlyphs:supplementalVolumeDisplay?.glyphs??0,
+      trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
+        (hybridTrackFootprintCollection?.length??0),
+      cached3dFrames:volumeGeometryCache.size,
+      imageryLayers:viewer.imageryLayers.length,
+      deferredImageryRetirement:deferredImageryRetirement?.snapshot()??null,
+      globeTileCacheLimit:scene.globe.tileCacheSize,
+      canvasPixels:scene.canvas.width*scene.canvas.height,
+      canvasPixelRatio:viewer.resolutionScale
+    };
+  };
+}
 const reflectivityRgbLookup = new Uint8Array(16*3);
 for(const item of SOURCE_PALETTES.reflectivityRgb) {
   if(item.value>0 && item.value<16 && item.rgb) {

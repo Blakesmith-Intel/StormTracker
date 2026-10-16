@@ -109,6 +109,7 @@ import {
   supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
 } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
+import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=volume-delta-qa-1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -242,6 +243,11 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
+// Browser memory experiment only. Keep visible tiles; reduce surplus
+// offscreen tile residency without changing the accepted satellite providers.
+if(INCREMENTAL_VOLUME_PREVIEW){
+  scene.globe.tileCacheSize=window.matchMedia?.("(max-width:700px)").matches?48:72;
+}
 // An independent map control remains reachable even when the sidebar is hidden.
 const controlsSidebar=$("controlSidebar");
 const sidebarToggle=$("sidebarToggle");
@@ -1407,7 +1413,10 @@ function displayRgb(category) {
 // Cache real BoM frame raster providers across repeated loops; previously the
 // app decoded, reprojected, PNG-encoded and loaded each same frame on EVERY
 // playback pass, with work repeated at every playback speed.
-const measuredRadarProviderCache = new WeakMap();
+const measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW
+  ?createBoundedRenderProviderCache({
+    limit:window.matchMedia?.("(max-width:700px)").matches?3:6
+  }):new WeakMap();
 const reflectivityRgbLookup = new Uint8Array(16*3);
 for(const item of SOURCE_PALETTES.reflectivityRgb) {
   if(item.value>0 && item.value<16 && item.rgb) {
@@ -4676,7 +4685,15 @@ async function loadHybridSequence(automatic = false) {
   await showHybridFrame(hybridFrameIndex);
   if (resume) playback.play();
   // Bound decoded imagery and per-frame results while retaining worker tracks.
-  const retained = new Set([...radarResultCache.keys()].sort().slice(-48));
+  // Do not pin stale decoded buffers beyond current observed playback.
+  // Current loop owns live frames/results regardless of this cache's size.
+  const activeSourceTimes=new Set(hybridFrames
+    .filter(f=>!isTemporallyInferredRadarFrame(f)).map(f=>f.observedUtc));
+  const latestTimes=[...radarResultCache.keys()].sort().slice(
+    -(INCREMENTAL_VOLUME_PREVIEW?12:48));
+  const retained = new Set(INCREMENTAL_VOLUME_PREVIEW
+    ? [...activeSourceTimes,...latestTimes]
+    : latestTimes);
   for (const cache of [radarFrameCache, radarResultCache]) {
     for (const key of cache.keys()) if (!retained.has(key)) cache.delete(key);
   }
@@ -5010,6 +5027,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
+  measuredRadarProviderCache.clear?.();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;
   lastSourceDiscoveryRegion = null;
   lastSourceDiscoveryAt = 0;

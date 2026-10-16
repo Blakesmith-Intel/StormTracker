@@ -1,6 +1,6 @@
 import {QLD_TRAFFIC_OFFICIAL_CLOSED_ALL,qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
-import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=map-nav-fix-20261017-v1";
+import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=incident-counts-20261017-v2";
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION

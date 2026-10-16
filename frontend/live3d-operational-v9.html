@@ -9,17 +9,23 @@
   <link rel="stylesheet" href="./src/friendly-ui-v1.css?v=map-nav-qfd-20261017-v1">
   <link rel="stylesheet" href="./src/power-outage-suburb-explorer-v1.css?v=case-insensitive-lga-20261017-v2">
   <link rel="stylesheet" href="./src/lga-sidebar-legend-v1.css?v=lga-ui-legend-20261017-v1">
+  <link rel="stylesheet" href="./src/sidebar-incident-counts-v1.css?v=incident-counts-20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
 <body class="simple-ui">
 <div id="app">
   <aside id="controlSidebar" aria-label="Live weather controls">
-    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div></header>
-    <nav class="sidebar-shortcuts" aria-label="Quick tools">
-      <button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages grouped by local government area">⚡ Outages</button>
-      <button type="button" id="openRoadLgaExplorer" aria-haspopup="dialog" aria-controls="roadLgaExplorer" aria-label="Browse road closures grouped by local government area">Road closures</button>
-      <button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button>
+    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div><button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button></header>
+    <nav class="sidebar-shortcuts" aria-label="Current incidents">
+      <button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages by council">
+        <span class="incident-button-name">⚡ Power outages</span>
+        <span class="incident-button-numbers"><strong id="sidebarPowerOutageCount">Checking…</strong><small id="sidebarPowerCustomerCount">Customers: —</small></span>
+      </button>
+      <button type="button" id="openRoadLgaExplorer" aria-haspopup="dialog" aria-controls="roadLgaExplorer" aria-label="Browse road closures by council">
+        <span class="incident-button-name">Road closures</span>
+        <span class="incident-button-numbers"><strong id="sidebarRoadClosureCount">Checking…</strong><small>All-traffic closures · QLDTraffic</small></span>
+      </button>
     </nav>
     <div class="simple-intro" aria-label="Quick start">Choose a radar above the map, press <strong>Play</strong>, or tap <strong>Measure</strong> to check a distance.</div>
     <section class="card overview">
@@ -340,6 +346,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v2-outage-fix-navigation-qfd-v1"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v1"></script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 import {groupOutagesByLga,filterLgaGroups,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
  from "./incident-lga-model-v1.js?v=case-insensitive-lga-20261017-v2";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
+import {resolveOutageCouncilNames} from "./outage-lga-geographic-fallback-v1.js?v=outage-spatial-councils-20261017-v1";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
   from "./power-outage-suburb-model-v1.js?v=suburb-explorer-20261017-v1";
 
@@ -240,16 +241,20 @@ export function createPowerOutageSuburbExplorer({
     // Locality attributes are looked up only for names present in the SAME feed.
     const unknown=suburbGroups.map(g=>g.name).filter(name=>{
       const key=localityKey(name);
-      return key!=="SUBURB NOT SUPPLIED"&&!lgaCache.has(key)&&!attempted.has(key);
+      return key!=="SUBURB NOT SUPPLIED"&&(!lgaCache.has(key)||lgaCache.get(key)===UNKNOWN_LGA)&&!attempted.has(key);
     });
     if(unknown.length&&!lookupBusy){
       unknown.forEach(name=>attempted.add(localityKey(name)));
       lookupBusy=true;
       state.textContent=(status.message||"")+" · Verifying council areas…";
-      resolveQueenslandLocalityLgas(unknown).then(result=>{
+      resolveOutageCouncilNames(unknown,suburbGroups,{existing:lgaCache}).then(result=>{
         if(disposed)return;
         for(const [key,value] of result)lgaCache.set(key,value);
         groups=groupOutagesByLga(suburbGroups,lgaCache);
+        const verified=groups.filter(group=>group.name!==UNKNOWN_LGA).length;
+        const stillUnknown=groups.some(group=>group.name===UNKNOWN_LGA);
+        state.textContent=(status.message||"")+" · "+verified+" LGAs verified"+
+          (stillUnknown?" · Unresolved locations retained":"");
         if(dialog.open)render();
       }).catch(error=>{
         console.warn("Official outage LGA lookup unavailable:",error.message);

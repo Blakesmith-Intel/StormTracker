@@ -1,0 +1,112 @@
+/* V10 QA responsive desktop/mobile clean-up: fixed production map untouched. */
+#controlSidebar .dashboard-heading{width:100%;min-width:0;}
+#controlSidebar .simple-brand{min-width:0;overflow:hidden;}
+#controlSidebar .simple-brand strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#controlSidebar .sidebar-shortcuts{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
+ width:100%;min-width:0;flex:0 0 auto;margin:0;
+}
+.sidebar-shortcuts button{
+ display:flex;align-items:center;justify-content:center;
+ width:100%;min-width:0;min-height:42px;padding:6px 4px;
+ font-size:11px;line-height:1.25;white-space:normal;text-align:center;
+ border-radius:10px;border:1px solid #53768b;color:#effaff;background:#203747;
+}
+.sidebar-shortcuts #openPowerOutageExplorer,
+.sidebar-shortcuts #openRoadLgaExplorer{
+ min-width:0;min-height:42px;padding:5px 4px;font-size:11px;
+}
+.sidebar-shortcuts #openRoadLgaExplorer{background:#2e4450;border-color:#647f88;}
+.sidebar-shortcuts #simpleModeToggle{
+ min-width:0;width:100%;min-height:42px;margin:0;
+ padding:5px 4px;font-size:11px;white-space:normal;
+}
+/* Retain all existing Advanced controls; scroll within the sidebar. */
+#controlSidebar{overflow-x:hidden;}
+#controlSidebar .card{min-width:0;}
+#controlSidebar .button-grid button{white-space:normal;overflow-wrap:anywhere;}
+body.simple-ui .simple-intro{display:none!important;}
+body.simple-ui .dashboard-heading{min-height:34px!important;}
+/* The actual original legend DOM is moved into mapPanel. Both weather modes
+   are still populated by the existing BoM source palette functions. */
+#mapPanel #legendDock,
+body.simple-ui #mapPanel #legendDock{
+ display:block!important;position:absolute;z-index:var(--stormtracker-control-z);
+ bottom:56px;right:10px;left:auto;margin:0;
+ box-sizing:border-box;width:min(365px,calc(100% - 20px));max-width:calc(100% - 20px);
+ padding:10px 11px;background:#0c1e2be8;border:1px solid #83a3b5a8;
+ border-radius:11px;box-shadow:0 3px 18px #0007;
+ pointer-events:none;font-size:11px;line-height:1.25;
+}
+#mapPanel #legendDock #legend,
+#mapPanel #legendDock .velocity-title,
+#mapPanel #legendDock #dopplerVelocityLegend{grid-column:auto;grid-row:auto;}
+#mapPanel #legendDock .weather-legend-rain>strong,
+#mapPanel #legendDock .velocity-title{
+ display:block;font-size:11px;font-weight:750;margin:0 0 5px;color:#f0fbff;
+}
+#mapPanel #legendDock .intensity-scale{
+ grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;
+ font-size:9px;margin:4px 0 0;
+}
+#mapPanel #legendDock .intensity-scale i{height:10px;}
+#mapPanel #legendDock .velocity-scale{grid-template-columns:repeat(10,minmax(0,1fr));gap:4px 3px;}
+#mapPanel #legendDock .velocity-step{font-size:9px;}
+#mapPanel #legendDock .support-scale,
+#mapPanel #legendDock .support-scale + .note,
+#mapPanel #legendDock .weather-legend-rain > .note{display:none!important;}
+#mapPanel #legendDock[data-mode="rain"] .velocity-title,
+#mapPanel #legendDock[data-mode="rain"] #dopplerVelocityLegend {display:none!important;}
+#mapPanel #legendDock[data-mode="wind"] #legend {display:none!important;}
+#mapPanel #legendDock[data-mode="wind"] .velocity-title,
+#mapPanel #legendDock[data-mode="wind"] #dopplerVelocityLegend{display:block!important;}
+#mapPanel #legendDock:empty{display:block!important;}
+#powerOutageExplorer .outage-council>.outage-suburb-title,
+#roadLgaExplorer .outage-council>.outage-suburb-title{
+ background:#213f51;border-left:3px solid #68b7db;
+}
+#powerOutageExplorer .outage-lga-inner,
+#roadLgaExplorer .outage-lga-inner{padding:8px;}
+#powerOutageExplorer .outage-locality,
+#roadLgaExplorer .outage-locality{margin:0 0 6px;background:#142b39;}
+#powerOutageExplorer .outage-locality>.outage-suburb-title,
+#roadLgaExplorer .outage-locality>.outage-suburb-title{font-size:12px;min-height:40px;}
+#roadLgaExplorer[open]{
+ position:fixed;inset:0;margin:auto;display:flex;flex-direction:column;
+ width:min(830px,calc(100vw - 22px));
+ height:min(790px,calc(100dvh - 22px));max-height:calc(100dvh - 22px);
+ padding:0;background:#10202b;color:#ecf6fa;overflow:hidden;
+ border:1px solid #6c94a7;border-radius:17px;
+ box-shadow:0 20px 65px #000d;
+}
+#roadLgaExplorer::backdrop{background:rgba(0,9,18,.74);}
+.road-closure-list{display:grid;gap:7px;padding:7px;}
+.road-closure-item{border-top:1px solid #ffffff1f;padding:8px 2px 5px;}
+.road-closure-caption{font-size:11px;color:#c3d7df;margin:4px 0;overflow-wrap:anywhere;}
+@media(max-width:700px){
+ body.simple-ui #app{grid-template-rows:minmax(0,min(29dvh,250px)) minmax(0,1fr);}
+ body.simple-ui #controlSidebar{gap:4px;padding:6px 8px;}
+ body.simple-ui .dashboard-heading{min-height:30px!important;}
+ body.simple-ui .simple-brand span{display:none;}
+ .sidebar-shortcuts{gap:4px!important;}
+ .sidebar-shortcuts button,.sidebar-shortcuts #openPowerOutageExplorer,
+ .sidebar-shortcuts #openRoadLgaExplorer,.sidebar-shortcuts #simpleModeToggle{
+   min-height:34px;padding:4px 3px;font-size:10px;border-radius:8px;
+ }
+ #mapPanel #legendDock,body.simple-ui #mapPanel #legendDock{
+  bottom:48px;right:6px;max-width:calc(100% - 12px);
+  width:min(255px,calc(100% - 12px));padding:7px 8px;
+ }
+ #mapPanel #legendDock .intensity-scale{grid-template-columns:repeat(8,minmax(0,1fr));gap:2px;font-size:8px;}
+ #mapPanel #legendDock .intensity-scale i{height:8px;}
+ #mapPanel #legendDock .velocity-scale{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;}
+ #mapPanel #legendDock .velocity-step{font-size:8px;}
+ #roadLgaExplorer[open]{
+   width:calc(100vw - 8px);height:calc(100dvh - 10px);
+   max-height:calc(100dvh - 10px);border-radius:12px;
+ }
+}
+@media (max-width:370px){
+ .sidebar-shortcuts button{font-size:9px!important;}
+ #mapPanel #legendDock{width:min(210px,calc(100% - 12px));}
+}

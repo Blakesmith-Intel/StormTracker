@@ -129,11 +129,9 @@ export function createSupplementalRadarDisplay({
     extras=next;
     // A new site/mask layout is the only reason to discard the old mosaic.
     // Advancing source time MUST keep the previous frame until replacement.
-    if(!same){
-      reset();
-      // Never retain old source pixels when radar sites/masking change.
-      cache.clear();
-    }
+    // Original BoM site+UTC source frames are independent of overlap masking
+    // and remain safe to reuse across changing selections (bounded LRU).
+    if(!same)reset();
   }
 
   function setOpacity(alpha) {

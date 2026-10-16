@@ -206,7 +206,10 @@ export function createPowerOutageSuburbExplorer({
     more.hidden=visibleLimit>=matching.length;
     if(!more.hidden)more.textContent=`Show more council areas (${matching.length-visibleLimit} remaining)`;
   }
+  let latestFeatures=[];
+  function updateFeaturesFromLatest(){updateFeatures(latestFeatures);}
   function updateFeatures(features){
+    latestFeatures=features;
     suburbGroups=groupOutagesBySuburb(features);
     groups=groupOutagesByLga(suburbGroups,lgaCache);
     // A missing or ambiguous locality remains explicitly unverified.
@@ -218,6 +221,7 @@ export function createPowerOutageSuburbExplorer({
     if(unknown.length&&!lookupBusy){
       unknown.forEach(name=>attempted.add(localityKey(name)));
       lookupBusy=true;
+      state.textContent=(status.message||"")+" · Verifying council areas…";
       resolveQueenslandLocalityLgas(unknown).then(result=>{
         if(disposed)return;
         for(const [key,value] of result)lgaCache.set(key,value);
@@ -226,7 +230,19 @@ export function createPowerOutageSuburbExplorer({
       }).catch(error=>{
         console.warn("Official outage LGA lookup unavailable:",error.message);
         state.textContent=(status.message||"")+" · Council lookup unavailable (unverified shown)";
-      }).finally(()=>{lookupBusy=false;});
+      }).finally(()=>{
+        lookupBusy=false;
+        // A newer outage snapshot may have arrived while the lookup was in
+        // progress. Resolve its additional localities without waiting for
+        // another 15-minute polling cycle.
+        if(!disposed && hasSnapshot){
+          const remaining=suburbGroups.map(g=>g.name).filter(name=>{
+            const key=localityKey(name);
+            return key!=="SUBURB NOT SUPPLIED"&&!lgaCache.has(key)&&!attempted.has(key);
+          });
+          if(remaining.length)updateFeaturesFromLatest();
+        }
+      });
     }
     hasSnapshot=true; // [] from the layer means none, or stale data was removed.
     if(dialog.open)render();
@@ -255,12 +271,19 @@ export function createPowerOutageSuburbExplorer({
       }).finally(()=>{loading=false;});
     }
   }
-  const onOpen=()=>open();
+  const onOpen=()=>{
+    // Give a previously failed official lookup another chance whenever the
+    // user opens this panel, without a hot-loop of automatic retries.
+    attempted.clear();
+    if(hasSnapshot)updateFeaturesFromLatest();
+    open();
+  };
   const onClose=()=>dialog.close();
   const onSearch=()=>{visibleLimit=60;render();};
   const onMore=()=>{visibleLimit+=60;render();};
   const onRefresh=()=>{
     if(loading)return;
+    attempted.clear();
     loading=true;reload.disabled=true;
     refresh().catch(()=>{
       if(!hasSnapshot)state.textContent="Unable to load outages. Try Refresh.";

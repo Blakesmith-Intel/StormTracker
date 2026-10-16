@@ -1,0 +1,24 @@
+name: Audit historical Koji Yasi tracks and wind polygons
+
+on:
+  push:
+    branches: [feature/historical-cyclone-koji-yasi-qa-20261016]
+    paths:
+      - scripts/audit-koji-yasi-history-sources.mjs
+      - .github/workflows/audit-koji-yasi.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate historical Koji and Yasi archived source schemas
+        run: node scripts/audit-koji-yasi-history-sources.mjs

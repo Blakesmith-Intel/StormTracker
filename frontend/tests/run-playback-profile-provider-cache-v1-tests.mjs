@@ -38,7 +38,7 @@ assert.deepEqual(first.points.map(p=>p.altitude_m_amsl),[1000,1500]);
 assert.equal(first.styles[0].alpha,.9);
 const another=cache.get(1);
 assert.equal(inferenceCount,2);
-assert.equal(another.points.length,1,"A 40 dBZ cutoff only changes presentation");
+assert.equal(another.points.length,2,"Both genuine 40 and 48 dBZ inferred levels remain visible at a 40 dBZ cutoff");
 assert.equal(cache.size,3);
 const otherSettings=createVolumeCategoryProfileCache({
   model,occupancyThreshold:.6,displayThresholdDbz:50,pointSize:4,

@@ -5059,7 +5059,9 @@ async function initialise() {
   }
   (FLAT_TERRAIN_PERFORMANCE_TEST
     ? terrainManager.setEnabled(false,{persist:false})
-    : terrainManager.initialise())
+    // 3-D terrain is the permanent operator basemap setting. This also
+    // replaces any legacy browser preference that had turned terrain off.
+    : terrainManager.setEnabled(true))
     .then(result => {
       terrainControl.checked =
         Boolean(result?.enabled);
@@ -5203,32 +5205,9 @@ $("basemapSelect").addEventListener(
   }
 );
 
-$("terrainEnabled").addEventListener(
-  "change",
-  async event => {
-    motionTransition.cancel();
-    if(FLAT_TERRAIN_PERFORMANCE_TEST){
-      event.target.checked=false;
-      return;
-    }
-
-    const requested =
-      event.target.checked;
-
-    const result =
-      await terrainManager.setEnabled(
-        requested
-      );
-
-    if (
-      requested
-      && result.failed
-    ) {
-      event.target.checked =
-        false;
-    }
-  }
-);
+// The optional terrain checkbox has been retired from the operator UI.
+// The manager always attempts world elevation in this preview; a source
+// failure remains visible in terrainStatus and uses its safe flat fallback.
 
 $("loopDurationMinutes").addEventListener("change", () => {
   persistentWeatherLegend.sync();
@@ -5298,6 +5277,12 @@ function updateRenderedTrackLabels() {
   setStormTrackTrailVisibility(hybridSource.entities, show);
   scene.requestRender();
 }
+// The QFD legend uses exactly the public GroupedType symbols fetched by the
+// existing incident layer. Reveal the key automatically whenever jobs are on.
+$("showQfdTechnicalRescues").addEventListener("change",event=>{
+  const legend=$("qfdIncidentLegendDetails");
+  if(legend)legend.open=Boolean(event.target.checked);
+});
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
 $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));

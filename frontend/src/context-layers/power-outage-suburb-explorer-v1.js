@@ -141,7 +141,7 @@ export function createPowerOutageSuburbExplorer({
   }
   function updateStatus(next){
     if(next)status=next;
-    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||""))hasSnapshot=false;
+    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||"")){hasSnapshot=false;groups=[];openKeys.clear();}
     const kind=status.kind||"normal";
     state.dataset.kind=kind;
     state.textContent=status.message||"Current unplanned outage data";

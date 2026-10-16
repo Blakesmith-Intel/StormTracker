@@ -9,17 +9,23 @@
   <link rel="stylesheet" href="./src/friendly-ui-v1.css?v=map-nav-qfd-20261017-v1">
   <link rel="stylesheet" href="./src/power-outage-suburb-explorer-v1.css?v=case-insensitive-lga-20261017-v2">
   <link rel="stylesheet" href="./src/lga-sidebar-legend-v1.css?v=lga-ui-legend-20261017-v1">
+  <link rel="stylesheet" href="./src/sidebar-incident-counts-v1.css?v=incident-counts-20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
 <body class="simple-ui">
 <div id="app">
   <aside id="controlSidebar" aria-label="Live weather controls">
-    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div></header>
-    <nav class="sidebar-shortcuts" aria-label="Quick tools">
-      <button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages grouped by local government area">⚡ Outages</button>
-      <button type="button" id="openRoadLgaExplorer" aria-haspopup="dialog" aria-controls="roadLgaExplorer" aria-label="Browse road closures grouped by local government area">Road closures</button>
-      <button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button>
+    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div><button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button></header>
+    <nav class="sidebar-shortcuts" aria-label="Current incidents">
+      <button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages by council">
+        <span class="incident-button-name">⚡ Power outages</span>
+        <span class="incident-button-numbers"><strong id="sidebarPowerOutageCount">Checking…</strong><small id="sidebarPowerCustomerCount">Customers: —</small></span>
+      </button>
+      <button type="button" id="openRoadLgaExplorer" aria-haspopup="dialog" aria-controls="roadLgaExplorer" aria-label="Browse road closures by council">
+        <span class="incident-button-name">Road closures</span>
+        <span class="incident-button-numbers"><strong id="sidebarRoadClosureCount">Checking…</strong><small>All-traffic closures · QLDTraffic</small></span>
+      </button>
     </nav>
     <div class="simple-intro" aria-label="Quick start">Choose a radar above the map, press <strong>Play</strong>, or tap <strong>Measure</strong> to check a distance.</div>
     <section class="card overview">

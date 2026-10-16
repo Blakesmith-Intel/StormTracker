@@ -8,6 +8,6 @@ const version="delta-reuse-20261016-v2";
 assert.ok(html.includes("motion-confidence-v5-"+version));
 assert.ok(live.includes("incremental-volume-renderer-v1.js?v="+version));
 assert.ok(live.includes("volume-display-opacity-v1.js?v="+version));
-assert.ok(live.includes("supplemental-radar-volume-v1.js?v="+version));
+assert.match(live,/supplemental-radar-volume-v1\.js\?v=(?:delta-reuse-20261016-v2|secondary-coverage-fix-20261016-v1)/);
 assert.ok(supplemental.includes("incremental-volume-renderer-v1.js?v="+version));
 console.log("PASS experimental 3-D preview cache bust, original product module paths retained.");

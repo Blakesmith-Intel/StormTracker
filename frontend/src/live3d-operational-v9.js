@@ -112,6 +112,7 @@ import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-pe
 import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
+import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
@@ -1487,23 +1488,12 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       canvasPixelRatio:viewer.resolutionScale
     };
   };
-  const details=document.createElement("details");
-  details.id="memoryQaPanel";
-  details.style.cssText="font:12px sans-serif;margin:10px 6px;padding:8px;border:1px solid #57717b;border-radius:6px;color:inherit";
-  const heading=document.createElement("summary");
-  heading.textContent="Memory diagnostics";
-  const button=document.createElement("button");
-  button.type="button";
-  button.textContent="Capture memory snapshot";
-  button.style.cssText="margin:8px 0;padding:6px;cursor:pointer";
-  const output=document.createElement("pre");
-  output.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;font:11px monospace";
-  output.textContent="Tap to sample. Browser GPU-process memory is not measured here.";
-  button.addEventListener("click",()=>{
-    output.textContent=JSON.stringify(window.__stormtrackerMemoryDiagnostics(),null,2);
+  createResponsiveMemoryDiagnostics({
+    documentRef:document,
+    sidebar:controlsSidebar,
+    capture:window.__stormtrackerMemoryDiagnostics,
+    clipboard:window.navigator?.clipboard
   });
-  details.append(heading,button,output);
-  controlsSidebar.append(details);
 }
 const reflectivityRgbLookup = new Uint8Array(16*3);
 for(const item of SOURCE_PALETTES.reflectivityRgb) {

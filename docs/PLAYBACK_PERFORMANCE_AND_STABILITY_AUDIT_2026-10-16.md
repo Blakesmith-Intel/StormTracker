@@ -37,3 +37,8 @@ Operator supplied a desktop screenshot of a Longreach rain-only 30-minute sequen
 - If sustained 3-D draw calls dominate, profile per-site glyph counts and billboard collections first; make any per-site display budget adaptive only after explicit visual comparison so the Longreach/Ravenshoe failure does not recur.
 
 The changes in this audit intentionally avoid the high-risk operations above until there is quantitative evidence from the operator's browser.
+
+## Mandatory operator quality lock (16 October 2026)
+The operator has expressly prohibited trading radar or 3-D visual quality for FPS. Preserve **native source-grid BoM reflectivity and Doppler**, existing ≥40 dBZ empirical 3-D detail, source-matched 3-D coverage for primary plus up to three additional radars, colours, apparent storm structure and no-flicker updates. Any faster alternative that downgrades the published native 2-D source raster or coarsens current 3-D rendering is **not an acceptable optimisation**. Optimise CPU, uploads, GPU lifecycle and source I/O only. Details and release checks: `docs/NON_NEGOTIABLE_VISUAL_FIDELITY.md` and `frontend/tests/run-full-fidelity-quality-contract-v1-tests.mjs`.
+
+The on-demand Memory diagnostics modal must be readable within the viewport (including narrow browser windows) and support full untruncated JSON copying; do not render the JSON into the narrow sidebar or start background polling.

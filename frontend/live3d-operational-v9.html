@@ -7,13 +7,14 @@
   <link rel="stylesheet" href="https://unpkg.com/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
   <link rel="stylesheet" href="./src/operational-dashboard-v9-1.css?v=v9-next-full-map-controls-gauge-severity-v4-edge-sidebar-terrainfix-v1">
   <link rel="stylesheet" href="./src/friendly-ui-v1.css?v=simple-ui-20261017-mobile-v2">
+  <link rel="stylesheet" href="./src/power-outage-suburb-explorer-v1.css?v=outages-suburb-20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
 <body class="simple-ui">
 <div id="app">
   <aside id="controlSidebar" aria-label="Live weather controls">
-    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div><button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button></header>
+    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div><button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages by suburb">⚡ Outages</button><button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button></header>
     <div class="simple-intro" aria-label="Quick start">Choose a radar above the map, press <strong>Play</strong>, or tap <strong>Measure</strong> to check a distance.</div>
     <section class="card overview">
       <div class="metric">
@@ -139,6 +140,24 @@
     <div id="mapTruthLabel">Measured BoM reflectivity · dBZ / inferred 3-D structure</div>
   </main>
 </div>
+<dialog id="powerOutageExplorer" aria-labelledby="powerOutageExplorerTitle" aria-describedby="powerOutageExplorerHelp">
+  <header class="outage-explorer-heading">
+    <div><strong id="powerOutageExplorerTitle">⚡ Power outages by suburb</strong>
+    <p id="powerOutageExplorerHelp">Current unplanned outages · tap a suburb to expand</p></div>
+    <button id="closePowerOutageExplorer" type="button" aria-label="Close suburb outages list">Close</button>
+  </header>
+  <div class="outage-explorer-toolbar">
+    <label for="outageSuburbSearch">Find a suburb or street
+      <input type="search" id="outageSuburbSearch" autocomplete="off" placeholder="Search suburbs, roads, provider..." />
+    </label>
+    <button id="refreshPowerOutageExplorer" type="button">Refresh</button>
+  </div>
+  <p class="outage-explorer-feed-status" id="outageSuburbFeedStatus" role="status" aria-live="polite">Checking existing outage feed…</p>
+  <p class="outage-explorer-count" id="outageSuburbSummary" aria-live="polite">Waiting for outages…</p>
+  <div id="outageSuburbResults" class="outage-explorer-results"></div>
+  <button id="outageSuburbMore" type="button" hidden>Show more suburbs</button>
+  <p class="outage-explorer-footer">Multiple suburbs can share one outage. Customer counts are per outage, not suburb estimates. Official provider reports are the source of truth.</p>
+</dialog>
 <dialog id="detailsDialog" aria-labelledby="detailsTitle">
   <header class="details-heading"><strong id="detailsTitle">StormTracker details</strong><button id="closeDetailsButton" aria-label="Close details">Close</button></header>
   <nav class="details-tabs" aria-label="Detail views">
@@ -297,6 +316,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-outage-suburb-v1"></script>
 </body>
 </html>

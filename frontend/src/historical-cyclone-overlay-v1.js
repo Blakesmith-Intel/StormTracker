@@ -27,6 +27,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
     const opt=create("option",name);
     opt.value=id;pick.appendChild(opt);
   }
+  pick.value="koji-2026";
   panel.appendChild(pick);
   const toggleLabel=create("label");
   toggleLabel.style.cssText="display:flex;align-items:center;gap:6px;margin:6px 0";

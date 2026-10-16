@@ -72,13 +72,21 @@ export function createSupplementalRadarDisplay({
   // and evicted as a bounded LRU; the currently adopted Cesium layer owns any
   // provider that outlives its optional cache entry.
   const providerCache=new Map();
+  const stageTimings=new Map();
+  const cacheStats={frameHits:0,frameLoads:0,providerHits:0,providerBuilds:0,
+    stagingTimeouts:0};
+  function providerKey(site,utc){
+    return primary+"|"+extras.join(",")+"|"+site+"@"+utc;
+  }
   function preparedProvider(site,utc,masked){
-    const key=primary+"|"+extras.join(",")+"|"+site+"@"+utc;
+    const key=providerKey(site,utc);
     if(providerCache.has(key)){
+      cacheStats.providerHits++;
       const prior=providerCache.get(key);
       providerCache.delete(key);providerCache.set(key,prior);
       return prior;
     }
+    cacheStats.providerBuilds++;
     const task=Promise.resolve().then(()=>prepareProvider(masked));
     providerCache.set(key,task);
     while(providerCache.size>maxProviderCached)
@@ -105,6 +113,7 @@ export function createSupplementalRadarDisplay({
     lastKey="";
     targetUtc=null;
     providerCache.clear();
+    stageTimings.clear();
     clearStaged();
     for(const site of displayedUtc.keys())onHide(site);
     displayedUtc.clear();
@@ -120,7 +129,11 @@ export function createSupplementalRadarDisplay({
     extras=next;
     // A new site/mask layout is the only reason to discard the old mosaic.
     // Advancing source time MUST keep the previous frame until replacement.
-    if(!same) reset();
+    if(!same){
+      reset();
+      // Never retain old source pixels when radar sites/masking change.
+      cache.clear();
+    }
   }
 
   function setOpacity(alpha) {
@@ -132,11 +145,13 @@ export function createSupplementalRadarDisplay({
   async function cachedFrame(site,utc) {
     const key=site+"@"+utc;
     if(cache.has(key)){
+      cacheStats.frameHits++;
       const value=cache.get(key);
       cache.delete(key);
       cache.set(key,value);
       return value;
     }
+    cacheStats.frameLoads++;
     const task=Promise.resolve().then(()=>loadFrame(utc,site));
     cache.set(key,task);
     while(cache.size>maxCached) cache.delete(cache.keys().next().value);
@@ -158,7 +173,7 @@ export function createSupplementalRadarDisplay({
   // image. Only the primary radar's beforeReveal callback may expose it.
   // Therefore a secondary window never flashes off between valid frames and
   // no two selected windows display different observation timestamps.
-  function waitForStagedTile(layer,valid){
+  function waitForStagedTile(layer,valid,timeoutMs=stageTimeoutMs){
     return new Promise(resolve=>{
       let done=false,frames=0,readyFrames=0,detach=()=>{};
       let timeoutId;
@@ -174,22 +189,30 @@ export function createSupplementalRadarDisplay({
         if(frames>=2 && readyFrames>=1)finish(true);
         else scene.requestRender();
       });
-      timeoutId=setTimeout(()=>finish(false),stageTimeoutMs);
+      timeoutId=setTimeout(()=>finish(false),timeoutMs);
       scene.requestRender();
     });
   }
   async function stageSite(site,index,utc,mine,key){
     const valid=()=>mine===generation && preparingKey===key;
     let layer=null;
+    const began=Date.now();
+    // Source, projection AND 2-D Cesium staging share ONE finite site budget.
+    // Previously each of the three phases could separately wait 2.2 seconds,
+    // turning a ~2fps radar loop into <=0.2fps when optional windows stalled.
+    // Clear losing race timers instead of leaving dozens ticking after settle.
+    const totalBudgetMs=Math.max(stageTimeoutMs,3200);
+    const remaining=()=>Math.max(0,totalBudgetMs-(Date.now()-began));
+    async function withDeadline(promise){
+      const available=remaining();
+      if(available<=0)throw Error("Supplemental site budget exhausted");
+      let timer;
+      try{return await Promise.race([promise,new Promise((_,reject)=>{
+        timer=setTimeout(()=>reject(new Error("Optional source preparation timed out")),available);
+      })]);}
+      finally{if(timer!==undefined)clearTimeout(timer);}
+    }
     try{
-      // Per-site deadline: optional windows must not hang the primary clock.
-      const withDeadline=promise=>Promise.race([
-        promise,
-        new Promise((_,reject)=>setTimeout(
-          ()=>reject(new Error("Optional source preparation timed out")),
-          stageTimeoutMs
-        ))
-      ]);
       const frame=await withDeadline(cachedFrame(site,utc));
       if(!valid())return null;
       if(frame.observedUtc!==utc || frame.sourceMetadata?.temporalInference)
@@ -208,15 +231,27 @@ export function createSupplementalRadarDisplay({
       if(previous && imageryLayers.indexOf(previous)>=0)
         imageryLayers.add(layer,imageryLayers.indexOf(previous));
       else imageryLayers.add(layer);
-      const ready=await waitForStagedTile(layer,valid);
+      const budget=remaining();
+      const ready=budget>0 && await waitForStagedTile(layer,valid,budget);
       if(!valid() || !ready){
+        if(valid() && !ready)cacheStats.stagingTimeouts++;
+        // A timed-out staged image may have a stale decoded provider.
+        if(valid())providerCache.delete(providerKey(site,utc));
         removeStagedLayer(layer);
         return null;
       }
+      stageTimings.set(site,{utc,elapsedMs:Date.now()-began,result:"ready"});
       return {site,layer,frame:masked};
     }catch(error){
       if(layer)removeStagedLayer(layer);
-      if(valid())console.warn("Supplemental BoM scan unavailable",site,utc,error);
+      if(valid()){
+        // An unresolved/failed source promise cannot poison every later
+        // playback cycle. A new attempt must be able to fetch that UTC.
+        cache.delete(site+"@"+utc);
+        providerCache.delete(providerKey(site,utc));
+        stageTimings.set(site,{utc,elapsedMs:Date.now()-began,result:"failed"});
+        console.warn("Supplemental BoM scan unavailable",site,utc,error);
+      }
       return null;
     }
   }
@@ -388,6 +423,7 @@ export function createSupplementalRadarDisplay({
     configure,show,prepare,commit,reset,setOpacity,
     get providerCacheSize(){return providerCache.size;},
     get sourceFrameCacheSize(){return cache.size;},
+    get cacheDiagnostics(){return {...cacheStats,siteStages:Object.fromEntries(stageTimings)};},
     get visibleSites(){
       return [...controllers.entries()].filter(([id,c])=>
         c.currentLayer && c.currentLayer.show!==false &&

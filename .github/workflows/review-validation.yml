@@ -31,11 +31,11 @@ jobs:
           ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
           path: checked/accepted-v9.18
           persist-credentials: false
-      - name: Checkout exact V9.20.0 release source for package audit
+      - name: Checkout exact V9.20.1 release source for package audit
         uses: actions/checkout@v4
         with:
-          ref: aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1
-          path: checked/production-v9.20.0
+          ref: efaceb59427f0b71859b15a61a6758a80d08547e
+          path: checked/production-v9.20.1
           persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
@@ -43,12 +43,17 @@ jobs:
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
           test ! -e _site/preview/next-baseline/BUILD.txt
-          grep -Fq 'SEALED StormTracker V9.20.0 source aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1' _site/BUILD.txt
+          grep -Fq 'SEALED StormTracker V9.20.1 source efaceb59427f0b71859b15a61a6758a80d08547e' _site/BUILD.txt
           grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' _site/src/live3d-operational-v9.js
           grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' _site/src/live3d-operational-v9.js
           grep -Fq 'Memory diagnostics' _site/src/live3d-operational-v9.js
           grep -Fq 'v9.20.0-optimised-3d-prod' _site/live3d-operational-v9.html
           grep -Fq 'v9.20.0-optimised-3d-prod' _site/index.html
+          grep -Fq 'selectSupplementalVolumeSampleIndices' _site/src/supplemental-radar-volume-v1.js
+          grep -Fq 'hashSupplementalPixel' _site/src/supplemental-volume-sampling-v1.js
+          grep -Fq 'secondarySiteGlyphs' _site/src/live3d-operational-v9.js
+          grep -Fq 'v9.20.1-secondary-3d-fix' _site/index.html
+          grep -Fq 'v9.20.1-secondary-3d-fix' _site/live3d-operational-v9.html
           test -f _site/preview/incremental-3d/BUILD.txt
           grep -Fq 'EXPERIMENTAL incremental 3-D QA' _site/preview/incremental-3d/BUILD.txt
           test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2

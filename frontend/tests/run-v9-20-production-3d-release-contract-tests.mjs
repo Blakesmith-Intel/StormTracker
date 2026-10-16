@@ -32,5 +32,5 @@ assert.match(html,/id="showTrackLabels" type="checkbox"/);
 assert.doesNotMatch(html,/id="showTrackLabels"[^>]*\bchecked\b/);
 assert.match(runtime,/shouldPrepareSupplementalForPlayback\(supplementalAnchor\)/);
 // Publishing is still pinned by the separate release pipeline, not by main.
-assert.match(packageScript,/checked\/production-v9\.(?:19|20)\.0\/frontend/);
+assert.match(packageScript,/checked\/production-v9\.(?:19\.0|20\.[01])\/frontend/);
 console.log("PASS V9.20.0 source gate, accepted 3-D delta, memory caps, BoM guards and fresh production entrypoint.");

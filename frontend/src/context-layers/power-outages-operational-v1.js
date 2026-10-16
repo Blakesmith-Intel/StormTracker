@@ -1,4 +1,5 @@
 import {addOfficialSourceRow,powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
+import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=outages-suburb-20261017-v1";
 import {
   createPowerOutageLayer,
   powerOutageSummary
@@ -385,7 +386,16 @@ export function initialiseOperationalPowerOutages({
     $("cesiumContainer")
     ?? canvas.parentElement;
 
-  const layer =
+  // The sidebar explorer observes this SAME unplanned-outage snapshot,
+  // with no second fetch loop or additional map entity source.
+  let layer;
+  const explorer = createPowerOutageSuburbExplorer({
+    viewer,CesiumRef,formatTime:formatPowerOutageTime,
+    refresh:()=>layer.refresh({force:true}),
+    getLoadedAt:()=>layer?.lastLoadedAt??0
+  });
+
+  layer =
     createPowerOutageLayer({
       viewer,
       CesiumRef,
@@ -396,10 +406,14 @@ export function initialiseOperationalPowerOutages({
         ),
 
       onStatus:
-        setPowerStatus,
+        status => {
+          setPowerStatus(status);
+          explorer.updateStatus(status);
+        },
 
       onUpdate:
         features => {
+          explorer.updateFeatures(features);
           if (
             !panel
             || panel.hidden
@@ -780,6 +794,7 @@ export function initialiseOperationalPowerOutages({
     "pagehide",
     () => {
       layer.stop();
+      explorer.destroy();
 
       window.removeEventListener(
         "pointerdown",

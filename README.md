@@ -1,36 +1,37 @@
-# StormTracker — V9.19.0 production release source
+# StormTracker — V9.20.2 accepted production source
 
-StormTracker is a **browser-only Queensland and southern-border BoM radar situational-awareness viewer**, not an official warning service or emergency management decision-making tool. Original radar reflectivity is in **dBZ**; Doppler measures radial velocity rather than storm motion; 3-D volumes and storm cones are inferred visualisations, not authoritative forecasts.
+StormTracker is a **browser-only Queensland and southern NSW border BoM radar situational-awareness viewer**. It is **not** an official warning service or an emergency decision-making tool. Original source radar reflectivity is in **dBZ**, native Doppler is radial velocity, and vertical 3-D structures and storm cones are explicitly **empirical/inferred**, not measured 3-D weather radar.
 
-## Release and supported browser sites
+## Current stable app
 
-| Build | URL | Source policy |
-| --- | --- | --- |
-| **StormTracker V9.19.0 production** | https://blakesmith-intel.github.io/StormTracker/ | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` (pinned; `v9.19.0` tag, `restore/v9.19.0`) |
-| Historical accepted diagnostic (V9.18) | https://blakesmith-intel.github.io/StormTracker/preview/radar-history-fix/ | Immutable `acfa0ebd3717a793369e3e887e2d1a54785620b7` |
+**https://blakesmith-intel.github.io/StormTracker/**
 
-The last sealed production release, **V9.18.0**, remains at commit `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` with immutable tag/restore branch, available for rollback. The previous `next-baseline` preview was explicitly approved by the operator on 15 October 2026. The V9.19.0 production pin includes the same source features plus required root-path stability guards. Its superseded candidate preview is retired; only the historical accepted V9.18 QA path is retained.
+- **V9.20.2:** Operator-accepted continuous QLD/NSW satellite basemap, high-quality persistent 3-D on primary and additional radar sites, original full-resolution BoM data, bounded caches/CPU performance optimisations, viewport-fit diagnostics. Pin/tag/restore SHA is in `docs/CURRENT_ACCEPTED_BASELINE.md` after CI cutover.
+- Historical sealed `v9.20.1`: `efaceb59427f0b71859b15a61a6758a80d08547e`, `restore/v9.20.1`.
+- Historical `v9.20.0`: `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`; `v9.19.0`: `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0`; `v9.18.0`: `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd`.
+- Accepted historical V9.18 diagnostic: https://blakesmith-intel.github.io/StormTracker/preview/radar-history-fix/
+- Current QA preview: https://blakesmith-intel.github.io/StormTracker/preview/incremental-3d/live3d-operational-v9.html
 
-## V9.19.0 behaviour
+## Core capabilities
 
-- Primary + up to **three** additional original BoM radar reflectivity sites; atomic source-timestamp handover and bounded hold during display-only inferred frames. Primary playback never blocks waiting for optional supplemental WMTS.
-- Stable browser Cesium navigation, deferred resource cleanup, suppressed high-cost GPU hover picking, bounded upstream radar requests, graceful failure isolation, responsive hide/show sidebar.
-- Original BoM dBZ and >=40 dBZ inferred rounded 3-D storm volumes with independent opacity and terrain; regional satellite QLD continuity and DEA regional NSW imagery with NSW detail at close scale.
-- **Storm ID Labels off by default**; storm tracking, labels and +90-minute cones are generated only from the **primary** radar. Secondary radars contribute imagery/inferred volume but **not** storm IDs or cones.
-- +90-minute predicted motion uses only real measured centroid history; 0m origin, 30/60/90m markers and a confidence gate. Unsupported/abrupt low-speed motion **withholds** extrapolation, rather than showing misleading predictions.
-- QLD unplanned road closures and power outages, BoM flood signals (green rapid above minor, yellow moderate, red major, cyan unusual tidal screening), selected QFD incidents. BoM bulletins are authoritative.
+- Original BoM reflectivity at native source grid, independent genuine radial Doppler; 1×/2×/3× timeline replay with source UTC and AEST.
+- Primary radar plus up to 3 additional BoM sites; stable ≥40 dBZ inferred rounded volumetric depiction with per-site source pixel coverage and no whole-cloud flicker.
+- Valid observed-pixel connected storm footprints, primary-only ST IDs, optional +90min illustrative cones, labels off by default.
+- QLD original high-resolution satellite, DEA 2025 GeoMAD regional NSW and NSW official detail at close zoom, with genuine global satellite imagery filling upstream tile gaps rather than exposing blue globe.
+- 3-D terrain, road closures, unplanned power outages, BoM flood signals and selected QFD incidents.
+- Safe browser navigation/GPU texture retirement, bounded scan/provider caches, full-width scrollable **Memory diagnostics** with JSON copy.
 
-## Files and maintenance
+## Development and documentation
 
-- `frontend/` — static browser app and regression tests.
-- `relay/` — existing Cloudflare transport-only CORS Worker, unchanged for this release.
-- `scripts/` — Pages builder and scientific/operational source audits.
-- `docs/RELEASE_NOTES_V9.19.0.md`, `HANDOVER_V9.19.0.md`, `USER_GUIDE_V9.19.0.md` — current release details.
-- `docs/BASELINE_RESTORE.md`, `CURRENT_ACCEPTED_BASELINE.md` — immutable release recovery instructions and exact SHA pins.
-- `.github/workflows/pages.yml` — publishes the site root from an **exact** sealed production SHA; `main` is not implicitly production.
+- `frontend/` static Cesium browser runtime, source-science helpers and regression tests.
+- `relay/` existing CORS transport-only Cloudflare Worker.
+- `scripts/build-current-site.sh` production from pinned immutable source SHA, isolated QA previews.
+- `docs/RELEASE_NOTES_V9.20.2.md`, `docs/USER_GUIDE_V9.20.2.md`, `docs/HANDOVER_V9.20.2.md` up-to-date release instructions.
+- `docs/NON_NEGOTIABLE_VISUAL_FIDELITY.md`, `docs/SCIENTIFIC_CONTRACT.md`, `docs/CURRENT_ACCEPTED_BASELINE.md`, `docs/BASELINE_RESTORE.md` release invariants.
+- `docs/V10_OFFICIAL_WARNING_DATA_PLAN.md`, `docs/ACTIVE_WISHLIST.md` current next work.
 
-Validation: `npm test`, `node --check relay/worker.js`, deterministic Pages artifact tests and `/BUILD.txt` public verification. Do not replace genuine BoM observations with extrapolated weather frames. Experimental V10 wind/circulation candidate detection remains separate pending authentic BoM AURA volume validation.
+**Next milestones (in order):** 1. Official live BoM cyclone track spatial data, 2. official Queensland severe-thunderstorm warning polygons and NSW warnings within the installed radars' coverage, 3. V10 AURA genuine HDF5 radial-wind candidate science. **Not yet part of V9.20.2.** Only real, time-valid official geometry may be presented as a warning.
 
-## Release discipline
+## Release process
 
-Use a feature branch and preview; test changes, obtain visual functional acceptance, then update **pinned production source** through reviewed changes. Preserve tags/rollback branches. If rollback is required, restore V9.18.0's immutable source SHA and redeploy rather than moving the old tag.
+Full `npm test`, `node --check relay/worker.js`, Pages dry-run of the exact immutable source, public `BUILD.txt` and static asset checks, then annotated tag + restore branch **only after successful deployment**. The main branch remains a development stream and is NOT automatically the production app. Older tags and recovery branches are immutable.

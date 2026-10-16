@@ -1,26 +1,27 @@
-# StormTracker — active roadmap after sealed V9.19.0 (15 October 2026)
+# StormTracker — Active Development Priorities following accepted V9.20.2 (16 October 2026)
 
-The new production and development recovery baseline is `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` (tag `v9.19.0`; recovery branch `restore/v9.19.0`). V9.18.0 (`66d3da447ef7a4df53e7df49aa1ac06f86cb5afd`) and the older accepted V9.18 diagnostic remain immutable for rollback. Any new work must start from the sealed V9.19.0 source, not from a historical experimental preview.
+The operator confirmed the V9.20.2 satellite blue-gap fix and requested sealing and documentation, followed by three separate feature milestones:
 
-## Priority order
+## 1. Official tropical cyclone track map (next implementation)
 
-**P0 — Source integrity / operational safety.** Real BoM observations and source clocks only. Failure isolation for live radar, gauge history, outages and closures. Never show old-UTC secondary radar imagery next to a newer primary observation or synthetic interpolation as measured data.
+Use genuine current BoM forecast-track geometry or a verified public BoM-derived spatial service. Show official observed/forecast tracks, category, issuance and valid times, uncertainty envelope and watch/warning areas only if that information exists in the real product. No fabricated interpolated fixes. Confirm current-season access/CRS/schema, all available relevant product IDs, no-active-cyclone case, attribution, refresh cadence and expiry. Make it an independent toggle, never force a radar or 3-D redraw.
 
-**P1 — Stability.** Regression-first resolution of browser freezes, WebGL texture lifetime, map navigation/satellite persistence, smooth frame handover, labels and paused visibility. The user accepted V9.19.0, including source-faithful inferred-frame playback and low-motion-confidence cone withholding; reopen regressions only with concrete browser evidence.
+## 2. Official severe thunderstorm warning regions — Queensland + NSW radar footprint
 
-**P2 — V10 severe-weather candidates.** Use BoM-defined damaging/destructive-wind thresholds and source-faithful Doppler analysis, with yellow damaging straight-line winds, orange possible hook-echo, and red tornado/circulation icon. This is an experimental situational-awareness feature, not an official warning. Start with Gympie/Cooloola 24 November 2025 and Christmas 2023 Gold Coast storm/derecho cases; the saved local research fixtures and full tests must be validated before browser preview.
+Use genuine public BoM geospatial warning features, not internally generated storm blobs. Distinguish detailed metropolitan threat map geometry from broad regional thunderstorm-warning polygons. Show official warning source time, threat class, expiry and bulletin click-through. All QLD warnings; NSW warnings only where intersecting installed radar coverage from Brewarrina, Moree, Grafton or Queensland sites reaching south. No QFD-internal GIS-only feed. The warnings overlay cannot be confused with StormTracker primary radar tracking or projected cones.
 
-## Preserved design constraints
+## 3. V10 authentic AURA Doppler severe-wind science
 
-- Static GitHub Pages app with existing Cloudflare transport-only relay; no paid or server-side weather inference.
-- BoM reflectivity remains dBZ, including 2-D legend and inferred 3-D.
-- Primary radar owns tracks and Doppler. Up to three other windows display source-synchronised reflectivity with bounded empirical inferred 3-D; overlapping measured pixels must not duplicate volumes.
-- Inferred volume minimum **40 dBZ**, height scale defaults **1.0×**, strength-dependent presentation height, independent opacity.
-- No arbitrary 6 km² cell-area threshold; segment from connected observed 40 dBZ pixels.
-- Storm ID Labels OFF by default, note that only PRIMARY radar creates storm IDs; track points/labels linked and toggleable on paused frames. Separate +90m cone control persists, withholds uncertain motion and stays source-anchored.
-- QLD flood-road closures, unplanned current electricity outages, exceptional BoM river signals and QFD incident context remain operationally distinct.
-- Severe-weather detector is for situational awareness; review source support and false-positive risks before any alert deployment.
+Access consecutive original AURA volume sweeps in Gympie/Cooloola 24 November 2025 and Christmas 2023 Gold Coast archives; decode radial velocity, georeference, detect aliasing and validate historical events. Yellow potentially damaging straight-line winds, orange hook echo candidate, red tornado/circulation candidate; never label these inferred alerts as BoM warnings without official source.
 
-## Release gate
+## Permanent quality and stability requirements
 
-No FUTURE production promotion before full frontend/relay CI, GitHub Pages artifact verification, observable mobile/desktop playback and explicit acceptance. V9.19.0 was expressly accepted on 15 October 2026; the release itself must still pass exact-SHA public verification. Do not re-enable obsolete release-preview workflows or historical installation packages.
+- Native highest available original BoM reflectivity and Doppler source grids; no image downsampling or radar source clock forgery.
+- Inferred 3-D storm fidelity preserved, ≥40 dBZ original intensity floor, 1.0× default exaggeration and original dBZ palette; primary and up to 3 secondary volumes must show eligible weather.
+- Fixed full width Memory diagnostics, original QLD detail plus regional DEA NSW and world satellite gap fallback.
+- No flicker, large camera freezes, deleted WebGL texture use, per-frame unbounded memory, or radar layers with mismatched measured times.
+- Live warning data failure must be visible as unavailable, never cached expired warnings misrepresented as valid.
+- GitHub Free/static browser, existing Cloudflare transport relay only; no paid weather service requirement without operator approval.
+- Production remains the exact sealed V9.20.2 SHA; create an isolated feature preview, obtain explicit operator acceptance, then freeze a new source/tag/restore release.
+
+See `docs/V10_OFFICIAL_WARNING_DATA_PLAN.md`, `docs/NON_NEGOTIABLE_VISUAL_FIDELITY.md`, and the current handover/recovery docs.

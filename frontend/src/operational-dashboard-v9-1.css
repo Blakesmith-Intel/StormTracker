@@ -955,3 +955,72 @@ img.flood-road-key-large {width:31px;height:31px;margin:0;}
 .flood-severity-legend .flood-yellow {color:#ffd43b;}
 .flood-severity-legend .flood-red {color:#e53935;}
 .flood-severity-legend .flood-cyan {color:#45c7e8;}
+
+/* Edge/Chromium viewport-robust operational sidebar, 2026-10-16.
+   The historical cyclone and Memory QA panels are dynamic grid children;
+   they must not create implicit rows taller than the viewport or be clipped
+   behind the map. Every control remains reachable by vertical scrolling.
+   This changes UI sizing ONLY, not Cesium resolution or weather fidelity. */
+html, body { min-height:0; }
+#app {
+  height:100vh;
+  height:100dvh;
+  max-height:100vh;
+  max-height:100dvh;
+  min-height:0;
+  overflow:hidden;
+}
+#controlSidebar {
+  box-sizing:border-box;
+  width:100%;
+  height:100%;
+  min-height:0;
+  max-height:100%;
+  min-width:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+#controlSidebar > * {
+  min-width:0;
+  max-width:100%;
+}
+#historicalCycloneQaPanel,#memoryQaPanel {
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+  flex:0 0 auto;
+}
+#historicalCycloneQaPanel > *, #memoryQaPanel > * {
+  max-width:100%;
+}
+@media (max-width:700px) {
+  #app {
+    grid-template-rows:minmax(0,42dvh) minmax(0,1fr);
+  }
+  #controlSidebar {
+    grid-auto-rows:max-content;
+    align-content:start;
+    overflow-y:auto;
+  }
+  #historicalCycloneQaPanel,#memoryQaPanel {
+    grid-column:1 / -1;
+    grid-row:auto;
+  }
+}
+@media (max-width:430px) {
+  #app { grid-template-rows:minmax(0,40dvh) minmax(0,1fr); }
+}
+@media (max-height:760px) and (min-width:701px) {
+  #app { grid-template-rows:minmax(0,42dvh) minmax(0,1fr); }
+  #controlSidebar {
+    grid-auto-rows:max-content;
+    align-content:start;
+    overflow-y:auto;
+  }
+  #historicalCycloneQaPanel,#memoryQaPanel {
+    grid-column:1 / -1;
+    grid-row:auto;
+  }
+}

@@ -5097,7 +5097,10 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   }
   previousPrimaryRadarId=nextPrimary;
   configureRadarSite(); resetView(); clearDopplerOverlay();
-  refreshAdditionalRadarChoices(); showSupplementalRadarSites(null);
+  refreshAdditionalRadarChoices();
+  if(INCREMENTAL_VOLUME_PREVIEW)
+    supplementalVolumeDisplay?.pruneSites(additionalRadarSiteIds);
+  showSupplementalRadarSites(null);
   resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();

@@ -240,8 +240,10 @@ console.log("PASS satellite panning preserves visible QLD/NSW imagery + alpha wi
 // Candidate-only regional satellite continuity: QLD tiles exist from level 4,
  // so use official tiles at regional scale. The global fallback is genuine
  // satellite imagery, never OSM or a blank blue Cesium globe.
+const regionalStatuses=[];
 const regional=createStormTrackerBasemapManager({
   Cesium,viewer,storage,suspendDetailDuringNavigation:true,
+  onStatus:(message,kind)=>regionalStatuses.push([message,kind]),
   persistentSatelliteCoverage:true,
   schedule(cb,delay){resume=cb;return 31;},
   cancel(){cancelled++;resume=null;}
@@ -304,7 +306,7 @@ layers[1].imageryProvider.listener?.({message:"WMTS temporary tile failure"});
 assert.equal(layers[0],worldUnderlay);
 assert.ok(worldUnderlay.show);
 assert.equal(worldUnderlay.alpha,1);
-assert.ok(statuses.some(([message])=>message.includes("DEA")&&message.includes("unavailable")));
+assert.ok(regionalStatuses.some(([message])=>message.includes("DEA")&&message.includes("unavailable")));
 cameraChangeListeners.forEach(fn=>fn());
 assert.equal(layers[0],worldUnderlay,
   "Repeated camera refresh never reloads or disposes persistent underlay");

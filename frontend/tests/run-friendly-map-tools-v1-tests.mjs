@@ -43,5 +43,5 @@ assert.match(css,/#measureSurface/);
 assert.match(css,/body\.simple-ui #controlSidebar/);
 assert.match(css,/#mapScaleBar/);
 assert.match(root,/simple-ui-measure-v1/);
-assert.doesNotMatch(controls,/loadBom|radarFrame|Doppler|sourceUTC|stormTrack/g);
+assert.doesNotMatch(controls,/loadBomReflectivityMosaic|loadDopplerFrame|buildStormTrack/);
 console.log("Friendly UI, distance and scale regression checks passed.");

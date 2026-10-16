@@ -203,6 +203,9 @@ import {createDeferredImageryRetirement}
 import {createSupplementalRadarVolumes}
   from "./supplemental-radar-volume-v1.js?v=9.18.10-bounded-source-3d";
 
+// The immutable production root never activates the experimental 3-D engine.
+const INCREMENTAL_VOLUME_PREVIEW =
+  window.location.pathname.includes("/preview/incremental-3d/");
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
 
@@ -622,15 +625,14 @@ supplementalVolumeDisplay=createSupplementalRadarVolumes({
   }),
   inferColumn,representativeDbzForCategory,pixelCentreMercator,
   webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
-  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity
+  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity,
+  incremental:INCREMENTAL_VOLUME_PREVIEW
 });
 let validation = null;
 let latestFrame = null;
 let inferredCollection = null;
 // Explicit A/B preview gate. Public production still uses sealed, per-frame
 // geometry; science/clock/source code paths remain unchanged.
-const INCREMENTAL_VOLUME_PREVIEW =
-  window.location.pathname.includes("/preview/incremental-3d/");
 const incrementalVolumeRenderer=INCREMENTAL_VOLUME_PREVIEW
   ?createIncrementalVolumeRenderer({scene}):null;
 let stableVolumeFrameSet=null;

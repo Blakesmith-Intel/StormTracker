@@ -96,6 +96,11 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "frontend/$asset" "$delta/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "$delta/data/"
+# Genuine BoM/Qld historical Koji and Yasi records are QA-only. NEVER
+# publish them in the source-pinned live app as a current warning layer.
+test -s "frontend/data/cyclone-history/koji-2026.json"
+test -s "frontend/data/cyclone-history/yasi-2011.json"
+cp -a "frontend/data/cyclone-history" "$delta/data/"
 printf 'EXPERIMENTAL incremental 3-D QA source %s; separate from pinned V9.20.2 production\n' "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
 grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
 grep -Fq 'createIncrementalVolumeRenderer' "$delta/src/incremental-volume-renderer-v1.js"
@@ -104,6 +109,12 @@ node --check "$delta/src/incremental-volume-renderer-v1.js"
 node --check "$delta/src/supplemental-radar-volume-v1.js"
 node --check "$delta/src/live3d-operational-v9.js"
 test -s "$delta/data/nsw-radar-places-v1.json"
+test -s "$delta/data/cyclone-history/koji-2026.json"
+test -s "$delta/data/cyclone-history/yasi-2011.json"
+grep -Fq 'Koji 2026' "$delta/data/cyclone-history/koji-2026.json"
+grep -Fq 'Yasi 2011' "$delta/data/cyclone-history/yasi-2011.json"
+node --check "$delta/src/historical-cyclone-overlay-v1.js"
+node --check "$delta/src/historical-cyclone-replay-v1.js"
 test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
 
 # Exact accepted V9.20.2 optimised renderer and memory bounds are deployed

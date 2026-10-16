@@ -37,9 +37,12 @@ const frameEnd = js.indexOf("\nfunction sameObservedInstant", frameStart);
 const frameBlock = js.slice(frameStart, frameEnd);
 assert.ok(frameStart > 0 && frameEnd > frameStart);
 assert.match(frameBlock,/const minimumDbzh =\s*volumeDisplayThresholdDbz\(\$\("minimumDbzh"\)\.value\)/);
-assert.match(frameBlock,/const displayedInferred = inferred\.filter\(\s*point => shouldRenderVolumePoint\(point\.dbzh, minimumDbzh\)/);
-assert.match(frameBlock,/for \(const point of displayedInferred\)/);
-assert.match(frameBlock,/minimumOutputDbz: 30/,"model sampling must not change");
+assert.match(frameBlock,/const displayedInferred = profiles/);
+assert.match(frameBlock,/shouldRenderVolumePoint\(point\.dbzh,minimumDbzh\)/);
+const categoryProfile=read("frontend/src/volume-category-profile-cache-v1.js");
+assert.match(categoryProfile,/shouldRenderVolumePoint\(p\.dbzh,displayThresholdDbz\)/);
+assert.match(frameBlock,/for \(let level=0;level<displayedInferred\.length;level\+\+\)/);
+assert.match(frameBlock,/minimumOutputDbz:30/,"model sampling must not change");
 assert.match(frameBlock,/displayThresholdDbz: 30/,"support classifications must not change");
 
 const trackStart=js.indexOf("function renderHybridTracks(index)");

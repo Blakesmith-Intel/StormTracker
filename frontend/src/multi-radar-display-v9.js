@@ -60,12 +60,34 @@ export function fitSelectedRadarSites(primary,extras,sites) {
 // Supplemental handovers do NOT delay primary radar playback or tracking.
 export function createSupplementalRadarDisplay({
   imageryLayers,scene,loadFrame,prepareProvider,createLayer,
-  getWindow,onStatus=()=>{},maxCached=18,retireLayer=null,
+  getWindow,onStatus=()=>{},maxCached=18,maxProviderCached=8,retireLayer=null,
   onDisplay=()=>{},onHide=()=>{},stageTimeoutMs=2200
 }) {
   let primary="",extras=[],generation=0,lastKey="",opacity=1;
   let targetUtc=null;
   const controllers=new Map(),cache=new Map(),displayedUtc=new Map();
+  // Avoid repeatedly reprojecting source WMTS mosaics into geographic
+  // canvases and PNG data URIs whenever the six-frame 30-minute loop repeats.
+  // Providers are keyed to source UTC AND the current masking configuration,
+  // and evicted as a bounded LRU; the currently adopted Cesium layer owns any
+  // provider that outlives its optional cache entry.
+  const providerCache=new Map();
+  function preparedProvider(site,utc,masked){
+    const key=primary+"|"+extras.join(",")+"|"+site+"@"+utc;
+    if(providerCache.has(key)){
+      const prior=providerCache.get(key);
+      providerCache.delete(key);providerCache.set(key,prior);
+      return prior;
+    }
+    const task=Promise.resolve().then(()=>prepareProvider(masked));
+    providerCache.set(key,task);
+    while(providerCache.size>maxProviderCached)
+      providerCache.delete(providerCache.keys().next().value);
+    task.catch(()=>{
+      if(providerCache.get(key)===task)providerCache.delete(key);
+    });
+    return task;
+  }
   const staged=new Map();
   let preparingKey="",preparingPromise=null;
 
@@ -82,6 +104,7 @@ export function createSupplementalRadarDisplay({
     generation++;
     lastKey="";
     targetUtc=null;
+    providerCache.clear();
     clearStaged();
     for(const site of displayedUtc.keys())onHide(site);
     displayedUtc.clear();
@@ -176,7 +199,7 @@ export function createSupplementalRadarDisplay({
       const own=getWindow(site);
       if(masked.sourceMetadata.overlappingTilesMasked===
         (own.rowEnd-own.rowStart+1)*(own.colEnd-own.colStart+1))return null;
-      const provider=await withDeadline(prepareProvider(masked));
+      const provider=await withDeadline(preparedProvider(site,utc,masked));
       if(!valid())return null;
       layer=createLayer(provider);
       layer.alpha=.001;
@@ -324,7 +347,7 @@ export function createSupplementalRadarDisplay({
           }
           return null;
         }
-        const provider=await prepareProvider(masked);
+        const provider=await preparedProvider(site,utc,masked);
         if(mine!==generation || key!==lastKey) return null;
         const layer=createLayer(provider);
         const ready=await controllerFor(site).replace(layer,{
@@ -363,6 +386,8 @@ export function createSupplementalRadarDisplay({
 
   return {
     configure,show,prepare,commit,reset,setOpacity,
+    get providerCacheSize(){return providerCache.size;},
+    get sourceFrameCacheSize(){return cache.size;},
     get visibleSites(){
       return [...controllers.entries()].filter(([id,c])=>
         c.currentLayer && c.currentLayer.show!==false &&

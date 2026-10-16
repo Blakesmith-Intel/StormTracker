@@ -3580,7 +3580,9 @@ function renderHybridTracks(index) {
       const trail = history
         .filter(item => item.frameIndex <= index)
         .sort((a, b) => a.frameIndex - b.frameIndex);
-      if (presentation.show && trail.length >= 2) {
+      // Labels default OFF. Do not allocate/submit hidden Cesium trail
+      // polylines for every storm at every playback step.
+      if (presentation.show && $("showTrackLabels")?.checked && trail.length >= 2) {
         hybridSource.entities.add({
           id: `hybrid-trail-${track.track_id}`,
           show: Boolean($("showTrackLabels")?.checked),
@@ -5280,6 +5282,12 @@ $("hybridPlayButton").addEventListener("click", () => {
 // frame, without updating radar, volume primitives or the playback position.
 function updateRenderedTrackLabels() {
   const show = Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
+  // Hidden trail geometry is no longer generated at every weather frame.
+  // Build it once only when the operator explicitly enables Labels.
+  if(show && hybridResults[hybridFrameIndex] && !isNativeDopplerPlayback()){
+    renderHybridTracks(hybridFrameIndex);
+    return;
+  }
   stormTrackLabelOverlay.setVisible(show);
   setStormTrackTrailVisibility(hybridSource.entities, show);
   scene.requestRender();

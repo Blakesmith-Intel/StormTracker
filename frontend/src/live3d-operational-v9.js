@@ -115,6 +115,7 @@ import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-
 import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
 import {mountHistoricalCycloneQA} from "./historical-cyclone-overlay-v1.js?v=representative-cyclone-qa-v1";
 import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=simple-ui-20261017-v2";
+import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
@@ -273,6 +274,7 @@ function setSidebarCollapsed(collapsed){
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.hidden));
 // QA-only usability controls; separate geodesic annotations cannot affect weather.
 createFriendlyMapTools({viewer,Cesium});
+const persistentWeatherLegend=mountPersistentWeatherLegend();
 
 // Historical cyclone QA exists ONLY in the isolated test preview.
 // Neither the sealed production source nor normal live view loads/replays
@@ -5229,6 +5231,7 @@ $("terrainEnabled").addEventListener(
 );
 
 $("loopDurationMinutes").addEventListener("change", () => {
+  persistentWeatherLegend.sync();
   motionTransition.cancel();
   // Invalidate any pending combined-frame handover BEFORE clearing Doppler.
   // Otherwise an awaiting native BoM image can resurrect the outgoing wind.

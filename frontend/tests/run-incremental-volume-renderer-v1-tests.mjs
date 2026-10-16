@@ -48,7 +48,7 @@ flush();
 assert.equal(col.length,3);
 assert.strictEqual(col.points[0],old2,"unmodified second column stays intact");
 renderer.begin("radar:geometry:stride-2",()=>col,true);
-renderer.touch(101,8);
+renderer.touch(102,7); // Omit cell 101 entirely to simulate disappearing reflectivity.
 assert.equal(renderer.end().animated,true,"disappearing column should morph out");
 flush();
 assert.equal(col.length,1);

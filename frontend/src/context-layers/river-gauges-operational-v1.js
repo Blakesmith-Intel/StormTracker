@@ -733,7 +733,7 @@ export function initialiseOperationalRiverGauges({
   // No synchronous Cesium GPU picking on every pointer movement in the
   // isolated WebGL diagnostic preview. Gauge click inspection remains enabled.
   const suppressHoverGpuPicking =
-    ["/preview/radar-history-fix/", "/preview/next-baseline/"].some(
+    ["/preview/radar-history-fix/", "/preview/next-baseline/", "/preview/incremental-3d/"].some(
       path=>globalThis.location?.pathname?.includes(path)===true) ||
       (/\/live3d-operational-v9\.html$/.test(
         String(globalThis.location?.pathname??"")) &&

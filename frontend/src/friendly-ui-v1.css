@@ -6,7 +6,7 @@ body.simple-ui #controlSidebar {
   background:#101c28; overflow-y:auto; scrollbar-gutter:stable;
 }
 body.simple-ui #controlSidebar > * { flex:0 0 auto; }
-.dashboard-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.dashboard-heading {display:flex!important;align-items:center;justify-content:space-between;gap:12px;}
 .simple-brand {display:grid;gap:2px;min-width:0;}
 .simple-brand strong {font-size:18px;letter-spacing:-.035em;color:#f6fbff;}
 .simple-brand span {font-size:12px;color:#b6ccd9;}

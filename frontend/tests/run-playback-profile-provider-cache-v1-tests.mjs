@@ -138,3 +138,38 @@ const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta
 assert.match(runtime,/if \(presentation\.show && \$\("showTrackLabels"\)\?\.checked && trail\.length >= 2\)/);
 assert.match(runtime,/if\(show && hybridResults\[hybridFrameIndex\] && !isNativeDopplerPlayback\(\)\)\{/);
 console.log("PASS off-by-default storm trail GPU geometry omitted; trails regenerated on operator enable.");
+
+// A timeout from a genuine optional source must NOT poison the source UTC.
+// Previously each stage phase had its own timer and an empty prepared promise
+// stayed cached forever; a transient 502 could hide that radar indefinitely.
+let hangProvider=true,providerAttempts=0,sourceAttempts=0;
+const retrying=createSupplementalRadarDisplay({
+  imageryLayers,scene,maxCached:2,maxProviderCached:2,
+  stageTimeoutMs:12,stageTotalBudgetMs:40,
+  loadFrame:async utc=>{
+    sourceAttempts++;return {width:256,height:256,observedUtc:utc,
+      categories:new Uint8Array(65536).fill(9),
+      sourceMetadata:{tileWindow:w2}};
+  },
+  prepareProvider:async frame=>{
+    providerAttempts++;
+    if(hangProvider)return new Promise(()=>{});
+    return {observedUtc:frame.observedUtc};
+  },
+  createLayer:provider=>({provider,show:true,alpha:1}),
+  getWindow:site=>windows[site],
+});
+retrying.configure("p",["s"]);
+assert.deepEqual(await retrying.prepare(times[0]),[],
+  "The optional source must release the playback after the site-wide deadline");
+assert.equal(providerAttempts,1);
+assert.equal(retrying.cacheDiagnostics.frameLoads,1);
+hangProvider=false;
+assert.deepEqual(await retrying.prepare(times[0]),["s"],
+  "A recovered provider must be retried at the same genuine source UTC");
+assert.equal(providerAttempts,2,"A hung provider must not poison the LRU");
+assert.equal(sourceAttempts,2,"A failed site must refresh its source frame once");
+assert.ok(retrying.cacheDiagnostics.siteStages.s.elapsedMs>=0);
+assert.deepEqual(retrying.commit(times[0]),["s"]);
+assert.deepEqual(retrying.visibleSites,["s"]);
+console.log("PASS failed optional source timed out, timers released, authentic same-UTC retry recovered without fake frame.");

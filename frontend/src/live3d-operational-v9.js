@@ -1325,6 +1325,8 @@ function setAdditionalRadarSelection(next){
     selectedRadarRegion(),next,BORDER_RADAR_SITES);
   refreshAdditionalRadarChoices();
   clearMultiRadarSelectionWarning();
+  if(INCREMENTAL_VOLUME_PREVIEW)
+    supplementalVolumeDisplay?.pruneSites(additionalRadarSiteIds);
   if(latestFrame)showSupplementalRadarSites(latestFrame);
 
 }

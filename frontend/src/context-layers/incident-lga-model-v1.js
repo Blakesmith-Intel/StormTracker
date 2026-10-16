@@ -9,7 +9,7 @@ export function officialLocalityUrl(names){
  if(!clean.length)return "";
  const url=new URL(OFFICIAL_QLD_LOCALITIES);
  url.searchParams.set("f","json");
- url.searchParams.set("where","locality IN ("+clean.map(x=>"'"+x.replace(/'/g,"''")+"'").join(",")+")");
+ // ArcGIS locality values are Title Case, while provider suburbs and our keys\n // are normalised to uppercase. Exact locality IN (...) is case sensitive on\n // this service and silently returned zero matches for genuine localities.\n url.searchParams.set("where","UPPER(locality) IN ("+clean.map(x=>"'"+x.replace(/'/g,"''")+"'").join(",")+")");
  url.searchParams.set("outFields","locality,lga");
  url.searchParams.set("returnGeometry","false");
  url.searchParams.set("resultRecordCount","200");

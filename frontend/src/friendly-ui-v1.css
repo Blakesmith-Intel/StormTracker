@@ -1,0 +1,118 @@
+/* StormTracker friendly UI — QA preview only. Existing app/renderer untouched.
+   Simple is the default; More options exposes every original control. */
+body.simple-ui #app { grid-template-columns:minmax(292px,328px) minmax(0,1fr);grid-template-rows:minmax(0,1fr); }
+body.simple-ui #controlSidebar {
+  display:flex; flex-direction:column; gap:12px; padding:14px;
+  background:#101c28; overflow-y:auto; scrollbar-gutter:stable;
+}
+body.simple-ui #controlSidebar > * { flex:0 0 auto; }
+.dashboard-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.simple-brand {display:grid;gap:2px;min-width:0;}
+.simple-brand strong {font-size:18px;letter-spacing:-.035em;color:#f6fbff;}
+.simple-brand span {font-size:12px;color:#b6ccd9;}
+#simpleModeToggle {white-space:nowrap;font-size:12px;padding:8px 12px;min-height:40px;
+  border-radius:11px;background:#1d3446;color:#f2fbff;}
+.simple-intro {display:none;}
+body.simple-ui .dashboard-heading {display:flex!important;min-height:48px;}
+body.simple-ui .simple-intro {
+  display:block;font-size:12px;line-height:1.5;padding:8px 10px;border-radius:10px;
+  background:#1b3040;color:#d1e5f0;border:1px solid #375061;
+}
+body.simple-ui .simple-intro strong {color:#fff;}
+body.simple-ui .card {
+  padding:12px;border-radius:14px;background:#172838;border:1px solid #385267;
+  box-shadow:0 3px 16px #0002;
+}
+.section-title {display:none;margin:0 0 10px;font-size:15px;color:#f4fafc;}
+body.simple-ui .section-title {display:block;}
+body.simple-ui .overview,body.simple-ui #legendDock,body.simple-ui .live-notices,
+body.simple-ui #historicalCycloneQaPanel,body.simple-ui #memoryQaPanel {display:none!important;}
+body.simple-ui .loop-controls > :not(.section-title):not(.control-grid):not(.button-grid):not(.playback-row):not(#hybridFrameSlider) {display:none!important;}
+body.simple-ui .control-grid {display:block;}
+body.simple-ui .control-grid label:has(#playbackSpeed) {display:none!important;}
+body.simple-ui .control-grid label {font-size:13px;gap:7px;}
+body.simple-ui .control-grid select {width:100%;font-size:13px;min-height:43px;border-radius:9px;padding:8px;}
+body.simple-ui .button-grid {display:grid;grid-template-columns:1.1fr 1fr;gap:8px;margin-top:10px;}
+body.simple-ui .button-grid button {font-size:12px;min-height:44px;padding:8px 5px;border-radius:10px;}
+body.simple-ui #loadHybridButton {background:#224e70;border-color:#4a97c9;}
+body.simple-ui #loadButton {background:#263b48;border-color:#527187;}
+body.simple-ui .playback-row {margin-top:12px;gap:8px;}
+body.simple-ui .playback-row button {min-height:48px;font-size:14px;padding:10px 14px;border-radius:11px;}
+body.simple-ui #hybridPlayButton {flex:1;min-width:84px;background:#146e50;border-color:#2fa881;}
+body.simple-ui #jumpLatestButton {flex:1;min-width:84px;}
+body.simple-ui .playback-row label {display:none;}
+body.simple-ui #hybridFrameSlider {height:30px;margin-top:8px;}
+body.simple-ui .layer-controls > :not(.section-title):not(.basemap-row):not(.terrain-row):not(.flood-road-row):not(.power-outage-row):not(.river-gauge-row) {display:none!important;}
+body.simple-ui .layer-controls .layer-row {
+  padding:6px 0;margin:0;min-height:42px;display:flex;align-items:center;flex-wrap:nowrap;
+  border-bottom:1px solid #ffffff19;
+}
+body.simple-ui .layer-controls .layer-row:last-of-type {border-bottom:0;}
+body.simple-ui .layer-row label {font-size:12px;line-height:1.4;color:#e5f0f6;}
+body.simple-ui .layer-row input[type=checkbox] {width:20px;height:20px;flex:0 0 20px;}
+body.simple-ui .layer-row select {max-width:100%;width:100%;font-size:12px;min-height:42px;border-radius:8px;}
+body.simple-ui .basemap-row {display:grid!important;grid-template-columns:1fr;gap:5px;}
+body.simple-ui .layer-row button {display:none!important;}
+body.simple-ui .terrain-row > span {display:none;}
+body.simple-ui #status {
+  display:block;font-size:11px;max-height:78px;min-height:28px;
+  padding:8px 10px;border-radius:10px;background:#172838;overflow-y:auto;
+}
+body.simple-ui #controlSidebar:has(.layer-controls) { min-width:0; }
+#mapTools {position:absolute;z-index:var(--stormtracker-control-z);top:12px;left:12px;display:flex;gap:8px;}
+#measureToggle {background:#112c3eeb;border:1px solid #6db8d4;color:#f2fcff;
+  font-weight:750;font-size:14px;border-radius:12px;min-height:46px;min-width:112px;
+  box-shadow:0 2px 12px #0006;}
+#measureToggle[aria-pressed=true] {background:#185f6e;border-color:#9df4fc;color:white;}
+#measureSurface {position:absolute;inset:0;z-index:calc(var(--stormtracker-geo-label-z) + 150);cursor:crosshair;
+  touch-action:none;background:transparent;user-select:none;}
+#measureSurface[hidden],#mapMeasurePanel[hidden],#mapScaleBar[hidden] {display:none!important;}
+#mapMeasurePanel {position:absolute;z-index:var(--stormtracker-control-z);left:12px;top:70px;
+  width:min(340px,calc(100% - 24px));max-height:calc(100% - 85px);overflow-y:auto;
+  padding:12px;border:1px solid #7ca9b8;border-radius:14px;background:#102633f7;
+  color:#f4fbfe;box-shadow:0 12px 28px #0009;box-sizing:border-box;}
+#mapMeasurePanel header {display:flex;align-items:center;justify-content:space-between;gap:10px;}
+#mapMeasurePanel header strong {font-size:15px;}
+#mapMeasurePanel header button {min-width:38px;min-height:38px;font-size:21px;}
+#measureStatus {font-size:14px;font-weight:700;line-height:1.4;min-height:20px;margin:12px 0;color:#c4f4ff;}
+.measure-actions {display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:6px;}
+.measure-actions button {min-height:43px;font-size:11px;border-radius:9px;padding:7px 5px;}
+#measureDone {background:#1f7056;border-color:#54b98f;}
+#mapMeasurePanel small {display:block;color:#b3cad4;font-size:11px;line-height:1.45;margin-top:10px;}
+#mapScaleBar {position:absolute;z-index:var(--stormtracker-control-z);bottom:58px;left:12px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 9px;
+  border:1px solid #7e9aac88;border-radius:9px;background:#10202be8;
+  color:#fff;pointer-events:none;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+#mapScaleLine {height:8px;border-left:2px solid white;border-right:2px solid white;
+  border-bottom:3px solid white;box-sizing:border-box;min-width:12px;max-width:140px;}
+@media (max-width:700px) {
+  body.simple-ui #app {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,34dvh) minmax(0,1fr);}
+  body.simple-ui #controlSidebar {padding:10px;display:flex;gap:8px;grid-auto-rows:unset;overflow-y:auto;scrollbar-gutter:auto;}
+  body.simple-ui .dashboard-heading {display:flex!important;grid-column:auto;grid-row:auto;}
+  body.simple-ui .simple-intro {font-size:11px;}
+  body.simple-ui .loop-controls,body.simple-ui .layer-controls,body.simple-ui #status {grid-column:auto;grid-row:auto;grid-area:auto;}
+  body.simple-ui .loop-controls .button-grid button {font-size:11px;}
+  body.simple-ui .layer-controls {order:2;}
+  body.simple-ui #status {order:3;}
+  #mapTools {top:56px;left:6px;}
+  #measureToggle {min-height:42px;min-width:105px;font-size:13px;}
+  #mapMeasurePanel {left:6px;top:106px;width:min(330px,calc(100% - 12px));max-height:calc(100% - 119px);}
+  #mapScaleBar {left:6px;bottom:52px;}
+  #nav {min-width:0;}
+}
+@media (max-width:430px) {
+  body.simple-ui #app {grid-template-rows:minmax(0,36dvh) minmax(0,1fr);}
+  #nav {display:grid;grid-template-columns:38px minmax(0,1fr) auto 42px;gap:4px;left:4px;right:4px;box-sizing:border-box;}
+  #nav #sidebarToggle {width:38px;min-width:38px;max-width:38px;min-height:40px;}
+  #nav #radarSite {width:100%;max-width:none;min-width:0;min-height:40px;}
+  #nav #multiRadarSelectButton {min-height:40px;}
+  #nav #resetButton {font-size:0;min-height:40px;width:42px;max-width:42px;padding:2px;overflow:hidden;}
+  #nav #resetButton::after {content:"⌂";font-size:26px;line-height:1;}
+  .measure-actions {grid-template-columns:1fr 1fr;}
+  #measureDone {grid-column:1/-1;}
+}
+/* Larger touch targets apply in Advanced view as well, without hiding controls. */
+body:not(.simple-ui) #simpleModeToggle {min-height:40px;}
+@media (prefers-reduced-motion:reduce) {
+  #mapMeasurePanel,#mapTools {transition:none!important;animation:none!important;}
+}

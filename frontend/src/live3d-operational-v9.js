@@ -5277,6 +5277,12 @@ function updateRenderedTrackLabels() {
   setStormTrackTrailVisibility(hybridSource.entities, show);
   scene.requestRender();
 }
+// The QFD legend uses exactly the public GroupedType symbols fetched by the
+// existing incident layer. Reveal the key automatically whenever jobs are on.
+$("showQfdTechnicalRescues").addEventListener("change",event=>{
+  const legend=$("qfdIncidentLegendDetails");
+  if(legend)legend.open=Boolean(event.target.checked);
+});
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
 $("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
 $("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Deliberate, bounded one-off network audit. This is NOT a runtime feed;
+// Do not probe/use api.weather.bom.gov.au: its access notice requires express
+// permission for use/sharing and no such permission has been verified.
 // no radar, warning or cyclone data are redistributed by this audit.
 const endpoints=[
-  ["bom-public-warnings","https://api.weather.bom.gov.au/v1/warnings"],
   ["bom-cyclone-gml-idq65248","https://www.bom.gov.au/fwo/IDQ65248.xml"],
   ["qld-active-prod-cyclone","https://spatial-gis.information.qld.gov.au/arcgis/rest/services/EventsIncidents/CycloneActive/MapServer?f=pjson"],
   ["qld-historical-cyclone-reference","https://spatial-gis.information.qld.gov.au/arcgis/rest/services/EventsIncidents/CycloneHistorical/MapServer?f=pjson"]

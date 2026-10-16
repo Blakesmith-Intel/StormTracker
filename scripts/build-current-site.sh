@@ -100,6 +100,9 @@ cp "$production/data/nsw-radar-places-v1.json" "$delta/data/"
 # publish them in the source-pinned live app as a current warning layer.
 test -s "frontend/data/cyclone-history/koji-2026.json"
 test -s "frontend/data/cyclone-history/yasi-2011.json"
+for cyclone in alfred-2025 narelle-2026 jasper-2023; do
+  test -s "frontend/data/cyclone-history/$cyclone.json"
+done
 cp -a "frontend/data/cyclone-history" "$delta/data/"
 printf 'EXPERIMENTAL incremental 3-D QA source %s; separate from pinned V9.20.2 production\n' "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
 grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
@@ -111,6 +114,9 @@ node --check "$delta/src/live3d-operational-v9.js"
 test -s "$delta/data/nsw-radar-places-v1.json"
 test -s "$delta/data/cyclone-history/koji-2026.json"
 test -s "$delta/data/cyclone-history/yasi-2011.json"
+for cyclone in alfred-2025 narelle-2026 jasper-2023; do
+  test -s "$delta/data/cyclone-history/$cyclone.json"
+done
 grep -Fq 'Koji 2026' "$delta/data/cyclone-history/koji-2026.json"
 grep -Fq 'Yasi 2011' "$delta/data/cyclone-history/yasi-2011.json"
 node --check "$delta/src/historical-cyclone-overlay-v1.js"

@@ -1,32 +1,27 @@
-# StormTracker V9.20.0 — approved sealed production baseline (16 October 2026)
+# StormTracker V9.20.1 — Secondary Radar 3-D Recovery Patch (16 October 2026)
 
-**User acceptance:** On 16 October 2026 the operator tested the corrected incremental 3-D browser preview, confirmed the flickering had disappeared and reported that browser memory use had **approximately halved**. They explicitly requested production deployment and sealing. These are operator observations, not independent browser benchmarks.
+**Operator feedback:** V9.20.0 removed flicker and reduced reported memory use by approximately 50%, but omitted inferred 3-D volumes for secondary radar sites. A user recording confirmed that those extra sites' 2-D reflectivity remained visible. V9.20.1 restores the secondary-site 3-D coverage while preserving the V9.20.0 low-memory, no-double-cloud renderer.
 
-| Reference | Frozen commit | Purpose |
+| Reference | Immutable source commit | Purpose |
 | --- | --- | --- |
-| **V9.20.0 production source** | `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1` | Site root copied from exact immutable source; no moving-main build |
-| **Release tag** | `v9.20.0` | Annotated, must dereference to the above source after public verification |
-| **Recovery branch** | `restore/v9.20.0` | Created at the above source only after public deployment verification |
-| Immediate historical rollback V9.19.0 | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` | Existing `v9.19.0` and `restore/v9.19.0` must not move |
-| Earlier recovery V9.18.0 | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` | Existing `v9.18.0` and `restore/v9.18.0` must not move |
-| Accepted V9.18 diagnostic | `acfa0ebd3717a793369e3e887e2d1a54785620b7` | Remains at `/preview/radar-history-fix/` |
+| **V9.20.1 production source** | `efaceb59427f0b71859b15a61a6758a80d08547e` | Pinned public root, BoM-faithful supplemental source-pixel sampler |
+| Annotated release tag | `v9.20.1` | Created only following completed public Pages verification |
+| Recovery branch | `restore/v9.20.1` | Pinned to exact production source |
+| Historical V9.20.0 | `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1` | `v9.20.0` and `restore/v9.20.0` must never move |
+| Historical V9.19.0 | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` | `v9.19.0` and `restore/v9.19.0` unchanged |
+| Historical V9.18.0 | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` | Immutable earlier fallback |
+| Accepted V9.18 QA | `acfa0ebd3717a793369e3e887e2d1a54785620b7` | Diagnostic preview `/preview/radar-history-fix/` |
 
-## Release acceptance and invariants
+## Release guarantees
 
-- Exactly the corrected preview 3-D rendering logic is active on the root production page, including persistent source pixel-indexed glyphs across observed and display-only frames; in-place updates; no whole-cloud opacity fade or switching between frame-wide and track-specific rendering.
-- Removed redundant historical track 3-D point/footprint array retention while preserving top-height/trend/support summaries; bounded decoded radar providers, Cesium idle tile cache and secondary frame buffers.
-- Genuine BoM 2-D reflectivity (dBZ), native Doppler source time, inferred >=40 dBZ display floor, vertical display exaggeration 1.0×, storm IDs and +90-minute cones remain source-faithful and unmodified.
-- Main radar default and up to 3 selectable additional Queensland/NSW sites remain. Secondary 3-D glyphs are retired when their radars are deselected.
-- Official Queensland and NSW/DEA regional satellite coverage, regional place labels, old radar marker icons, flood gauge thresholds/colours, road closure/power outage/QFD incident context and GPU-safe interaction remain.
-- Storm labels remain **off by default** and refer to the primary radar only, as described beside the control.
-- No unverified V10 AURA Doppler circulation detections are promoted into V9.
+- Primary and all up to three selected secondary sites retain inferred 3-D for genuine observed reflectivity ≥40 dBZ; BoM original 2-D categories and UTC untouched.
+- Secondary 3-D uses deterministic, bounded min-hash sampling across actual observed high-dBZ source pixels, eliminating zero-sampling caused by raw pixel-index modulo and fixed first-scan stride; each secondary site bounded at ≤250 sampled columns/≤1500 glyphs.
+- The full accepted V9.20.0 **in-place Cesium glyph updates**, no whole-cloud fades, 3D/2D source-time handover and memory budget remain; no old V9.19 double clouds or cache growth reintroduced.
+- All QLD/NSW official satellite coverage, place names, road closure/outage/flood/QFD context, Doppler, storm IDs, +90 min cone safeguards and mobile navigation protections preserved.
+- Primary-radar Labels remain off by default, with a primary-only explanatory note; additional-site data does not create unofficial tracks.
 
-## Release integrity
+## Release management
 
-1. `scripts/build-current-site.sh` copies the production site from `checked/production-v9.20.0`, checked out at exactly `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`, not mutable main.
-2. `.github/workflows/pages.yml` runs all repository, old QA and pinned release tests; checks exact output marker `SEALED StormTracker V9.20.0 source aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`.
-3. Only after successful **public** Pages verification does the workflow create and independently verify the annotated tag `v9.20.0` and branch `restore/v9.20.0` at the exact SHA above. An unexpected existing ref must cause failure, not a ref move.
-4. Older release tags and restore branches are immutable and must remain functional.
-5. The isolated incremental 3-D preview is retained for diagnostic comparison but does **not** supply production files; the older V9.18 accepted preview remains a separate reference.
+Public output derives only from `checked/production-v9.20.1` at `efaceb59427f0b71859b15a61a6758a80d08547e`, not mutable main. GitHub Pages validates exact source, public `BUILD.txt`, supplemental sampling module, 2D/3D runtime, and legacy QA. The tag and restore branch must only be sealed after public checks succeed.
 
-See `docs/RELEASE_NOTES_V9.20.0.md`, `docs/HANDOVER_V9.20.0.md`, `docs/USER_GUIDE_V9.20.0.md` and `docs/BASELINE_RESTORE.md`.
+See `docs/RELEASE_NOTES_V9.20.1.md`, `docs/HANDOVER_V9.20.0.md` (unchanged base architecture), `docs/USER_GUIDE_V9.20.0.md`, `docs/BASELINE_RESTORE.md`.

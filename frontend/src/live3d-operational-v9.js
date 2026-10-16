@@ -111,6 +111,7 @@ import {
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
+import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
@@ -1465,6 +1466,7 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       livePrimaryGlyphs:inferredCollection?.length??0,
       secondaryGlyphs:supplementalVolumeDisplay?.glyphs??0,
       secondarySiteGlyphs:supplementalVolumeDisplay?.siteGlyphs??{},
+      supplementalProviderCache:supplementalRadarDisplay?.providerCacheSize??0,
       trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
         (hybridTrackFootprintCollection?.length??0),
       cached3dFrames:volumeGeometryCache.size,
@@ -1692,6 +1694,16 @@ function renderInferredVolume(frame) {
   let highSupportTop40 = null;
   let highSupportTop50 = null;
 
+  // Each genuine BoM palette category has exactly one empirical profile.
+  // Avoid recalculating its inferred vertical levels and confidence styles
+  // for thousands of identical-intensity source pixels per playback frame.
+  const profiles=INCREMENTAL_VOLUME_PREVIEW
+    ?createVolumeCategoryProfileCache({
+      model,occupancyThreshold,displayThresholdDbz:minimumDbzh,
+      pointSize,representativeDbzForCategory,inferColumn,
+      shouldRenderVolumePoint,styleForInferredPoint
+    }):null;
+
   for (
     let row = 0;
     row < frame.height;
@@ -1711,29 +1723,20 @@ function renderInferredVolume(frame) {
           pixelIndex
         ];
 
-      const inputDbzh =
-        representativeDbzForCategory(
-          category
-        );
+      const cachedProfile=profiles?.get(category)??null;
+      const inputDbzh = profiles
+        ?cachedProfile?.inputDbzh
+        :representativeDbzForCategory(category);
 
       if (inputDbzh == null) {
         continue;
       }
 
-      const inferred =
-        inferColumn(
-          model,
-          inputDbzh,
-          {
-            occupancyThreshold,
-            // Maintain existing model sampling. Filtering is presentation-only.
-            minimumOutputDbz: 30
-          }
-        );
-
-      const displayedInferred = inferred.filter(
-        point => shouldRenderVolumePoint(point.dbzh, minimumDbzh)
-      );
+      const displayedInferred = profiles
+        ?cachedProfile.points
+        :inferColumn(model,inputDbzh,{
+          occupancyThreshold,minimumOutputDbz:30
+        }).filter(point=>shouldRenderVolumePoint(point.dbzh,minimumDbzh));
       if (!displayedInferred.length) {
         continue;
       }
@@ -1746,18 +1749,13 @@ function renderInferredVolume(frame) {
         ?pixelCentreMercator(frame,column,row):null;
       const geographic=mercator
         ?webMercatorToDegrees(mercator.x,mercator.y):null;
-      for (const point of displayedInferred) {
-        const supportStyle =
-          styleForInferredPoint(
-            point,
-            {
-              // Keep confidence styling on its previously accepted baseline.
-              displayThresholdDbz: 30,
-
-              basePointSize:
-                pointSize
-            }
-          );
+      for (let level=0;level<displayedInferred.length;level++) {
+        const point=displayedInferred[level];
+        const supportStyle=profiles
+          ?cachedProfile.styles[level]
+          :styleForInferredPoint(point,{
+            displayThresholdDbz:30,basePointSize:pointSize
+          });
 
         if(!INCREMENTAL_VOLUME_PREVIEW||!sameGlyphs){
           const options={

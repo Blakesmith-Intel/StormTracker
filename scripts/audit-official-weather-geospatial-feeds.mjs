@@ -19,26 +19,34 @@ for(const [name,url] of endpoints){
     // Limit audit memory and avoid copying potentially-sensitive current
     // warning content to public CI logs. Only inspect source metadata.
     const reader=response.body?.getReader();
-    let sample="",total=0;
+    let sample="",total=0,fullyRead=false;
     if(reader){
       const decoder=new TextDecoder();
-      while(total<2048){
+      while(sample.length<32768){
         const item=await reader.read();
-        if(item.done)break;
+        if(item.done){fullyRead=true;break;}
         const bytes=item.value;
         total+=bytes.length;
-        sample+=decoder.decode(bytes.slice(0,Math.min(bytes.length,2048-sample.length)));
-        if(sample.length>=2048)break;
+        sample+=decoder.decode(bytes.slice(0,Math.max(0,32768-sample.length)),{stream:true});
       }
       await reader.cancel();
     }
-    let schema="unverified";
+    let schema="unverified",firstItemKeys=[],attributesKeys=[];
+    let jsonItemCount=null,geometryInItems=false;
     if(sample.trimStart().startsWith("{")){
       try{
-        // Only attempt JSON when response fits in first 2048B;
-        // otherwise schema is an observation, not an asserted contract.
-        const first=JSON.parse(sample);
-        schema=Object.keys(first).slice(0,10).join(",");
+        if(!fullyRead)throw Error("Truncated sample");
+        const parsed=JSON.parse(sample);
+        schema=Object.keys(parsed).slice(0,15).join(",");
+        if(Array.isArray(parsed.data)){
+          jsonItemCount=parsed.data.length;
+          const first=parsed.data[0];
+          firstItemKeys=first&&typeof first==="object"?Object.keys(first).slice(0,30):[];
+          attributesKeys=first?.attributes&&typeof first.attributes==="object"?
+            Object.keys(first.attributes).slice(0,35):[];
+          geometryInItems=Boolean(first?.geometry||first?.attributes?.geometry||
+            first?.attributes?.geojson||first?.attributes?.polygon);
+        }
       }catch{schema="JSON-looking; full schema not sampled";}
     }else if(sample.trimStart().startsWith("<")){
       const head=sample.match(/^\s*(?:<\?xml[^>]*>\s*)?<([\w:-]+)/);
@@ -48,6 +56,7 @@ for(const [name,url] of endpoints){
     console.log(JSON.stringify({
       name,status:response.status,contentType:mime,
       contentLength:size,firstBytes:total,schema,
+      jsonItemCount,firstItemKeys,attributesKeys,geometryInItems,
       elapsedMs:Date.now()-t,
       trustedForLive:false
     }));

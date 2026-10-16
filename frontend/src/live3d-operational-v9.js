@@ -203,7 +203,7 @@ import {
 import {createDeferredImageryRetirement}
   from "./imagery-layer-retirement-v1.js?v=9.18.5-gpu-lifetime";
 import {createSupplementalRadarVolumes}
-  from "./supplemental-radar-volume-v1.js?v=delta-reuse-20261016-v2";
+  from "./supplemental-radar-volume-v1.js?v=secondary-coverage-fix-20261016-v1";
 
 // V9.20.0 operator-accepted optimisation: use the exact same renderer,
 // source-faithful data path and memory budget on the production runtime as
@@ -1464,6 +1464,7 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       cachedProviderCount:measuredRadarProviderCache.size,
       livePrimaryGlyphs:inferredCollection?.length??0,
       secondaryGlyphs:supplementalVolumeDisplay?.glyphs??0,
+      secondarySiteGlyphs:supplementalVolumeDisplay?.siteGlyphs??{},
       trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
         (hybridTrackFootprintCollection?.length??0),
       cached3dFrames:volumeGeometryCache.size,

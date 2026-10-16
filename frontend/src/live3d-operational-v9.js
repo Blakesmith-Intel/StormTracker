@@ -205,9 +205,15 @@ import {createDeferredImageryRetirement}
 import {createSupplementalRadarVolumes}
   from "./supplemental-radar-volume-v1.js?v=delta-reuse-20261016-v2";
 
-// The immutable production root never activates the experimental 3-D engine.
+// V9.20.0 operator-accepted optimisation: use the exact same renderer,
+// source-faithful data path and memory budget on the production runtime as
+// the visually accepted incremental-3d browser preview. Older immutable
+// recovery builds are unaffected. Keep the established flag name for the
+// regression-tested downstream code and safeguards.
 const INCREMENTAL_VOLUME_PREVIEW =
-  window.location.pathname.includes("/preview/incremental-3d/");
+  window.location.pathname.includes("/preview/incremental-3d/") ||
+  (/\/live3d-operational-v9\.html$/.test(window.location.pathname) &&
+    !window.location.pathname.includes("/preview/"));
 const MODEL_URL =
   "./3d-models/inferred_vertical_profile_model_v2.json";
 
@@ -244,8 +250,8 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
-// Only in isolated QA: conserve idle terrain/imagery tile residency. Cesium
-// will never discard tiles required for the currently rendered frame.
+// V9.20.0: limit surplus Cesium off-screen tile residency without discarding
+// tiles needed for the currently visible official satellite imagery.
 if(INCREMENTAL_VOLUME_PREVIEW){
   scene.globe.tileCacheSize=window.matchMedia?.("(max-width:700px)").matches?48:72;
 }
@@ -640,8 +646,8 @@ supplementalVolumeDisplay=createSupplementalRadarVolumes({
 let validation = null;
 let latestFrame = null;
 let inferredCollection = null;
-// Explicit A/B preview gate. Public production still uses sealed, per-frame
-// geometry; science/clock/source code paths remain unchanged.
+// Source-faithful persistent 3-D geometry now applies on the approved
+// V9.20.0 production route and remains available in isolated QA.
 const incrementalVolumeRenderer=INCREMENTAL_VOLUME_PREVIEW
   ?createIncrementalVolumeRenderer({scene}):null;
 let stableVolumeFrameSet=null;
@@ -1434,7 +1440,7 @@ const measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW
   ?createBoundedRenderProviderCache({
     limit:window.matchMedia?.("(max-width:700px)").matches?3:6
   }):new WeakMap();
-// On-demand QA only; never mistake Chromium's shared GPU process for a
+// On-demand render diagnostics; never mistake Chromium's shared GPU process for a
 // tab-specific memory measurement. No periodic polling or retained snapshots.
 if(INCREMENTAL_VOLUME_PREVIEW){
   window.__stormtrackerMemoryDiagnostics=()=>{
@@ -1472,7 +1478,7 @@ if(INCREMENTAL_VOLUME_PREVIEW){
   details.id="memoryQaPanel";
   details.style.cssText="font:12px sans-serif;margin:10px 6px;padding:8px;border:1px solid #57717b;border-radius:6px;color:inherit";
   const heading=document.createElement("summary");
-  heading.textContent="Memory QA (experimental)";
+  heading.textContent="Memory diagnostics";
   const button=document.createElement("button");
   button.type="button";
   button.textContent="Capture memory snapshot";

@@ -1,7 +1,9 @@
 // Pure source-faithful historical cyclone QA adapter.
 // Never display historical observations or archived cyclone wind areas as
 // *live* BoM warnings. No interpolation and no synthetic warning polygons.
-export const HISTORICAL_CYCLONE_IDS=Object.freeze(["koji-2026","yasi-2011"]);
+export const HISTORICAL_CYCLONE_IDS=Object.freeze([
+  "alfred-2025","narelle-2026","jasper-2023","koji-2026","yasi-2011"
+]);
 const windTypes=new Set(["Damaging","Destructive","Very Destructive"]);
 const utcMs=value=>typeof value==="string"&&
   /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(value)&&
@@ -67,9 +69,10 @@ export function historicalCycloneSnapshot(bundle,utc){
   return Object.freeze({
     utc,latestFix,fixesSoFar,windAtIssue,
     isWindIssue:windAtIssue.length>0,
-    originalSourceLabel:bundle.id==="koji-2026"?
-      "Queensland Government / BoM archived observed cyclone and wind areas":
-      "BoM 2011 reanalysed best track (not warning geometry)",
+    originalSourceLabel:bundle.attribution??
+      (bundle.id==="yasi-2011"
+        ?"BoM 2011 reanalysed best track (not warning geometry)"
+        :"Queensland Government / BoM archived observed cyclone and wind areas"),
     live:false,forecast:false,officialThunderstormWarning:false
   });
 }

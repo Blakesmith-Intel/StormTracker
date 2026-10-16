@@ -4711,6 +4711,16 @@ async function loadHybridSequence(automatic = false) {
         continue;
       }
 
+      // The stable QA renders the persistent, frame-wide 3-D volume.
+      // Preserve track top, trend and support metrics without keeping another
+      // complete set of redundant per-track 3-D point/footprint arrays for
+      // every observation in the 60/120/180-minute history.
+      const retainedVolume=INCREMENTAL_VOLUME_PREVIEW ? {
+        high_support_top_40_m_amsl:volume.high_support_top_40_m_amsl,
+        high_support_points:volume.high_support_points,
+        inferred_point_count:volume.inferred_point_count
+      } : volume;
+
       const previous =
         previousByTrack.get(
           track.track_id
@@ -4721,13 +4731,13 @@ async function loadHybridSequence(automatic = false) {
           ? highSupportTop40Trend(
               previous.volume,
               previous.observedUtc,
-              volume,
+              retainedVolume,
               frame.observedUtc
             )
           : null;
 
       const record = {
-        volume,
+        volume:retainedVolume,
         trend,
         observedUtc:
           frame.observedUtc

@@ -29,6 +29,3 @@ jobs:
       - name: Validate relay worker syntax
         run: node --check relay/worker.js
 
-      - name: Probe official QLD locality LGA service (diagnostic only)
-        continue-on-error: true
-        run: node scripts/probe-lga-endpoint.mjs

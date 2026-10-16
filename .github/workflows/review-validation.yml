@@ -31,11 +31,11 @@ jobs:
           ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
           path: checked/accepted-v9.18
           persist-credentials: false
-      - name: Checkout exact V9.20.1 release source for package audit
+      - name: Checkout exact V9.20.2 release source for package audit
         uses: actions/checkout@v4
         with:
-          ref: efaceb59427f0b71859b15a61a6758a80d08547e
-          path: checked/production-v9.20.1
+          ref: b8be458acbae942a3bb0b530a5c17618b6d03134
+          path: checked/production-v9.20.2
           persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
@@ -43,10 +43,16 @@ jobs:
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
           test ! -e _site/preview/next-baseline/BUILD.txt
-          grep -Fq 'SEALED StormTracker V9.20.1 source efaceb59427f0b71859b15a61a6758a80d08547e' _site/BUILD.txt
+          grep -Fq 'SEALED StormTracker V9.20.2 source b8be458acbae942a3bb0b530a5c17618b6d03134' _site/BUILD.txt
           grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' _site/src/live3d-operational-v9.js
           grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' _site/src/live3d-operational-v9.js
-          grep -Fq 'Memory diagnostics' _site/src/live3d-operational-v9.js
+          grep -Fq 'createResponsiveMemoryDiagnostics' _site/src/live3d-operational-v9.js
+          grep -Fq 'Memory diagnostics' _site/src/responsive-memory-diagnostics-v1.js
+          grep -Fq 'GLOBAL_SATELLITE_FALLBACK' _site/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'createGlobalSatelliteFallbackProvider' _site/src/context-layers/basemap-manager-v1.js
+          grep -Fq 'global-satellite-blue-gap-20261016-v1' _site/src/live3d-operational-v9.js
+          grep -Fq 'satellite-blue-gap-qa-v1' _site/index.html
+          grep -Fq 'satellite-blue-gap-qa-v1' _site/live3d-operational-v9.html
           grep -Fq 'v9.20.0-optimised-3d-prod' _site/live3d-operational-v9.html
           grep -Fq 'v9.20.0-optimised-3d-prod' _site/index.html
           grep -Fq 'selectSupplementalVolumeSampleIndices' _site/src/supplemental-radar-volume-v1.js

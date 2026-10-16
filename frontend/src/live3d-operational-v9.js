@@ -2101,7 +2101,9 @@ function applyHybridVolumeMode(
 
   const mode = $("hybridVolumeMode");
   if (mode) {
-    mode.textContent = temporalInferred
+    mode.textContent = INCREMENTAL_VOLUME_PREVIEW
+      ? "Stable frame-wide inferred 3-D · display only (QA)"
+      : temporalInferred
       ? "Temporal gap-fill · frame-wide inferred"
       : useTrackSpecific
         ? (wanted ? `Selected ${wanted} · observed 2-D echo + inferred 3-D`

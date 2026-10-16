@@ -50,3 +50,5 @@ assert.ok(controls.includes("Measurement finished."));
 assert.match(root,/simple-ui-measure-v2-mobile/);
 assert.doesNotMatch(controls,/loadBomReflectivityMosaic|loadDopplerFrame|buildStormTrack/);
 console.log("Friendly UI, distance and scale regression checks passed.");
+
+// QFD rescue & assistance must remain accessible without opening advanced mode.

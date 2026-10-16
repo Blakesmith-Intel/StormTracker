@@ -23,7 +23,9 @@ assert.match(app,/INCREMENTAL_VOLUME_PREVIEW[\s\S]*scene\.globe\.tileCacheSize/)
 assert.match(app,/const measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(app,/measuredRadarProviderCache\.clear\?\.\(\)/);
 assert.match(app,/window\.__stormtrackerMemoryDiagnostics/);
-assert.match(app,/maxCached:INCREMENTAL_VOLUME_PREVIEW\?8:18/);
+assert.match(app,/maxCached:INCREMENTAL_VOLUME_PREVIEW[\s\S]*?matches\?12:18/);
+assert.match(app,/maxProviderCached:INCREMENTAL_VOLUME_PREVIEW/);
+assert.match(app,/const profiles=INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(app,/const retained = new Set\(INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(build,/delta="_site\/preview\/incremental-3d"/);
 assert.match(build,/pinned V9\.20\.[01] production|approved production V9\.20\.[01]|Sealed V9\.19\.0/i);

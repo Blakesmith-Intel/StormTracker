@@ -104,13 +104,14 @@ import {
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.5-deferred-retire";
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
-} from "./multi-radar-display-v9.js?v=9.18.10-atomic-3d";
+} from "./multi-radar-display-v9.js?v=render-provider-cache-20261016-v1";
 import {
   supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
 } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
+import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
@@ -320,7 +321,14 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   retireLayer:deferredImageryRetirement?.retire,
   onDisplay:(site,frame,utc)=>supplementalVolumeDisplay?.render(site,frame,utc),
   onHide:site=>supplementalVolumeDisplay?.hide(site),
-  maxCached:INCREMENTAL_VOLUME_PREVIEW?8:18,
+  // Two secondary sites × 6 source frames exceed the old 8-frame limit:
+  // it fetched and reprojected the same genuine BoM tiles every loop.
+  // Preserve the six-frame 30-min window for 2–3 sites on desktop but keep
+  // mobile bounded; no unbounded previous-UTC history is retained.
+  maxCached:INCREMENTAL_VOLUME_PREVIEW
+    ?(window.matchMedia?.("(max-width:700px)").matches?12:18):18,
+  maxProviderCached:INCREMENTAL_VOLUME_PREVIEW
+    ?(window.matchMedia?.("(max-width:700px)").matches?6:12):8,
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -1465,6 +1473,10 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       livePrimaryGlyphs:inferredCollection?.length??0,
       secondaryGlyphs:supplementalVolumeDisplay?.glyphs??0,
       secondarySiteGlyphs:supplementalVolumeDisplay?.siteGlyphs??{},
+      supplementalProviderCache:supplementalRadarDisplay?.providerCacheSize??0,
+      supplementalSourceFrameCache:supplementalRadarDisplay?.sourceFrameCacheSize??0,
+      supplementalCacheDiagnostics:supplementalRadarDisplay?.cacheDiagnostics??null,
+      playbackTiming:playbackPerformanceMeter?.summary?.()??null,
       trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
         (hybridTrackFootprintCollection?.length??0),
       cached3dFrames:volumeGeometryCache.size,
@@ -1692,6 +1704,16 @@ function renderInferredVolume(frame) {
   let highSupportTop40 = null;
   let highSupportTop50 = null;
 
+  // Each genuine BoM palette category has exactly one empirical profile.
+  // Avoid recalculating its inferred vertical levels and confidence styles
+  // for thousands of identical-intensity source pixels per playback frame.
+  const profiles=INCREMENTAL_VOLUME_PREVIEW
+    ?createVolumeCategoryProfileCache({
+      model,occupancyThreshold,displayThresholdDbz:minimumDbzh,
+      pointSize,representativeDbzForCategory,inferColumn,
+      shouldRenderVolumePoint,styleForInferredPoint
+    }):null;
+
   for (
     let row = 0;
     row < frame.height;
@@ -1711,29 +1733,20 @@ function renderInferredVolume(frame) {
           pixelIndex
         ];
 
-      const inputDbzh =
-        representativeDbzForCategory(
-          category
-        );
+      const cachedProfile=profiles?.get(category)??null;
+      const inputDbzh = profiles
+        ?cachedProfile?.inputDbzh
+        :representativeDbzForCategory(category);
 
       if (inputDbzh == null) {
         continue;
       }
 
-      const inferred =
-        inferColumn(
-          model,
-          inputDbzh,
-          {
-            occupancyThreshold,
-            // Maintain existing model sampling. Filtering is presentation-only.
-            minimumOutputDbz: 30
-          }
-        );
-
-      const displayedInferred = inferred.filter(
-        point => shouldRenderVolumePoint(point.dbzh, minimumDbzh)
-      );
+      const displayedInferred = profiles
+        ?cachedProfile.points
+        :inferColumn(model,inputDbzh,{
+          occupancyThreshold,minimumOutputDbz:30
+        }).filter(point=>shouldRenderVolumePoint(point.dbzh,minimumDbzh));
       if (!displayedInferred.length) {
         continue;
       }
@@ -1746,18 +1759,13 @@ function renderInferredVolume(frame) {
         ?pixelCentreMercator(frame,column,row):null;
       const geographic=mercator
         ?webMercatorToDegrees(mercator.x,mercator.y):null;
-      for (const point of displayedInferred) {
-        const supportStyle =
-          styleForInferredPoint(
-            point,
-            {
-              // Keep confidence styling on its previously accepted baseline.
-              displayThresholdDbz: 30,
-
-              basePointSize:
-                pointSize
-            }
-          );
+      for (let level=0;level<displayedInferred.length;level++) {
+        const point=displayedInferred[level];
+        const supportStyle=profiles
+          ?cachedProfile.styles[level]
+          :styleForInferredPoint(point,{
+            displayThresholdDbz:30,basePointSize:pointSize
+          });
 
         if(!INCREMENTAL_VOLUME_PREVIEW||!sameGlyphs){
           const options={
@@ -3573,7 +3581,9 @@ function renderHybridTracks(index) {
       const trail = history
         .filter(item => item.frameIndex <= index)
         .sort((a, b) => a.frameIndex - b.frameIndex);
-      if (presentation.show && trail.length >= 2) {
+      // Labels default OFF. Do not allocate/submit hidden Cesium trail
+      // polylines for every storm at every playback step.
+      if (presentation.show && $("showTrackLabels")?.checked && trail.length >= 2) {
         hybridSource.entities.add({
           id: `hybrid-trail-${track.track_id}`,
           show: Boolean($("showTrackLabels")?.checked),
@@ -5273,6 +5283,12 @@ $("hybridPlayButton").addEventListener("click", () => {
 // frame, without updating radar, volume primitives or the playback position.
 function updateRenderedTrackLabels() {
   const show = Boolean($("showTrackLabels")?.checked) && !isNativeDopplerPlayback();
+  // Hidden trail geometry is no longer generated at every weather frame.
+  // Build it once only when the operator explicitly enables Labels.
+  if(show && hybridResults[hybridFrameIndex] && !isNativeDopplerPlayback()){
+    renderHybridTracks(hybridFrameIndex);
+    return;
+  }
   stormTrackLabelOverlay.setVisible(show);
   setStormTrackTrailVisibility(hybridSource.entities, show);
   scene.requestRender();

@@ -19,7 +19,7 @@ assert.match(runtime,/const showTrackVolumes = !INCREMENTAL_VOLUME_PREVIEW && us
 assert.match(runtime,/const retainedVolume=INCREMENTAL_VOLUME_PREVIEW \? \{/);
 assert.match(runtime,/measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(runtime,/scene\.globe\.tileCacheSize/);
-assert.match(runtime,/maxCached:INCREMENTAL_VOLUME_PREVIEW\?8:18/);
+assert.match(runtime,/maxCached:INCREMENTAL_VOLUME_PREVIEW[\s\S]*?matches\?12:18/);
 assert.match(runtime,/Memory diagnostics/);
 assert.match(delta,/function upsert\(key,category,specs,create,patch\)/);
 assert.match(secondary,/function pruneSites\(selectedIds=\[\]\)/);

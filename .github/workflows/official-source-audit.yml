@@ -1,0 +1,24 @@
+name: Audit publicly accessible official cyclone and warning GIS sources
+
+on:
+  push:
+    branches: [feature/official-bom-cyclone-track-source-contract-v1]
+    paths:
+      - "scripts/audit-official-weather-geospatial-feeds.mjs"
+      - ".github/workflows/official-source-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Probe only published public GET endpoints without retaining live warning payloads
+        run: node scripts/audit-official-weather-geospatial-feeds.mjs

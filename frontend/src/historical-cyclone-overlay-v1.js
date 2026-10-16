@@ -64,12 +64,32 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
 
   const cache=new Map();
   let seq=0,bundle=null,moments=[],entities=[];
+  const activeEntities=new Map();
+  let sourceGeometryCache=new WeakMap();
   function clearEntities(){
-    for(const entity of entities)viewer.entities.remove(entity);
+    for(const entity of activeEntities.values())viewer.entities.remove(entity);
+    activeEntities.clear();
     entities=[];
+    // Free old source-specific geometry references when switching cases.
+    sourceGeometryCache=new WeakMap();
     viewer.scene?.requestRender?.();
   }
-  function add(entity){const created=viewer.entities.add(entity);entities.push(created);return created;}
+  function retain(key,entityFactory,needed){
+    needed.add(key);
+    if(activeEntities.has(key))return activeEntities.get(key);
+    const created=viewer.entities.add(entityFactory());
+    activeEntities.set(key,created);
+    entities.push(created);
+    return created;
+  }
+  function retireStale(needed){
+    for(const [key,entity] of activeEntities){
+      if(needed.has(key))continue;
+      viewer.entities.remove(entity);
+      activeEntities.delete(key);
+    }
+    entities=[...activeEntities.values()];
+  }
   const colours={
     Damaging:Cesium.Color.fromCssColorString("#eeb936"),
     Destructive:Cesium.Color.fromCssColorString("#ec583c"),
@@ -82,16 +102,19 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
       year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})+" AEST";
   };
   function draw(){
-    clearEntities();
-    if(!toggle.checked||!bundle||!moments.length)return;
+    if(!toggle.checked||!bundle||!moments.length){
+      clearEntities();return;
+    }
+    const needed=new Set();
     const index=Math.min(moments.length-1,Math.max(0,Number(range.value)||0));
     const snapshot=historicalCycloneSnapshot(bundle,moments[index]);
     // The entire archived line is historical context, never a future
     // forecast at the scrubber's time. Only observed fixes through the
     // selected actual timestamp receive visible position points.
-    for(const track of bundle.track){
+    for(let trackNumber=0;trackNumber<bundle.track.length;trackNumber++){
+      const track=bundle.track[trackNumber];
       const line=track.geometry.coordinates;
-      add({
+      retain("track:"+trackNumber,()=>({
         name:bundle.title+" — full observed historical best track",
         description:"Complete post-event observed/reanalysed track. Not a historical forecast.",
         polyline:{
@@ -99,13 +122,13 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
           width:3,clampToGround:true,
           material:Cesium.Color.CYAN.withAlpha(0.85)
         }
-      });
+      }),needed);
     }
     for(const f of snapshot.fixesSoFar){
       const isCurrent=f===snapshot.latestFix;
       const category=Number.isInteger(f.category)?f.category:null;
       const label=isCurrent?bundle.title+" · "+stamp(f.utc):undefined;
-      add({
+      retain("fix:"+f.id+":"+(isCurrent?"active":"past"),()=>({
         name:bundle.title+" — observed fix",
         description:"ARCHIVED observed/reanalysed position · "+stamp(f.utc)+
           (category===null?"":(" · Category "+category))+
@@ -128,7 +151,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
           style:Cesium.LabelStyle.FILL_AND_OUTLINE,
           disableDepthTestDistance:Number.POSITIVE_INFINITY
         }}:{})
-      });
+      }),needed);
     }
     let polygons=0;
     if(showWind.checked){
@@ -136,22 +159,55 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
         const fill=colours[area.windType]??Cesium.Color.YELLOW;
         // All original source vertices and inner holes are preserved.
         // Multiple geometry parts remain separate on the globe.
-        const hierarchies=nestedHistoricalPolygonPositions(area.geometry,Cesium);
-        for(const hierarchy of hierarchies){
-          add({
+        let drawn=sourceGeometryCache.get(area);
+        if(!drawn){
+          // Original source polygons and complete inner-hole rings are
+          // converted to Cesium positions once for the archive's lifetime,
+          // not reallocated across every slider movement or Cesium tick.
+          const polygonParts=area.geometry.type==="Polygon"
+            ?[area.geometry.coordinates]:area.geometry.coordinates;
+          drawn={
+            hierarchies:nestedHistoricalPolygonPositions(area.geometry,Cesium),
+            boundaries:polygonParts.map(part=>part.map(ring=>
+              Cesium.Cartesian3.fromDegreesArray(ring.flatMap(p=>p.slice(0,2)))
+            ))
+          };
+          sourceGeometryCache.set(area,drawn);
+        }
+        drawn.hierarchies.forEach((hierarchy,partIndex)=>{
+          const key="wind:"+area.id+":"+partIndex;
+          retain(key,()=>({
             name:bundle.title+" — archived "+area.windType+" cyclone winds",
             description:"HISTORICAL CYCLONE WIND FOOTPRINT, NOT a thunderstorm warning. Original issued "+stamp(area.issueUtc)+"; archived valid time "+stamp(area.validUtc??area.issueUtc)+".",
             polygon:{
               hierarchy,
               material:fill.withAlpha(0.28),
-              outline:true,outlineColor:fill.withAlpha(0.95),
+              // Cesium cannot draw polygon outline:true on clamped terrain
+              // and warns on every generated Entity. Use a separate true
+              // terrain-following source-vertex polyline for each boundary.
               classificationType:Cesium.ClassificationType.BOTH,
               zIndex:15
             }
-          });polygons++;
-        }
+          }),needed);
+          drawn.boundaries[partIndex].forEach((positions,ringIndex)=>{
+            retain("wind-border:"+area.id+":"+partIndex+":"+ringIndex,()=>({
+              name:bundle.title+" — archived "+area.windType+" boundary",
+              description:"Original full-resolution archived cyclone wind boundary. Not live.",
+              polyline:{
+                positions,
+                width:2,
+                clampToGround:true,
+                material:fill.withAlpha(0.95)
+              }
+            }),needed);
+          });
+          polygons++;
+        });
       }
     }
+    // Diff the existing Cesium entities instead of rebuilding full 1405-
+    // vertex storm polygons and their GPU buffers on every scrub step.
+    retireStale(needed);
     status.textContent=[
       "Historical "+bundle.title+" · NOT LIVE",
       "Selected: "+stamp(snapshot.utc),

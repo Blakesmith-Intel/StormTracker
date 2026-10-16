@@ -1,3 +1,5 @@
+import {groupOutagesByLga,filterLgaGroups,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
+ from "./incident-lga-model-v1.js?v=official-lga-20261017-v1";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
   from "./power-outage-suburb-model-v1.js?v=suburb-explorer-20261017-v1";
@@ -26,7 +28,8 @@ export function createPowerOutageSuburbExplorer({
     return item;
   };
   const number=v=>Number(v??0).toLocaleString("en-AU");
-  let groups=[],status={kind:"loading",message:"Waiting for live outage feed…"};
+  let groups=[],suburbGroups=[],lgaCache=new Map(),attempted=new Set(),lookupBusy=false;
+  let status={kind:"loading",message:"Waiting for live outage feed…"};
   let openKeys=new Set(),visibleLimit=60,hasSnapshot=false;
   let loading=false,disposed=false;
   function field(grid,label,value){
@@ -38,21 +41,35 @@ export function createPowerOutageSuburbExplorer({
   function render(){
     if(!dialog.open || disposed)return;
     results.replaceChildren();
-    const matching=filterOutageSuburbGroups(groups,search.value);
+    const matching=filterLgaGroups(groups,search.value);
     const listed=matching.slice(0,visibleLimit);
     const unique=new Set(matching.flatMap(g=>g.items.map(i=>i.id)));
     summary.textContent=hasSnapshot
-      ? `${matching.length} suburbs · ${unique.size} distinct outages`
+      ? `${matching.length} council areas · ${unique.size} distinct outages`
       : "Waiting for outage information";
     if(!hasSnapshot){
       results.append(create("p","outage-empty","Outage data hasn't loaded. Press Refresh to retry."));
     }else if(!matching.length){
       results.append(create("p","outage-empty",search.value
-        ? "No matching suburbs or outage details.":
+        ? "No matching council areas, suburbs or outage details.":
           "No unplanned outages are currently reported in this feed."));
     }
-    for(const group of listed){
-      const section=create("details","outage-suburb");
+    for(const council of listed){
+      const parent=create("details","outage-suburb outage-council");
+      parent.open=openKeys.has("lga:"+council.key);
+      parent.addEventListener("toggle",()=>parent.open
+        ?openKeys.add("lga:"+council.key):openKeys.delete("lga:"+council.key));
+      const parentTitle=create("summary","outage-suburb-title");
+      parentTitle.append(create("span","outage-suburb-name",council.name),
+        create("span","outage-suburb-count",
+          `${council.items.length} outage${council.items.length===1?"":"s"}`));
+      parent.append(parentTitle);
+      const parentInner=create("div","outage-suburb-inner outage-lga-inner");
+      if(council.name===UNKNOWN_LGA)
+        parentInner.append(create("p","outage-suburb-note",
+          "Council could not be verified from the official Queensland locality data."));
+      for(const group of council.suburbs){
+      const section=create("details","outage-suburb outage-locality");
       section.open=openKeys.has(group.key);
       section.addEventListener("toggle",()=>{
         if(section.open)openKeys.add(group.key);
@@ -143,19 +160,42 @@ export function createPowerOutageSuburbExplorer({
         tbody.append(row);
       }
       table.append(tbody);inner.append(table);section.append(inner);
-      results.append(section);
+      parentInner.append(section);
+      }
+      parent.append(parentInner);
+      results.append(parent);
     }
     more.hidden=visibleLimit>=matching.length;
-    if(!more.hidden)more.textContent=`Show more suburbs (${matching.length-visibleLimit} remaining)`;
+    if(!more.hidden)more.textContent=`Show more council areas (${matching.length-visibleLimit} remaining)`;
   }
   function updateFeatures(features){
-    groups=groupOutagesBySuburb(features);
+    suburbGroups=groupOutagesBySuburb(features);
+    groups=groupOutagesByLga(suburbGroups,lgaCache);
+    // A missing or ambiguous locality remains explicitly unverified.
+    // Locality attributes are looked up only for names present in the SAME feed.
+    const unknown=suburbGroups.map(g=>g.name).filter(name=>{
+      const key=localityKey(name);
+      return key!=="SUBURB NOT SUPPLIED"&&!lgaCache.has(key)&&!attempted.has(key);
+    });
+    if(unknown.length&&!lookupBusy){
+      unknown.forEach(name=>attempted.add(localityKey(name)));
+      lookupBusy=true;
+      resolveQueenslandLocalityLgas(unknown).then(result=>{
+        if(disposed)return;
+        for(const [key,value] of result)lgaCache.set(key,value);
+        groups=groupOutagesByLga(suburbGroups,lgaCache);
+        if(dialog.open)render();
+      }).catch(error=>{
+        console.warn("Official outage LGA lookup unavailable:",error.message);
+        state.textContent=(status.message||"")+" · Council lookup unavailable (unverified shown)";
+      }).finally(()=>{lookupBusy=false;});
+    }
     hasSnapshot=true; // [] from the layer means none, or stale data was removed.
     if(dialog.open)render();
   }
   function updateStatus(next){
     if(next)status=next;
-    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||"")){hasSnapshot=false;groups=[];openKeys.clear();}
+    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||"")){hasSnapshot=false;groups=[];suburbGroups=[];openKeys.clear();}
     const kind=status.kind||"normal";
     state.dataset.kind=kind;
     state.textContent=status.message||"Current unplanned outage data";

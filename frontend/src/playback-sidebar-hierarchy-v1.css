@@ -90,21 +90,15 @@
 #controlSidebar #terrainEnabled,
 #controlSidebar .terrain-row {display:none!important;}
 #controlSidebar .layer-controls .volume-blob-toggle{font-size:11px;}
-#controlSidebar .flood-traffic-light {
-  display:inline-flex;flex:0 0 16px;
-  flex-direction:column;align-items:center;
-  justify-content:center;gap:2px;min-width:16px;
-  padding:3px 2px;
-  background:#172632;border:1px solid #aecbd8;
-  border-radius:7px;box-sizing:border-box;vertical-align:middle;
+/* Flood severity key: compact hydrology badge with severity arc segments.
+   Arc colours are borrowed from actual BoM river marker rendering; this is
+   NOT a three-lamp traffic signal or a replacement for marker icon logic. */
+#controlSidebar .flood-severity-glyph {
+  display:inline-block;flex:0 0 22px;
+  width:22px;height:22px;min-width:22px;
+  vertical-align:middle;
 }
-#controlSidebar .flood-traffic-light i {
-  display:block;width:9px;height:9px;border-radius:50%;
-  border:1px solid #121c23;box-shadow:0 0 1px #fff8;
-}
-#controlSidebar .flood-traffic-light i:nth-child(1){background:#e53935;}
-#controlSidebar .flood-traffic-light i:nth-child(2){background:#ffd43b;}
-#controlSidebar .flood-traffic-light i:nth-child(3){background:#2db76f;}
+#controlSidebar .flood-severity-legend {line-height:1.45;}
 #controlSidebar .qfd-incident-key {
   display:block;
   margin:6px 0 9px;padding:8px 9px;
@@ -182,4 +176,42 @@ body.simple-ui #controlSidebar .layer-controls > .volume-blob-toggle{
   #controlSidebar .qfd-incident-key #qfdSymbolLegend {grid-template-columns:1fr;gap:7px;}
   /* Main map always dominates phone height; controls remain internally scrollable. */
   body.simple-ui #controlSidebar {overflow-y:auto;overscroll-behavior:contain;}
+}
+
+/* Relocate the ORIGINAL operational status readout into Radar playback. The
+   renderer still writes to exactly one #status DOM node, now next to its slider.
+   Hidden bookkeeping IDs remain available for existing frame-clock consumers. */
+#controlSidebar .loop-controls > #status,
+body.simple-ui #controlSidebar .loop-controls > #status {
+  display:block!important;
+  grid-area:auto!important;
+  order:unset!important;
+  box-sizing:border-box;
+  width:100%;height:auto;
+  min-width:0;min-height:38px;max-height:100px;
+  margin:7px 0 4px;padding:10px 11px;
+  background:#102d3d;
+  border:1px solid #36586b;border-radius:10px;
+  font-size:11px;line-height:1.45;
+  overflow-y:auto;overflow-wrap:anywhere;
+}
+#controlSidebar .loop-controls > #status[data-kind="error"] {
+  border-color:#a96460;background:#39262b;
+}
+#controlSidebar .loop-controls > #status[data-kind="warning"] {
+  border-color:#a38b4e;background:#373121;
+}
+#controlSidebar .loop-controls > #status[data-kind="ok"] {
+  border-color:#3a806a;background:#16372f;
+}
+#controlSidebar .loop-controls .frame-data-bindings[hidden] {display:none!important;}
+@media(max-width:700px){
+  #controlSidebar .loop-controls > #status,
+  body.simple-ui #controlSidebar .loop-controls > #status {
+    margin:3px 0 2px;padding:6px 8px;
+    min-height:28px;max-height:70px;font-size:10px;
+  }
+  #controlSidebar .flood-severity-glyph{
+    width:20px;height:20px;min-width:20px;flex-basis:20px;
+  }
 }

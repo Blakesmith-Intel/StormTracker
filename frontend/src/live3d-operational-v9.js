@@ -110,7 +110,7 @@ import {
 } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
 import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
-import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=volume-delta-qa-1";
+import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
@@ -184,7 +184,7 @@ import {
   addVolumeDisplayPoint,
   updateVolumeDisplayPoint,
   setVolumeDisplayOpacity
-} from "./volume-display-opacity-v1.js?v=9.15.0-volume-opacity";
+} from "./volume-display-opacity-v1.js?v=delta-reuse-20261016-v2";
 import {
   volumeDisplayThresholdDbz,
   shouldRenderVolumePoint
@@ -203,7 +203,7 @@ import {
 import {createDeferredImageryRetirement}
   from "./imagery-layer-retirement-v1.js?v=9.18.5-gpu-lifetime";
 import {createSupplementalRadarVolumes}
-  from "./supplemental-radar-volume-v1.js?v=9.18.10-bounded-source-3d";
+  from "./supplemental-radar-volume-v1.js?v=delta-reuse-20261016-v2";
 
 // The immutable production root never activates the experimental 3-D engine.
 const INCREMENTAL_VOLUME_PREVIEW =

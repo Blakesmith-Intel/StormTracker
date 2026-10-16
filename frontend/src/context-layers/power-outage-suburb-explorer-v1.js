@@ -1,5 +1,5 @@
 import {groupOutagesByLga,filterLgaGroups,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
- from "./incident-lga-model-v1.js?v=official-lga-20261017-v1";
+ from "./incident-lga-model-v1.js?v=case-insensitive-lga-20261017-v2";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
   from "./power-outage-suburb-model-v1.js?v=suburb-explorer-20261017-v1";

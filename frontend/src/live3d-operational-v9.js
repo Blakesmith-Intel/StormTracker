@@ -228,6 +228,24 @@ const VALIDATION_URL =
 const $ = id =>
   document.getElementById(id);
 
+// Explicit clean-start policy. Optional operational overlays are opt-in,
+// including on browsers that restore checkbox state after an earlier visit.
+// 3-D terrain is a permanent base-map feature, not an optional incident layer.
+const DEFAULT_OFF_LAYER_IDS = Object.freeze([
+  "showFloodRoadClosures",
+  "showPowerOutages",
+  "showRiverGauges",
+  "showQfdTechnicalRescues",
+  "showTrackLabels",
+  "showTrackThreatCone",
+  "showSevereRadarAlerts",
+  "showExperimentalHookAlerts"
+]);
+for(const id of DEFAULT_OFF_LAYER_IDS){
+  const checkbox=$(id);
+  if(checkbox)checkbox.checked=false;
+}
+
 const viewer = new Cesium.Viewer(
   "cesiumContainer",
   {

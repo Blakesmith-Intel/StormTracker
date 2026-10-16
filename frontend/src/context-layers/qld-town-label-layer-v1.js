@@ -22,6 +22,29 @@ export function cameraLookDownDegrees(camera,CesiumRef,ellipsoid) {
     Math.asin(Math.max(-1,Math.min(1,cosine)))*180/Math.PI:fallback;
 }
 
+// A Cesium radar/3-D frame can redraw without moving the camera. In that
+// case every visible town's screen position is unchanged: avoid redundant
+// world-to-screen reprojection and DOM style reads/writes, but NEVER throttle
+// genuine camera movement. Force repaint after a label layout change.
+export function createTownCameraProjectionGuard(){
+  let lastMatrix=null,width=null,height=null;
+  return function needsProjection(camera,canvas,force=false){
+    const matrix=camera?.viewMatrix;
+    const w=canvas?.clientWidth,h=canvas?.clientHeight;
+    if(!matrix || matrix.length!==16)return true;
+    if(!force && lastMatrix && width===w && height===h){
+      let equal=true;
+      for(let i=0;i<16;i++){
+        if(lastMatrix[i]!==matrix[i]){equal=false;break;}
+      }
+      if(equal)return false;
+    }
+    lastMatrix=Array.from(matrix);
+    width=w;height=h;
+    return true;
+  };
+}
+
 // Foreground HTML text is intentionally above ALL WebGL weather imagery,
 // Cesium 3-D points, radar sprites and terrain. Updating a small DOM subset
 // on camera changes is independent of expensive volume/radar frame playback.
@@ -52,12 +75,14 @@ export function createQueenslandTownLabelLayer({
   let navigating=false,settleTimer=null,nextLocalityRetryAt=0,lastQldError=0;
   const elements=new Map();
   const activePlacements=new Map();
+  const needsTownProjection=createTownCameraProjectionGuard();
 
   // The Cesium camera can shift by several pixels between decluttering
   // updates. Reproject ONLY the handful of visible, already-selected town
   // anchors on EVERY Cesium render. Layout/collision selection stays
   // throttled, but geographical positions must never lag behind panning.
-  function followCamera() {
+  function followCamera(force=false) {
+    if(!needsTownProjection(scene.camera,scene.canvas,force))return;
     const width=scene.canvas?.clientWidth??0,height=scene.canvas?.clientHeight??0;
     for(const [id,place] of activePlacements) {
       const el=elements.get(id);
@@ -224,7 +249,7 @@ export function createQueenslandTownLabelLayer({
       const el=makeElement(place),type=townLabelTypography(width,place.population);
       el.style.font=type.font;
     }
-    followCamera();
+    followCamera(true);
     selectedIds=accepted.map(p=>String(p.id));
     displayedPlaces=accepted.map(p=>({id:p.id,name:p.name,
       x:p.x,y:p.y,population:p.population,font:townLabelTypography(width,p.population).font}));

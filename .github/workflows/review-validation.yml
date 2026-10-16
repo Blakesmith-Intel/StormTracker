@@ -45,4 +45,6 @@ jobs:
           test ! -e _site/preview/next-baseline/BUILD.txt
           grep -Fq 'SEALED StormTracker V9.19.0 source d317c17a6a8f706a0d867cb852db1e8d3f9ffac0' _site/BUILD.txt
           grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' _site/src/live3d-operational-v9.js
-          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1
+          test -f _site/preview/incremental-3d/BUILD.txt
+          grep -Fq 'EXPERIMENTAL incremental 3-D QA' _site/preview/incremental-3d/BUILD.txt
+          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2

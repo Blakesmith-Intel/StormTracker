@@ -1,3 +1,5 @@
+import {createIncrementalVolumeRenderer} from "./incremental-volume-renderer-v1.js?v=volume-delta-qa-1";
+
 // Display-only empirical 3-D over genuine, source-time-matched supplemental
 // BoM reflectivity. Never supplies tracks, threats, Doppler or observed heights.
 // Masked overlapping WMTS tiles contain category zero and cannot duplicate
@@ -11,7 +13,8 @@ export function createSupplementalRadarVolumes({
   Cesium,scene,getModel,getSettings,inferColumn,
   representativeDbzForCategory,pixelCentreMercator,
   webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
-  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity
+  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity,
+  incremental=false
 }) {
   const siteStates=new Map();
   let visible=true;
@@ -20,6 +23,7 @@ export function createSupplementalRadarVolumes({
     const state=siteStates.get(site);
     if(!state)return;
     state.visible=false;
+    state.delta?.finishAnimation();
     for(const collection of state.collections.values())collection.show=false;
     state.frame=null;state.utc=null;
     scene.requestRender();
@@ -32,24 +36,29 @@ export function createSupplementalRadarVolumes({
     const settings=getSettings();
     let state=siteStates.get(site);
     if(!state){
-      state={collections:new Map(),visible:false,frame:null,utc:null};
+      state={collections:new Map(),visible:false,frame:null,utc:null,
+        delta:incremental?createIncrementalVolumeRenderer({scene}):null,
+        sampleEvery:null};
       siteStates.set(site,state);
     }
     const mode=settings.blob?"blob":"point";
-    // Keep collections alive across frame changes and toggles instead of
-    // destroying/recreating GPU textures (the original WebGL crash path).
-    for(const [type,collection] of state.collections){
-      if(type!==mode)collection.show=false;
+    // Classic path remains unchanged. Preview keeps stable per-site sample
+    // identities in one live Cesium collection rather than removeAll per scan.
+    let collection=null;
+    if(!incremental){
+      for(const [type,prior] of state.collections){
+        if(type!==mode)prior.show=false;
+      }
+      collection=state.collections.get(mode);
+      if(!collection){
+        collection=scene.primitives.add(settings.blob
+          ?new Cesium.BillboardCollection()
+          :new Cesium.PointPrimitiveCollection());
+        state.collections.set(mode,collection);
+      }
+      collection.show=false;
+      collection.removeAll();
     }
-    let collection=state.collections.get(mode);
-    if(!collection){
-      collection=scene.primitives.add(settings.blob
-        ?new Cesium.BillboardCollection()
-        :new Cesium.PointPrimitiveCollection());
-      state.collections.set(mode,collection);
-    }
-    collection.show=false;
-    collection.removeAll();
 
     // Count ONLY actual observed high-dBZ pixels (including the 40 dBZ
     // threshold). Then take deterministic samples throughout each measured
@@ -61,18 +70,41 @@ export function createSupplementalRadarVolumes({
       const dbz=representativeDbzForCategory(categories[i]);
       if(dbz!==null && dbz!==undefined && dbz>=threshold)eligible++;
     }
-    const sampleEvery=Math.max(1,Math.ceil(eligible/SUPPLEMENTAL_VOLUME_MAX_COLUMNS));
+    const desiredEvery=Math.max(1,Math.ceil(eligible/SUPPLEMENTAL_VOLUME_MAX_COLUMNS));
+    // Freeze the sampling lattice across ordinary scan changes, but adapt
+    // if an expanding echo would exceed the bounded point budget.
+    const sampleEvery=incremental && state.sampleEvery &&
+      eligible<=state.sampleEvery*SUPPLEMENTAL_VOLUME_MAX_COLUMNS
+      ?state.sampleEvery:desiredEvery;
+    state.sampleEvery=sampleEvery;
+    if(incremental){
+      const geo=frame.georef||{};
+      const identity=[site,frame.width,frame.height,geo.projection,
+        geo.minX,geo.maxX,geo.minY,geo.maxY,mode,sampleEvery,
+        settings.occupancyThreshold,settings.minimumDbzh,
+        settings.pointSize,settings.verticalScale].join(":");
+      collection=state.delta.begin(identity,
+        ()=>settings.blob?new Cesium.BillboardCollection():
+          new Cesium.PointPrimitiveCollection(),
+        Boolean(state.frame && state.utc!==utc));
+      state.collections.clear();
+      state.collections.set(mode,collection);
+    }
     let seen=0,columns=0,glyphs=0;
     const width=frame.width;
     outer:for(let i=0;i<categories.length;i++){
       const inputDbzh=representativeDbzForCategory(categories[i]);
       if(inputDbzh==null || inputDbzh<threshold)continue;
-      if(seen++%sampleEvery!==0)continue;
+      // Stable spatial sampling: earlier cells entering or leaving the
+      // threshold cannot shift every subsequent sampled column.
+      if(incremental ? i%sampleEvery!==0 : seen++%sampleEvery!==0)continue;
       const levelPoints=inferColumn(model,inputDbzh,{
         occupancyThreshold:settings.occupancyThreshold,
         minimumOutputDbz:30
       }).filter(p=>Number(p.dbzh)>=threshold);
       if(!levelPoints.length)continue;
+      const needsGlyphs=!incremental||!state.delta.unchanged(i,categories[i]);
+      const newGlyphs=[];
       const y=Math.floor(i/width),x=i-y*width;
       const point=pixelCentreMercator(frame,x,y);
       const geo=webMercatorToDegrees(point.x,point.y);
@@ -83,23 +115,28 @@ export function createSupplementalRadarVolumes({
         const style=styleForInferredPoint(inferred,{
           displayThresholdDbz:30,basePointSize:settings.pointSize
         });
-        addVolumeGlyph(collection,{
-          position:Cesium.Cartesian3.fromDegrees(
-            geo.longitude,geo.latitude,
-            displayedVolumeAltitude(
-              inferred.altitude_m_amsl,inputDbzh,settings.verticalScale
-            )
-          ),
-          color:colourForDbzh(inferred.dbzh),
-          pixelSize:style.pixelSize,
-          disableDepthTestDistance:0
-        },style.alpha,settings.volumePercent,inferred.dbzh,
-          Math.min(1.3,style.pixelSize/3));
+        if(needsGlyphs){
+          const glyph=addVolumeGlyph(collection,{
+            position:Cesium.Cartesian3.fromDegrees(
+              geo.longitude,geo.latitude,
+              displayedVolumeAltitude(
+                inferred.altitude_m_amsl,inputDbzh,settings.verticalScale
+              )
+            ),
+            color:colourForDbzh(inferred.dbzh),
+            pixelSize:style.pixelSize,
+            disableDepthTestDistance:0
+          },style.alpha,settings.volumePercent,inferred.dbzh,
+            Math.min(1.3,style.pixelSize/3));
+          if(incremental)newGlyphs.push(glyph);
+        }
         glyphs++;
       }
+      if(incremental)state.delta.touch(i,categories[i],newGlyphs);
       columns++;
       if(columns>=SUPPLEMENTAL_VOLUME_MAX_COLUMNS)break;
     }
+    if(incremental)state.delta.end();
     state.frame=frame;state.utc=utc;state.visible=true;
     collection.show=visible;
     setVolumeDisplayOpacity(collection,settings.volumePercent);
@@ -113,9 +150,11 @@ export function createSupplementalRadarVolumes({
     for(const [site,frame,utc] of targets)render(site,frame,utc);
   }
   function setOpacity(percent){
-    for(const state of siteStates.values())
+    for(const state of siteStates.values()){
+      state.delta?.finishAnimation();
       for(const collection of state.collections.values())
         setVolumeDisplayOpacity(collection,percent);
+    }
     scene.requestRender();
   }
   return {

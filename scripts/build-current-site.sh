@@ -96,8 +96,7 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "frontend/$asset" "$delta/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "$delta/data/"
-printf 'EXPERIMENTAL incremental 3-D QA source %s; sealed V9.19.0 unchanged\\n' \\
-  "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
+printf 'EXPERIMENTAL incremental 3-D QA source %s; sealed V9.19.0 unchanged\n' "$(git rev-parse HEAD)" > "$delta/BUILD.txt"
 grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"
 grep -Fq 'createIncrementalVolumeRenderer' "$delta/src/incremental-volume-renderer-v1.js"
 grep -Fq 'incremental:INCREMENTAL_VOLUME_PREVIEW' "$delta/src/live3d-operational-v9.js"

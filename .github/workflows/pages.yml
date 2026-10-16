@@ -80,8 +80,8 @@ jobs:
           (cd checked/production-v9.20.2 && npm test)
           node --check checked/production-v9.20.2/relay/worker.js
           test "$(git -C checked/production-v9.20.2 rev-parse HEAD)" = "b8be458acbae942a3bb0b530a5c17618b6d03134"
-          test -f checked/production-v9.20.2/docs/HANDOVER_V9.20.0.md
-          test -f checked/production-v9.20.2/docs/USER_GUIDE_V9.20.0.md
+          test -f checked/production-v9.20.2/docs/HANDOVER_V9.20.2.md
+          test -f checked/production-v9.20.2/docs/USER_GUIDE_V9.20.2.md
           test -f checked/production-v9.20.2/docs/RELEASE_NOTES_V9.20.2.md
           grep -Fq 'const INCREMENTAL_VOLUME_PREVIEW =' checked/production-v9.20.2/frontend/src/live3d-operational-v9.js
           grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' checked/production-v9.20.2/frontend/src/live3d-operational-v9.js

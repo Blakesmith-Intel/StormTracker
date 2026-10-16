@@ -61,7 +61,7 @@ export function fitSelectedRadarSites(primary,extras,sites) {
 export function createSupplementalRadarDisplay({
   imageryLayers,scene,loadFrame,prepareProvider,createLayer,
   getWindow,onStatus=()=>{},maxCached=18,maxProviderCached=8,retireLayer=null,
-  onDisplay=()=>{},onHide=()=>{},stageTimeoutMs=2200
+  onDisplay=()=>{},onHide=()=>{},stageTimeoutMs=2200,stageTotalBudgetMs=3200
 }) {
   let primary="",extras=[],generation=0,lastKey="",opacity=1;
   let targetUtc=null;
@@ -201,7 +201,7 @@ export function createSupplementalRadarDisplay({
     // Previously each of the three phases could separately wait 2.2 seconds,
     // turning a ~2fps radar loop into <=0.2fps when optional windows stalled.
     // Clear losing race timers instead of leaving dozens ticking after settle.
-    const totalBudgetMs=Math.max(stageTimeoutMs,3200);
+    const totalBudgetMs=Math.max(stageTimeoutMs,stageTotalBudgetMs);
     const remaining=()=>Math.max(0,totalBudgetMs-(Date.now()-began));
     async function withDeadline(promise){
       const available=remaining();

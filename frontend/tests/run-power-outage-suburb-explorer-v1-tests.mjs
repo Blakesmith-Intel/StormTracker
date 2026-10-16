@@ -58,6 +58,15 @@ assert.match(view,/dialog\.showModal\(\)/);
 assert.match(view,/status\.kind==="error"/);
 assert.match(view,/outageLocation\(item\.feature\)/);
 assert.match(view,/viewer\.camera\.flyTo/);
+assert.match(view,/const title=create\\("button","outage-row-locate"/);
+assert.match(view,/row\\.addEventListener\\("click"/);
+assert.match(view,/event\\.target\\.closest\\("button,a,summary,details"\\)/);
+assert.match(view,/const label=create\\("summary","","Details"\\)/);
+assert.match(view,/if\\(!coords\\)return;/);
+assert.match(view,/22000/);
+assert.match(css,/outage-row-locate/);
+assert.doesNotMatch(view,/scene\\.drillPick|\.stormTrackerPowerOutageId|powerOutageIdFromPick/);
+
 assert.match(view,/getLoadedAt\(\)/);
 assert.match(runtime,/explorer\.updateFeatures\(features\)/);
 assert.match(runtime,/explorer\.updateStatus\(status\)/);

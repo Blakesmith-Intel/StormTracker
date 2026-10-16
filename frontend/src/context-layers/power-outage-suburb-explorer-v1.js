@@ -81,9 +81,33 @@ export function createPowerOutageSuburbExplorer({
         const {summary:info}=item;
         const row=create("tr");
         const eventCell=create("td");
+        const coords=outageLocation(item.feature);
+        // Incident title is the primary map-navigation action; expanding the
+        // suburb or the secondary Details expander never navigates.
+        const navigate=()=>{
+          if(!coords)return;
+          dialog.close();
+          if(byId("measureToggle")?.getAttribute("aria-pressed")==="true")
+            byId("measureDone")?.click();
+          viewer.camera.flyTo({
+            destination:CesiumRef.Cartesian3.fromDegrees(
+              coords.longitude,coords.latitude,22000),
+            orientation:{heading:0,pitch:CesiumRef.Math.toRadians(-75),roll:0},
+            duration:0.9
+          });
+        };
+        const title=create("button","outage-row-locate",
+          info.provider+(info.eventId?` · #${info.eventId}`:" · Fault"));
+        title.type="button";
+        title.disabled=!coords;
+        title.title=coords?"Go to the outage on the map":"Location not provided by outage source";
+        title.setAttribute("aria-label",coords
+          ?`Show ${info.provider} outage ${info.eventId||""} in ${group.name} on map`
+          :`Location unavailable for ${info.provider} outage`);
+        if(coords)title.addEventListener("click",navigate);
+        eventCell.append(title);
         const detail=create("details","outage-event");
-        const label=create("summary","",info.provider+
-          (info.eventId?` · #${info.eventId}`:" · Fault"));
+        const label=create("summary","","Details");
         detail.append(label);
         const attrs=create("dl","outage-event-attributes");
         field(attrs,"Status",info.status);
@@ -95,25 +119,6 @@ export function createPowerOutageSuburbExplorer({
         detail.append(attrs);
         if(item.shared)detail.append(create("p","outage-suburb-note","Reported customer count covers the entire event, not this suburb alone."));
         const actions=create("div","outage-event-actions");
-        const coords=outageLocation(item.feature);
-        if(coords){
-          const locate=create("button","outage-locate","Show on map");
-          locate.type="button";
-          locate.addEventListener("click",()=>{
-            dialog.close();
-            // A measurement shield intentionally blocks map taps while active.
-            // Leave it off when navigating to an outage from the explorer.
-            if(byId("measureToggle")?.getAttribute("aria-pressed")==="true")
-              byId("measureDone")?.click();
-            viewer.camera.flyTo({
-              destination:CesiumRef.Cartesian3.fromDegrees(
-                coords.longitude,coords.latitude,55000),
-              orientation:{heading:0,pitch:CesiumRef.Math.toRadians(-55),roll:0},
-              duration:0.9
-            });
-          });
-          actions.append(locate);
-        }
         const href=powerOfficialUrl(info.provider);
         if(href){
           const official=create("a","outage-source-link","Official provider");
@@ -126,7 +131,16 @@ export function createPowerOutageSuburbExplorer({
         if(item.shared)customers.title="Shared incident: affected customer count is not assigned per suburb";
         const eta=create("td","outage-eta",
           formatTime(info.estimatedFix,info.provider)||"Not supplied");
-        row.append(eventCell,customers,eta);tbody.append(row);
+        row.append(eventCell,customers,eta);
+        if(coords){
+          row.classList.add("outage-clickable-row");
+          row.title="Tap this outage row to view its location on the map";
+          row.addEventListener("click",event=>{
+            if(event.target.closest("button,a,summary,details"))return;
+            navigate();
+          });
+        }
+        tbody.append(row);
       }
       table.append(tbody);inner.append(table);section.append(inner);
       results.append(section);

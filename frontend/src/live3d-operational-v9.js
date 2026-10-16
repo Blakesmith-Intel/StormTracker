@@ -104,7 +104,7 @@ import {
 import { createRadarImageryHandover } from "./radar-imagery-handover-v1.js?v=9.18.5-deferred-retire";
 import {MAX_DISPLAY_RADAR_SITES,chooseSupplementalRadarSites,
   fitSelectedRadarSites,createSupplementalRadarDisplay
-} from "./multi-radar-display-v9.js?v=9.18.10-atomic-3d";
+} from "./multi-radar-display-v9.js?v=render-provider-cache-20261016-v1";
 import {
   supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
 } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
@@ -321,7 +321,14 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   retireLayer:deferredImageryRetirement?.retire,
   onDisplay:(site,frame,utc)=>supplementalVolumeDisplay?.render(site,frame,utc),
   onHide:site=>supplementalVolumeDisplay?.hide(site),
-  maxCached:INCREMENTAL_VOLUME_PREVIEW?8:18,
+  // Two secondary sites × 6 source frames exceed the old 8-frame limit:
+  // it fetched and reprojected the same genuine BoM tiles every loop.
+  // Preserve the six-frame 30-min window for 2–3 sites on desktop but keep
+  // mobile bounded; no unbounded previous-UTC history is retained.
+  maxCached:INCREMENTAL_VOLUME_PREVIEW
+    ?(window.matchMedia?.("(max-width:700px)").matches?12:18):18,
+  maxProviderCached:INCREMENTAL_VOLUME_PREVIEW
+    ?(window.matchMedia?.("(max-width:700px)").matches?6:12):8,
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -1467,6 +1474,8 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       secondaryGlyphs:supplementalVolumeDisplay?.glyphs??0,
       secondarySiteGlyphs:supplementalVolumeDisplay?.siteGlyphs??{},
       supplementalProviderCache:supplementalRadarDisplay?.providerCacheSize??0,
+      supplementalSourceFrameCache:supplementalRadarDisplay?.sourceFrameCacheSize??0,
+      playbackTiming:playbackPerformanceMeter?.summary?.()??null,
       trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
         (hybridTrackFootprintCollection?.length??0),
       cached3dFrames:volumeGeometryCache.size,

@@ -108,6 +108,18 @@ await widget.load();
 assert.equal(widget.activeCase,"koji-2026");
 assert.ok(widget.entityCount>0);
 assert.ok(objects.some(x=>x.polygon),"Historical wind polygons rendered");
+assert.ok(objects.filter(x=>x.polygon).every(x=>x.polygon.outline!==true),
+  "Cesium clamped-terrain polygons must NEVER use unsupported outline:true");
+const borders=objects.filter(x=>x.polyline?.clampToGround && x.name?.includes("boundary"));
+assert.ok(borders.length>0,
+  "Original storm polygon boundaries must be rendered as ground-clamped polylines");
+assert.equal(borders[0].polyline.width,2);
+const retained=widget.entityCount,retainedObjects=[...objects];
+widget.draw();
+assert.equal(widget.entityCount,retained,
+  "Revisiting same archived issue must not allocate additional Cesium entities");
+assert.deepEqual(objects,retainedObjects,
+  "Identical cyclone sources reuse original GPU entities/geometry without churn");
 const polygon=objects.find(x=>x.polygon);
 const original=koji.windAreas.find(x=>x.geometry.coordinates[0].length===
   polygon.polygon.hierarchy.positions.length/2);

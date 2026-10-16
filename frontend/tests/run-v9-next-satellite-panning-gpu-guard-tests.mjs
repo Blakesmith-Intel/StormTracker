@@ -24,7 +24,10 @@ assert.match(controller,/river-gauges-operational-v1\.js\?v=9\.18\.11-gauge-gree
 
 assert.match(basemap,/if\(navigationActive\)return "navigation";/);
 assert.match(controller,/persistentSatelliteCoverage:[\s\S]*?\/preview\/next-baseline\//);
-assert.match(basemap,/streetLayer\.show=false;/);
+assert.match(basemap,/streetLayer\\.show=true;/,
+  "Do not hide the persistent global satellite underlay beneath missing DEA tiles");
+assert.match(basemap,/createGlobalSatelliteFallbackProvider\\(Cesium\\)/);
+assert.match(basemap,/GLOBAL_SATELLITE_FALLBACK/);
 assert.match(basemap,/qldDetailLayer\.show=true;qldDetailLayer\.alpha=1;/);
 assert.match(basemap,/nswDetailLayer\.show=false;nswDetailLayer\.alpha=1;/,
   "regional NSW must stay on uniform DEA rather than a forced mixed-age aerial mosaic");

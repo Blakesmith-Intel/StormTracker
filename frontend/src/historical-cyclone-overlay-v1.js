@@ -2,7 +2,7 @@ import {
   HISTORICAL_CYCLONE_IDS,validateHistoricalCycloneBundle,
   historicalCycloneMoments,historicalCycloneSnapshot,
   nestedHistoricalPolygonPositions
-} from "./historical-cyclone-replay-v1.js?v=koji-yasi-historical-v1";
+} from "./historical-cyclone-replay-v1.js?v=representative-cyclones-qa-v1";
 
 // Isolated, opt-in QA layer. No polling, no background renderer work,
 // no mutation of the primary or secondary BoM imagery and 3-D layers.
@@ -23,11 +23,17 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
   panel.appendChild(notice);
   const pick=create("select");pick.id="historicalCycloneSelect";
   pick.style.cssText="width:100%;max-width:100%;padding:6px;margin:4px 0";
-  for(const [id,name] of [["koji-2026","TC Koji (Jan 2026)"],["yasi-2011","Severe TC Yasi (2011)"]]){
+  for(const [id,name] of [
+    ["alfred-2025","PRIMARY — TC Alfred 2025 (SE QLD / NSW)"],
+    ["narelle-2026","STRESS — TC Narelle 2026 (severe wind footprints)"],
+    ["jasper-2023","FAR NORTH — TC Jasper 2023"],
+    ["koji-2026","SMOKE TEST — TC Koji 2026"],
+    ["yasi-2011","BEST TRACK ONLY — TC Yasi 2011"]
+  ]){
     const opt=create("option",name);
     opt.value=id;pick.appendChild(opt);
   }
-  pick.value="koji-2026";
+  pick.value="alfred-2025";
   panel.appendChild(pick);
   const toggleLabel=create("label");
   toggleLabel.style.cssText="display:flex;align-items:center;gap:6px;margin:6px 0";
@@ -215,7 +221,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
       "Archived wind polygons at this exact issue: "+polygons,
       bundle.id==="yasi-2011"?
         "Yasi wind/warning polygons are not in this source. None are fabricated.":
-        "Koji wind areas are cyclone impact footprints, NOT severe thunderstorm warnings.",
+        "ARCHIVED cyclone wind footprints, NOT severe-thunderstorm warnings. Original issue times only.",
       "Source: "+snapshot.originalSourceLabel
     ].join("\n");
     viewer.scene?.requestRender?.();
@@ -241,7 +247,12 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
       if(mine!==seq||!toggle.checked)return;
       bundle=data;moments=historicalCycloneMoments(bundle);
       range.max=String(moments.length-1);
-      range.value=String(Math.max(0,moments.length-1));
+      // Choose the last genuine archived wind issuance to demonstrate
+      // real original polygons immediately (rather than a final fix after
+      // all source wind issuance has ceased).
+      const selectedTime=showWind.checked&&bundle.windAreaAvailableTimes.length
+        ?bundle.windAreaAvailableTimes.at(-1):moments.at(-1);
+      range.value=String(Math.max(0,moments.indexOf(selectedTime)));
       range.disabled=false;
       showWind.disabled=id==="yasi-2011";
       draw();

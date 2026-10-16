@@ -168,3 +168,23 @@
   #openPowerOutageExplorer{font-size:10px;padding:4px 6px;}
   body.simple-ui #simpleModeToggle{font-size:10px;padding:4px 6px;}
 }
+
+/* Map navigation and disclosure are deliberately separate controls.
+   Tap the suburb name to locate its published outage; use the chevron or
+   the outage count to expand its detailed records. */
+.outage-locality > .outage-suburb-title .outage-suburb-map{
+  flex:1 1 auto;min-width:0;width:auto;min-height:38px;
+  padding:6px 4px;margin:0 7px 0 0;
+  background:transparent;border:0;box-shadow:none;
+  text-align:left;color:#dbf4ff;font:inherit;font-weight:750;
+  white-space:normal;overflow-wrap:anywhere;cursor:pointer;
+}
+.outage-locality > .outage-suburb-title .outage-suburb-map:not(:disabled):hover{
+  text-decoration:underline;text-underline-offset:3px;
+}
+.outage-locality > .outage-suburb-title .outage-suburb-map:focus-visible{
+  outline:2px solid #92d3ef;outline-offset:1px;border-radius:5px;
+}
+.outage-locality > .outage-suburb-title .outage-suburb-map:disabled{
+  cursor:not-allowed;color:#9bafba;opacity:.7;
+}

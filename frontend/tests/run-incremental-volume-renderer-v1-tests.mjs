@@ -72,7 +72,7 @@ assert.match(live,/stablePrimaryVolumeStride/);
 assert.match(live,/incrementalVolumeRenderer\.end\(\)/);
 assert.match(live,/sourceMetadata\?\.temporalInference/);
 const radar=readFileSync(new URL("../src/radar-source.js",import.meta.url),"utf8");
-assert.match(live,/PUBLISHED_PRODUCTION_RUNTIME \\|\\| INCREMENTAL_VOLUME_PREVIEW/);
+assert.ok(live.includes("PUBLISHED_PRODUCTION_RUNTIME || INCREMENTAL_VOLUME_PREVIEW"));
 assert.ok(radar.includes("/preview/incremental-3d/"));
 for(const name of ["power-outages-operational-v1.js",
   "flood-road-closures-operational-v1.js","river-gauges-operational-v1.js"]){

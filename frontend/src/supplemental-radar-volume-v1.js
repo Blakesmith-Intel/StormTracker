@@ -29,6 +29,21 @@ export function createSupplementalRadarVolumes({
     scene.requestRender();
   }
   function hideAll(){for(const site of siteStates.keys())hide(site);}
+  function pruneSites(selectedIds=[]){
+    // Deselecting radar sites previously hid their volumes but left all GPU
+    // billboards and maps reachable indefinitely across selection changes.
+    const keep=new Set(selectedIds);
+    for(const [site,state] of siteStates){
+      if(keep.has(site))continue;
+      if(state.delta)state.delta.reset();
+      else for(const collection of state.collections.values())
+        scene.primitives.remove(collection);
+      state.collections.clear();
+      state.frame=null;
+      siteStates.delete(site);
+    }
+    scene.requestRender();
+  }
   function render(site,frame,utc){
     if(!frame?.categories || frame.observedUtc!==utc)return 0;
     const model=getModel();
@@ -171,7 +186,7 @@ export function createSupplementalRadarVolumes({
     scene.requestRender();
   }
   return {
-    render,hide,hideAll,refresh,setOpacity,
+    render,hide,hideAll,pruneSites,refresh,setOpacity,
     get visibleSites(){return [...siteStates].filter(([,s])=>s.visible).map(([id])=>id);},
     get glyphs(){return [...siteStates.values()].reduce((n,s)=>
       n+(s.visible?[...s.collections.values()].reduce(

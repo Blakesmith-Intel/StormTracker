@@ -109,6 +109,7 @@ import {
   supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
 } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
+import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=volume-delta-qa-1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
 import { createStormTrackLabelOverlay } from "./storm-track-label-overlay-v1.js?v=9.15.1-pixeltrack-prod-r1";
@@ -626,6 +627,26 @@ supplementalVolumeDisplay=createSupplementalRadarVolumes({
 let validation = null;
 let latestFrame = null;
 let inferredCollection = null;
+// Explicit A/B preview gate. Public production still uses sealed, per-frame
+// geometry; science/clock/source code paths remain unchanged.
+const INCREMENTAL_VOLUME_PREVIEW =
+  window.location.pathname.includes("/preview/incremental-3d/");
+const incrementalVolumeRenderer=INCREMENTAL_VOLUME_PREVIEW
+  ?createIncrementalVolumeRenderer({scene}):null;
+let stableVolumeFrameSet=null;
+let stableVolumeStride=3;
+function stablePrimaryVolumeStride(frame){
+  if(!hybridFrames.length)return 3; // Stable even as latest-only scans arrive.
+  if(stableVolumeFrameSet!==hybridFrames){
+    let largest=0;
+    for(const observed of hybridFrames){
+      if(observed?.categories)largest=Math.max(largest,estimateCandidateColumns(observed));
+    }
+    stableVolumeStride=largest>40000?4:largest>15000?3:largest>6000?2:1;
+    stableVolumeFrameSet=hybridFrames;
+  }
+  return stableVolumeStride;
+}
 const VOLUME_METRIC_IDS=[
   "renderedColumns","renderedPoints","adaptiveStride","maxInferredDbzh",
   "inferredTop40","inferredTop50","meanConfidence","highSupportPoints",
@@ -639,6 +660,8 @@ const volumeGeometryCache=createBoundedFrameCache({
   onEvict:entry=>{if(entry?.collection)scene.primitives.remove(entry.collection);}
 });
 function clearVolumeGeometryCache(){
+  incrementalVolumeRenderer?.reset();
+  stableVolumeFrameSet=null;
   volumeGeometryCache.clear();
   inferredCollection=null;
 }
@@ -1497,8 +1520,8 @@ function renderInferredVolume(frame) {
     $("pointSize").value,$("volumeOpacity").value,
     $("verticalScale").value,useBlobVolume()?"blob":"point"
   ].join(":");
-  if(inferredCollection)inferredCollection.show=false;
-  const previouslyBuilt=volumeGeometryCache.get(signature);
+  if(!INCREMENTAL_VOLUME_PREVIEW && inferredCollection)inferredCollection.show=false;
+  const previouslyBuilt=INCREMENTAL_VOLUME_PREVIEW?null:volumeGeometryCache.get(signature);
   if(previouslyBuilt){
     inferredCollection=previouslyBuilt.collection;
     inferredCollection.show=true;
@@ -1507,12 +1530,13 @@ function renderInferredVolume(frame) {
     scene.requestRender();
     return;
   }
-  inferredCollection =
-    scene.primitives.add(
+  if(!INCREMENTAL_VOLUME_PREVIEW){
+    inferredCollection=scene.primitives.add(
       useBlobVolume()
         ? new Cesium.BillboardCollection()
         : new Cesium.PointPrimitiveCollection()
     );
+  }
 
   const occupancyThreshold =
     Number(
@@ -1536,14 +1560,33 @@ function renderInferredVolume(frame) {
   // Display decimation only. The vertical-profile inference remains
   // unchanged. This prevents a large active-weather frame from trying
   // to create millions of Cesium point primitives.
-  const horizontalStride =
-    candidateColumns > 40000
+  const horizontalStride = INCREMENTAL_VOLUME_PREVIEW
+    ? stablePrimaryVolumeStride(frame)
+    : candidateColumns > 40000
       ? 4
       : candidateColumns > 15000
         ? 3
         : candidateColumns > 6000
           ? 2
           : 1;
+  if(INCREMENTAL_VOLUME_PREVIEW){
+    const geo=frame.georef||{};
+    // Only source footprint/geometry and inference settings reset the
+    // persistent glyph collection. UTC does NOT: that is the whole point.
+    const identity=[
+      selectedRadarRegion(),frame.width,frame.height,
+      geo.projection,geo.minX,geo.maxX,geo.minY,geo.maxY,
+      horizontalStride,$("occupancyThreshold").value,
+      $("minimumDbzh").value,$("pointSize").value,
+      $("verticalScale").value,useBlobVolume()?"blob":"point"
+    ].join(":");
+    inferredCollection=incrementalVolumeRenderer.begin(
+      identity,
+      ()=>useBlobVolume()?new Cesium.BillboardCollection():new Cesium.PointPrimitiveCollection(),
+      playback.isPlaying() && !isTemporallyInferredRadarFrame(frame)
+    );
+    inferredCollection.show=true;
+  }
 
   let renderedPoints = 0;
   let renderedColumns = 0;
@@ -1621,7 +1664,8 @@ function renderInferredVolume(frame) {
         );
 
       renderedColumns++;
-
+      const newGlyphs=INCREMENTAL_VOLUME_PREVIEW &&
+        incrementalVolumeRenderer.unchanged(pixelIndex,category)?null:[];
       for (const point of displayedInferred) {
         const supportStyle =
           styleForInferredPoint(
@@ -1637,27 +1681,19 @@ function renderInferredVolume(frame) {
 
         const colour=colourForDbzh(point.dbzh);
 
-        addVolumeGlyph(inferredCollection,{
-          position:
-            Cesium.Cartesian3
-              .fromDegrees(
-                geographic.longitude,
-                geographic.latitude,
-                displayedVolumeAltitude(
-                  point.altitude_m_amsl,inputDbzh,Number($("verticalScale").value)
-                )
-              ),
-
-          color:
-            colour,
-
-          pixelSize:
-            supportStyle.pixelSize,
-
-          disableDepthTestDistance:
-            0
-        },supportStyle.alpha,volumePercent,point.dbzh,Math.min(1.3,supportStyle.pixelSize/3));
-
+        if(newGlyphs!==null) {
+          const glyph=addVolumeGlyph(inferredCollection,{
+            position:Cesium.Cartesian3.fromDegrees(
+              geographic.longitude,geographic.latitude,
+              displayedVolumeAltitude(
+                point.altitude_m_amsl,inputDbzh,Number($("verticalScale").value))
+            ),
+            color:colour,
+            pixelSize:supportStyle.pixelSize,
+            disableDepthTestDistance:0
+          },supportStyle.alpha,volumePercent,point.dbzh,Math.min(1.3,supportStyle.pixelSize/3));
+          if(INCREMENTAL_VOLUME_PREVIEW)newGlyphs.push(glyph);
+        }
         renderedPoints++;
         confidenceSum +=
           point.confidence;
@@ -1736,6 +1772,8 @@ function renderInferredVolume(frame) {
             point.altitude_m_amsl;
         }
       }
+      if(INCREMENTAL_VOLUME_PREVIEW)
+        incrementalVolumeRenderer.touch(pixelIndex,category,newGlyphs??[]);
     }
   }
 
@@ -1799,10 +1837,20 @@ function renderInferredVolume(frame) {
           / 1000
         ).toFixed(1)} km`;
 
-  volumeGeometryCache.put(signature,{
-    collection:inferredCollection,
-    metrics:Object.fromEntries(VOLUME_METRIC_IDS.map(id=>[id,$(id).textContent]))
-  });
+  if(INCREMENTAL_VOLUME_PREVIEW){
+    const delta=incrementalVolumeRenderer.end();
+    // Non-scientific render diagnostics (never fed into storm tracks).
+    $("renderedPoints").title=
+      `Incremental 3-D: ${delta.changedColumns} changed sampled columns; `+
+      `${delta.glyphChanges} glyph changes; `+
+      (delta.animated?"local morph":"stable/instant")+
+      "; original BoM reflectivity unchanged";
+  }else{
+    volumeGeometryCache.put(signature,{
+      collection:inferredCollection,
+      metrics:Object.fromEntries(VOLUME_METRIC_IDS.map(id=>[id,$(id).textContent]))
+    });
+  }
   scene.requestRender();
 }
 
@@ -5145,6 +5193,7 @@ $("radarOpacity").addEventListener("input", event => {
 $("volumeOpacity").addEventListener("input", event => {
   const percent=Number(event.target.value);
   $("volumeOpacityValue").textContent=`${percent}%`;
+  incrementalVolumeRenderer?.finishAnimation();
   setVolumeDisplayOpacity(inferredCollection,percent);
   setVolumeDisplayOpacity(hybridTrackVolumeCollection,percent);
   setVolumeDisplayOpacity(hybridTrackFootprintCollection,percent);

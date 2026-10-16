@@ -13,7 +13,7 @@ export function createSupplementalRadarVolumes({
   Cesium,scene,getModel,getSettings,inferColumn,
   representativeDbzForCategory,pixelCentreMercator,
   webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
-  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity,
+  colourForDbzh,addVolumeGlyph,updateVolumeGlyph,setVolumeDisplayOpacity,
   incremental=false
 }) {
   const siteStates=new Map();
@@ -73,9 +73,10 @@ export function createSupplementalRadarVolumes({
     const desiredEvery=Math.max(1,Math.ceil(eligible/SUPPLEMENTAL_VOLUME_MAX_COLUMNS));
     // Freeze the sampling lattice across ordinary scan changes, but adapt
     // if an expanding echo would exceed the bounded point budget.
-    const sampleEvery=incremental && state.sampleEvery &&
-      eligible<=state.sampleEvery*SUPPLEMENTAL_VOLUME_MAX_COLUMNS
-      ?state.sampleEvery:desiredEvery;
+    // Lock the geographic lattice for this site's lifetime; changing its
+    // density with each scan recreated the entire 3-D cloud and made it pop.
+    const sampleEvery=incremental
+      ?(state.sampleEvery??desiredEvery):desiredEvery;
     state.sampleEvery=sampleEvery;
     if(incremental){
       const geo=frame.georef||{};
@@ -103,8 +104,8 @@ export function createSupplementalRadarVolumes({
         minimumOutputDbz:30
       }).filter(p=>Number(p.dbzh)>=threshold);
       if(!levelPoints.length)continue;
-      const needsGlyphs=!incremental||!state.delta.unchanged(i,categories[i]);
-      const newGlyphs=[];
+      const sameGlyphs=incremental&&state.delta.unchanged(i,categories[i]);
+      const nextSpecs=[];
       const y=Math.floor(i/width),x=i-y*width;
       const point=pixelCentreMercator(frame,x,y);
       const geo=webMercatorToDegrees(point.x,point.y);
@@ -115,8 +116,8 @@ export function createSupplementalRadarVolumes({
         const style=styleForInferredPoint(inferred,{
           displayThresholdDbz:30,basePointSize:settings.pointSize
         });
-        if(needsGlyphs){
-          const glyph=addVolumeGlyph(collection,{
+        if(!incremental||!sameGlyphs){
+          const options={
             position:Cesium.Cartesian3.fromDegrees(
               geo.longitude,geo.latitude,
               displayedVolumeAltitude(
@@ -126,20 +127,32 @@ export function createSupplementalRadarVolumes({
             color:colourForDbzh(inferred.dbzh),
             pixelSize:style.pixelSize,
             disableDepthTestDistance:0
-          },style.alpha,settings.volumePercent,inferred.dbzh,
-            Math.min(1.3,style.pixelSize/3));
-          if(incremental)newGlyphs.push(glyph);
+          };
+          const support=Math.min(1.3,style.pixelSize/3);
+          if(incremental)nextSpecs.push({
+            options,alpha:style.alpha,dbz:inferred.dbzh,support
+          });
+          else addVolumeGlyph(collection,options,style.alpha,settings.volumePercent,
+            inferred.dbzh,support);
         }
         glyphs++;
       }
-      if(incremental)state.delta.touch(i,categories[i],newGlyphs);
+      if(incremental){
+        if(sameGlyphs)state.delta.touch(i,categories[i]);
+        else state.delta.upsert(i,categories[i],nextSpecs,
+          spec=>addVolumeGlyph(collection,spec.options,spec.alpha,
+            settings.volumePercent,spec.dbz,spec.support),
+          (glyph,spec)=>updateVolumeGlyph(glyph,spec.options,spec.alpha,
+            settings.volumePercent,spec.dbz,spec.support));
+      }
       columns++;
       if(columns>=SUPPLEMENTAL_VOLUME_MAX_COLUMNS)break;
     }
     if(incremental)state.delta.end();
     state.frame=frame;state.utc=utc;state.visible=true;
     collection.show=visible;
-    setVolumeDisplayOpacity(collection,settings.volumePercent);
+    // All new/reused glyphs already have the requested opacity; rewriting
+    // EVERY unchanged Cesium colour each frame causes needless GPU uploads.
     scene.requestRender();
     return glyphs;
   }

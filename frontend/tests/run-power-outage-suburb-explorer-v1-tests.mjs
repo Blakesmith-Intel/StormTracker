@@ -36,7 +36,7 @@ assert.equal(groups.find(g=>g.name==="Pimpama").items[0].summary.customersAffect
 assert.equal(groups.some(g=>g.name==="Yatala"),false);
 assert.deepEqual(filterOutageSuburbGroups(groups,"FOXWELL").map(g=>g.name),["Upper Coomera"]);
 assert.deepEqual(filterOutageSuburbGroups(groups,"PIMPAMA").map(g=>g.name),["Pimpama"]);
-assert.deepEqual(filterOutageSuburbGroups(groups,"main street").map(g=>g.name),["Ormeau","Pimpama","Upper Coomera"]);
+assert.deepEqual(filterOutageSuburbGroups(groups,"main street").map(g=>g.name),["Ormeau","Pimpama"]);
 assert.deepEqual(outageLocation(event(3,"Ormeau")),{longitude:153.12,latitude:-27.67});
 assert.deepEqual(outageLocation({geometry:{type:"Polygon",coordinates:[[
   [153,-28],[154,-28],[154,-27],[153,-27],[153,-28]

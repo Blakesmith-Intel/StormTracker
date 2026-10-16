@@ -14,6 +14,8 @@ export function capPolygonToGeoJSON(value){
   for(const vertex of vertices){
     const pair=vertex.split(",");
     if(pair.length!==2)throw Error("Invalid CAP lat,lon vertex");
+    if(!pair.every(x=>/^-?\\d+(?:\\.\\d+)?$/.test(x)))
+      throw Error("CAP polygon coordinate is not a valid number");
     const [lat,lon]=pair.map(Number);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||
       lat< -90||lat>90||lon< -180||lon>180)
@@ -23,7 +25,7 @@ export function capPolygonToGeoJSON(value){
   const first=converted[0],last=converted.at(-1);
   if(first[0]!==last[0]||first[1]!==last[1])
     converted.push([...first]); // Required topological closure, no weather inference
-  if(converted.length<4)return null;
+  if(converted.length<4)throw new Error("CAP polygon has too few distinct vertices");
   const unique=new Set(converted.slice(0,-1).map(p=>p.join(",")));
   if(unique.size<3)throw Error("CAP polygon is degenerate");
   return {type:"Polygon",coordinates:[converted]};

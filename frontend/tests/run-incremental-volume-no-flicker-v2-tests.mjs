@@ -68,6 +68,10 @@ const supplemental=readFileSync(new URL("../src/supplemental-radar-volume-v1.js"
 assert.match(source,/inferredCollection\.show=INCREMENTAL_VOLUME_PREVIEW \? true/);
 assert.match(source,/const showTrackVolumes = !INCREMENTAL_VOLUME_PREVIEW && useTrackSpecificVolume/);
 assert.match(source,/incrementalVolumeRenderer\.upsert\(pixelIndex,category,nextSpecs/);
+assert.match(source,/const retainedVolume=INCREMENTAL_VOLUME_PREVIEW \? \{/);
+assert.match(source,/high_support_top_40_m_amsl:volume\.high_support_top_40_m_amsl/);
+assert.match(source,/volume:retainedVolume,/);
+assert.match(source,/Stable frame-wide inferred 3-D/);
 assert.match(source,/false \/\/ No double-buffer or fade/);
 assert.match(source,/supplementalVolumeDisplay\?\.pruneSites\(additionalRadarSiteIds\)/);
 assert.match(supplemental,/state\.delta\.upsert\(i,categories\[i\],nextSpecs/);

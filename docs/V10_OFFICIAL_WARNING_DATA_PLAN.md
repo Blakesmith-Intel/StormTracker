@@ -4,6 +4,10 @@
 
 ## 1. Tropical cyclone track map data (highest priority)
 
+**Standard historical regression suite:** Use **TC Alfred 2025** (primary cross-border operational case), **Severe TC Narelle 2026** (high-volume three-category wind-area stress case), and **Severe TC Jasper 2023** (Far North Queensland coastal landfall). Retain **Koji 2026** as a fast small-source smoke check and **Yasi 2011** as reanalysed track-only/missing-warning coverage. Original issue counts and exact QA fixtures are documented in `docs/V10_REPRESENTATIVE_CYCLONE_REFERENCE_SUITE.md`. The user has delegated future cyclone test-case selection to this source-coverage standard.
+
+
+
 **Implementation progress:** `frontend/src/official-cyclone-track-contract-v1.js` and `frontend/tests/run-official-cyclone-track-contract-v1-tests.mjs` provide a new *pure validation boundary* for decoded, authentic BoM cyclone GML geometry. They enforce official product identity, issue UTC, valid centre/line/uncertainty polygon types, source bulletin URL, forecast horizon, category 0–5 and stale/expired removal. The tests use clearly-labelled synthetic fixtures ONLY to verify the code; NO synthetic cyclone is ever rendered in the browser.
 
 **Audited access/format evidence — 16 October 2026 (GitHub-hosted HTTP reachability, not legal authorization):**

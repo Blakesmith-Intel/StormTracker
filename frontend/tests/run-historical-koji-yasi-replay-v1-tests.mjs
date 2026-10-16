@@ -91,12 +91,15 @@ const viewer={
   camera:{flyTo:data=>{lastFly=data;}}
 };
 let fetched=0;
-const fixtureMap={"koji-2026":koji,"yasi-2011":yasi};
+const fixtureMap={"koji-2026":koji,"yasi-2011":yasi,
+  "alfred-2025":load("alfred-2025"),
+  "narelle-2026":load("narelle-2026"),
+  "jasper-2023":load("jasper-2023")};
 const widget=mountHistoricalCycloneQA({
   Cesium:fakeCesium,viewer,sidebar,documentRef,
   fetchRef:async path=>{
     fetched++;
-    assert.match(path,/^\.\/data\/cyclone-history\/(?:koji-2026|yasi-2011)\.json$/);
+    assert.match(path,/^\.\/data\/cyclone-history\/(?:koji-2026|yasi-2011|alfred-2025|narelle-2026|jasper-2023)\.json$/);
     const id=path.split("/").at(-1).replace(".json","");
     return {ok:true,json:async()=>fixtureMap[id]};
   }
@@ -104,6 +107,7 @@ const widget=mountHistoricalCycloneQA({
 assert.equal(widget.entityCount,0);
 assert.equal(fetched,0,"QA overlay does not fetch in background");
 widget.toggle.checked=true;
+widget.pick.value="koji-2026";
 await widget.load();
 assert.equal(widget.activeCase,"koji-2026");
 assert.ok(widget.entityCount>0);
@@ -127,7 +131,7 @@ assert.ok(original,"Cesium polygon receives unchanged original source vertices")
 assert.ok(objects.some(x=>x.polyline));
 assert.ok(objects.some(x=>x.point));
 assert.match(widget.status.textContent,/NOT LIVE/);
-assert.match(widget.status.textContent,/NOT severe thunderstorm warnings/i);
+assert.match(widget.status.textContent,/NOT severe-thunderstorm warnings/i);
 widget.range.value="0";widget.draw();
 assert.equal(objects.filter(x=>x.polygon).length,0,
   "At earlier observation time do NOT show future warning areas");

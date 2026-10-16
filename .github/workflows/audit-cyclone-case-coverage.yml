@@ -1,0 +1,21 @@
+name: Audit representative historical cyclone cases
+on:
+  push:
+    branches: [research/cyclone-sample-selection-20261016]
+    paths:
+      - scripts/audit-cyclone-case-coverage-20261016.mjs
+      - .github/workflows/audit-cyclone-case-coverage.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-statistics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Measure genuine historical source coverage and timestamps
+        run: node scripts/audit-cyclone-case-coverage-20261016.mjs

@@ -56,22 +56,6 @@
   width:100%;min-height:39px;font-size:12px;border-radius:9px;
   padding:5px 10px;
 }
-#controlSidebar .playback-frame-readout {
-  display:grid;gap:7px;
-  padding:9px 10px;margin:7px 0 3px;
-  background:#0d2231;border:1px solid #426072;
-  border-radius:10px;min-width:0;
-}
-#controlSidebar .playback-frame-readout > div {
-  display:flex;flex-wrap:wrap;align-items:baseline;
-  justify-content:space-between;gap:4px 8px;
-  font-size:11px;color:#c0d4df;min-width:0;
-}
-#controlSidebar .playback-frame-readout strong {
-  color:#ecfaff;font-size:12px;
-  font-variant-numeric:tabular-nums;
-  overflow-wrap:anywhere;min-width:0;
-}
 #controlSidebar .loop-controls > .opacity-controls {
   display:grid;gap:5px;margin:7px 0;
   padding:8px 10px;background:#162e3d;border-radius:10px;
@@ -133,7 +117,6 @@
   white-space:normal;
 }
 body.simple-ui #controlSidebar .loop-controls > .playback-speed-row,
-body.simple-ui #controlSidebar .loop-controls > .playback-frame-readout,
 body.simple-ui #controlSidebar .loop-controls > .opacity-controls,
 body.simple-ui #controlSidebar .loop-controls > #dualSourceTimes {
   display:grid!important;
@@ -165,9 +148,6 @@ body.simple-ui #controlSidebar .layer-controls > .volume-blob-toggle{
     font-size:13px;margin-bottom:5px;
   }
   #controlSidebar .playback-speed-row select {min-height:35px;}
-  #controlSidebar .playback-frame-readout{margin:4px 0;padding:6px 8px;gap:4px;}
-  #controlSidebar .playback-frame-readout > div,
-  #controlSidebar .playback-frame-readout strong {font-size:10px;}
   #controlSidebar .loop-controls > .opacity-controls {padding:6px 8px;gap:2px;}
   #controlSidebar .loop-controls > .opacity-controls input[type=range] {height:18px;}
   #controlSidebar .storm-controls {padding:8px 9px;}

@@ -182,6 +182,7 @@ import {
 
 import {
   addVolumeDisplayPoint,
+  updateVolumeDisplayPoint,
   setVolumeDisplayOpacity
 } from "./volume-display-opacity-v1.js?v=9.15.0-volume-opacity";
 import {
@@ -633,7 +634,7 @@ supplementalVolumeDisplay=createSupplementalRadarVolumes({
   }),
   inferColumn,representativeDbzForCategory,pixelCentreMercator,
   webMercatorToDegrees,styleForInferredPoint,displayedVolumeAltitude,
-  colourForDbzh,addVolumeGlyph,setVolumeDisplayOpacity,
+  colourForDbzh,addVolumeGlyph,updateVolumeGlyph,setVolumeDisplayOpacity,
   incremental:INCREMENTAL_VOLUME_PREVIEW
 });
 let validation = null;
@@ -1199,6 +1200,19 @@ function addVolumeGlyph(collection,options,sourceAlpha,percent,sizeDbz,support=1
   return addVolumeDisplayPoint(collection,options,sourceAlpha,percent);
 }
 
+// Mutate an existing billboard/point when source dBZ changes. Never add a
+// second ghost cloud or set the active cloud's alpha to zero between scans.
+function updateVolumeGlyph(glyph,options,sourceAlpha,percent,sizeDbz,support=1){
+  if(useBlobVolume()){
+    const diameter=volumeBlobDiameterPx($("pointSize").value,sizeDbz,support);
+    const {pixelSize:unusedPixelSize,...spriteOptions}=options;
+    return updateVolumeDisplayPoint(glyph,{
+      ...spriteOptions,width:diameter,height:diameter
+    },Math.min(1,sourceAlpha*.8),percent);
+  }
+  return updateVolumeDisplayPoint(glyph,options,sourceAlpha,percent);
+}
+
 function refreshReflectivityLegend(){
   const holder=$("reflectivityLegend");
   if(!holder)return;
@@ -1311,6 +1325,8 @@ function setAdditionalRadarSelection(next){
     selectedRadarRegion(),next,BORDER_RADAR_SITES);
   refreshAdditionalRadarChoices();
   clearMultiRadarSelectionWarning();
+  if(INCREMENTAL_VOLUME_PREVIEW)
+    supplementalVolumeDisplay?.pruneSites(additionalRadarSiteIds);
   if(latestFrame)showSupplementalRadarSites(latestFrame);
 
 }
@@ -1648,7 +1664,7 @@ function renderInferredVolume(frame) {
     inferredCollection=incrementalVolumeRenderer.begin(
       identity,
       ()=>useBlobVolume()?new Cesium.BillboardCollection():new Cesium.PointPrimitiveCollection(),
-      playback.isPlaying() && !isTemporallyInferredRadarFrame(frame)
+      false // No double-buffer or fade; unchanged source cells must never blink.
     );
     inferredCollection.show=true;
   }
@@ -1715,22 +1731,14 @@ function renderInferredVolume(frame) {
         continue;
       }
 
-      const mercator =
-        pixelCentreMercator(
-          frame,
-          column,
-          row
-        );
-
-      const geographic =
-        webMercatorToDegrees(
-          mercator.x,
-          mercator.y
-        );
-
       renderedColumns++;
-      const newGlyphs=INCREMENTAL_VOLUME_PREVIEW &&
-        incrementalVolumeRenderer.unchanged(pixelIndex,category)?null:[];
+      const sameGlyphs=INCREMENTAL_VOLUME_PREVIEW &&
+        incrementalVolumeRenderer.unchanged(pixelIndex,category);
+      const nextSpecs=INCREMENTAL_VOLUME_PREVIEW&&!sameGlyphs?[]:null;
+      const mercator=(!INCREMENTAL_VOLUME_PREVIEW||!sameGlyphs)
+        ?pixelCentreMercator(frame,column,row):null;
+      const geographic=mercator
+        ?webMercatorToDegrees(mercator.x,mercator.y):null;
       for (const point of displayedInferred) {
         const supportStyle =
           styleForInferredPoint(
@@ -1744,20 +1752,24 @@ function renderInferredVolume(frame) {
             }
           );
 
-        const colour=colourForDbzh(point.dbzh);
-
-        if(newGlyphs!==null) {
-          const glyph=addVolumeGlyph(inferredCollection,{
+        if(!INCREMENTAL_VOLUME_PREVIEW||!sameGlyphs){
+          const options={
             position:Cesium.Cartesian3.fromDegrees(
               geographic.longitude,geographic.latitude,
               displayedVolumeAltitude(
                 point.altitude_m_amsl,inputDbzh,Number($("verticalScale").value))
             ),
-            color:colour,
+            color:colourForDbzh(point.dbzh),
             pixelSize:supportStyle.pixelSize,
             disableDepthTestDistance:0
-          },supportStyle.alpha,volumePercent,point.dbzh,Math.min(1.3,supportStyle.pixelSize/3));
-          if(INCREMENTAL_VOLUME_PREVIEW)newGlyphs.push(glyph);
+          };
+          const support=Math.min(1.3,supportStyle.pixelSize/3);
+          if(INCREMENTAL_VOLUME_PREVIEW){
+            nextSpecs.push({options,alpha:supportStyle.alpha,dbz:point.dbzh,support});
+          }else{
+            addVolumeGlyph(inferredCollection,options,supportStyle.alpha,
+              volumePercent,point.dbzh,support);
+          }
         }
         renderedPoints++;
         confidenceSum +=
@@ -1837,8 +1849,14 @@ function renderInferredVolume(frame) {
             point.altitude_m_amsl;
         }
       }
-      if(INCREMENTAL_VOLUME_PREVIEW)
-        incrementalVolumeRenderer.touch(pixelIndex,category,newGlyphs??[]);
+      if(INCREMENTAL_VOLUME_PREVIEW){
+        if(sameGlyphs) incrementalVolumeRenderer.touch(pixelIndex,category);
+        else incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs,
+          spec=>addVolumeGlyph(inferredCollection,spec.options,spec.alpha,
+            volumePercent,spec.dbz,spec.support),
+          (glyph,spec)=>updateVolumeGlyph(glyph,spec.options,spec.alpha,
+            volumePercent,spec.dbz,spec.support));
+      }
     }
   }
 
@@ -2070,7 +2088,10 @@ function applyHybridVolumeMode(
   const useTrackSpecific = useTrackSpecificVolume(index);
 
   if (inferredCollection) {
-    inferredCollection.show =
+    // QA always presents the SAME frame-wide inference geometry on observed
+    // and gap-fill frames. Previous observed-track / gap-fill alternation
+    // switched whole clouds on and off every scan (video-proven flicker).
+    inferredCollection.show=INCREMENTAL_VOLUME_PREVIEW ? true :
       temporalInferred
         ? true
         : wanted && trackVolumesRequested
@@ -2080,7 +2101,9 @@ function applyHybridVolumeMode(
 
   const mode = $("hybridVolumeMode");
   if (mode) {
-    mode.textContent = temporalInferred
+    mode.textContent = INCREMENTAL_VOLUME_PREVIEW
+      ? "Stable frame-wide inferred 3-D · display only (QA)"
+      : temporalInferred
       ? "Temporal gap-fill · frame-wide inferred"
       : useTrackSpecific
         ? (wanted ? `Selected ${wanted} · observed 2-D echo + inferred 3-D`
@@ -3428,7 +3451,7 @@ function renderHybridTracks(index) {
   const stormTrackMarkers = [];
   hybridSource.entities.suspendEvents();
   clearHybridTrackVolumeCollection();
-  const showTrackVolumes = useTrackSpecificVolume(index);
+  const showTrackVolumes = !INCREMENTAL_VOLUME_PREVIEW && useTrackSpecificVolume(index);
   const volumePercent=Number($("volumeOpacity").value);
   if (showTrackVolumes) {
     hybridTrackVolumeCollection=scene.primitives.add(
@@ -4690,6 +4713,16 @@ async function loadHybridSequence(automatic = false) {
         continue;
       }
 
+      // The stable QA renders the persistent, frame-wide 3-D volume.
+      // Preserve track top, trend and support metrics without keeping another
+      // complete set of redundant per-track 3-D point/footprint arrays for
+      // every observation in the 60/120/180-minute history.
+      const retainedVolume=INCREMENTAL_VOLUME_PREVIEW ? {
+        high_support_top_40_m_amsl:volume.high_support_top_40_m_amsl,
+        high_support_points:volume.high_support_points,
+        inferred_point_count:volume.inferred_point_count
+      } : volume;
+
       const previous =
         previousByTrack.get(
           track.track_id
@@ -4700,13 +4733,13 @@ async function loadHybridSequence(automatic = false) {
           ? highSupportTop40Trend(
               previous.volume,
               previous.observedUtc,
-              volume,
+              retainedVolume,
               frame.observedUtc
             )
           : null;
 
       const record = {
-        volume,
+        volume:retainedVolume,
         trend,
         observedUtc:
           frame.observedUtc
@@ -5076,7 +5109,10 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   }
   previousPrimaryRadarId=nextPrimary;
   configureRadarSite(); resetView(); clearDopplerOverlay();
-  refreshAdditionalRadarChoices(); showSupplementalRadarSites(null);
+  refreshAdditionalRadarChoices();
+  if(INCREMENTAL_VOLUME_PREVIEW)
+    supplementalVolumeDisplay?.pruneSites(additionalRadarSiteIds);
+  showSupplementalRadarSites(null);
   resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();

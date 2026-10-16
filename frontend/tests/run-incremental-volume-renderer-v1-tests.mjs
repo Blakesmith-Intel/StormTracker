@@ -67,7 +67,7 @@ assert.ok(rendered>=4);
 const live=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
 assert.match(live,/INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(live,/incrementalVolumeRenderer\.unchanged\(pixelIndex,category\)/);
-assert.match(live,/incrementalVolumeRenderer\.touch\(pixelIndex,category,newGlyphs\?\?\[\]\)/);
+assert.match(live,/incrementalVolumeRenderer\.upsert\(pixelIndex,category,nextSpecs/);
 assert.match(live,/stablePrimaryVolumeStride/);
 assert.match(live,/incrementalVolumeRenderer\.end\(\)/);
 assert.match(live,/sourceMetadata\?\.temporalInference/);

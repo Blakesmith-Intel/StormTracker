@@ -90,6 +90,6 @@ test("Slider updates only volume point collections without forcing radar reload"
   assert.match(listener,/setVolumeDisplayOpacity\(hybridTrackFootprintCollection,percent\)/);
   assert.match(script,/\},point\.alpha,volumePercent,point\.source_low_level_dbzh \?\? point\.dbzh/);
   assert.match(script,/\},1,volumePercent\)/);
-  assert.match(script,/\},supportStyle\.alpha,volumePercent,point\.dbzh/);
+  assert.match(script,/addVolumeGlyph\(inferredCollection,options,supportStyle\.alpha,[\s\S]{0,65}volumePercent,point\.dbzh,support\)/);
 });
 console.log(checks+" 3-D volume-opacity UI and scientific-intensity regression checks passed.");

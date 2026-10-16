@@ -17,6 +17,7 @@ export function createIncrementalVolumeRenderer({
   let pending = [];
   let animate = false;
   let touched = 0;
+  let updatedGlyphs = 0;
 
   function finishAnimation() {
     if (frameId !== null) {
@@ -57,6 +58,7 @@ export function createIncrementalVolumeRenderer({
     retire = [];
     entered = [];
     touched = 0;
+    updatedGlyphs = 0;
     return collection;
   }
   function unchanged(key, category) {
@@ -73,6 +75,36 @@ export function createIncrementalVolumeRenderer({
     touched++;
     return true;
   }
+  // The stable production candidate never creates a second overlapping cloud:
+  // mutate matched Cesium primitives in place, allocate only when a column
+  // adds levels, and retire only genuine disappearing levels.
+  function upsert(key,category,specs,create,patch) {
+    if(!Array.isArray(specs) || typeof create!=="function" || typeof patch!=="function")
+      throw new TypeError("Expected volume descriptors and glyph callbacks");
+    seen.add(key);
+    const old=active.get(key);
+    if(old?.category===category && old.points.length===specs.length)
+      return false;
+    const previous=old?.points??[];
+    const points=[];
+    for(let index=0;index<specs.length;index++){
+      if(index<previous.length){
+        patch(previous[index],specs[index]);
+        points.push(previous[index]);
+      }else{
+        points.push(create(specs[index]));
+      }
+      updatedGlyphs++;
+    }
+    for(let index=specs.length;index<previous.length;index++){
+      collection.remove(previous[index]);
+      updatedGlyphs++;
+    }
+    active.set(key,{category,points});
+    touched++;
+    return true;
+  }
+
   function end() {
     for (const [key, prior] of active) {
       if (seen.has(key)) continue;
@@ -81,12 +113,13 @@ export function createIncrementalVolumeRenderer({
       touched++;
     }
     const changes = entered.length + retire.length;
+    const totalChanges=changes+updatedGlyphs;
     if (!animate || !changes || changes > maxMorphGlyphs) {
       for (const point of retire) collection.remove(point);
       retire = [];
       entered = [];
       scene.requestRender?.();
-      return { changedColumns: touched, animated: false, glyphChanges: changes };
+      return { changedColumns: touched, animated: false, glyphChanges: totalChanges };
     }
     pending = [
       ...retire.map(point => ({point, colour: point.color, outgoing:true})),
@@ -119,10 +152,10 @@ export function createIncrementalVolumeRenderer({
     }
     frameId = requestFrame(tick);
     scene.requestRender?.();
-    return { changedColumns: touched, animated: true, glyphChanges: changes };
+    return { changedColumns: touched, animated: true, glyphChanges: totalChanges };
   }
   return {
-    begin, unchanged, touch, end, reset,
+    begin, unchanged, touch, upsert, end, reset,
     finishAnimation,
     get collection(){ return collection; },
     get columns(){ return active.size; }

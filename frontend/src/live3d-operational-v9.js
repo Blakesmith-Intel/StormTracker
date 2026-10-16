@@ -174,7 +174,7 @@ import {
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=9.18.8-gpu-pick-hover-qa-v2";
+} from "./context-layers/power-outages-operational-v1.js?v=outage-suburb-20261017-v1";
 
 import {
   initialiseOperationalRiverGauges

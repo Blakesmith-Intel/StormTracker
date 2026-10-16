@@ -14,10 +14,12 @@ const index=read("../index.html");
 assert.match(index,/live3d-operational-v9\.html\?v=[^"]*nsw-regional-dea-v5/);
 assert.match(html,/live3d-operational-v9\.js\?v=[^"]*nsw-regional-dea-v5/);
 assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*global-satellite-blue-gap-20261016-v1/);
-for(const part of ["power-outages","flood-road-closures"]){
-  assert.match(controller,new RegExp(part+"-operational-v1\\.js\\?v=[^\\\"]*hover-qa-v2"),
-    "closure/power hover guard imports must carry fresh cache keys");
-}
+assert.ok(controller.includes("power-outages-operational-v1.js?v=outage-suburb-20261017-v1"),
+  "current outage adapter must retain the new isolated explorer integration");
+assert.ok(controller.includes("flood-road-closures-operational-v1.js?v=9.18.8-gpu-pick-hover-qa-v2"),
+  "existing closure GPU hover guard cache key must remain current");
+assert.match(power,/suppressHoverGpuPicking/,
+  "underlying power polygon hover GPU safeguard remains unchanged");
 assert.match(controller,/river-gauges-operational-v1\.js\?v=9\.18\.11-gauge-green-yellow-red-v2/,
   "flood gauge cache key must include latest colours and GPU picking safeguards");
 

@@ -1,26 +1,38 @@
-# StormTracker — sealed production V9.19.0 recovery procedure
+# StormTracker — V9.20.0 sealed release and rollback
 
-**New accepted release source:** `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` (V9.19.0), approved on 15 October 2026. Permanent recovery ref: `restore/v9.19.0`. Release tag: `v9.19.0`, created by the Pages workflow **after successful public verification**; the annotated tag must dereference to the exact SHA above.
+**Production source:** `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`, 16 October 2026. 
+**Release tag:** `v9.20.0` (annotated, dereferences to the pinned source).
+**Recovery branch:** `restore/v9.20.0` (same source SHA).
 
-**Previous production V9.18.0:** `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` with old tag `v9.18.0` and `restore/v9.18.0`. These must NEVER move. Historical diagnostic QA: `acfa0ebd3717a793369e3e887e2d1a54785620b7`, branch `restore/v9.18-accepted-diagnostic-20261013` and public `/preview/radar-history-fix/`. Historical experiments: `archive/pre-cleanup-20261013`.
+The tag and recovery branch are sealed **only after** the GitHub Pages workflow confirms the public V9.20.0 marker and V9.20 static assets. They are not created at the mutable maintenance branch's head.
 
-## Check the live release
+## Historical protected recovery points
 
-- `https://blakesmith-intel.github.io/StormTracker/BUILD.txt` must read `SEALED StormTracker V9.19.0 source d317c17a6a8f706a0d867cb852db1e8d3f9ffac0`.
-- `/src/live3d-operational-v9.js` must contain `PUBLISHED_PRODUCTION_RUNTIME` and `shouldPrepareSupplementalForPlayback`; `/src/adaptive-threat-cone-v1.js` must contain `credibleMeasuredMotionAtObservation`.
-- `/preview/radar-history-fix/BUILD.txt` must continue to identify `acfa0ebd3717a793369e3e887e2d1a54785620b7`.
-- The production root must enable accepted bounded BoM radar/texture and locality safety guards (not just the former preview route), satellite continuity and click-only GPU marker inspection.
-- The public release tag `v9.19.0` and `restore/v9.19.0` should refer to the exact same release source; check annotated tag dereference.
+- **V9.19.0:** `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0`, with existing `v9.19.0` and `restore/v9.19.0`.
+- **V9.18.0:** `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd`, with existing `v9.18.0` and `restore/v9.18.0`.
+- **Accepted V9.18 QA:** `acfa0ebd3717a793369e3e887e2d1a54785620b7`, published at `/preview/radar-history-fix/`.
+- **Old full history:** `archive/pre-cleanup-20261013`.
 
-## To revert production to V9.18.0
+All recovery references above must remain untouched, even during future feature development.
 
-1. Create an isolated recovery branch from current `main`. Preserve ALL existing tags and restore branches.
-2. In `.github/workflows/pages.yml`, change the production checkout/pin and integrity checks to the old V9.18.0 source SHA. In `scripts/build-current-site.sh`, change the pinned root source and marker to `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd`. Do not repoint `restore/v9.19.0` or move `v9.19.0`.
-3. Run `npm test`, `node --check relay/worker.js`, and the Pages dry-run tests. Merge only the reviewed rollback PR.
-4. Verify `/BUILD.txt` at the **public root** identifies the restored V9.18.0 source; check map/radar and click behavior. The historical accepted QA can remain online independently.
+## Verify production
 
-## Future releases
+1. `https://blakesmith-intel.github.io/StormTracker/BUILD.txt` must equal:
+   `SEALED StormTracker V9.20.0 source aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`
+2. `/src/live3d-operational-v9.js` must enable the optimised 3-D renderer on root `live3d-operational-v9.html` and include `Memory diagnostics`, `incrementalVolumeRenderer.upsert`, source-time and GPU guards.
+3. `/src/incremental-volume-renderer-v1.js` must contain `function upsert`; `/src/supplemental-radar-volume-v1.js` must contain `pruneSites`; `/src/volume-display-opacity-v1.js` must expose `updateVolumeDisplayPoint`.
+4. Both `/index.html` and `/live3d-operational-v9.html` must contain the new `v9.20.0-optimised-3d-prod` version string, avoiding stale browser resources.
+5. The historical V9.18 QA marker remains unchanged and source BoM imagery, radar tracks, selected radar windows, satellite layers and cones work.
+6. The two new V9.20 refs must resolve to `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`. An annotated tag must be peeled with `refs/tags/v9.20.0^{}` when checking the raw remote.
 
-Do not assume that `main` is production. Production is ALWAYS an immutable pinned source. Use a separate preview/branch for new changes, source-faithful BoM time rules and browser acceptance, then explicitly promote. The new baseline's threat cone withholds unsupported movement; avoid restoring the old cone just to display an arrow.
+## Rollback to V9.19.0 if necessary
 
-Release guides: `CURRENT_ACCEPTED_BASELINE.md`, `RELEASE_NOTES_V9.19.0.md`, `HANDOVER_V9.19.0.md`, `USER_GUIDE_V9.19.0.md`.
+1. Create a **new** isolated rollback review branch from current main; never reset or move `v9.20.0`, `restore/v9.20.0` or the previous tag/branch.
+2. Reconfigure the Pages workflow to check out V9.19.0 exact source `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` as the pinned production asset source.
+3. Update the site packaging root source and `BUILD.txt` marker to V9.19.0. Preserve the V9.18 accepted diagnostic and archived sources.
+4. Run the full frontend and relay checks and dry-run the exact Pages package. Merge only the reviewed rollback and confirm the public root marker changed back to the V9.19.0 SHA.
+5. Do not restore the old unsupported 3-D fade or undo genuine source-time safeguards except as part of the explicit pinned release rollback.
+
+## Rule for subsequent releases
+
+Production is built from an immutable SHA, not a moving `main` head. Release a tested preview, secure the operator's approval, freeze source, verify public output, **then** seal refs. V10 authentic BoM AURA wind candidate development stays separate from these V9 maintenance releases.

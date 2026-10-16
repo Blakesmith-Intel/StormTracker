@@ -1,4 +1,4 @@
-name: Deploy StormTracker — sealed V9.19.0 production and historical V9.18 QA
+name: Deploy StormTracker — sealed V9.20.0 production and historical QA
 
 on:
   push:
@@ -49,14 +49,14 @@ jobs:
           node --check checked/accepted-v9.18/relay/worker.js
           test "$(git -C checked/accepted-v9.18 rev-parse HEAD)" = "acfa0ebd3717a793369e3e887e2d1a54785620b7"
 
-      - name: Checkout sealed V9.19.0 production source
+      - name: Checkout retained V9.19.0 rollback source
         uses: actions/checkout@v4
         with:
           ref: d317c17a6a8f706a0d867cb852db1e8d3f9ffac0
           path: checked/production-v9.19.0
           persist-credentials: false
 
-      - name: Validate sealed V9.19.0 production source
+      - name: Validate retained V9.19.0 rollback source
         run: |
           set -euo pipefail
           (cd checked/production-v9.19.0 && npm test)
@@ -67,6 +67,27 @@ jobs:
           test -f checked/production-v9.19.0/docs/RELEASE_NOTES_V9.19.0.md
           grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' checked/production-v9.19.0/frontend/src/live3d-operational-v9.js
 
+      - name: Checkout approved V9.20.0 production source
+        uses: actions/checkout@v4
+        with:
+          ref: aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1
+          path: checked/production-v9.20.0
+          persist-credentials: false
+
+      - name: Validate exact immutable V9.20.0 production source
+        run: |
+          set -euo pipefail
+          (cd checked/production-v9.20.0 && npm test)
+          node --check checked/production-v9.20.0/relay/worker.js
+          test "$(git -C checked/production-v9.20.0 rev-parse HEAD)" = "aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1"
+          test -f checked/production-v9.20.0/docs/HANDOVER_V9.20.0.md
+          test -f checked/production-v9.20.0/docs/USER_GUIDE_V9.20.0.md
+          test -f checked/production-v9.20.0/docs/RELEASE_NOTES_V9.20.0.md
+          grep -Fq 'const INCREMENTAL_VOLUME_PREVIEW =' checked/production-v9.20.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' checked/production-v9.20.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'Memory diagnostics' checked/production-v9.20.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'v9.20.0-optimised-3d-prod' checked/production-v9.20.0/frontend/live3d-operational-v9.html
+
       - name: Verify historical V9.18.0 rollback source is immutable
         run: |
           set -euo pipefail
@@ -75,7 +96,15 @@ jobs:
           test "$tag_commit" = "66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
           test "$branch_commit" = "66d3da447ef7a4df53e7df49aa1ac06f86cb5afd"
 
-      - name: Build exact sealed production and historical accepted QA
+      - name: Verify V9.19.0 immediate rollback references remain untouched
+        run: |
+          set -euo pipefail
+          tag_peeled="$(git ls-remote origin 'refs/tags/v9.19.0^{}' | cut -f1)"
+          branch="$(git ls-remote origin refs/heads/restore/v9.19.0 | cut -f1)"
+          test "$tag_peeled" = "d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
+          test "$branch" = "d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
+
+      - name: Build pinned V9.20.0 production and preserved diagnostic QA
         run: bash scripts/build-current-site.sh
 
       - name: Configure GitHub Pages
@@ -90,7 +119,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Verify sealed V9.19.0 production and historical V9.18 QA
+      - name: Verify published V9.20.0 source and existing historical QA
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -99,7 +128,7 @@ jobs:
           base="${PAGES_URL%/}"
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq 'SEALED StormTracker V9.19.0 source d317c17a6a8f706a0d867cb852db1e8d3f9ffac0' <<< "$root"
+          grep -Fq 'SEALED StormTracker V9.20.0 source aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1' <<< "$root"
           grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$preview"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \
@@ -120,26 +149,50 @@ jobs:
           grep -Fq 'EXPERIMENTAL incremental 3-D QA' <<< "$preview_marker"
           preview_engine="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/incremental-3d/src/incremental-volume-renderer-v1.js")"
           grep -Fq 'createIncrementalVolumeRenderer' <<< "$preview_engine"
-          echo 'Verified sealed V9.19.0 production, V9.18 QA and experimental incremental 3-D preview.'
+          for component in \
+            'src/live3d-operational-v9.js|Memory diagnostics' \
+            'src/incremental-volume-renderer-v1.js|function upsert(key,category,specs,create,patch)' \
+            'src/supplemental-radar-volume-v1.js|function pruneSites(selectedIds=[])' \
+            'src/volume-display-opacity-v1.js|updateVolumeDisplayPoint' \
+            'index.html|v9.20.0-optimised-3d-prod' \
+            'live3d-operational-v9.html|v9.20.0-optimised-3d-prod'; do
+            path="${component%%|*}"
+            needle="${component#*|}"
+            curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+              "$base/$path" | grep -F "$needle" >/dev/null
+          done
+          echo 'Verified sealed V9.20.0 source aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1, optimized 3-D runtime, V9.18 QA and diagnostic preview.'
 
-      - name: Seal V9.19.0 annotated tag only after public verification
+      - name: Seal V9.20.0 annotated tag and new rollback branch after public verification
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          release_sha="d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
-          tag="v9.19.0"
-          restore="$(git ls-remote origin refs/heads/restore/v9.19.0 | cut -f1)"
-          test "$restore" = "$release_sha"
+          release_sha="aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1"
+          tag="v9.20.0"
+          restore="restore/v9.20.0"
+          # V9.19.0 stays immutable; there is no moving of earlier tag/branch.
+          test "$(git ls-remote origin 'refs/tags/v9.19.0^{}' | cut -f1)" = "d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
+          test "$(git ls-remote origin refs/heads/restore/v9.19.0 | cut -f1)" = "d317c17a6a8f706a0d867cb852db1e8d3f9ffac0"
           git fetch --no-tags origin "$release_sha"
+          current_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          if [ -n "$current_restore" ]; then
+            test "$current_restore" = "$release_sha"
+            echo "Existing $restore is pinned correctly."
+          else
+            git push origin "$release_sha:refs/heads/$restore"
+            echo "Created recovery branch $restore at $release_sha"
+          fi
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
             git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
             test "$(git rev-list -n 1 "$tag")" = "$release_sha"
-            echo "Existing release tag points to the sealed V9.19.0 source."
+            echo "Existing release tag points to the sealed V9.20.0 source."
           else
             git -c user.name="StormTracker Release Automation" \
                 -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
                 tag -a "$tag" "$release_sha" \
-                -m "StormTracker V9.19.0 — visually accepted production baseline (15 October 2026)"
+                -m "StormTracker V9.20.0 — operator-approved stable 3-D and reduced memory (16 October 2026)"
             git push origin "refs/tags/$tag"
             echo "Created annotated $tag at $release_sha"
           fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"

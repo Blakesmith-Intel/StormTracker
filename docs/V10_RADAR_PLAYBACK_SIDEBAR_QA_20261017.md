@@ -21,3 +21,15 @@
 - [ ] QFD public icon key appears on enable, accurate official/provisional attribution; QFD map and marker selection still work.
 - [ ] iPhone top controls scroll within existing ~29dvh panel; map remains usable with touch gestures.
 - [ ] Full frontend regression, relay syntax and Pages immutable root audit before merging into QA only.
+
+
+## Operator correction: real status, flood marker style and default-off overlays
+
+- Previous layout created a second frame/time panel while leaving the original green "Frame 2/6 · AEST / UTC · radar tracking history" status at the end of the sidebar. This is **not** the requested move.
+- The single original `#status` node has now been physically relocated inside **Radar playback**, after the frame slider and speed, and before the opacity sliders. All original `setStatus(message,kind)` updates continue to target that node; there is no second rendered status. Internal `hybridFrameLabel` / `operationalFrameTime` bindings remain hidden for existing clock consumers.
+- Flood gauge icon is now a compact hydrology circle with white water-wave markings and green/yellow/red severity arcs matching the existing real BoM gauge states. It is not a literal traffic light. Cyan tidal screening remains in the existing legend.
+- New-session overlay policy: all optional map layers **off by default**, including road closures, unplanned power, flood signals, QFD jobs, storm labels, cones and dormant research overlays. The UI checkboxes start unchecked and the runtime resets their state **before** constructing operational layers, guarding browser-restored form states. Operators can still enable them individually; the sidebar incident counts use the same loaded feed independent of map visibility.
+- 3-D elevation terrain remains always-on as requested (except an unavailable-provider fallback / dedicated A/B QA route). Basemap and radar playback are foundational capabilities, not optional incident overlays.
+- No modifications to source ingestion, polygon/marker selection, Doppler, inferred volumes or cyclone historical QA.
+
+**Visual acceptance:** In Simple and Advanced, on desktop and phone, check that the status is visible once, directly beneath playback speed; layer checkboxes are all off after a fresh load; enabling each layer works without map click regressions; QFD's independent symbol legend and the professional flood badge remain legible.

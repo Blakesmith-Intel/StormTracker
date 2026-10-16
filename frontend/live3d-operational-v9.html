@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="./src/power-outage-suburb-explorer-v1.css?v=case-insensitive-lga-20261017-v2">
   <link rel="stylesheet" href="./src/lga-sidebar-legend-v1.css?v=lga-ui-legend-20261017-v1">
   <link rel="stylesheet" href="./src/sidebar-incident-counts-v1.css?v=incident-counts-20261017-v1">
-  <link rel="stylesheet" href="./src/playback-sidebar-hierarchy-v1.css?v=radar-layout-flood-qfd-20261017-v1">
+  <link rel="stylesheet" href="./src/playback-sidebar-hierarchy-v1.css?v=original-status-flood-glyph-layers-off-20261017-v2">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -49,10 +49,10 @@
       <div class="playback-speed-row"><label for="playbackSpeed">Playback speed
         <select id="playbackSpeed"><option value="1" selected>1× · Standard</option><option value="2">2× · Fast</option><option value="3">3× · Fastest</option></select>
       </label></div>
-      <div class="playback-frame-readout" aria-label="Selected radar frame and observation times" role="group">
-        <div class="frame-count-line"><span>Frame</span><strong id="hybridFrameLabel">—</strong></div>
-        <div class="frame-time-line"><span>Observed · AEST / UTC</span><strong id="operationalFrameTime" aria-live="off">—</strong></div>
-      </div>
+      <!-- Preserve model-bound frame/time fields without a duplicate visible
+           display. The original #status is the operator's single live readout. -->
+      <div class="frame-data-bindings" hidden aria-hidden="true"><span id="hybridFrameLabel">—</span><span id="operationalFrameTime">—</span></div>
+      <div id="status" class="radar-playback-status" role="status" aria-live="off">Loading inferred-volume model…</div>
       <div class="opacity-controls" aria-label="Radar and 3-D display opacity">
         <label for="radarOpacity">Radar opacity <output id="radarOpacityValue" for="radarOpacity">65%</output></label>
         <input id="radarOpacity" type="range" min="0" max="100" step="5" value="65" aria-label="Radar layer opacity: 0 transparent, 100 opaque">
@@ -83,11 +83,17 @@
            Hidden compatibility node remains for terrain status/QA contracts. -->
       <input id="terrainEnabled" type="checkbox" checked disabled hidden aria-hidden="true">
       <div id="terrainStatus" class="note" role="status">Loading 3-D terrain…</div>
-      <div class="layer-row flood-road-row"><label><input id="showFloodRoadClosures" type="checkbox" checked> <img id="floodRoadClosureLegendIcon" class="flood-road-key" alt="" aria-hidden="true"> Unplanned road closures</label><button id="refreshFloodRoadClosuresButton" type="button">Refresh</button></div>
+      <div class="layer-row flood-road-row"><label><input id="showFloodRoadClosures" type="checkbox"> <img id="floodRoadClosureLegendIcon" class="flood-road-key" alt="" aria-hidden="true"> Unplanned road closures</label><button id="refreshFloodRoadClosuresButton" type="button">Refresh</button></div>
       <div id="floodRoadClosureStatus" class="note" role="status">QLDTraffic · unplanned all-traffic closures</div>
-      <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox" checked> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Unplanned power outages</label><button id="refreshPowerOutagesButton" type="button">Refresh</button></div>
+      <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox"> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Unplanned power outages</label><button id="refreshPowerOutagesButton" type="button">Refresh</button></div>
       <div id="powerOutageStatus" class="note" role="status">Energex + Ergon + Essential Energy · unplanned outages</div>
-      <div class="layer-row river-gauge-row"><label><input id="showRiverGauges" type="checkbox" checked> <span class="flood-traffic-light" aria-hidden="true"><i></i><i></i><i></i></span> Flood signals</label><button id="refreshRiverGaugesButton" type="button">Refresh</button></div>
+      <div class="layer-row river-gauge-row"><label><input id="showRiverGauges" type="checkbox"> <svg class="flood-severity-glyph" aria-hidden="true" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="18" fill="#0c1e2a" stroke="#b6d3df" stroke-width="1"/>
+        <path d="M20 4 A16 16 0 0 1 35.2 15.1" fill="none" stroke="#e53935" stroke-width="4" stroke-linecap="round"/>
+        <path d="M35.8 23.3 A16 16 0 0 1 23.1 35.7" fill="none" stroke="#ffd43b" stroke-width="4" stroke-linecap="round"/>
+        <path d="M16.8 35.7 A16 16 0 0 1 4.5 15.9" fill="none" stroke="#2db76f" stroke-width="4" stroke-linecap="round"/>
+        <path d="M10 18.5 C13.5 15.3 16.5 21.7 20 18.5 S26.5 15.3 30 18.5 M10 24 C13.5 20.8 16.5 27.2 20 24 S26.5 20.8 30 24" fill="none" stroke="#f0fbff" stroke-width="2.3" stroke-linecap="round"/>
+      </svg> Flood signals</label><button id="refreshRiverGaugesButton" type="button">Refresh</button></div>
       <div id="riverGaugeStatus" class="note" role="status">BoM · moderate/major flood · rapid rise above minor · unusual tidal rise</div>
       <div id="riverGaugeSeverityLegend" class="note flood-severity-legend"><span class="flood-green">●</span> Rapid above minor · <span class="flood-yellow">●</span> Moderate · <span class="flood-red">●</span> Major · <span class="flood-cyan">●</span> Unusual tidal rise (screening)</div>
       <div class="layer-row qfd-rescue-row"><label><input id="showQfdTechnicalRescues" type="checkbox"> QFD rescue &amp; assistance</label><button id="refreshQfdTechnicalRescuesButton" type="button">Refresh</button></div>
@@ -110,7 +116,6 @@
       <div id="dopplerHistoryWarning" class="note" role="status" hidden>One playback control advances independent radar and Doppler frames; source times may differ.</div>
       <div id="autoRefreshNote" class="note" role="status">Radar and Doppler sources refresh independently every 5 minutes.</div>
     </div>
-    <div id="status" role="status">Loading inferred-volume model…</div>
   </aside>
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
@@ -358,6 +363,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v2-layout"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v3-original-status-layers-off"></script>
 </body>
 </html>

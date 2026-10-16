@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import {
   BASEMAP_IDS,BASEMAP_STORAGE_KEY,DEA_REGIONAL_IMAGERY,DETAIL_SWITCH,
-  QLD_IMAGERY_BASEMAP,NSW_IMAGERY_BASEMAP,REFERENCE_LABELS,
+  QLD_IMAGERY_BASEMAP,NSW_IMAGERY_BASEMAP,GLOBAL_SATELLITE_FALLBACK,REFERENCE_LABELS,
   QUEENSLAND_PLACE_LABELS,basemapLabel,createBasemapProvider,
-  createDeaRegionalImageryProvider,createDetailedQldProvider,
+  createDeaRegionalImageryProvider,createGlobalSatelliteFallbackProvider,
+  createDetailedQldProvider,
   createNswImageryProvider,createQueenslandPlaceLabelProvider,
   createReferenceLabelProvider,createStormTrackerBasemapManager,
   estimatedCameraMetresPerPixel,chooseDetailForScale,normaliseBasemapId
@@ -32,6 +33,17 @@ const Cesium={
   ArcGisMapServerImageryProvider:ArcGis,
   WebMercatorTilingScheme:Mercator,Rectangle
 };
+const worldwide=createGlobalSatelliteFallbackProvider(Cesium);
+assert.equal(worldwide.constructor,UrlTemplate);
+assert.equal(worldwide.options.url,GLOBAL_SATELLITE_FALLBACK.tileTemplate);
+assert.ok(worldwide.options.url.includes("World_Imagery/MapServer/tile/"));
+assert.equal(worldwide.options.rectangle,undefined,
+  "Global satellite fallback cannot be cropped at QLD/NSW boundaries");
+assert.equal(worldwide.options.maximumLevel,19,
+  "The worldwide satellite fallback preserves native detailed tiles");
+assert.equal(worldwide.options.tileWidth,256);
+assert.equal(worldwide.options.tileHeight,256);
+assert.match(worldwide.options.credit.text,/Esri.*Maxar/);
 const dea=createDeaRegionalImageryProvider(Cesium);
 assert.equal(dea.options.url,"https://ows.dea.ga.gov.au/");
 assert.equal(dea.options.layer,"ga_ls8cls9c_gm_cyear_3");
@@ -226,8 +238,8 @@ assert.equal(layers.length,0);
 console.log("PASS satellite panning preserves visible QLD/NSW imagery + alpha without Street flash; zoom staging, cancellation, source/credit/fade retained.");
 
 // Candidate-only regional satellite continuity: QLD tiles exist from level 4,
- // so use the official cache at regional scale as well as close-up.  The OSM
- // base is retained as a hidden layer, never visible through a WMTS DEA gap.
+ // so use official tiles at regional scale. The global fallback is genuine
+ // satellite imagery, never OSM or a blank blue Cesium globe.
 const regional=createStormTrackerBasemapManager({
   Cesium,viewer,storage,suspendDetailDuringNavigation:true,
   persistentSatelliteCoverage:true,
@@ -238,7 +250,13 @@ viewer.scene.camera.positionCartographic.height=600000;
 regional.setBasemap(BASEMAP_IDS.QLD_IMAGERY);
 assert.equal(regional.persistentSatelliteCoverage,true);
 assert.equal(layers.length,4,"do not create a second set of QLD/NSW providers");
-assert.equal(layers[0].show,false,"OSM must NEVER appear behind missing DEA satellite tiles");
+assert.ok(layers[0].imageryProvider instanceof UrlTemplate,
+  "Satellite mode MUST use global aerial/satellite instead of an OSM fallback");
+assert.equal(layers[0].imageryProvider.options.url,GLOBAL_SATELLITE_FALLBACK.tileTemplate);
+assert.equal(layers[0].show,true,
+  "Global satellite imagery MUST remain visible behind missing or delayed DEA tiles");
+assert.equal(layers[0].alpha,1,
+  "Opaque global satellite fallback never reveals the blue underlying globe");
 assert.equal(layers[1].show,true,"DEA still fills state-free regional coverage");
 assert.equal(layers[2].show,false,
   "distant NSW uses homogeneous 2025 DEA rather than mixed-age aerial photography");
@@ -258,13 +276,15 @@ viewer.scene.camera.positionCartographic.height=8500;
 assert.equal(regional.updateForCamera(),"navigation",
   "no aerial-detail switch in the middle of camera navigation");
 assert.deepEqual(layers,initialLayers,"panning must not change layer order or replace providers");
+assert.ok(layers[0].show && layers[0].alpha===1,
+  "Persistent satellite fallback remains visible while camera moves");
 assert.equal(layers[2].show,false,"NSW detail remains off until gesture settles");
 assert.equal(layers[3].show,true,"QLD remains present throughout the gesture");
 regional.setNavigationActive(false);
 const regionSettle=resume;
 assert.ok(regionSettle,"camera settling remains bounded");
 regionSettle();
-assert.equal(layers[0].show,false);
+assert.equal(layers[0].show,true);
 assert.ok(layers.slice(2).every(x=>x.show && x.alpha===1),
   "NSW detail arrives only after settling at close zoom; QLD remains visible");
 viewer.scene.camera.positionCartographic.height=600000;
@@ -274,7 +294,20 @@ assert.equal(layers[2].show,false,
 assert.equal(layers[3].show,true,
   "Queensland remains filled by real official imagery at regional scale");
 assert.equal(layers[1].show,true,
-  "DEA remains the underlying cross-border satellite composite");
+  "DEA remains the preferred cross-border satellite composite");
+assert.ok(layers[0].show && layers[0].imageryProvider instanceof UrlTemplate,
+  "Continuous world satellite underlay remains underneath DEA at regional zoom");
+// Upstream imagery errors and transient gaps must never hide/recreate the
+// fallback or replace it with a flat blue globe.
+const worldUnderlay=layers[0];
+layers[1].imageryProvider.listener?.({message:"WMTS temporary tile failure"});
+assert.equal(layers[0],worldUnderlay);
+assert.ok(worldUnderlay.show);
+assert.equal(worldUnderlay.alpha,1);
+assert.ok(statuses.some(([message])=>message.includes("DEA")&&message.includes("unavailable")));
+cameraChangeListeners.forEach(fn=>fn());
+assert.equal(layers[0],worldUnderlay,
+  "Repeated camera refresh never reloads or disposes persistent underlay");
 regional.setBasemap(BASEMAP_IDS.STREET);
 assert.equal(layers.length,1);
 assert.equal(layers[0].show,true,"explicit Street selection must restore Street basemap");

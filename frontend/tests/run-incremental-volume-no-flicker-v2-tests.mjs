@@ -54,7 +54,7 @@ for(let pass=0;pass<25;pass++){
 }
 assert.equal(removed,0);
 renderer.begin("footprint-A",()=>collection,false);
-apply(10,8,1);apply(11,7);
+apply(10,9,1);apply(11,7);
 renderer.end();
 assert.equal(points.length,3,"When a cell disappears only its own glyphs leave");
 assert.ok(removed>=3);

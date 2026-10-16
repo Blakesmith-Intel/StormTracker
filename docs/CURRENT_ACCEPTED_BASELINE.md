@@ -1,35 +1,32 @@
-# StormTracker V9.19.0 — user-accepted production baseline (15 October 2026)
+# StormTracker V9.20.0 — approved sealed production baseline (16 October 2026)
 
-**User approval:** after the 15 October source-faithful Mt Isa ST0003 cone-confidence QA and earlier preview testing, the operator explicitly accepted the `next-baseline` candidate and requested that it become the new sealed production baseline. The exact V9.19.0 release source was separately validated for production-route guard parity.
+**User acceptance:** On 16 October 2026 the operator tested the corrected incremental 3-D browser preview, confirmed the flickering had disappeared and reported that browser memory use had **approximately halved**. They explicitly requested production deployment and sealing. These are operator observations, not independent browser benchmarks.
 
-| Reference | Immutable commit | Purpose |
+| Reference | Frozen commit | Purpose |
 | --- | --- | --- |
-| **Sealed production V9.19.0** | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` | Public root `https://blakesmith-intel.github.io/StormTracker/`, pinned build |
-| **Release tag** | `v9.19.0` | Must dereference to the exact production source SHA |
-| **Recovery branch** | `restore/v9.19.0` | New immutable recovery point at the same source |
-| Historical sealed production V9.18.0 | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` | Preserve tag `v9.18.0` and branch `restore/v9.18.0` for rollback |
-| Historical accepted V9.18 diagnostic | `acfa0ebd3717a793369e3e887e2d1a54785620b7` | Remains accessible at `/preview/radar-history-fix/` |
-| Repository archive | `archive/pre-cleanup-20261013` | Historical previews/installers if needed |
+| **V9.20.0 production source** | `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1` | Site root copied from exact immutable source; no moving-main build |
+| **Release tag** | `v9.20.0` | Annotated, must dereference to the above source after public verification |
+| **Recovery branch** | `restore/v9.20.0` | Created at the above source only after public deployment verification |
+| Immediate historical rollback V9.19.0 | `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0` | Existing `v9.19.0` and `restore/v9.19.0` must not move |
+| Earlier recovery V9.18.0 | `66d3da447ef7a4df53e7df49aa1ac06f86cb5afd` | Existing `v9.18.0` and `restore/v9.18.0` must not move |
+| Accepted V9.18 diagnostic | `acfa0ebd3717a793369e3e887e2d1a54785620b7` | Remains at `/preview/radar-history-fix/` |
 
-## Release acceptance
+## Release acceptance and invariants
 
-- Genuine BoM reflectivity (dBZ), source-time stability, multi-radar nonblocking playback and <=3 additional radar windows.
-- Continuous satellite regional view: Queensland official imagery; coherent DEA NSW at regional scale, NSW official detail at closer zoom.
-- Responsive Cesium with guarded graphics/hover interaction, deferred imagery retirement, bounded data history and incidental upstream error isolation.
-- Sidebar collapse/restore; storm Labels off by default, primary-radar-only explanatory note. Geographical names independent.
-- Displayed storm 0m centroid marker plus +30/+60/+90m forecast segments. Cones issued only on reliable source-measured motion; withheld on unsupported low-speed/abrupt centroid turns, including the reviewed Mt Isa scenario.
-- Flood gauge colours green qualifying minor rapid rise / yellow BoM moderate / red BoM major / cyan unusual tidal screening.
-- Road closures, unplanned electricity outages, flood context and selected QFD response incidents preserved.
+- Exactly the corrected preview 3-D rendering logic is active on the root production page, including persistent source pixel-indexed glyphs across observed and display-only frames; in-place updates; no whole-cloud opacity fade or switching between frame-wide and track-specific rendering.
+- Removed redundant historical track 3-D point/footprint array retention while preserving top-height/trend/support summaries; bounded decoded radar providers, Cesium idle tile cache and secondary frame buffers.
+- Genuine BoM 2-D reflectivity (dBZ), native Doppler source time, inferred >=40 dBZ display floor, vertical display exaggeration 1.0×, storm IDs and +90-minute cones remain source-faithful and unmodified.
+- Main radar default and up to 3 selectable additional Queensland/NSW sites remain. Secondary 3-D glyphs are retired when their radars are deselected.
+- Official Queensland and NSW/DEA regional satellite coverage, regional place labels, old radar marker icons, flood gauge thresholds/colours, road closure/power outage/QFD incident context and GPU-safe interaction remain.
+- Storm labels remain **off by default** and refer to the primary radar only, as described beside the control.
+- No unverified V10 AURA Doppler circulation detections are promoted into V9.
 
-**Warnings:** Interpolated display frames are not meteorological measurements; secondary radar imagery does not generate extra storm IDs. A storm cone is a modelled trend envelope, not an official BoM warning. Doppler radial velocity is not storm translation speed.
+## Release integrity
 
-## Source/release integrity rules
+1. `scripts/build-current-site.sh` copies the production site from `checked/production-v9.20.0`, checked out at exactly `aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`, not mutable main.
+2. `.github/workflows/pages.yml` runs all repository, old QA and pinned release tests; checks exact output marker `SEALED StormTracker V9.20.0 source aba409fd1609e7bf7be6bf3c098b7fb6a14d89d1`.
+3. Only after successful **public** Pages verification does the workflow create and independently verify the annotated tag `v9.20.0` and branch `restore/v9.20.0` at the exact SHA above. An unexpected existing ref must cause failure, not a ref move.
+4. Older release tags and restore branches are immutable and must remain functional.
+5. The isolated incremental 3-D preview is retained for diagnostic comparison but does **not** supply production files; the older V9.18 accepted preview remains a separate reference.
 
-1. `scripts/build-current-site.sh` must copy the public root from **the exact V9.19.0 release commit**, never from mutable `main`.
-2. `.github/workflows/pages.yml` must verify the production `/BUILD.txt`, source guard assets, source-data integrity and historical QA `BUILD.txt` before sealing.
-3. The `v9.19.0` release tag is created **only after the public website verifies successfully**; it must resolve to `d317c17a6a8f706a0d867cb852db1e8d3f9ffac0`.
-4. The previous V9.18.0 tag and recovery branch must never move.
-5. Do not silently publish mutable `/preview/next-baseline/` alongside the sealed release. The historical accepted V9.18 diagnostic remains.
-6. Changes for V10 experimental Doppler/wind/circulation detection require new branches and validated archived authentic AURA measurements.
-
-Documentation: `docs/RELEASE_NOTES_V9.19.0.md`, `HANDOVER_V9.19.0.md`, `USER_GUIDE_V9.19.0.md`, `BASELINE_RESTORE.md`.
+See `docs/RELEASE_NOTES_V9.20.0.md`, `docs/HANDOVER_V9.20.0.md`, `docs/USER_GUIDE_V9.20.0.md` and `docs/BASELINE_RESTORE.md`.

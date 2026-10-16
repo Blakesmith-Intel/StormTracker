@@ -1,5 +1,6 @@
 import {QLD_TRAFFIC_OFFICIAL_CLOSED_ALL,qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
+import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=roads-lga-20261017-v1";
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
@@ -501,7 +502,13 @@ export function initialiseOperationalFloodRoadClosures({
     $("cesiumContainer")
     ?? canvas.parentElement;
 
-  const layer =
+  let layer;
+  const explorer=createRoadClosureLgaExplorer({
+    viewer,CesiumRef,formatTime:formatQldTime,
+    getLoadedAt:()=>layer?.lastLoadedAt??0,
+    refresh:()=>layer.refresh({force:true})
+  });
+  layer =
     createFloodRoadClosureLayer({
       viewer,
       CesiumRef,
@@ -510,9 +517,13 @@ export function initialiseOperationalFloodRoadClosures({
           checkbox?.checked
         ),
       onStatus:
-        setRoadStatus,
+        next=>{
+          setRoadStatus(next);
+          explorer.updateStatus(next);
+        },
       onUpdate:
         features => {
+          explorer.updateFeatures(features);
           if (
             !panel
             || panel.hidden
@@ -900,6 +911,7 @@ export function initialiseOperationalFloodRoadClosures({
     "pagehide",
     () => {
       layer.stop();
+      explorer.destroy();
 
       window.removeEventListener(
         "pointerdown",

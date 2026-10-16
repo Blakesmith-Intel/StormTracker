@@ -709,7 +709,7 @@ export function initialiseOperationalPowerOutages({
   // Keep outage click inspection intact, but disable GPU-backed hover picking
   // on the isolated radar-history-fix preview until texture lifecycle is proven.
   const suppressHoverGpuPicking =
-    ["/preview/radar-history-fix/", "/preview/next-baseline/"].some(
+    ["/preview/radar-history-fix/", "/preview/next-baseline/", "/preview/incremental-3d/"].some(
       path=>globalThis.location?.pathname?.includes(path)===true) ||
       (/\/live3d-operational-v9\.html$/.test(
         String(globalThis.location?.pathname??"")) &&

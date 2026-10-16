@@ -831,7 +831,7 @@ export function initialiseOperationalFloodRoadClosures({
   // synchronously execute a Cesium GPU pick against retired imagery.
   // Road-closure LEFT_CLICK information remains unchanged.
   const suppressHoverGpuPicking =
-    ["/preview/radar-history-fix/", "/preview/next-baseline/"].some(
+    ["/preview/radar-history-fix/", "/preview/next-baseline/", "/preview/incremental-3d/"].some(
       path=>globalThis.location?.pathname?.includes(path)===true) ||
       (/\/live3d-operational-v9\.html$/.test(
         String(globalThis.location?.pathname??"")) &&

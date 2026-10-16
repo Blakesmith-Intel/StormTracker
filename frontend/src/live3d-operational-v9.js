@@ -261,7 +261,7 @@ const PUBLISHED_PRODUCTION_RUNTIME =
   /\/live3d-operational-v9\.html$/.test(window.location.pathname) &&
   !window.location.pathname.includes("/preview/");
 const BOUNDED_RADAR_RECOVERY_QA =
-  PUBLISHED_PRODUCTION_RUNTIME ||
+  PUBLISHED_PRODUCTION_RUNTIME || INCREMENTAL_VOLUME_PREVIEW ||
   window.location.pathname.includes("/preview/radar-history-fix/") ||
   window.location.pathname.includes("/preview/next-baseline/");
 const LABEL_GPU_QA =

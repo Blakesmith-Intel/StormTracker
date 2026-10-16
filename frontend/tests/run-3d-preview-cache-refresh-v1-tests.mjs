@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const read=p=>readFileSync(new URL(p,import.meta.url),"utf8");
+const html=read("../live3d-operational-v9.html");
+const live=read("../src/live3d-operational-v9.js");
+const supplemental=read("../src/supplemental-radar-volume-v1.js");
+const version="delta-reuse-20261016-v2";
+assert.ok(html.includes("live3d-operational-v9.js?v="+version));
+assert.ok(live.includes("incremental-volume-renderer-v1.js?v="+version));
+assert.ok(live.includes("volume-display-opacity-v1.js?v="+version));
+assert.ok(live.includes("supplemental-radar-volume-v1.js?v="+version));
+assert.ok(supplemental.includes("incremental-volume-renderer-v1.js?v="+version));
+console.log("PASS experimental 3-D preview cache bust, original product module paths retained.");

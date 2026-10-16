@@ -67,7 +67,11 @@ const scene={
 const imageryLayers={
   add(layer){graphics.push(layer);return layer;},
   remove(layer){graphics=graphics.filter(x=>x!==layer);return true;},
-  indexOf(layer){return graphics.indexOf(layer);}
+  indexOf(layer){return graphics.indexOf(layer);},
+  raiseToTop(layer){
+    const i=graphics.indexOf(layer);
+    if(i>=0){graphics.splice(i,1);graphics.push(layer);}
+  }
 };
 const w1={colStart:0,colEnd:0,rowStart:0,rowEnd:0};
 const w2={colStart:1,colEnd:1,rowStart:0,rowEnd:0};

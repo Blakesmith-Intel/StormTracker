@@ -7,7 +7,7 @@ import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
 // View over the EXISTING layer snapshot; no duplicate requests, no map pick,
 // no new Cesium entities, no weather-frame redraws.
 export function createPowerOutageSuburbExplorer({
-  viewer,CesiumRef,refresh=()=>Promise.resolve(),getLoadedAt=()=>0,formatTime=()=>""
+  viewer,CesiumRef,mapCamera,refresh=()=>Promise.resolve(),getLoadedAt=()=>0,formatTime=()=>""
 }={}){
   const byId=id=>document.getElementById(id);
   const dialog=byId("powerOutageExplorer");
@@ -46,24 +46,24 @@ export function createPowerOutageSuburbExplorer({
     // picking, polygon handlers or the provider's incident geometries.
     const checkbox=byId("showPowerOutages");
     if(checkbox && !checkbox.checked)checkbox.click();
-    if(points.length===1){
-      const point=points[0];
-      viewer.camera.flyTo({
-        destination:CesiumRef.Cartesian3.fromDegrees(
-          point.longitude,point.latitude,13000),
-        orientation:{heading:0,pitch:CesiumRef.Math.toRadians(-80),roll:0},
-        duration:0.9
-      });
-    }else{
-      const lons=points.map(point=>point.longitude);
-      const lats=points.map(point=>point.latitude);
-      viewer.camera.flyTo({
-        destination:CesiumRef.Rectangle.fromDegrees(
-          Math.min(...lons)-0.06,Math.min(...lats)-0.05,
-          Math.max(...lons)+0.06,Math.max(...lats)+0.05),
-        duration:1
-      });
-    }
+    // Cesium camera.flyTo is overridden by StormTracker's managed camera
+    // state on the next correction tick. Navigate through the controller.
+    if (!mapCamera?.setView) throw Error("Managed map navigation is unavailable");
+    const lons=points.map(point=>point.longitude);
+    const lats=points.map(point=>point.latitude);
+    const west=Math.min(...lons),east=Math.max(...lons);
+    const south=Math.min(...lats),north=Math.max(...lats);
+    const latitude=(south+north)/2;
+    const longitude=(west+east)/2;
+    const spanMetres=Math.max(
+      (east-west)*111320*Math.cos(latitude*Math.PI/180),
+      (north-south)*111320
+    );
+    mapCamera.setView({
+      longitude,latitude,targetHeight:0,heading:0,
+      pitch:CesiumRef.Math.toRadians(-80),
+      range:Math.min(5000000,Math.max(13000,13000+spanMetres*2.5))
+    });
     return true;
   }
 

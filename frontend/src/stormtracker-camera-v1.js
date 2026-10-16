@@ -201,6 +201,17 @@ export function zoomStateByDirection(
   };
 }
 
+// Smooth trackpad deltas should accumulate, while pathological wheel bursts
+// must not shift the camera across an entire state in a single render.
+export function wheelZoomRange(range, deltaPixels, {
+  minimumRange = 800,
+  maximumRange = 5000000
+} = {}) {
+  const safeDelta = Number.isFinite(deltaPixels) ? clamp(deltaPixels, -400, 400) : 0;
+  return clamp(Number(range) * Math.exp(Math.log(1.22) * safeDelta / 100),
+    minimumRange, maximumRange);
+}
+
 function cloneState(state) {
   return {
     longitude: Number(state.longitude),
@@ -266,7 +277,7 @@ export function createStormTrackerCameraController({
   let destroyed = false;
   let correctionCount = 0;
   let activePointer = null;
-  let wheelGestureOpen = false;
+  let pendingWheelPixels = 0;
   let wheelQuietTimer = null;
   let pointerNavigating = false;
   let wheelNavigating = false;
@@ -279,14 +290,17 @@ export function createStormTrackerCameraController({
   function flushCameraFrame() {
     if(pendingFrame!==null){cancelFrame(pendingFrame);pendingFrame=null;}
     const dx=pendingDx,dy=pendingDy,mode=pendingMode;
-    const dirty=pendingCameraDirty || dx!==0 || dy!==0;
-    pendingDx=0;pendingDy=0;pendingCameraDirty=false;
+    const wheelPixels=pendingWheelPixels;
+    const dirty=pendingCameraDirty || dx!==0 || dy!==0 || wheelPixels!==0;
+    pendingDx=0;pendingDy=0;pendingWheelPixels=0;pendingCameraDirty=false;
     if(!dirty || destroyed)return;
     if(dx!==0 || dy!==0){
       if(mode==="pan")state=panTargetByScreenPixels(state,dx,dy,metresPerPixel());
       else if(mode==="orbit")state=orbitStateByPixels(state,dx,dy);
       else state=orbitStateByPixels(state,0,dy);
     }
+    if(wheelPixels!==0)state={...state,range:wheelZoomRange(state.range,wheelPixels,
+      {minimumRange,maximumRange})};
     onInteraction();
     applyState();
   }
@@ -670,8 +684,7 @@ export function createStormTrackerCameraController({
     wheelQuietTimer =
       setTimeout(
         () => {
-          wheelGestureOpen = false;
-          wheelQuietTimer = null;
+           wheelQuietTimer = null;
           flushCameraFrame();
           setNavigationSource("wheel", false);
         },
@@ -683,66 +696,21 @@ export function createStormTrackerCameraController({
     event.preventDefault();
     event.stopPropagation();
 
-    const wheel =
-      classifyWheelDelta(
-        event.deltaY,
-        event.deltaMode
-      );
+    const raw=Number(event.deltaY);
+    if(!Number.isFinite(raw)||raw===0)return;
 
-    if (
-      wheel.mode
-      === "none"
-    ) {
-      return;
-    }
-
-    setNavigationSource("wheel", true);
-    if (
-      wheel.mode
-      === "discrete"
-    ) {
-      const direction =
-        wheel.steps < 0
-          ? -1
-          : 1;
-
-      for (
-        let index = 0;
-        index < Math.abs(
-          wheel.steps
-        );
-        index++
-      ) {
-        state =
-          zoomStateByDirection(
-            state,
-            direction,
-            {
-              minimumRange,
-              maximumRange
-            }
-          );
-      }
-
-      pendingCameraDirty=true;
-      requestCameraFrame();
-      // Even discrete wheel wheels emit a burst of samples; do not restore
-      // overlapping satellite sources between individual zoom ticks.
-      closeWheelGestureLater();
-      return;
-    }
-
-    if (
-      !wheelGestureOpen
-    ) {
-      wheelGestureOpen =
-        true;
-
-      state=zoomStateByDirection(state,wheel.steps,{minimumRange,maximumRange});
-      pendingCameraDirty=true;
-      requestCameraFrame();
-    }
-
+    // Browser wheel events are not interchangeable: trackpads emit many
+    // small pixel deltas and conventional mice emit discrete ticks. The old
+    // handler dropped every smooth update after the first one for 180 ms,
+    // while a large tick could jump six zoom levels in one update.
+    const multiplier=event.deltaMode===1?40:
+      event.deltaMode===2?Math.max(1,container.clientHeight):1;
+    const delta=raw*multiplier;
+    setNavigationSource("wheel",true);
+    pendingWheelPixels=clamp(pendingWheelPixels+clamp(delta,-240,240),-400,400);
+    pendingCameraDirty=true;
+    requestCameraFrame();
+    // Keep high-resolution satellite layers stable until input settles.
     closeWheelGestureLater();
   }
 
@@ -814,7 +782,7 @@ export function createStormTrackerCameraController({
 
     destroy() {
       if(pendingFrame!==null)cancelFrame(pendingFrame);
-      pendingFrame=null;pendingDx=0;pendingDy=0;pendingCameraDirty=false;
+      pendingFrame=null;pendingDx=0;pendingDy=0;pendingWheelPixels=0;pendingCameraDirty=false;
       destroyed = true;
       clearInterval(correctionTimer);
 

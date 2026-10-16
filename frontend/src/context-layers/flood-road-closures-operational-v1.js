@@ -1,6 +1,6 @@
 import {QLD_TRAFFIC_OFFICIAL_CLOSED_ALL,qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
-import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=roads-lga-20261017-v1";
+import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=map-nav-fix-20261017-v1";
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
@@ -474,6 +474,7 @@ function nearestClosureIdByMarker({
 
 export function initialiseOperationalFloodRoadClosures({
   viewer,
+  mapCamera,
   CesiumRef = globalThis.Cesium
 } = {}) {
   if (
@@ -504,7 +505,7 @@ export function initialiseOperationalFloodRoadClosures({
 
   let layer;
   const explorer=createRoadClosureLgaExplorer({
-    viewer,CesiumRef,formatTime:formatQldTime,
+    viewer,CesiumRef,mapCamera,formatTime:formatQldTime,
     getLoadedAt:()=>layer?.lastLoadedAt??0,
     refresh:()=>layer.refresh({force:true})
   });

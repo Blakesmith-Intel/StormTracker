@@ -1,7 +1,7 @@
 import {groupRoadClosuresByLga,searchRoadCouncilGroups} from "./road-closure-lga-model-v1.js?v=roads-lga-20261017-v1";
 import {roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 export function createRoadClosureLgaExplorer({
- viewer,CesiumRef,refresh=()=>Promise.resolve(),getLoadedAt=()=>0,formatTime=()=>"",
+ viewer,CesiumRef,mapCamera,refresh=()=>Promise.resolve(),getLoadedAt=()=>0,formatTime=()=>"",
 }={}){
  const $=id=>document.getElementById(id);
  const dialog=$("roadLgaExplorer"),openButton=$("openRoadLgaExplorer"),
@@ -29,10 +29,12 @@ export function createRoadClosureLgaExplorer({
   dialog.close();
   if($("measureToggle")?.getAttribute("aria-pressed")==="true")
     $("measureClose")?.click();
-  viewer.camera.flyTo({
-   destination:CesiumRef.Cartesian3.fromDegrees(location[0],location[1],20000),
-   orientation:{heading:0,pitch:CesiumRef.Math.toRadians(-75),roll:0},
-   duration:0.9
+  // The managed StormTracker camera is authoritative. A raw Cesium flyTo
+  // gets cancelled by its camera correction guard before the map can move.
+  if (!mapCamera?.setView) throw Error("Managed map navigation is unavailable");
+  mapCamera.setView({
+   longitude:location[0],latitude:location[1],targetHeight:0,
+   range:20000,heading:0,pitch:CesiumRef.Math.toRadians(-75)
   });
  }
  function render(){

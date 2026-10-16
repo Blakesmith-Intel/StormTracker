@@ -88,14 +88,19 @@ try {
   assert.equal(ends,1);
   assert.equal(suspended,false);
 
+  const rangeBeforeWheel=controller.getState().range;
   emit("wheel",{deltaY:120,deltaMode:0});
   emit("wheel",{deltaY:120,deltaMode:0});
+  for(let n=0;n<4;n++)emit("wheel",{deltaY:15,deltaMode:0});
   assert.equal(starts,2,"successive wheel ticks share one detail suspension");
   assert.equal(ends,1,"wheel quiet period prevents tile thrash between ticks");
   assert.equal(frames.size,1,"discrete wheel burst schedules only one Cesium view update");
   const beforeWheelDraw=cameraChanges;
   runFrame();
   assert.equal(cameraChanges,beforeWheelDraw+1,"wheel burst renders exactly once");
+  assert.ok(Math.abs(controller.getState().range-
+    rangeBeforeWheel*Math.pow(1.22,3))<0.001,
+    "trackpad samples accumulate with discrete ticks instead of getting dropped");
   await new Promise(resolve=>setTimeout(resolve,35));
   assert.equal(ends,2,"wheel quiet period resumes detail once after zooming");
 

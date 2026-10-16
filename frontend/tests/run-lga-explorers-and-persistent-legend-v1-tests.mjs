@@ -61,7 +61,7 @@ const outageUi=read("../src/context-layers/power-outage-suburb-explorer-v1.js");
 assert.match(outageUi,/outage-suburb-map/);
 assert.match(outageUi,/focusPublishedOutages\(group\.items\)/);
 assert.match(outageUi,/event\.stopPropagation\(\)/);
-assert.match(outageUi,/CesiumRef\.Rectangle\.fromDegrees/);
+assert.match(outageUi,/mapCamera\.setView/);
 
 const roadUi=read("../src/context-layers/road-closure-lga-explorer-v1.js");
 const closureIntegration=read("../src/context-layers/flood-road-closures-operational-v1.js");
@@ -84,7 +84,7 @@ assert.match(closureIntegration,/explorer\.destroy\(\)/);
 assert.match(outageUi,/groupOutagesByLga/);
 assert.match(outageUi,/resolveQueenslandLocalityLgas/);
 assert.match(roadUi,/groupRoadClosuresByLga/);
-assert.match(roadUi,/viewer\.camera\.flyTo/);
+assert.match(roadUi,/mapCamera\.setView/);
 assert.doesNotMatch(roadUi,/\.drillPick\(/);
 assert.doesNotMatch(outageUi,/\.drillPick\(/);
 assert.doesNotMatch(roadUi,/setVisible\(/);

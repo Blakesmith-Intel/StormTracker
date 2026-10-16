@@ -50,3 +50,8 @@ assert.ok(controls.includes("Measurement finished."));
 assert.match(root,/simple-ui-measure-v2-mobile/);
 assert.doesNotMatch(controls,/loadBomReflectivityMosaic|loadDopplerFrame|buildStormTrack/);
 console.log("Friendly UI, distance and scale regression checks passed.");
+
+// Simple mode must expose QFD jobs alongside roads, outages and flood signals.
+assert.ok(css.includes(":not(.river-gauge-row):not(.qfd-rescue-row)"));
+assert.match(shell,/id="showQfdTechnicalRescues"/);
+assert.match(js,/initialiseOperationalQfdTechnicalRescues/);

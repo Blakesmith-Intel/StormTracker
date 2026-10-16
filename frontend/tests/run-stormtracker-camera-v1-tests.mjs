@@ -4,7 +4,8 @@ import {
   classifyWheelDelta,
   orbitStateByPixels,
   panTargetByScreenPixels,
-  zoomStateByDirection
+  zoomStateByDirection,
+  wheelZoomRange
 } from "../src/stormtracker-camera-v1.js";
 
 const base = {
@@ -138,6 +139,8 @@ assert.deepEqual(
   }
 );
 
-console.log(
-  "11 shared camera controller tests passed."
-);
+assert.ok(wheelZoomRange(100000,15)>100000,"smooth trackpad scroll must zoom");
+assert.ok(wheelZoomRange(100000,30)>wheelZoomRange(100000,15),"scroll samples must accumulate");
+assert.equal(wheelZoomRange(810,-500),800,"large zoom-in pulses obey minimum range");
+assert.ok(wheelZoomRange(100000,10000) < 230000,"single-frame zoom pulses are bounded");
+console.log("Camera pan, tilt, wheel and bounded continuous zoom tests passed.");

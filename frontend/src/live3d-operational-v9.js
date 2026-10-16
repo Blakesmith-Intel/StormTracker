@@ -44,7 +44,7 @@ import {
 
 import {
   createStormTrackerCameraController
-} from "./stormtracker-camera-v1.js?v=9.18.3-desktop-navigation-raf";
+} from "./stormtracker-camera-v1.js?v=map-wheel-20261017-v1";
 
 import {
   createStormTrackerTouchCameraGestures
@@ -171,11 +171,11 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=roads-lga-20261017-v1";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=map-nav-fix-20261017-v1";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=case-insensitive-lga-20261017-v2";
+} from "./context-layers/power-outages-operational-v1.js?v=map-nav-fix-20261017-v1";
 
 import {
   initialiseOperationalRiverGauges
@@ -720,11 +720,11 @@ viewer.dataSources.add(
 );
 
 initialiseOperationalFloodRoadClosures({
-  viewer
+  viewer,mapCamera
 });
 
 initialiseOperationalPowerOutages({
-  viewer
+  viewer,mapCamera
 });
 
 initialiseOperationalRiverGauges({

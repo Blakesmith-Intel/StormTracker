@@ -1,5 +1,5 @@
 import {addOfficialSourceRow,powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
-import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=case-insensitive-lga-20261017-v2";
+import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=map-nav-fix-20261017-v1";
 import {
   createPowerOutageLayer,
   powerOutageSummary
@@ -361,6 +361,7 @@ function outageIdNearPosition({
 
 export function initialiseOperationalPowerOutages({
   viewer,
+  mapCamera,
   CesiumRef =
     globalThis.Cesium
 } = {}) {
@@ -390,7 +391,7 @@ export function initialiseOperationalPowerOutages({
   // with no second fetch loop or additional map entity source.
   let layer;
   const explorer = createPowerOutageSuburbExplorer({
-    viewer,CesiumRef,formatTime:formatPowerOutageTime,
+    viewer,CesiumRef,mapCamera,formatTime:formatPowerOutageTime,
     refresh:()=>layer.refresh({force:true}),
     getLoadedAt:()=>layer?.lastLoadedAt??0
   });

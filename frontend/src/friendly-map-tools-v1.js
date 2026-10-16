@@ -74,7 +74,7 @@ export function createFriendlyMapTools({viewer,Cesium}) {
       status.textContent=`${formatMapDistance(segmentLength(points))} · ${points.length} point${points.length===1?"":"s"} · Tap to extend.`;
     }
     el("measureUndo").disabled=points.length===0;
-    el("measureDone").disabled=points.length<2;
+    el("measureDone").disabled=!active;
     el("measureClear").disabled=points.length===0;
   }
   function redraw(){

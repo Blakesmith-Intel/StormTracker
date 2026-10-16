@@ -1,0 +1,36 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {createBoundedRenderProviderCache} from "../src/bounded-render-provider-cache-v1.js";
+assert.throws(()=>createBoundedRenderProviderCache({limit:0}),RangeError);
+const lru=createBoundedRenderProviderCache({limit:3});
+const first={},second={},third={},fourth={};
+lru.set(first,Promise.resolve("first"));
+lru.set(second,Promise.resolve("second"));
+lru.set(third,Promise.resolve("third"));
+assert.equal(lru.size,3);
+assert.ok(lru.get(first),"LRU access moves current entry to newest");
+lru.set(fourth,Promise.resolve("fourth"));
+assert.equal(lru.get(second),undefined,"least-recently-used decoded provider must be released");
+assert.ok(lru.get(first));
+assert.equal(lru.size,3);
+lru.delete(first);
+assert.equal(lru.size,2);
+lru.clear();
+assert.equal(lru.size,0);
+const app=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
+const build=readFileSync(new URL("../../scripts/build-current-site.sh",import.meta.url),"utf8");
+assert.match(app,/INCREMENTAL_VOLUME_PREVIEW[\s\S]*scene\.globe\.tileCacheSize/);
+assert.match(app,/const measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW/);
+assert.match(app,/measuredRadarProviderCache\.clear\?\.\(\)/);
+assert.match(app,/window\.__stormtrackerMemoryDiagnostics/);
+assert.match(app,/maxCached:INCREMENTAL_VOLUME_PREVIEW\?8:18/);
+assert.match(app,/const retained = new Set\(INCREMENTAL_VOLUME_PREVIEW/);
+assert.match(build,/delta="_site\/preview\/incremental-3d"/);
+assert.match(build,/sealed V9\.19\.0|Sealed V9\.19\.0/i);
+for(const name of ["power-outages-operational-v1","flood-road-closures-operational-v1","river-gauges-operational-v1"]){
+ const source=readFileSync(new URL("../src/context-layers/"+name+".js",import.meta.url),"utf8");
+ assert.match(source,/\/preview\/incremental-3d\//,name+" must retain no-hover GPU safety");
+}
+const radar=readFileSync(new URL("../src/radar-source.js",import.meta.url),"utf8");
+assert.match(radar,/\/preview\/incremental-3d\//,"network guard must apply to new preview");
+console.log("Bounded decoded-provider LRU, storm preview memory diagnostics and GPU guard contracts verified.");

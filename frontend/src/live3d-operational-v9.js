@@ -109,6 +109,7 @@ import {
   supplementalObservedAnchor,shouldPrepareSupplementalForPlayback
 } from "./supplemental-observed-anchor-v1.js?v=v9-next-inferred-mosaic-no-clock-block-v2";
 import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-perf";
+import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=volume-delta-qa-1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -242,6 +243,11 @@ const viewer = new Cesium.Viewer(
 );
 
 const scene = viewer.scene;
+// Only in isolated QA: conserve idle terrain/imagery tile residency. Cesium
+// will never discard tiles required for the currently rendered frame.
+if(INCREMENTAL_VOLUME_PREVIEW){
+  scene.globe.tileCacheSize=window.matchMedia?.("(max-width:700px)").matches?48:72;
+}
 // An independent map control remains reachable even when the sidebar is hidden.
 const controlsSidebar=$("controlSidebar");
 const sidebarToggle=$("sidebarToggle");
@@ -307,6 +313,7 @@ const supplementalRadarDisplay=createSupplementalRadarDisplay({
   retireLayer:deferredImageryRetirement?.retire,
   onDisplay:(site,frame,utc)=>supplementalVolumeDisplay?.render(site,frame,utc),
   onHide:site=>supplementalVolumeDisplay?.hide(site),
+  maxCached:INCREMENTAL_VOLUME_PREVIEW?8:18,
   // Keep routine loading/selection counts off the map panel footer.
   onStatus:()=>{}
 });
@@ -1407,7 +1414,62 @@ function displayRgb(category) {
 // Cache real BoM frame raster providers across repeated loops; previously the
 // app decoded, reprojected, PNG-encoded and loaded each same frame on EVERY
 // playback pass, with work repeated at every playback speed.
-const measuredRadarProviderCache = new WeakMap();
+const measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW
+  ?createBoundedRenderProviderCache({
+    limit:window.matchMedia?.("(max-width:700px)").matches?3:6
+  }):new WeakMap();
+// On-demand QA only; never mistake Chromium's shared GPU process for a
+// tab-specific memory measurement. No periodic polling or retained snapshots.
+if(INCREMENTAL_VOLUME_PREVIEW){
+  window.__stormtrackerMemoryDiagnostics=()=>{
+    const unique=new Set();
+    let radarCategoryBytes=0;
+    for(const frame of [...hybridFrames,...radarFrameCache.values()]){
+      const buffer=frame?.categories?.buffer;
+      if(buffer&&!unique.has(buffer)){
+        unique.add(buffer);radarCategoryBytes+=buffer.byteLength;
+      }
+    }
+    const mem=performance.memory;
+    const heap=mem && Number.isFinite(mem.usedJSHeapSize)
+      ?{usedMb:Math.round(mem.usedJSHeapSize/1048576),
+         limitMb:Math.round(mem.jsHeapSizeLimit/1048576)}:null;
+    return {
+      source:"browser-estimate; GPU process is shared and cannot be measured per tab",
+      jsHeap:heap,activeRadarFrames:hybridFrames.length,
+      radarFrameCache:radarFrameCache.size,radarResultCache:radarResultCache.size,
+      activeCategoryMb:Math.round(radarCategoryBytes/1048576),
+      cachedProviderCount:measuredRadarProviderCache.size,
+      livePrimaryGlyphs:inferredCollection?.length??0,
+      secondaryGlyphs:supplementalVolumeDisplay?.glyphs??0,
+      trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
+        (hybridTrackFootprintCollection?.length??0),
+      cached3dFrames:volumeGeometryCache.size,
+      imageryLayers:viewer.imageryLayers.length,
+      deferredImageryRetirement:deferredImageryRetirement?.snapshot()??null,
+      globeTileCacheLimit:scene.globe.tileCacheSize,
+      canvasPixels:scene.canvas.width*scene.canvas.height,
+      canvasPixelRatio:viewer.resolutionScale
+    };
+  };
+  const details=document.createElement("details");
+  details.id="memoryQaPanel";
+  details.style.cssText="font:12px sans-serif;margin:10px 6px;padding:8px;border:1px solid #57717b;border-radius:6px;color:inherit";
+  const heading=document.createElement("summary");
+  heading.textContent="Memory QA (experimental)";
+  const button=document.createElement("button");
+  button.type="button";
+  button.textContent="Capture memory snapshot";
+  button.style.cssText="margin:8px 0;padding:6px;cursor:pointer";
+  const output=document.createElement("pre");
+  output.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;font:11px monospace";
+  output.textContent="Tap to sample. Browser GPU-process memory is not measured here.";
+  button.addEventListener("click",()=>{
+    output.textContent=JSON.stringify(window.__stormtrackerMemoryDiagnostics(),null,2);
+  });
+  details.append(heading,button,output);
+  controlsSidebar.append(details);
+}
 const reflectivityRgbLookup = new Uint8Array(16*3);
 for(const item of SOURCE_PALETTES.reflectivityRgb) {
   if(item.value>0 && item.value<16 && item.rgb) {
@@ -4676,7 +4738,15 @@ async function loadHybridSequence(automatic = false) {
   await showHybridFrame(hybridFrameIndex);
   if (resume) playback.play();
   // Bound decoded imagery and per-frame results while retaining worker tracks.
-  const retained = new Set([...radarResultCache.keys()].sort().slice(-48));
+  // Playback references remain in hybridFrames and hybridResults. The extra
+  // archive cache can release old decoded source data beyond that window.
+  const activeSourceTimes=new Set(hybridFrames
+    .filter(f=>!isTemporallyInferredRadarFrame(f)).map(f=>f.observedUtc));
+  const latestTimes=[...radarResultCache.keys()].sort().slice(
+    -(INCREMENTAL_VOLUME_PREVIEW?12:48));
+  const retained = new Set(INCREMENTAL_VOLUME_PREVIEW
+    ? [...activeSourceTimes,...latestTimes]
+    : latestTimes);
   for (const cache of [radarFrameCache, radarResultCache]) {
     for (const key of cache.keys()) if (!retained.has(key)) cache.delete(key);
   }
@@ -5010,6 +5080,7 @@ $("radarSite").addEventListener("change", () => runSourceLoad(async () => {
   resetTrackDisplaySelection();
   updateIndependentDopplerUi();
   radarFrameCache.clear(); radarResultCache.clear(); dopplerFrameCache.clear();
+  measuredRadarProviderCache.clear?.();
   trackedThrough = null; publishedSharedTimeline = null; latestFrame = null;
   lastSourceDiscoveryRegion = null;
   lastSourceDiscoveryAt = 0;

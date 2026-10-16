@@ -45,3 +45,18 @@ export function setVolumeDisplayOpacity(collection,percent) {
   }
   return touched;
 }
+
+// Update an existing Cesium glyph without creating a replacement primitive.
+// Keep its stored *unscaled* alpha in sync for subsequent opacity changes.
+export function updateVolumeDisplayPoint(point,options,sourceAlpha=1,percent=100) {
+  if(!point || typeof options?.color?.withAlpha!=="function")
+    throw new TypeError("Volume point/colour unavailable");
+  const alpha=safeAlpha(sourceAlpha);
+  if(options.position)point.position=options.position;
+  if(Number.isFinite(options.pixelSize))point.pixelSize=options.pixelSize;
+  if(Number.isFinite(options.width))point.width=options.width;
+  if(Number.isFinite(options.height))point.height=options.height;
+  point.color=options.color.withAlpha(alpha*volumeOpacityFactor(percent));
+  baseAlpha.set(point,alpha);
+  return point;
+}

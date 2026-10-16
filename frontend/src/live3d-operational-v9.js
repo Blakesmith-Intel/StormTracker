@@ -1475,6 +1475,7 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       secondarySiteGlyphs:supplementalVolumeDisplay?.siteGlyphs??{},
       supplementalProviderCache:supplementalRadarDisplay?.providerCacheSize??0,
       supplementalSourceFrameCache:supplementalRadarDisplay?.sourceFrameCacheSize??0,
+      supplementalCacheDiagnostics:supplementalRadarDisplay?.cacheDiagnostics??null,
       playbackTiming:playbackPerformanceMeter?.summary?.()??null,
       trackGlyphs:(hybridTrackVolumeCollection?.length??0)+
         (hybridTrackFootprintCollection?.length??0),

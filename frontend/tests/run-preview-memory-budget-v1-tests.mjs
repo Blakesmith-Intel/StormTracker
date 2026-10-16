@@ -26,7 +26,7 @@ assert.match(app,/window\.__stormtrackerMemoryDiagnostics/);
 assert.match(app,/maxCached:INCREMENTAL_VOLUME_PREVIEW\?8:18/);
 assert.match(app,/const retained = new Set\(INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(build,/delta="_site\/preview\/incremental-3d"/);
-assert.match(build,/pinned V9\.20\.0 production|approved production V9\.20\.0|Sealed V9\.19\.0/i);
+assert.match(build,/pinned V9\.20\.[01] production|approved production V9\.20\.[01]|Sealed V9\.19\.0/i);
 for(const name of ["power-outages-operational-v1","flood-road-closures-operational-v1","river-gauges-operational-v1"]){
  const source=readFileSync(new URL("../src/context-layers/"+name+".js",import.meta.url),"utf8");
  assert.match(source,/\/preview\/incremental-3d\//,name+" must retain no-hover GPU safety");

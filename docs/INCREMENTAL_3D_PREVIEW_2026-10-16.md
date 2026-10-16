@@ -22,3 +22,11 @@
 - Current CPU still computes per-frame summary metrics; the optimisation targets expensive Cesium/GPU primitive churn and avoids rebuilding unchanged columns.
 - The short morph is a **presentation animation**, not a claim about the physical storm's continuous evolution between BoM observations. Sudden bulk changes exceed the animation budget and update immediately.
 - Geometry resets on changing the primary radar, geometry footprint, sampling stride or display/inference settings; this is intentional.
+
+## Memory safeguards added in the follow-up QA
+- Primary and supplementary storm geometry uses one persistent collection each instead of storing a separate 3-D cloud for every scan. The existing release's 14-frame geometry cache is inactive on this preview route.
+- Cesium's idle Globe terrain/imagery tile cache is capped at 72 tiles (wide layouts) / 48 tiles (narrow layouts), while still retaining all currently visible tiles. Do not reduce this further without checking satellite continuity.
+- Keep only six decoded primary radar PNG providers in the browser's render cache (three on a narrow layout), while retaining **all observed frames currently needed for playback** and source-time alignment. Secondary raw frame promise cache is capped at eight.
+- Outside the active observed time window, keep only 12 most recent cached radar source/result references rather than 48. This does not alter the persistent browser history, source data, or scientific model.
+- The preview sidebar now provides **Memory QA (experimental)** → **Capture memory snapshot**. It reports live volume glyphs, decoded frame counts, Cesium imagery layers, capped cache size, browser JS heap where supported, and deferred image retirement. Chromium's GPU process is shared and cannot be attributed to this one tab from ordinary web APIs.
+- Test on both mobile and desktop: first load, five loop repetitions, switch primary radar three times, select three supplementary radars, rapidly pan/zoom, then compare Task Manager figures. Inspect browser WebGL errors separately; optimisation is not accepted if any observed science / 2-D frame source-UTC alignment changes.

@@ -67,7 +67,7 @@ assert.ok(view.includes('const title=create("button","outage-row-locate"'));
 assert.ok(view.includes('row.addEventListener("click"'));
 assert.ok(view.includes('event.target.closest("button,a,summary,details")'));
 assert.ok(view.includes('const label=create("summary","","Details"'));
-assert.ok(view.includes('if(!coords)return;'));
+assert.ok(view.includes("if(!points.length)return false;"));
 assert.ok(view.includes('22000'));
 assert.ok(css.includes("outage-row-locate"));
 assert.ok(!view.includes("scene.drillPick"));

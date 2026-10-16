@@ -125,8 +125,8 @@ node --check "_site/src/volume-display-opacity-v1.js"
 grep -Fq 'selectSupplementalVolumeSampleIndices' "_site/src/supplemental-radar-volume-v1.js"
 grep -Fq 'hashSupplementalPixel' "_site/src/supplemental-volume-sampling-v1.js"
 grep -Fq 'secondarySiteGlyphs' "_site/src/live3d-operational-v9.js"
-grep -Fq 'v9.20.2-secondary-3d-fix' "_site/live3d-operational-v9.html"
-grep -Fq 'v9.20.2-secondary-3d-fix' "_site/index.html"
+grep -Fq 'v9.20.1-secondary-3d-fix' "_site/live3d-operational-v9.html"
+grep -Fq 'v9.20.1-secondary-3d-fix' "_site/index.html"
 node --check "_site/src/supplemental-volume-sampling-v1.js"
 
 # V9.20.2 operator-accepted QLD/NSW satellite continuity and quality lock.

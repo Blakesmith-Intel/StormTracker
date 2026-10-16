@@ -19,6 +19,18 @@ export function createRoadClosureLgaExplorer({
  let groups=[],feedStatus={kind:"loading",message:"Waiting for QLDTraffic…"},
    loaded=false,destroyed=false,busy=false;
  const openKeys=new Set();
+ const sidebarCount=$("sidebarRoadClosureCount");
+ function updateSidebarCount(){
+  if(!sidebarCount)return;
+  if(!loaded){
+   sidebarCount.textContent=feedStatus.kind==="error"?"Unavailable":"Checking…";
+   return;
+  }
+  const count=new Set(groups.flatMap(group=>group.items.map(item=>item.id))).size;
+  sidebarCount.textContent=count+" closure"+(count===1?"":"s");
+  openButton.setAttribute("aria-label","Browse "+count+" unplanned all-traffic road closures by council");
+ }
+
  function addDetail(dl,label,value){
   const text=String(value??"").trim();if(!text)return;
   dl.append(make("dt","",label),make("dd","",text));
@@ -102,13 +114,14 @@ export function createRoadClosureLgaExplorer({
     parent.append(inner);list.append(parent);
   }
  }
- function updateFeatures(features){groups=groupRoadClosuresByLga(features);loaded=true;render();}
+ function updateFeatures(features){groups=groupRoadClosuresByLga(features);loaded=true;updateSidebarCount();render();}
  function updateStatus(next){
   if(next)feedStatus=next;
   status.textContent=feedStatus.message||"QLDTraffic operational closure feed";
   status.dataset.kind=feedStatus.kind||"normal";
   if(feedStatus.kind==="error"&&/source expired|old closure markers removed/i.test(feedStatus.message||""))
    {loaded=false;groups=[];}
+  updateSidebarCount();
   render();
  }
  const open=()=>{dialog.showModal();render();input.focus();if(!getLoadedAt()&&!busy)reload();};
@@ -124,6 +137,7 @@ export function createRoadClosureLgaExplorer({
  closeButton.addEventListener("click",close);
  input.addEventListener("input",search);
  refreshButton.addEventListener("click",reload);
+ updateSidebarCount();
  return {updateFeatures,updateStatus,destroy(){
   destroyed=true;
   openButton.removeEventListener("click",open);

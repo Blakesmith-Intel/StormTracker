@@ -144,7 +144,7 @@ import {
 import {
   BASEMAP_IDS,
   createStormTrackerBasemapManager
-} from "./context-layers/basemap-manager-v1.js?v=9.18.9-nsw-regional-dea-v4";
+} from "./context-layers/basemap-manager-v1.js?v=global-satellite-blue-gap-20261016-v1";
 
 import {
   createQueenslandTownLabelLayer

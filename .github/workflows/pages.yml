@@ -116,7 +116,11 @@ jobs:
             "$base/src/context-layers/river-gauge-layer-v1.js" | grep -F '"#e53935"' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/data/nsw-radar-places-v1.json" | grep -F 'StormTrackerNSWRadarPlacesV1' >/dev/null
-          echo 'Verified exact V9.19.0 production root and historical accepted V9.18 diagnostic.'
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \\
+            "$base/preview/incremental-3d/BUILD.txt" | grep -Fq 'EXPERIMENTAL incremental 3-D QA'
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \\
+            "$base/preview/incremental-3d/src/incremental-volume-renderer-v1.js" | grep -Fq 'createIncrementalVolumeRenderer'
+          echo 'Verified sealed V9.19.0 production, V9.18 QA and experimental incremental 3-D preview.'
 
       - name: Seal V9.19.0 annotated tag only after public verification
         if: github.ref == 'refs/heads/main'

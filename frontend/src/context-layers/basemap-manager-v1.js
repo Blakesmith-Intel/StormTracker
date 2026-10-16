@@ -106,6 +106,27 @@ export function createDeaRegionalImageryProvider(Cesium) {
   });
 }
 
+// Persistent satellite underlay for missing or unavailable DEA/QLD/NSW
+// tiles. Preserve original high-resolution official imagery above this layer,
+// without exposing a street map or the default blue Cesium globe.
+export const GLOBAL_SATELLITE_FALLBACK = Object.freeze({
+  tileTemplate:"https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  maximumLevel:19,
+  label:"Esri World Imagery · continuous satellite fallback"
+});
+
+export function createGlobalSatelliteFallbackProvider(Cesium){
+  return new Cesium.UrlTemplateImageryProvider({
+    url:GLOBAL_SATELLITE_FALLBACK.tileTemplate,
+    tilingScheme:new Cesium.WebMercatorTilingScheme(),
+    tileWidth:256,tileHeight:256,
+    maximumLevel:GLOBAL_SATELLITE_FALLBACK.maximumLevel,
+    credit:new Cesium.Credit(
+      "Satellite fallback: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+    )
+  });
+}
+
 export const REFERENCE_LABELS =
   Object.freeze({
     tileTemplate:
@@ -476,11 +497,17 @@ export function createStormTrackerBasemapManager({
     const created=[],subscriptions=[];
     let nextStreet,nextRegional=null,nextNsw=null,nextQld=null;
     try{
-      nextStreet=imagery.addImageryProvider(
-        new Cesium.OpenStreetMapImageryProvider({
+      const usingSatelliteFallback=
+        id===BASEMAP_IDS.QLD_IMAGERY && persistentSatelliteCoverage;
+      const baseProvider=usingSatelliteFallback
+        ?createGlobalSatelliteFallbackProvider(Cesium)
+        :new Cesium.OpenStreetMapImageryProvider({
           url:"https://tile.openstreetmap.org/"
-        }),0);
+        });
+      nextStreet=imagery.addImageryProvider(baseProvider,0);
       created.push(nextStreet);
+      if(usingSatelliteFallback)
+        subscriptions.push([baseProvider,"Global satellite fallback"]);
       if(id===BASEMAP_IDS.QLD_IMAGERY){
         const regionalProvider=createDeaRegionalImageryProvider(Cesium);
         nextRegional=imagery.addImageryProvider(regionalProvider,1);
@@ -509,7 +536,10 @@ export function createStormTrackerBasemapManager({
       // genuine resolution advantage over the 30m DEA regional composite.
       // At regional range, one consistent geomedian avoids rectangular
       // mixed-date aerial-photo blocks visible in northern NSW.
-      streetLayer.show=false;
+      // This layer is genuine worldwide *satellite* imagery, retained
+      // beneath the original high-res sources throughout every camera move.
+      // Missing DEA imagery can never reveal an empty blue globe anymore.
+      streetLayer.show=true;
       if(qldDetailLayer){qldDetailLayer.show=true;qldDetailLayer.alpha=1;}
       nswRegionalDetailActive=false;
       if(nswDetailLayer){nswDetailLayer.show=false;nswDetailLayer.alpha=1;}
@@ -529,7 +559,7 @@ export function createStormTrackerBasemapManager({
     if(persist && !forceStreetOnly)persistBasemap(storage,id);
     onStatus(id===BASEMAP_IDS.QLD_IMAGERY
       ? persistentSatelliteCoverage
-        ? "Satellite: QLD continuous imagery · DEA regional NSW · NSW detailed on close zoom"
+        ? "Satellite: QLD continuous imagery · DEA regional NSW · global satellite gap fallback"
         : "Satellite: DEA regional (2025) · automatic official QLD/NSW detail on zoom"
       : forceStreetOnly
         ? "STREET-ONLY TEST · Satellite basemaps disabled (no DEA/QLD/NSW tile downloads)"

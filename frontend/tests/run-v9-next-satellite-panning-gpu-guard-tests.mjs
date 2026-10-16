@@ -13,7 +13,7 @@ const html=read("../live3d-operational-v9.html");
 const index=read("../index.html");
 assert.match(index,/live3d-operational-v9\.html\?v=[^"]*nsw-regional-dea-v5/);
 assert.match(html,/live3d-operational-v9\.js\?v=[^"]*nsw-regional-dea-v5/);
-assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*nsw-regional-dea-v4/);
+assert.match(controller,/basemap-manager-v1\.js\?v=[^"]*global-satellite-blue-gap-20261016-v1/);
 for(const part of ["power-outages","flood-road-closures"]){
   assert.match(controller,new RegExp(part+"-operational-v1\\.js\\?v=[^\\\"]*hover-qa-v2"),
     "closure/power hover guard imports must carry fresh cache keys");
@@ -24,7 +24,10 @@ assert.match(controller,/river-gauges-operational-v1\.js\?v=9\.18\.11-gauge-gree
 
 assert.match(basemap,/if\(navigationActive\)return "navigation";/);
 assert.match(controller,/persistentSatelliteCoverage:[\s\S]*?\/preview\/next-baseline\//);
-assert.match(basemap,/streetLayer\.show=false;/);
+assert.match(basemap,/streetLayer\.show=true;/,
+  "Do not hide the persistent global satellite underlay beneath missing DEA tiles");
+assert.match(basemap,/createGlobalSatelliteFallbackProvider\(Cesium\)/);
+assert.match(basemap,/GLOBAL_SATELLITE_FALLBACK/);
 assert.match(basemap,/qldDetailLayer\.show=true;qldDetailLayer\.alpha=1;/);
 assert.match(basemap,/nswDetailLayer\.show=false;nswDetailLayer\.alpha=1;/,
   "regional NSW must stay on uniform DEA rather than a forced mixed-age aerial mosaic");

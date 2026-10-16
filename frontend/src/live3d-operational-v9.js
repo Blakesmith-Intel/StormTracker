@@ -272,9 +272,7 @@ function setSidebarCollapsed(collapsed){
 }
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.hidden));
 // QA-only usability controls; separate geodesic annotations cannot affect weather.
-if(window.location.pathname.includes("/preview/incremental-3d/")) {
-  createFriendlyMapTools({viewer,Cesium});
-}
+createFriendlyMapTools({viewer,Cesium});
 
 // Historical cyclone QA exists ONLY in the isolated test preview.
 // Neither the sealed production source nor normal live view loads/replays

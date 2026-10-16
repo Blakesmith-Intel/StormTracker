@@ -1457,6 +1457,28 @@ if(INCREMENTAL_VOLUME_PREVIEW){
     };
   };
 }
+if(INCREMENTAL_VOLUME_PREVIEW){
+  // Passive, tap-to-sample UI rather than a polling monitor. Operators can
+  // compare frame/cache residency without opening DevTools on a phone.
+  const details=document.createElement("details");
+  details.id="memoryQaPanel";
+  details.style.cssText="font:12px sans-serif;margin:10px 6px;padding:8px;border:1px solid #57717b;border-radius:6px;color:inherit";
+  const heading=document.createElement("summary");
+  heading.textContent="Memory QA (experimental)";
+  const button=document.createElement("button");
+  button.type="button";
+  button.textContent="Capture memory snapshot";
+  button.style.cssText="margin:8px 0;padding:6px;cursor:pointer";
+  const output=document.createElement("pre");
+  output.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;font:11px monospace";
+  output.textContent="Tap to sample. Browser GPU-process memory is not measured here.";
+  button.addEventListener("click",()=>{
+    const v=window.__stormtrackerMemoryDiagnostics();
+    output.textContent=JSON.stringify(v,null,2);
+  });
+  details.append(heading,button,output);
+  controlsSidebar.append(details);
+}
 const reflectivityRgbLookup = new Uint8Array(16*3);
 for(const item of SOURCE_PALETTES.reflectivityRgb) {
   if(item.value>0 && item.value<16 && item.rgb) {

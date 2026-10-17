@@ -63,5 +63,5 @@ assert.match(sourceQfd,/qfdSymbolFor\(group,officialSymbols\)/);
 assert.match(sourceQfd,/Provisional icons/);
 assert.match(css,/#qfdIncidentLegendDetails|\.qfd-incident-key/);
 assert.match(shell,/v6-sidebar-refresh-track/);
-assert.match(html,/playback-sidebar-hierarchy-v1\.css\?v=original-status-flood-glyph-layers-off-20261017-v2/);
+assert.match(html,/playback-sidebar-hierarchy-v1\.css\?v=storm-compact-20261017-v3/);
 console.log("Radar playback UI hierarchy, persistent terrain, traffic-light key and QFD legend passed.");

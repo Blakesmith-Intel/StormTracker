@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import {
   officialRecentTableTarget,
   parseBomRecentWaterLevels,
-  recentFloodHistoryCandidate
+  recentFloodHistoryCandidate,
+  recentFloodHistoryGap,
+  classifyBoMRecentHistoryFailure,
+  fetchBoMRecentHistory
 } from "../src/context-layers/bom-recent-river-history-v1.js";
 const now=Date.UTC(2026,9,8,8,30); // 18:30 AEST
 const url=officialRecentTableTarget("/fwo/IDQ65388/IDQ65388.540384.plt.shtml");
@@ -55,4 +58,39 @@ const existing={"bom:540384":[
  {time:now-60*60000,height:1.0},{time:now-15*60000,height:1.6}
 ]};
 assert.equal(recentFloodHistoryCandidate(feature(false,"minor"),existing,now),null);
+// A missing official table URL is a genuine screening gap, not a negative
+// result. A recent observed rise must align with the latest bulletin time.
+const missing={...feature(false,"minor"),properties:{
+  ...feature(false,"minor").properties,STORMTRACKER_RECENT_DATA_HREF:""
+}};
+assert.equal(recentFloodHistoryCandidate(missing,{},now),null);
+assert.equal(recentFloodHistoryGap(missing,{},now)?.target,null);
+assert.equal(recentFloodHistoryGap(feature(false,"minor"),existing,now),null);
+const staleExisting={"bom:540384":[
+  {time:now-80*60000,height:1.0},{time:now-40*60000,height:1.6}
+]};
+assert.ok(recentFloodHistoryGap(feature(false,"minor"),staleExisting,now),
+  "A rise predating the latest bulletin must still be marked unassessed");
+
+const target=officialRecentTableTarget("/fwo/IDQ65388/IDQ65388.540384.plt.shtml");
+for(const [status,code,scope] of [
+  [422,"no_usable_observations","station"],
+  [404,"station_history_not_published","station"],
+  [503,"source_access_denied","service"],
+  [429,"source_rate_limited","service"]
+]){
+  let thrown;
+  try{
+    await fetchBoMRecentHistory(target,{fetchImpl:async()=>new Response(
+      JSON.stringify({code,upstreamStatus:status}),{
+        status,headers:{"Content-Type":"application/json"}
+      })});
+  }catch(e){thrown=e;}
+  assert.ok(thrown,"Expected typed BoM history HTTP error");
+  assert.equal(thrown.status,status);
+  assert.equal(thrown.code,code);
+  assert.equal(thrown.scope,scope);
+  assert.equal(classifyBoMRecentHistoryFailure(thrown),scope);
+}
+assert.equal(classifyBoMRecentHistoryFailure(new TypeError("network")),"service");
 console.log("Recent BoM table parser checks passed: strict host/product whitelist, AEST time, timestamp uniqueness, conflicting records rejected, 48h bounds and only relevant rising gauge backfill.");

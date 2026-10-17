@@ -49,11 +49,11 @@ const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta
 assert.match(runtime,/function clearReflectivityForDoppler\(\)[\s\S]*?clearReflectivityOverlaysForDoppler\(\{/);
 assert.match(runtime,/if \(selectedLoopSelection\(\) === DOPPLER_AVAILABLE_LOOP_VALUE\)\s*clearReflectivityForDoppler\(\);\s*renderDopplerOverlay\(\)/,
   "Changing the selector must remove old radar overlays BEFORE the async Doppler load");
-assert.match(runtime,/showSupplementalRadarSites\(null\);\s*\/\/ All reflectivity-only objects[\s\S]*?clearReflectivityForDoppler\(\);/,
+assert.match(runtime,/showSupplementalRadarSites\(null\);\s*supplementalDopplerDisplay\.setEnabled\(true\);\s*\/\/ All reflectivity-only objects[\s\S]*?clearReflectivityForDoppler\(\);/,
   "Actual Doppler loop must enforce complete cleanup even on direct programmatic load");
 assert.match(runtime,/function renderHybridTracks\(index\) \{\s*\/\/ Source-mode check[\s\S]*?clearReflectivityForDoppler\(\);\s*return;/,
   "Queued old radar work must not redraw selected cone after entering Doppler");
-assert.match(runtime,/windPlaybackFrames=\[\];\s*hybridSource\.show=true;\s*\$\("showTrackLabels"\)\.disabled=false;/,
+assert.match(runtime,/supplementalDopplerDisplay\.setEnabled\(false\);\s*windPlaybackFrames=\[\];\s*hybridSource\.show=true;\s*\$\("showTrackLabels"\)\.disabled=false;/,
   "Returning to measured reflectivity restores label controls");
 assert.match(runtime,/renderHybridTracks\(requestedIndex\);/,
   "Returning to reflectivity re-creates current-frame geometry from measured tracking");

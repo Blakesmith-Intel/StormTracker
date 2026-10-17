@@ -222,3 +222,14 @@ assert.match(html,/id="dopplerOverlayRadar" value="66"/);
 passed++;
 console.log("PASS multi radar real UI wired, original primary science and Doppler selector retained");
 console.log(passed+" browser-only V9 multi-radar display contract tests passed.");
+
+const multiWindSource=readFileSync(fileURLToPath(new URL("../src/multi-doppler-display-v1.js",import.meta.url)),"utf8");
+assert.match(runtime,/createSupplementalDopplerDisplay/);
+assert.match(runtime,/supplementalDopplerDisplay\.configure\(primary,additionalRadarSiteIds\)/);
+assert.match(runtime,/supplementalDopplerDisplay\.showAt\(source\.observedUtc\)/);
+assert.match(runtime,/supplementalDopplerDisplay\.setEnabled\(true\)/);
+assert.match(runtime,/supplementalDopplerDisplay\.setEnabled\(false\)/);
+assert.match(runtime,/loadDopplerHistory\(id\),loadDopplerDiagnostic\(id\)/);
+assert.match(html,/id="multiRadarDopplerStatus"/);
+assert.match(multiWindSource,/nearestDopplerFrameForTime/);
+console.log("Additional native Doppler independently follows measured UTC without modifying source data.");

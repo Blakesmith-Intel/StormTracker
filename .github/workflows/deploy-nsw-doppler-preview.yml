@@ -1,14 +1,8 @@
 name: Deploy Brewarrina Doppler isolated NSW preview relay
 
+# Manual only until Cloudflare's NSW Worker deployment permission is fixed.
+# The first automatic deployment returned "No access to the specified resource".
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/deploy-nsw-doppler-preview.yml"
-      - "relay/worker.js"
-      - "relay/doppler-history-v1.js"
-      - "relay/wrangler-nsw-preview.jsonc"
-      - "frontend/src/border-radar-sites-v1.js"
   workflow_dispatch:
 
 permissions:

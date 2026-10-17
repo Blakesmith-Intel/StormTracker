@@ -104,7 +104,7 @@ test("radar-only strong radial cluster remains explicitly non-damaging-wind clas
   assert.equal(out.alerts[0].type,"wind");
   assert.equal(out.alerts[0].velocity_kmh,-65);
   assert.equal(out.alerts[0].classification,undefined);
-  assert.match(out.alerts[0].caveat,/NO surface gust estimate/);
+  assert.match(out.alerts[0].caveat,/NOT a surface gust/);
 });
 test("velocity couplet alone is not diagnosed as tornado",()=>{
   const {frame,result}=fixture();

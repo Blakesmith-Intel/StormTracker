@@ -14,11 +14,11 @@ const sites={
   "08":{dopplerProduct:"IDR08I"},
   "19":{dopplerProduct:"IDR19I"},
   "24":{dopplerProduct:null},
-  "93":{dopplerProduct:"IDR93I",dopplerIntegrated:false}
+  "93":{dopplerProduct:"IDR93I",dopplerIntegrated:true}
 };
 assert.deepEqual(
   supportedSecondaryWindSites("66",["66","50","08","50","24","93","19"],sites),
-  ["50","08","19"]
+  ["50","08","93","19"]
 );
 const frames=[
   {filename:"f05",observedUtc:"2026-10-17T00:05:00Z"},
@@ -70,24 +70,26 @@ async function until(condition,msg){
   throw Error("Timed out: "+msg);
 }
 ctrl.configure("66",["50","08","93","24"]);
-assert.deepEqual(ctrl.snapshot().selected,["50","08"]);
+assert.deepEqual(ctrl.snapshot().selected,["50","08","93"]);
 ctrl.setEnabled(true);
 ctrl.showAt("2026-10-17T00:12:00Z");
-await until(()=>ctrl.visibleSites.length===2,"two genuine extra sites");
-assert.deepEqual(ctrl.visibleSites.sort(),["08","50"]);
-assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,2);
+await until(()=>ctrl.visibleSites.length===3,"three genuine extra sites including Brewarrina");
+assert.deepEqual(ctrl.visibleSites.sort(),["08","50","93"]);
+assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,3);
 assert.ok(hits.some(s=>s==="frame:08:f10"));
 assert.ok(hits.some(s=>s==="frame:50:f10"));
-assert.ok(!hits.some(s=>s.includes(":93")||s.includes(":24")));
+assert.ok(hits.some(s=>s==="frame:93:f10"));
+assert.ok(!hits.some(s=>s.includes(":24")));
 assert.ok(blendDurations.every(ms=>ms===SECONDARY_WIND_BLEND_MS),
   "Secondary wind transitions must preserve primary-like staged presentation");
 const before=hits.length;
 await ctrl.prewarm("2026-10-17T00:15:00Z");
 assert.ok(hits.filter(s=>s==="frame:50:f15").length===1);
 assert.ok(hits.filter(s=>s==="frame:08:f15").length===1);
+assert.ok(hits.filter(s=>s==="frame:93:f15").length===1);
 ctrl.showAt("2026-10-17T00:12:00Z");
 await new Promise(r=>setTimeout(r,15));
-assert.equal(hits.length,before+2,"prewarming one future real scan per site should not refetch the current scan");
+assert.equal(hits.length,before+3,"prewarming one future real scan per site should not refetch the current scan");
 
 ctrl.showAt("2026-10-17T00:30:00Z");
 await until(()=>ctrl.visibleSites.length===0,"out-of-range source clears");
@@ -96,7 +98,7 @@ ctrl.setEnabled(false);
 assert.equal(visibleLayers.length,0,"rain-only mode must clear all wind images");
 ctrl.setEnabled(true);
 ctrl.showAt("2026-10-17T00:15:00Z");
-await until(()=>ctrl.visibleSites.length===2,"restore wind after rain");
+await until(()=>ctrl.visibleSites.length===3,"restore all three supported wind sites after rain");
 ctrl.configure("66",[]);
 assert.equal(visibleLayers.length,0,"unselect site must retire its imagery");
 

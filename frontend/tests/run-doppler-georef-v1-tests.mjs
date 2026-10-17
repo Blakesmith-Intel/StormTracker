@@ -187,3 +187,30 @@ for (
 console.log(
   "19 Doppler geolocation V1 tests passed."
 );
+
+const brew=BOM_DOPPLER_MAPS["93"];
+assert.equal(brew.map,"IDR933.map");
+assert.equal(brew.radialRangeKm,128);
+assert.equal(brew.latitude,-29.96);
+assert.equal(brew.longitude,146.81);
+const brewCentre=dopplerMapCoordinateToLonLat("93",256,256);
+assert.ok(distanceM(brewCentre.longitude,brewCentre.latitude,146.81,-29.96)<1,
+  "BoM Brewarrina radar centre must be <1m from the geometric midpoint");
+for(const [label,pixel] of Object.entries({
+  north:[256,0],south:[256,512],east:[512,256],west:[0,256]
+})){
+  const world=dopplerMapCoordinateToLonLat("93",...pixel);
+  const distance=distanceM(146.81,-29.96,world.longitude,world.latitude);
+  assert.ok(Math.abs(distance-128000)<100,
+    "Brewarrina "+label+" 128 km geodesic range residual was "+distance);
+  const roundTrip=lonLatToDopplerMapCoordinate("93",world.longitude,world.latitude);
+  assert.ok(Math.abs(roundTrip.column-pixel[0])<1e-7);
+  assert.ok(Math.abs(roundTrip.row-pixel[1])<1e-7);
+}
+for(const [column,row] of [[15,15],[128,384],[500,500],[256,256]]){
+  const world=dopplerMapCoordinateToLonLat("93",column,row);
+  const roundTrip=lonLatToDopplerMapCoordinate("93",world.longitude,world.latitude);
+  assert.ok(Math.abs(roundTrip.column-column)<1e-7);
+  assert.ok(Math.abs(roundTrip.row-row)<1e-7);
+}
+console.log("Brewarrina BoM site-centred Gnomonic projection, 128 km cardinal extents and inverse pixel georeferencing passed.");

@@ -1350,7 +1350,7 @@ function configureRadarSite() {
 }
 for (const site of Object.values(BORDER_RADAR_SITES).sort((a,b) => a.name.localeCompare(b.name))) {
   const option = document.createElement("option"); option.value = site.id;
-  option.textContent = `${site.name}${site.state==="NSW" ? " (NSW)" : ""}${site.dopplerIntegrated===false ? " · Doppler pending" : site.dopplerProduct ? "" : " · radar only"}`;
+  option.textContent = `${site.name}${site.state==="NSW" ? " (NSW)" : ""}${site.dopplerProduct && site.dopplerIntegrated!==false ? " · Doppler" : " · Rain only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
 // Primary alone owns storm tracks and inferred 3-D science. Extra sites
@@ -1435,10 +1435,8 @@ for(const site of Object.values(BORDER_RADAR_SITES).sort((a,b)=>
   label.append(checkbox,name);
   const type=document.createElement("small");
   type.textContent=site.dopplerProduct && site.dopplerIntegrated!==false
-    ? " · Doppler + rain"
-    : site.dopplerIntegrated===false
-      ? " · rain (Doppler pending verification)"
-      : " · rain only";
+    ? site.id==="93" ? " · Doppler + rain (mapped from BoM site/range)" : " · Doppler + rain"
+    : " · Rain only";
   label.append(type);
   $("multiRadarChecklist").append(label);
   checkbox.addEventListener("change",()=>{

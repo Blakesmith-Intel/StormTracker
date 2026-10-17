@@ -22,6 +22,23 @@ export const BOM_DOPPLER_MAPS =
         projection: 'Gnomonic', latitude: site.dopplerLatitude, longitude: site.dopplerLongitude,
         nominalPanel: true, recoveredCentrePixel: Object.freeze({column:256,row:256})
       })])),
+    // Brewarrina official BoM site coordinates: 29.96 S, 146.81 E.
+    // IDR93I is the 128 km radial-velocity product; its 512 × 512 weather
+    // panel therefore spans ±128 km in Gnomonic projected metres.
+    // This is a mathematically georeferenced DISPLAY placement, not a
+    // substitute for validating the source raster control-point offset.
+    "93": Object.freeze({
+      id: "93",
+      product: "IDR93I",
+      map: "IDR933.map",
+      projection: "Gnomonic",
+      latitude: -29.96,
+      longitude: 146.81,
+      nominalPanel: true,
+      radialRangeKm: 128,
+      siteCoordinateSource: "BoM NSW radar site information",
+      recoveredCentrePixel: Object.freeze({column:256,row:256})
+    }),
     "08": Object.freeze({
       id: "08",
       product: "IDR08I",

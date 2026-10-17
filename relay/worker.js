@@ -21,7 +21,7 @@ import {
   BOM_RIVER_TIDE_GAUGE_QUERY_URL
 } from "../frontend/src/context-layers/river-gauges-v1.js";
 
-import {parseBomRecentWaterLevels} from "../frontend/src/context-layers/bom-recent-river-history-v1.js";
+import {inspectBomRecentWaterLevelTable} from "../frontend/src/context-layers/bom-recent-river-history-v1.js";
 
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
@@ -938,7 +938,7 @@ async function relayRiverRecentHistory(request,incoming,origin){
     return riverHistoryError(upstreamStatus>=500?503:502,"bom_upstream_http",
       "BoM station history upstream HTTP "+upstreamStatus,origin,upstreamStatus);
   }
-  let html,samples;
+  let html,inspection;
   try {
     html=await response.text();
     if(html.length>1200000)
@@ -946,22 +946,26 @@ async function relayRiverRecentHistory(request,incoming,origin){
         "BoM recent-data response too large",origin);
     // A login/error page or changed BoM HTML is a shared source-format fault,
     // NOT proof an individual station has no recent observations.
-    if(!/<table\b[^>]*\bid\s*=\s*["']tableStyle1["']/i.test(html))
+    inspection=inspectBomRecentWaterLevelTable(html,{
+      nowMs:Date.now(),maxAgeHours:48
+    });
+    if(!inspection.formatRecognised)
       return riverHistoryError(502,"source_format_mismatch",
-        "BoM station history table is absent or changed",origin);
-    samples=parseBomRecentWaterLevels(html,{nowMs:Date.now(),maxAgeHours:48});
+        "BoM station history table format does not match verified readings",origin);
   }catch{
     return riverHistoryError(502,"source_parse_failure",
       "BoM history response unreadable",origin);
   }
-  if(!samples.length)
-    return riverHistoryError(422,"no_usable_observations",
-      "BoM station has no parseable recent observations",origin);
+  const samples=inspection.samples;
+  const availability=samples.length?"available":"no_recent_observations";
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");
-  headers.set("Cache-Control","public, max-age=300");
+  // Missing station observations are a valid data state, not an HTTP error.
+  // Cache briefly to allow genuinely new flood telemetry to be discovered.
+  headers.set("Cache-Control",samples.length?"public, max-age=300":"public, max-age=60");
   return new Response(request.method==="HEAD"?null:JSON.stringify({
-    format:"StormTrackerBomRecentRiverHistoryV1",product,station,samples
+    format:"StormTrackerBomRecentRiverHistoryV1",
+    product,station,availability,samples
   }),{status:200,headers});
 }
 

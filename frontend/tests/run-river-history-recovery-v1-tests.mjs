@@ -37,8 +37,11 @@ const fetchImpl=async url=>{
       code:"source_transport_failure"}),{
         status:503,headers:{"Content-Type":"application/json"}});
     if(mode==="station-missing"&&u.includes("540385"))
-      return new Response(JSON.stringify({code:"no_usable_observations"}),{
-        status:422,headers:{"Content-Type":"application/json"}});
+      return {ok:true,json:async()=>({
+        format:"StormTrackerBomRecentRiverHistoryV1",
+        availability:"no_recent_observations",
+        product:"IDQ65388",station:"540385",samples:[]
+      })};
     return {ok:true,json:async()=>({
       format:"StormTrackerBomRecentRiverHistoryV1",
       product:"IDQ65388",station:new URL(u).searchParams.get("station"),
@@ -103,9 +106,16 @@ assert.ok(statuses.some(s=>s.screeningIncomplete===0&&s.kind==="ok"),
 // processing the next station, and leave the first explicitly unassessed.
 clock+=16*minute;mode="station-missing";features.push(gauge("540385"),gauge("540386"));
 await layer.refresh({force:true});
-await waitHistory(()=>layer.diagnostics?.recentHistory?.failed===1);
+await waitHistory(()=>layer.diagnostics?.recentHistory?.noData===1);
+assert.equal(layer.diagnostics.recentHistory.failed,0,
+  "A valid empty station table is not a gateway error");
 assert.ok(layer.diagnostics.historyScreeningIncomplete>=1);
 assert.equal(layer.diagnostics.historySourceMissing,0);
 assert.equal(layer.recentHistoryRequestCount,3);
 assert.ok(statuses.at(-1).screeningIncomplete>=1);
+assert.equal(statuses.at(-1).historyNoData,1);
+const callsAfterEmpty=historyCalls;
+await layer.refresh({force:true});
+assert.equal(historyCalls,callsAfterEmpty,
+  "No repeated no-data station request inside the 15-minute cooldown");
 console.log("River history recovery checks passed: source failure cooldown and retry, current map independence, truthful screening gap, restored verified signal, and station-specific no-data.");

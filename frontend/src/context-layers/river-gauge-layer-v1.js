@@ -372,10 +372,10 @@ export function createRiverGaugeLayer({
     // A previously failed or insufficient station becomes eligible again
     // after its own cooldown. Cap each pass and fetch serially to protect BoM.
     const candidates=list.filter(item=>nowMs >= (recentNextAttemptAt.get(item.id)??0))
-      .slice(0,24);
+      .slice(0,12);
     if(!candidates.length)return null;
     recentLoading=(async()=>{
-      let success=0,failures=0,lastFailureScope=null;
+      let success=0,failures=0,noData=0,lastFailureScope=null;
       for(const target of candidates){
         if(now()<recentRelayBlockedUntil)break;
         recentAttempted.add(target.id);
@@ -387,9 +387,11 @@ export function createRiverGaugeLayer({
             fetchImpl,timeoutMs:10000
           });
           if(!observations.length){
-            const empty=new Error("No usable BoM station observations");
-            empty.status=422;empty.code="no_usable_observations";
-            throw empty;
+            // BoM explicitly has no recent usable measurements for this
+            // station. Not a gateway failure, warning log, or false "safe".
+            noData++;
+            recentNextAttemptAt.set(target.id,now()+15*60*1000);
+            continue;
           }
           const existing=new Map((history[target.id]??[])
             .map(x=>[x.time,x.height]));
@@ -436,10 +438,10 @@ export function createRiverGaugeLayer({
       diagnostics={...(diagnostics??{}),
         historyScreeningIncomplete:coverage.incomplete,
         historySourceMissing:coverage.missingSource,
-        recentHistory:{loaded:success,failed:failures,
+        recentHistory:{loaded:success,failed:failures,noData,
           attempted:recentAttempted.size,screeningIncomplete:coverage.incomplete,
           missingSource:coverage.missingSource,blockedUntil:recentRelayBlockedUntil}};
-      if(failures||success){
+      if(failures||success||noData){
         const counts=diagnostics.floodSignalCounts??{};
         const count=currentFeatures.length;
         const incompleteText=coverage.incomplete
@@ -450,13 +452,14 @@ export function createRiverGaugeLayer({
           : "";
         onStatus({kind:coverage.incomplete||lastBulletinsPartial?"warning":"ok",
           message:`${count} qualifying flood signals · ${success} station histories loaded`+
-            (failures?` · ${failures} unavailable (${lastFailureScope??"unknown"})`:"")+
+            (failures?` · ${failures} source failures (${lastFailureScope??"unknown"})`:"")+
+            (noData?` · ${noData} station(s) without recent history`:"")+
             incompleteText+missingText+
             " · screening only; follow BoM warnings",
           count,...counts,partial:lastBulletinsPartial,
           screeningIncomplete:coverage.incomplete,
           historySourceMissing:coverage.missingSource,
-          historyLoaded:success,historyFailed:failures});
+          historyLoaded:success,historyFailed:failures,historyNoData:noData});
       }
     })();
     try{return await recentLoading;}

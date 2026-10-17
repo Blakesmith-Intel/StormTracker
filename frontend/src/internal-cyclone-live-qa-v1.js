@@ -206,7 +206,9 @@ export function createInternalCycloneLiveQA({
       if(id!==sequence||destroyed||!toggle.checked)return;
       if(!["active","active-partial"].includes(parsed.status)){
         clear();
-        status.textContent=parsed.status==="no-active-products"\n          ?"Currently no tropical cyclone warnings"\n          :"Unable to verify current tropical cyclone warnings. Check BoM directly.";
+        status.textContent=parsed.status==="no-active-products"
+          ?"Currently no tropical cyclone warnings"
+          :"Unable to verify current tropical cyclone warnings. Check BoM directly.";
         return;
       }
       storms=parsed.storms;

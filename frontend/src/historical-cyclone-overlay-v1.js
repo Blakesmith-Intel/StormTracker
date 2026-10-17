@@ -6,7 +6,11 @@ import {
 
 // Isolated, opt-in QA layer. No polling, no background renderer work,
 // no mutation of the primary or secondary BoM imagery and 3-D layers.
-export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=document,fetchRef=fetch}){
+export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=document,fetchRef=fetch,
+  caseIds=HISTORICAL_CYCLONE_IDS,defaultWind=true,onStateChange=()=>{}}){
+  if(!Array.isArray(caseIds)||!caseIds.length||
+    caseIds.some(id=>!HISTORICAL_CYCLONE_IDS.includes(id)))
+    throw new Error("Invalid Queensland historical case selection");
   if(!sidebar||!viewer?.entities||!Cesium)
     throw new TypeError("Historical cyclone QA requires Cesium and a sidebar");
   const create=(tag,text)=>{
@@ -17,8 +21,8 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
   const panel=create("details");
   panel.id="historicalCycloneQaPanel";
   panel.style.cssText="margin:8px 0;padding:8px;border:1px solid #426579;border-radius:7px;min-width:0;overflow-wrap:anywhere";
-  panel.appendChild(create("summary","Historical cyclones — QA only"));
-  const notice=create("p","HISTORICAL REPLAY · NOT LIVE · NOT A WARNING. Archived cyclone wind areas are NOT severe-thunderstorm warning polygons.");
+  panel.appendChild(create("summary","Queensland observed archive · no forecast"));
+  const notice=create("p","QUEENSLAND / BoM OBSERVED archive. NOT a forecast, NOT a cyclone uncertainty cone, NOT LIVE. Optional actual issued wind areas are distinct from forecast uncertainty.");
   notice.style.cssText="margin:8px 0;font-size:11px;line-height:1.5;color:#ffd78c";
   panel.appendChild(notice);
   const pick=create("select");pick.id="historicalCycloneSelect";
@@ -29,11 +33,11 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
     ["jasper-2023","FAR NORTH — TC Jasper 2023"],
     ["koji-2026","SMOKE TEST — TC Koji 2026"],
     ["yasi-2011","BEST TRACK ONLY — TC Yasi 2011"]
-  ]){
+  ].filter(([id])=>caseIds.includes(id))){
     const opt=create("option",name);
     opt.value=id;pick.appendChild(opt);
   }
-  pick.value="alfred-2025";
+  pick.value=caseIds[0];
   panel.appendChild(pick);
   const toggleLabel=create("label");
   toggleLabel.style.cssText="display:flex;align-items:center;gap:6px;margin:6px 0";
@@ -42,7 +46,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
   panel.appendChild(toggleLabel);
   const windLabel=create("label");
   windLabel.style.cssText="display:flex;align-items:center;gap:6px;margin:6px 0";
-  const showWind=create("input");showWind.type="checkbox";showWind.checked=true;
+  const showWind=create("input");showWind.type="checkbox";showWind.checked=Boolean(defaultWind);
   showWind.id="historicalCycloneWindPolygons";
   windLabel.append(showWind,documentRef.createTextNode("Show issued historical cyclone wind footprints"));
   panel.appendChild(windLabel);
@@ -109,7 +113,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
   };
   function draw(){
     if(!toggle.checked||!bundle||!moments.length){
-      clearEntities();return;
+      clearEntities();onStateChange(null);return;
     }
     const needed=new Set();
     const index=Math.min(moments.length-1,Math.max(0,Number(range.value)||0));
@@ -225,10 +229,12 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
       "Source: "+snapshot.originalSourceLabel
     ].join("\n");
     viewer.scene?.requestRender?.();
+    onStateChange(bundle.id);
   }
   async function load(){
     const mine=++seq;
     clearEntities();bundle=null;moments=[];range.disabled=true;
+    onStateChange(null);
     if(!toggle.checked){
       status.textContent="Historical cyclone overlay off.";
       return;
@@ -259,6 +265,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
     }catch(error){
       if(mine!==seq)return;
       status.textContent="Historical archive unavailable: "+String(error?.message??error);
+      onStateChange(null);
     }
   }
   function focus(){

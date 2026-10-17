@@ -44,7 +44,7 @@ layers = site / "src/context-layers"
 for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js"):
     copyfile(source / filename, layers / filename)
 
-suffix = "-river-history-hotfix-20261018"
+suffix = "-river-history-nodata-v2-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -64,8 +64,11 @@ version_once("src/context-layers/river-gauge-layer-v1.js",
 
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
 with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18 (source main)\n")
+    record.write("RIVER-HISTORY NO-DATA V2 2026-10-18 (200 empty, source-format guarded)\n")
 PY
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js

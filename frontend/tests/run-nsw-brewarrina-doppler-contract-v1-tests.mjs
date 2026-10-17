@@ -17,9 +17,13 @@ for(const id of ["53","28"]){
   assert.equal(NSW_BORDER_RADAR_SITES[id].dopplerProduct,null);
   assert.deepEqual(primaryRadarDopplerSites(id),[]);
 }
-assert.deepEqual(primaryRadarDopplerSites("93"),[],
-  "No unavailable Doppler relay should break the source selection");
-assert.equal(NSW_BORDER_RADAR_SITES["93"].dopplerIntegrated,false);
+assert.deepEqual(primaryRadarDopplerSites("93"),["93"],
+  "Brewarrina is a genuine Doppler-capable primary radar");
+assert.equal(NSW_BORDER_RADAR_SITES["93"].dopplerIntegrated,true);
+assert.equal(NSW_BORDER_RADAR_SITES["93"].displayGeorefBasis,
+  "bom-site-centred-gnomonic-128km");
+assert.equal(NSW_BORDER_RADAR_SITES["93"].analysisGeorefVerified,false,
+  "Nominal wind overlay must NOT authorise unvalidated circulation measurements");
 assert.equal(DOPPLER_PRODUCTS["93"],"IDR93I");
 assert.equal(new URL(buildDopplerRelayUrl("93")).searchParams.get("product"),"IDR93I");
 assert.equal(new URL(buildDopplerRelayUrl("93")).host,
@@ -41,6 +45,7 @@ for(const invalid of ["IDR53I","IDR28I","IDR94I","IDR93A"]){
 }
 assert.equal(BOM_DOPPLER_MAPS["93"].product,"IDR93I");
 assert.equal(BOM_DOPPLER_MAPS["93"].nominalPanel,true);
+assert.equal(BOM_DOPPLER_MAPS["93"].radialRangeKm,128);
 assert.equal(BOM_DOPPLER_MAPS["93"].latitude,-29.96);
 assert.equal(BOM_DOPPLER_MAPS["93"].longitude,146.81);
 const midpoint=dopplerMapCoordinateToLonLat("93",256,256);

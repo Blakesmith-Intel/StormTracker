@@ -7,9 +7,14 @@ export const NSW_BORDER_RADAR_SITES=Object.freeze({
   "93":Object.freeze({
     id:"93",name:"Brewarrina",state:"NSW",latitude:-29.96,longitude:146.81,
     halfSpanKm:128,dopplerProduct:"IDR93I",dopplerLatitude:-29.96,dopplerLongitude:146.81,
-    // BoM Brewarrina Doppler is authorised only by exact product ID.
-    // Geographic image calibration remains unverified until source-frame QA.
-    dopplerAvailableAtBom:true,dopplerIntegrated:false,analysisGeorefVerified:false
+    // BoM's 128 km velocity product IDR93I is genuinely published.
+    // Its 512px wind panel is geographically placed using the official
+    // radar centre and 128 km Gnomonic coverage. That DISPLAY transform
+    // has centre/extent/round-trip QA, but true source-control-point
+    // validation remains required before measured circulation SCIENCE.
+    dopplerAvailableAtBom:true,dopplerIntegrated:true,
+    displayGeorefBasis:"bom-site-centred-gnomonic-128km",
+    displayGeorefVerified:false,analysisGeorefVerified:false
   }),
   "53":Object.freeze({
     id:"53",name:"Moree",state:"NSW",latitude:-29.50,longitude:149.85,

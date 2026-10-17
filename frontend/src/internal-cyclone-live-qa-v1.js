@@ -21,10 +21,10 @@ export function createInternalCycloneLiveQA({
   const container=el("section");
   container.id="internalCycloneQa";
   container.style.cssText="border:1px solid #516a79;padding:9px;margin:10px 0;border-radius:8px;line-height:1.45";
-  const heading=el("strong","BoM cyclone forecast · internal live QA");
+  const heading=el("strong","BoM tropical cyclone forecasts");
   heading.style.cssText="display:block;font-size:12px;margin-bottom:4px";
   container.appendChild(heading);
-  const notice=el("p","Original BoM map forecasts only. Restricted internal feed; NOT a replacement for official warnings. No source is loaded by default.");
+  const notice=el("p","Original BoM forecast maps only. Check current warnings and cyclone advice directly with BoM. No forecasts are generated or extrapolated.");
   notice.style.cssText="font-size:11px;color:#ffd38a;margin:4px 0";
   container.appendChild(notice);
   const line=el("label");
@@ -33,7 +33,7 @@ export function createInternalCycloneLiveQA({
   toggle.id="internalCycloneLiveToggle";
   toggle.type="checkbox";
   toggle.checked=false;
-  line.append(toggle,documentRef.createTextNode("Enable authorised live forecast"));
+  line.append(toggle,documentRef.createTextNode("Show live cyclone forecasts"));
   container.append(line);
   const sourceRow=el("div");
   sourceRow.style.cssText="display:flex;gap:6px;flex-wrap:wrap;margin:7px 0";
@@ -55,11 +55,11 @@ export function createInternalCycloneLiveQA({
   select.style.cssText="width:100%;padding:5px;background:#1b3645;color:#fff";
   selectLabel.appendChild(select);
   container.appendChild(selectLabel);
-  const status=el("p","Off — no active cyclone product has been retrieved.");
+  const status=el("p","Live cyclone layer off. Select Show live cyclone forecasts to check the official source.");
   status.id="internalCycloneQaStatus";
   status.style.cssText="font-size:11px;white-space:pre-line;color:#cfecf7;overflow-wrap:anywhere;margin-top:7px";
   status.setAttribute("role","status");
-  container.appendChild(status);
+  container.appendChild(status);\n  const bomLink=el("a","Open BoM tropical cyclone warnings");\n  bomLink.href="https://www.bom.gov.au/weather-and-climate/specialised-forecasts-and-observations/tropical-cyclone";\n  bomLink.target="_blank";bomLink.rel="noopener noreferrer";\n  bomLink.style.cssText="display:block;margin:5px 0;font-size:11px;color:#9bdef9";\n  container.appendChild(bomLink);
   panel.insertBefore(container,panel.querySelector(".cyclone-qld-cases")??null);
   const mapStamp=el("div","");
   mapStamp.id="internalLiveCycloneMapStamp";
@@ -180,9 +180,9 @@ export function createInternalCycloneLiveQA({
     const id=++sequence;
     controller?.abort();
     controller=new AbortController();
-    status.textContent="Checking authorised internal BoM forecast source…";
+    status.textContent="Checking original BoM tropical cyclone forecasts…";
     try{
-      // NEVER point this at a publicly readable GitHub Pages file.
+      // This path needs a real browser-accessible feed; no placeholder data.
       const response=await fetchRef("/internal/cyclones.json",{
         method:"GET",credentials:"same-origin",cache:"no-store",
         headers:{Accept:"application/json"},signal:controller.signal
@@ -201,7 +201,7 @@ export function createInternalCycloneLiveQA({
       if(id!==sequence||destroyed||!toggle.checked)return;
       if(!["active","active-partial"].includes(parsed.status)){
         clear();
-        status.textContent=parsed.message+"\nNo cyclone forecasts displayed.";
+        status.textContent=parsed.status==="no-active-products"\n          ?"Currently no tropical cyclone warnings"\n          :"Unable to verify current tropical cyclone warnings. Check BoM directly.";
         return;
       }
       storms=parsed.storms;
@@ -214,7 +214,7 @@ export function createInternalCycloneLiveQA({
     }catch(error){
       if(id!==sequence||destroyed||!toggle.checked)return;
       clear();
-      status.textContent="INTERNAL LIVE SOURCE UNAVAILABLE · Nothing displayed.\n"+
+      status.textContent="Unable to verify current tropical cyclone warnings. Check BoM directly.\n"+
         String(error?.message??error);
     }
   }
@@ -223,7 +223,7 @@ export function createInternalCycloneLiveQA({
     controller?.abort();controller=null;
     if(timer!==null)clearInterval(timer);
     timer=null;clear();reload.disabled=true;
-    status.textContent="Off — no original live products displayed.";
+    status.textContent="Live cyclone layer off. No live source has been checked.";
   }
   toggle.addEventListener("change",()=>{
     if(!toggle.checked){disable();return;}

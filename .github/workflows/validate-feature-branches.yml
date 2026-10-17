@@ -34,8 +34,6 @@ jobs:
         run: python3 scripts/test-bom-issued-cyclone-decoder.py
 
 
-      - name: One-time authentic BoM-issued archive + FTP product audit
-        run: node scripts/audit-issued-cyclone-forecast-20261017.mjs
 
 
       - name: Probe Brewarrina BoM Doppler transport (advisory)

@@ -20,6 +20,9 @@ assert.doesNotMatch(runtime,/showAdvancedScience|\$\("blobVolume"\)|showSevereRa
 assert.doesNotMatch(css,/More options|Advanced view|simpleModeToggle|\:not\(\.river-gauge-row\)/);
 assert.match(singleCss,/body\.simple-ui #app/);
 assert.match(html,/id="runtimeDiagnostics" hidden aria-hidden="true"/);
+assert.ok(html.includes('id="terrainStatus"'));
+assert.doesNotMatch(html,/id="terrainEnabled"/);
+assert.doesNotMatch(runtime,/terrainControl|\$\("terrainEnabled"\)/);
 assert.ok(!html.includes("id=\"refreshPowerOutagesButton\""));
 assert.ok(!html.includes("id=\"refreshFloodRoadClosuresButton\""));
 assert.ok(!html.includes("id=\"refreshRiverGaugesButton\""));

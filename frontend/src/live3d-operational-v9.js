@@ -5057,35 +5057,17 @@ async function initialise() {
     DEFAULT_OCCUPANCY_THRESHOLD
       .toFixed(2);
 
-  const terrainControl =
-    $("terrainEnabled");
-
-  if(FLAT_TERRAIN_PERFORMANCE_TEST){
-    terrainControl.checked=false;
-    terrainControl.disabled=true;
-    terrainControl.setAttribute("aria-label",
-      "Flat-terrain performance test; 3-D elevation loading disabled");
-  }
+  // Terrain is configured directly by the engine: no retired UI control.
+  // The isolated street-flat diagnostic route retains its intentional override.
   (FLAT_TERRAIN_PERFORMANCE_TEST
     ? terrainManager.setEnabled(false,{persist:false})
-    // 3-D terrain is the permanent operator basemap setting. This also
-    // replaces any legacy browser preference that had turned terrain off.
     : terrainManager.setEnabled(true))
-    .then(result => {
-      terrainControl.checked =
-        Boolean(result?.enabled);
+    .then(() => {
       if(FLAT_TERRAIN_PERFORMANCE_TEST)
         setTerrainStatus("FLAT TERRAIN TEST · elevation tiles disabled","ok");
     })
     .catch(error => {
-      console.warn(
-        "3-D terrain initialisation failed",
-        error
-      );
-
-      terrainControl.checked =
-        false;
-
+      console.warn("3-D terrain initialisation failed",error);
       setTerrainStatus(
         "3-D terrain unavailable · using flat fallback",
         "error"

@@ -9,7 +9,7 @@ The recently accepted simplified UI is the **only** supported operator interface
 | More options / Simple view switch | Removed from HTML and measurement tool | `createFriendlyMapTools` no longer requires an expanded-mode button or changes modes |
 | Old operational overview card | Removed | Renderer metrics use a single headless `#runtimeDiagnostics` store of read-only outputs, never a second operator page |
 | Layer refresh buttons only exposed in expanded view | Removed | QLDTraffic, electricity, flood and QFD adapters already attach optional refresh handlers; polling and toggles continue independently. Power and road explorers retain their explicit Refresh actions |
-| Extra basemap, terrain, road, power, river and QFD status rows | Removed from sidebar | Nonvisual status destinations moved to headless diagnostics, preserving upstream error/status handling |
+| Extra basemap, terrain, road, power, river and QFD status rows | Removed from sidebar | Read-only status destinations moved to headless diagnostics, preserving upstream error/status handling; no terrain checkbox or handler remains |
 | Separate auto-refresh notes | Removed from sidebar | Their text destinations moved to headless diagnostics |
 | Inference switch in expanded Layers | Removed | Storm **Details** still opens the standalone dialog and can select Tracks / Inference / Model / Sources tabs |
 | Rounded-volume checkbox in expanded Layers | Removed | Renders the previously accepted rounded 3-D volumes unconditionally |
@@ -29,3 +29,6 @@ The *storm Details dialog* is **not** the old expanded sidebar; it is a direct, 
 - [ ] Automated regression tests, Pages sealed production package, and operator browser acceptance
 
 Production **V9.20.2** stays sealed at `b8be458acbae942a3bb0b530a5c17618b6d03134` until browser acceptance and a separate promotion decision.
+
+## Final orphan-control cleanup (17 October 2026)
+The otherwise-retired hidden `#terrainEnabled` checkbox and its JavaScript readback were removed from the headless diagnostic store, along with obsolete terrain/volume sidebar CSS selectors. Terrain initialises directly using the existing terrain manager; the old checkbox cannot gate it. The isolated `/preview/street-flat/` performance-test path is retained for technical comparison only. `#terrainStatus` remains a read-only diagnostic result. The UI contract test now rejects the removed checkbox and JavaScript references. The map-measurement, production source pin and historical cyclone data are unchanged.

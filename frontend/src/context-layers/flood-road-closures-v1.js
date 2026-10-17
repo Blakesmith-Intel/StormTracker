@@ -229,6 +229,7 @@ export function createFloodRoadClosureLayer({
   refreshMs =
     5 * 60 * 1000,
   visible = true,
+  refreshWhileHidden = false,
   onStatus = () => {},
   onUpdate = () => {}
 } = {}) {
@@ -634,7 +635,7 @@ export function createFloodRoadClosureLayer({
   const onVisibilityChange = () => {
     if (document.hidden) return;
     expireStaleSnapshot();
-    if (dataSource.show) refresh().catch(() => {});
+    if (dataSource.show || refreshWhileHidden) refresh({force:refreshWhileHidden}).catch(() => {});
   };
 
   function start() {
@@ -642,13 +643,8 @@ export function createFloodRoadClosureLayer({
       return;
     }
 
-    if (
-      dataSource.show
-    ) {
-      refresh()
-        .catch(
-          () => {}
-        );
+    if (dataSource.show || refreshWhileHidden) {
+      refresh({force:refreshWhileHidden}).catch(() => {});
     }
 
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange',onVisibilityChange);
@@ -664,10 +660,7 @@ export function createFloodRoadClosureLayer({
           }
 
           expireStaleSnapshot();
-          refresh()
-            .catch(
-              () => {}
-            );
+          refresh({force:refreshWhileHidden}).catch(() => {});
         },
         refreshMs
       );

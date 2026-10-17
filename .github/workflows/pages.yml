@@ -98,13 +98,13 @@ jobs:
       - name: Checkout exact V10.2.0 accepted UI + multi-site Doppler source
         uses: actions/checkout@v4
         with:
-          ref: d3037f4217213459ab2889d8da6d20f909005afe
+          ref: 585615842067448d092ff8d1987c4121ab08086a
           path: checked/production-v10.2.0
           persist-credentials: false
       - name: Validate exact immutable V10.2.0 release candidate
         run: |
           set -euo pipefail
-          test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = "d3037f4217213459ab2889d8da6d20f909005afe"
+          test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = "585615842067448d092ff8d1987c4121ab08086a"
           (cd checked/production-v10.2.0 && npm test)
           node --check checked/production-v10.2.0/relay/worker.js
           node --check checked/production-v10.2.0/frontend/src/multi-doppler-display-v1.js
@@ -177,7 +177,7 @@ jobs:
           base="${PAGES_URL%/}"
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq 'SEALED StormTracker V10.2.0 source d3037f4217213459ab2889d8da6d20f909005afe' <<< "$root"
+          grep -Fq 'SEALED StormTracker V10.2.0 source 585615842067448d092ff8d1987c4121ab08086a' <<< "$root"
           grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$preview"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \
@@ -236,13 +236,13 @@ jobs:
             curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
               "$base/$path" | grep -F "$needle" >/dev/null
           done
-          echo 'Verified sealed V10.2.0 source d3037f4217213459ab2889d8da6d20f909005afe, single UI, native multi-site BoM Doppler, previous full-quality 3-D, and V9.18 QA.'
+          echo 'Verified sealed V10.2.0 source 585615842067448d092ff8d1987c4121ab08086a, single UI, native multi-site BoM Doppler, previous full-quality 3-D, and V9.18 QA.'
 
       - name: Seal V10.2.0 annotated tag and new rollback branch after public verification
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          release_sha="d3037f4217213459ab2889d8da6d20f909005afe"
+          release_sha="585615842067448d092ff8d1987c4121ab08086a"
           tag="v10.2.0"
           restore="restore/v10.2.0"
           # Earlier sealed release refs remain immutable and may never be repointed.

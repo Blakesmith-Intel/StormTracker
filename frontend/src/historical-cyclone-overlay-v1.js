@@ -7,7 +7,7 @@ import {
 // Isolated, opt-in QA layer. No polling, no background renderer work,
 // no mutation of the primary or secondary BoM imagery and 3-D layers.
 export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=document,fetchRef=fetch,
-  caseIds=HISTORICAL_CYCLONE_IDS,defaultWind=true}){
+  caseIds=HISTORICAL_CYCLONE_IDS,defaultWind=true,onStateChange=()=>{}}){
   if(!Array.isArray(caseIds)||!caseIds.length||
     caseIds.some(id=>!HISTORICAL_CYCLONE_IDS.includes(id)))
     throw new Error("Invalid Queensland historical case selection");
@@ -113,7 +113,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
   };
   function draw(){
     if(!toggle.checked||!bundle||!moments.length){
-      clearEntities();return;
+      clearEntities();onStateChange(null);return;
     }
     const needed=new Set();
     const index=Math.min(moments.length-1,Math.max(0,Number(range.value)||0));
@@ -229,10 +229,12 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
       "Source: "+snapshot.originalSourceLabel
     ].join("\n");
     viewer.scene?.requestRender?.();
+    onStateChange(bundle.id);
   }
   async function load(){
     const mine=++seq;
     clearEntities();bundle=null;moments=[];range.disabled=true;
+    onStateChange(null);
     if(!toggle.checked){
       status.textContent="Historical cyclone overlay off.";
       return;
@@ -263,6 +265,7 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
     }catch(error){
       if(mine!==seq)return;
       status.textContent="Historical archive unavailable: "+String(error?.message??error);
+      onStateChange(null);
     }
   }
   function focus(){

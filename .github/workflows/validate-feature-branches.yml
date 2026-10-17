@@ -30,8 +30,6 @@ jobs:
       - name: Validate relay worker syntax
         run: node --check relay/worker.js
 
-      - name: One-time validate Queensland Jasper and Alfred source geometries
-        run: node scripts/audit-jasper-alfred-official-archives.mjs
 
 
       - name: Verify genuine-product cyclone GML decoder contracts (offline)

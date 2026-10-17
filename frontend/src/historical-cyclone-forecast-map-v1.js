@@ -165,7 +165,22 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
   reset();
   if(!archived){
    archived=mountArchive({Cesium,viewer,sidebar:panel,documentRef,
-     caseIds:["jasper-2023","alfred-2025"],defaultWind:false});
+     caseIds:["jasper-2023","alfred-2025"],defaultWind:false,
+     onStateChange(activeId){
+      if(!activeId){
+       if(!loaded)mapStamp.hidden=true;
+       return;
+      }
+      // Selecting a genuine observed issue must never silently combine it
+      // with an unrelated original issued forecast GML.
+      loaded=null;input.value="";ds.entities.removeAll();
+      mapStamp.hidden=false;
+      mapStamp.textContent="ARCHIVED QLD / BoM OBSERVED TRACK · NOT A FORECAST · NOT LIVE · "+
+        (activeId==="jasper-2023"?"JASPER 2023":"ALFRED 2025");
+      statusText((activeId==="jasper-2023"?"Jasper (2023)":"Alfred (2025)")+
+        " · Queensland / BoM OBSERVED HISTORY ONLY\n"+
+        "Original forecast positions and likely-tracks uncertainty are NOT in this archive.");
+     }});
   }
   archived.panel.open=true;
   archived.pick.value=id;

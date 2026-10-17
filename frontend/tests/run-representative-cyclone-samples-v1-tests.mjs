@@ -65,7 +65,8 @@ assert.ok(HISTORICAL_CYCLONE_IDS.includes("koji-2026"),
 assert.ok(HISTORICAL_CYCLONE_IDS.includes("yasi-2011"),
   "Retain reanalysed best-track-only historical reference");
 const overlay=readFileSync(new URL("../src/historical-cyclone-overlay-v1.js",import.meta.url),"utf8");
-assert.match(overlay,/pick\.value="alfred-2025"/);
+assert.match(overlay,/pick\.value=caseIds\[0\]/);
+assert.match(overlay,/caseIds=HISTORICAL_CYCLONE_IDS/);
 assert.match(overlay,/STRESS — TC Narelle/);
 assert.match(overlay,/FAR NORTH — TC Jasper/);
 assert.match(overlay,/historicalCycloneMoments\(bundle\)/);

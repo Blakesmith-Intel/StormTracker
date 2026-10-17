@@ -848,6 +848,8 @@ export function createPowerOutageLayer({
 
   visible = true,
 
+  refreshWhileHidden = false,
+
   onStatus =
     () => {},
 
@@ -1168,7 +1170,7 @@ export function createPowerOutageLayer({
   const onVisibilityChange = () => {
     if (document.hidden) return;
     expireStaleSnapshot();
-    if (dataSource.show) refresh().catch(() => {});
+    if (dataSource.show || refreshWhileHidden) refresh({force:refreshWhileHidden}).catch(() => {});
   };
 
   function start() {
@@ -1176,13 +1178,8 @@ export function createPowerOutageLayer({
       return;
     }
 
-    if (
-      dataSource.show
-    ) {
-      refresh()
-        .catch(
-          () => {}
-        );
+    if (dataSource.show || refreshWhileHidden) {
+      refresh({force:refreshWhileHidden}).catch(() => {});
     }
 
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange',onVisibilityChange);
@@ -1198,10 +1195,7 @@ export function createPowerOutageLayer({
           }
 
           expireStaleSnapshot();
-          refresh()
-            .catch(
-              () => {}
-            );
+          refresh({force:refreshWhileHidden}).catch(() => {});
         },
         refreshMs
       );

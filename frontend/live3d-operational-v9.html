@@ -10,7 +10,8 @@
   <link rel="stylesheet" href="./src/power-outage-suburb-explorer-v1.css?v=case-insensitive-lga-20261017-v2">
   <link rel="stylesheet" href="./src/lga-sidebar-legend-v1.css?v=lga-ui-legend-20261017-v1">
   <link rel="stylesheet" href="./src/sidebar-incident-counts-v1.css?v=incident-counts-20261017-v1">
-  <link rel="stylesheet" href="./src/playback-sidebar-hierarchy-v1.css?v=original-status-flood-glyph-layers-off-20261017-v2">
+  <link rel="stylesheet" href="./src/playback-sidebar-hierarchy-v1.css?v=storm-compact-20261017-v3">
+  <link rel="stylesheet" href="./src/sidebar-compact-refresh-v1.css?v=20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -22,10 +23,12 @@
       <button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages by council">
         <span class="incident-button-name">⚡ Power outages</span>
         <span class="incident-button-numbers"><strong id="sidebarPowerOutageCount">Checking…</strong><small id="sidebarPowerCustomerCount">Customers: —</small></span>
+        <time class="incident-refresh" id="sidebarPowerLastRefresh">Not checked yet</time>
       </button>
       <button type="button" id="openRoadLgaExplorer" aria-haspopup="dialog" aria-controls="roadLgaExplorer" aria-label="Browse road closures by council">
         <span class="incident-button-name">Road closures</span>
         <span class="incident-button-numbers"><strong id="sidebarRoadClosureCount">Checking…</strong><small>All-traffic closures · QLDTraffic</small></span>
+        <time class="incident-refresh" id="sidebarRoadLastRefresh">Not checked yet</time>
       </button>
     </nav>
     <div class="simple-intro" aria-label="Quick start">Choose a radar above the map, press <strong>Play</strong>, or tap <strong>Measure</strong> to check a distance.</div>
@@ -60,19 +63,23 @@
         <input id="volumeOpacity" type="range" min="0" max="100" step="5" value="100" aria-label="3-D volume opacity: 0 transparent, 100 opaque; does not change radar intensity">
       </div>
       <div id="playbackPerformanceSummary" class="note" role="status" aria-live="off" title="Measured playback renderer timing">Frame timing starts when playback loads</div>
-      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span id="radarClockGroup">Radar <strong id="radarPlaybackTime">—</strong></span><span id="windClockGroup" hidden>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Independent source time comparison" hidden></span></div>
+      <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span id="radarClockGroup" hidden aria-hidden="true">Radar <strong id="radarPlaybackTime">—</strong></span><span id="windClockGroup" hidden>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Independent source time comparison" hidden></span></div>
       <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card storm-controls" aria-labelledby="stormControlsHeading">
-      <h2 id="stormControlsHeading" class="section-title">Storm labels &amp; threat cone</h2>
-      <div class="track-display-controls">
+      <h2 id="stormControlsHeading" class="section-title">Storm tracking</h2>
+      <div class="storm-main-row">
         <label title="Show or hide primary-radar storm points and labels (off by default)"><input id="showTrackLabels" type="checkbox"> Storm labels</label>
-        <select id="trackDisplayFilter" aria-label="Displayed storm track"><option value="">All tracks</option></select>
-        <label><input id="showTrackThreatCone" type="checkbox" disabled> +90-minute threat cone</label>
+        <button id="openDetailsButton" class="storm-details-button" type="button">Details</button>
       </div>
-      <div id="trackLabelsScopeNote" class="note" role="note">Storm IDs, tracks and labels currently use the primary radar only. Additional radars provide imagery without storm labels.</div>
-      <div id="trackThreatConeStatus" class="note">Select one track to enable the +90-minute motion cone.</div>
-      <button id="openDetailsButton" class="storm-details-button" type="button">Tracks / details</button>
+      <div class="track-display-controls">
+        <select id="trackDisplayFilter" aria-label="Displayed storm track"><option value="">All tracks</option></select>
+        <label><input id="showTrackThreatCone" type="checkbox" disabled> +90m cone</label>
+      </div>
+      <div id="trackThreatConeStatus" class="note" role="status">Select one track to enable the +90-minute motion cone.</div>
+      <details class="storm-scope-help"><summary>Track scope</summary>
+        <div id="trackLabelsScopeNote" class="note" role="note">Storm IDs, tracks and labels currently use the primary radar only. Additional radars provide imagery without storm labels.</div>
+      </details>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label><input id="showSevereRadarAlerts" type="checkbox" disabled> Radar alerts ≥90 km/h — research preview only</label></div>
       <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label title="Unvalidated scientific research"><input id="showExperimentalHookAlerts" type="checkbox" disabled> Hook-shape candidates (research preview only)</label></div>
     </section>
@@ -363,6 +370,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v3-original-status-layers-off"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v4-sidebar-refresh-track"></script>
 </body>
 </html>

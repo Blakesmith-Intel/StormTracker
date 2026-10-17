@@ -171,11 +171,11 @@ import {
 
 import {
   initialiseOperationalFloodRoadClosures
-} from "./context-layers/flood-road-closures-operational-v1.js?v=incident-counts-20261017-v2";
+} from "./context-layers/flood-road-closures-operational-v1.js?v=sidebar-refresh-track-20261017-v1";
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=incident-counts-spatial-lga-20261017-v3";
+} from "./context-layers/power-outages-operational-v1.js?v=sidebar-refresh-track-20261017-v1";
 
 import {
   initialiseOperationalRiverGauges

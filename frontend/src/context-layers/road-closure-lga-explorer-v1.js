@@ -1,3 +1,4 @@
+import {formatIncidentRefreshTime} from "./incident-refreshed-time-v1.js?v=20261017-refresh-v1";
 import {groupRoadClosuresByLga,searchRoadCouncilGroups} from "./road-closure-lga-model-v1.js?v=roads-lga-20261017-v1";
 import {roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 export function createRoadClosureLgaExplorer({
@@ -20,6 +21,18 @@ export function createRoadClosureLgaExplorer({
    loaded=false,destroyed=false,busy=false;
  const openKeys=new Set();
  const sidebarCount=$("sidebarRoadClosureCount");
+ const refreshEl=$("sidebarRoadLastRefresh");
+  let lastSuccessfulAt=0;
+  function updateSourceRefreshLabel(){
+    if(!refreshEl)return;
+    const report=feedStatus;
+    const failed=report.kind==="error";
+    const expired=failed&&/source expired|old .* markers removed/i.test(report.message||"");
+    const ms=lastSuccessfulAt||Number(getLoadedAt());
+    refreshEl.textContent=formatIncidentRefreshTime(ms,{failed,expired});
+    if(ms>0)refreshEl.dateTime=new Date(ms).toISOString();
+    else refreshEl.removeAttribute("datetime");
+  }
  function updateSidebarCount(){
   if(!sidebarCount)return;
   if(!loaded){
@@ -117,10 +130,13 @@ export function createRoadClosureLgaExplorer({
  function updateFeatures(features){groups=groupRoadClosuresByLga(features);loaded=true;updateSidebarCount();render();}
  function updateStatus(next){
   if(next)feedStatus=next;
+  const checkedAt=Number(feedStatus.loadedAt);
+  if(Number.isFinite(checkedAt) && checkedAt>0)lastSuccessfulAt=checkedAt;
   status.textContent=feedStatus.message||"QLDTraffic operational closure feed";
   status.dataset.kind=feedStatus.kind||"normal";
   if(feedStatus.kind==="error"&&/source expired|old closure markers removed/i.test(feedStatus.message||""))
    {loaded=false;groups=[];}
+    updateSourceRefreshLabel();
   updateSidebarCount();
   render();
  }
@@ -137,6 +153,7 @@ export function createRoadClosureLgaExplorer({
  closeButton.addEventListener("click",close);
  input.addEventListener("input",search);
  refreshButton.addEventListener("click",reload);
+ updateSourceRefreshLabel();
  updateSidebarCount();
  return {updateFeatures,updateStatus,destroy(){
   destroyed=true;

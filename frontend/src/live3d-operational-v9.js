@@ -1209,7 +1209,6 @@ function setAdvancedScienceVisible(visible) {
   const dialog = $("detailsDialog");
   if (visible && !dialog.open) dialog.showModal();
   if (!visible && dialog.open) dialog.close();
-  $("showAdvancedScience").checked = Boolean(visible);
 }
 
 function selectDetailsTab(name) {
@@ -1231,7 +1230,8 @@ function colourForDbzh(value) {
 // Cloud-like billboards are presentation only; the AURA-inferred profiles
 // and original reflectivity frames remain unchanged.
 let volumeBlobImage=null;
-function useBlobVolume(){ return $("blobVolume")?.checked ?? true; }
+// The approved rounded-volume rendering is now the only operator mode.
+function useBlobVolume(){ return true; }
 function blobImage(){
   if(!volumeBlobImage)volumeBlobImage=createBlobSpriteDataUrl(document);
   return volumeBlobImage;
@@ -2771,7 +2771,7 @@ function syncSevereStormAlerts(index) {
   const detection = buildSevereStormFrameAlerts({
     frame, result, previousFrame, previousResult,
     dopplerState: dopplerStateForFrame(index),
-    enableExperimentalHook: Boolean($("showExperimentalHookAlerts")?.checked)
+    enableExperimentalHook: false
   });
   severeStormAlertOverlay.setFrame({
     alerts: detection.alerts,
@@ -5252,16 +5252,11 @@ $("jumpLatestButton").addEventListener("click", async () => {
     runSourceLoad(loadLatest);
   }
 });
-$("showAdvancedScience").addEventListener("change", event => {
-  selectDetailsTab("controls");
-  setAdvancedScienceVisible(event.target.checked);
-});
 $("openDetailsButton").addEventListener("click", () => {
   selectDetailsTab("tracks");
   setAdvancedScienceVisible(true);
 });
 $("closeDetailsButton").addEventListener("click", () => setAdvancedScienceVisible(false));
-$("detailsDialog").addEventListener("close", () => { $("showAdvancedScience").checked = false; });
 for (const button of document.querySelectorAll("[data-detail-tab]")) {
   button.addEventListener("click", () => selectDetailsTab(button.dataset.detailTab));
 }
@@ -5299,8 +5294,6 @@ $("showQfdTechnicalRescues").addEventListener("change",event=>{
   if(legend)legend.open=Boolean(event.target.checked);
 });
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
-$("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
-$("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
@@ -5458,16 +5451,6 @@ $("resetButton").addEventListener(
 );
 
 refreshReflectivityLegend();
-$("blobVolume")?.addEventListener("change",()=>{
-  clearVolumeGeometryCache();
-  if(latestFrame && !isNativeDopplerPlayback()){
-    renderInferredVolume(latestFrame);
-    if(hybridResults.length){
-      applyHybridVolumeMode(hybridFrameIndex);
-      renderHybridTracks(hybridFrameIndex);
-    }
-  }
-});
 
 initialise().catch(
   error => {

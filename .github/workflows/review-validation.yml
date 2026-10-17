@@ -28,6 +28,9 @@ jobs:
         run: npm test
       - name: Validate relay JavaScript without running external services
         run: node --check relay/worker.js
+      - name: Verify genuine-product cyclone GML decoder contracts (offline)
+        run: python3 scripts/test-bom-issued-cyclone-decoder.py
+
       - name: Checkout exact accepted QA source for package audit
         uses: actions/checkout@v4
         with:

@@ -30,6 +30,10 @@ jobs:
       - name: Validate relay worker syntax
         run: node --check relay/worker.js
 
+      - name: Verify genuine-product cyclone GML decoder contracts (offline)
+        run: python3 scripts/test-bom-issued-cyclone-decoder.py
+
+
       - name: One-time authentic BoM-issued archive + FTP product audit
         run: node scripts/audit-issued-cyclone-forecast-20261017.mjs
 

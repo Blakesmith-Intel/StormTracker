@@ -54,7 +54,20 @@ assert.match(runtime,/function useBlobVolume\(\)\{ return true; \}/);
 assert.match(runtime,/terrainManager\.setEnabled\(true\)/);
 assert.doesNotMatch(runtime,/mountHistoricalCycloneQA/);
 assert.match(root,/v9-single-operator-ui/);
-assert.match(html,/single-interface-v1\.css\?v=single-ui-20261017-v1/);
+assert.match(html,/single-interface-v1\.css\?v=full-map-toggle-20261017-v2/);
 assert.match(tools,/new Cesium\.CustomDataSource/);
 assert.match(tools,/viewer\.camera\.changed\.addEventListener/);
 console.log("Single operator UI independent of legacy expanded controls, with core runtime fields grounded.");
+
+const collapsed=singleCss.slice(singleCss.lastIndexOf("body.simple-ui #app.sidebar-collapsed {"));
+assert.match(collapsed,/body\.simple-ui #app\.sidebar-collapsed\s*\{[^}]*grid-template-columns:minmax\(0,1fr\);[^}]*grid-template-rows:minmax\(0,1fr\);/s,
+  "Hiding controls must remove the sidebar width AND the mobile sidebar row");
+assert.match(collapsed,/body\.simple-ui #app\.sidebar-collapsed > #mapPanel\s*\{[^}]*grid-column:1 \/ -1;[^}]*grid-row:1 \/ -1;[^}]*width:100%;[^}]*height:100%;/s,
+  "Cesium map must fill the entire newly available CSS grid");
+assert.match(collapsed,/body\.simple-ui #app\.sidebar-collapsed > #controlSidebar\s*\{[^}]*display:none!important;/s,
+  "No hidden sidebar may consume a CSS grid track");
+assert.ok(singleCss.indexOf("body.simple-ui #app.sidebar-collapsed") >
+  singleCss.indexOf("@media (max-width:700px)"),
+  "Collapsed override must follow the mobile grid sizing rules");
+assert.match(runtime,/\$\("app"\)\.classList\.toggle\("sidebar-collapsed",Boolean\(collapsed\)\)/);
+assert.match(runtime,/viewer\.resize\(\);scene\.requestRender\(\)/);

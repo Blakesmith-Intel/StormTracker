@@ -13,7 +13,7 @@ for(const id of ["hybridFrameSlider","playbackSpeed","hybridFrameLabel","operati
 "radarOpacity","radarOpacityValue","volumeOpacity","volumeOpacityValue","showTrackLabels",
 "trackDisplayFilter","showTrackThreatCone","trackLabelsScopeNote","trackThreatConeStatus",
 "showRiverGauges","showQfdTechnicalRescues","qfdSymbolLegend","qfdSymbolStatus",
-"terrainEnabled"]){
+"terrainStatus"]){
  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+" duplicated/removed");
 }
 assert.ok(first('id="hybridFrameSlider"')<first('id="playbackSpeed"'));
@@ -42,10 +42,11 @@ assert.ok(!html.includes("▶ Watch radar"));
 assert.ok(!html.includes("◫ What to show"));
 assert.ok(!html.includes('type="checkbox" checked> 3-D terrain'));
 assert.match(html,/id="runtimeDiagnostics" hidden aria-hidden="true"/);
-assert.match(html,/id="terrainEnabled" type="checkbox" checked disabled/);
+assert.doesNotMatch(html,/id="terrainEnabled"/);
+assert.doesNotMatch(controller,/terrainControl|\$\("terrainEnabled"\)/);
 assert.match(controller,/terrainManager\.setEnabled\(true\)/);
 assert.ok(!controller.includes('$("terrainEnabled").addEventListener('));
-assert.match(css,/#controlSidebar #terrainEnabled,/);
+assert.doesNotMatch(css,/#controlSidebar #terrainEnabled|\.terrain-row|\.volume-blob-toggle/);
 assert.match(css,/body\.simple-ui #controlSidebar \.layer-controls \{display:block!important;\}/);
 assert.match(css,/body\.simple-ui #controlSidebar \.loop-controls > \.playback-speed-row/);
 assert.match(css,/body\.simple-ui #controlSidebar \.loop-controls > #status/);
@@ -64,5 +65,5 @@ assert.match(sourceQfd,/qfdSymbolFor\(group,officialSymbols\)/);
 assert.match(sourceQfd,/Provisional icons/);
 assert.match(css,/#qfdIncidentLegendDetails|\.qfd-incident-key/);
 assert.match(shell,/v9-single-operator-ui/);
-assert.match(html,/playback-sidebar-hierarchy-v1\.css\?v=storm-compact-20261017-v3/);
-console.log("Radar playback UI hierarchy, persistent terrain, traffic-light key and QFD legend passed.");
+assert.match(html,/playback-sidebar-hierarchy-v1\.css\?v=storm-compact-20261017-v4/);
+console.log("Radar playback UI hierarchy, permanent terrain, hydrology legend and QFD controls passed.");

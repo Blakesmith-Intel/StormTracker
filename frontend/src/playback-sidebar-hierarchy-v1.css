@@ -71,9 +71,6 @@
 #controlSidebar .loop-controls > .opacity-controls input[type=range] {
   display:block;width:100%;height:23px;min-width:0;margin:1px 0 5px;
 }
-#controlSidebar #terrainEnabled,
-#controlSidebar .terrain-row {display:none!important;}
-#controlSidebar .layer-controls .volume-blob-toggle{font-size:11px;}
 /* Flood severity key: compact hydrology badge with severity arc segments.
    Arc colours are borrowed from actual BoM river marker rendering; this is
    NOT a three-lamp traffic signal or a replacement for marker icon logic. */
@@ -137,9 +134,6 @@ body.simple-ui #controlSidebar .layer-controls > #riverGaugeSeverityLegend {
 }
 body.simple-ui #controlSidebar .storm-controls .track-display-controls{
   display:grid!important;
-}
-body.simple-ui #controlSidebar .layer-controls > .volume-blob-toggle{
-  display:none!important;
 }
 @media(max-width:700px){
   #controlSidebar .loop-controls > .section-title,

@@ -38,3 +38,37 @@ for(const [name,url] of sources){
   finally{clearTimeout(timeout);}
 }
 if(fail){console.error("The existing production Doppler relay is still missing an approved product or unreachable");process.exitCode=1;}
+
+// Verify actual, timestamped BoM velocity PNG via SAME production relay,
+// not merely existence of metadata or a latest annotated GIF.
+try {
+  const historyResponse=await fetch(host+"/radar-history?product=IDR93I",{
+    headers:{Origin:"https://blakesmith-intel.github.io"}
+  });
+  if(!historyResponse.ok)throw Error("Brewarrina history "+historyResponse.status);
+  const history=await historyResponse.json();
+  if(history.product!=="IDR93I"||!Array.isArray(history.frames)||!history.frames.length)
+    throw Error("No published timestamped Brewarrina frames");
+  const frame=history.frames.at(-1);
+  if(!/^IDR93I\.T\.\d{12}\.png$/.test(frame.filename))
+    throw Error("Unexpected Brewarrina BoM filename");
+  const url=host+"/radar-frame?product=IDR93I&file="+encodeURIComponent(frame.filename);
+  const response=await fetch(url,{headers:{Origin:"https://blakesmith-intel.github.io"}});
+  if(!response.ok)throw Error("Brewarrina velocity frame "+response.status);
+  const raw=new Uint8Array(await response.arrayBuffer());
+  const isPng=raw.length>=24&&raw.slice(0,8).every((x,i)=>
+    x===[137,80,78,71,13,10,26,10][i]);
+  const dims=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);
+  const width=isPng?dims.getUint32(16):null,height=isPng?dims.getUint32(20):null;
+  console.log(JSON.stringify({name:"Brewarrina real historical velocity PNG",
+    filename:frame.filename,observedUtc:frame.observedUtc,status:response.status,
+    bytes:raw.length,contentType:response.headers.get("content-type"),
+    width,height,isPng,sourceUtc:response.headers.get("X-StormTracker-Observed-UTC")}));
+  if(!isPng||raw.length<500||!width||!height)
+    throw Error("BoM wind frame invalid or missing native pixels");
+  if(response.headers.get("X-StormTracker-Observed-UTC")!==frame.observedUtc)
+    throw Error("BoM frame UTC header mismatches published history");
+}catch(error){
+  console.error("Authentic Brewarrina scan failed: "+String(error));
+  if(requireRoute)process.exitCode=1;
+}

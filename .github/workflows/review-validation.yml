@@ -37,13 +37,21 @@ jobs:
           ref: b8be458acbae942a3bb0b530a5c17618b6d03134
           path: checked/production-v9.20.2
           persist-credentials: false
+      - name: Checkout exact V10.0.0 candidate for final package audit
+        uses: actions/checkout@v4
+        with:
+          ref: e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5
+          path: checked/production-v10.0.0
+          persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
           bash scripts/build-current-site.sh
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
           test ! -e _site/preview/next-baseline/BUILD.txt
-          grep -Fq 'SEALED StormTracker V9.20.2 source b8be458acbae942a3bb0b530a5c17618b6d03134' _site/BUILD.txt
+          grep -Fq 'SEALED StormTracker V10.0.0 source e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5' _site/BUILD.txt
+          grep -Fq 'createSupplementalDopplerDisplay' _site/src/live3d-operational-v9.js
+          test -s _site/src/multi-doppler-display-v1.js
           grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' _site/src/live3d-operational-v9.js
           grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' _site/src/live3d-operational-v9.js
           grep -Fq 'createResponsiveMemoryDiagnostics' _site/src/live3d-operational-v9.js

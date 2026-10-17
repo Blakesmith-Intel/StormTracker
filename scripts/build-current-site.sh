@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Source pins checked out by CI: approved production V9.20.2, immutable accepted V9.18 QA. Never build root implicitly from main.
+# Source pins checked out by CI: accepted V10.0.0, sealed V9.20.2 rollback and immutable V9.18 QA. Never build root implicitly from main.
 # Exactly the same deterministic package is built in PR dry-runs and Pages deploys.
 set -euo pipefail
-python checked/production-v9.20.2/scripts/build-nsw-radar-places.py \
-  --output checked/production-v9.20.2/frontend/data/nsw-radar-places-v1.json
+python checked/production-v10.0.0/scripts/build-nsw-radar-places.py \
+  --output checked/production-v10.0.0/frontend/data/nsw-radar-places-v1.json
 python - <<'PY'
 import json
 from pathlib import Path
-p=Path("checked/production-v9.20.2/frontend/data/nsw-radar-places-v1.json")
+p=Path("checked/production-v10.0.0/frontend/data/nsw-radar-places-v1.json")
 data=json.loads(p.read_text(encoding="utf-8"))
 assert data.get("schema")=="StormTrackerNSWRadarPlacesV1"
 assert len(data.get("places",[]))>=500
@@ -17,18 +17,18 @@ assert p.stat().st_size<300000
 PY
 
 set -euo pipefail
-production="checked/production-v9.20.2/frontend"
+production="checked/production-v10.0.0/frontend"
 accepted="checked/accepted-v9.18/frontend"
 preview="_site/preview/radar-history-fix"
 mkdir -p _site "$preview/data" "_site/data"
 
-# Sealed root is always generated from its immutable V9.20.2 release source.
+# Sealed root is always generated from its immutable V10.0.0 release source.
 for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "$production/$asset" "_site/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "_site/data/"
-printf 'SEALED StormTracker V9.20.2 source %s\n' \
-  'b8be458acbae942a3bb0b530a5c17618b6d03134' > _site/BUILD.txt
+printf 'SEALED StormTracker V10.0.0 source %s\n' \
+  'e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5' > _site/BUILD.txt
 
 # Identical recipe to the previously accepted QA preview:
 # main frontend supplies path-activated rescue guards, accepted SHA
@@ -69,7 +69,7 @@ node --check "$preview/src/live3d-operational-v9.js"
 node --check "_site/src/live3d-operational-v9.js"
 test -s "$preview/data/nsw-radar-places-v1.json"
 test -s "_site/data/nsw-radar-places-v1.json"
-# V9.20.2 is now the public baseline. Do not keep a mutable candidate
+# V10.0.0 is now the public baseline. Do not keep a mutable candidate
 # preview alongside the sealed root; historical accepted V9.18 QA stays.
 grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' "_site/src/live3d-operational-v9.js"
 grep -Fq 'persistentSatelliteCoverage:' "_site/src/live3d-operational-v9.js"
@@ -89,7 +89,7 @@ node --check "_site/src/context-layers/basemap-manager-v1.js"
 node --check "_site/src/radar-source.js"
 node --check "_site/src/adaptive-threat-cone-v1.js"
 # Optional ongoing delta-preview test route, independent of the
-# immutable V9.20.2 production root. Archived V9.19.0 remains recoverable.
+# immutable V10.0.0 production root. Archived V9.19.0 remains recoverable.
 delta="_site/preview/incremental-3d"
 mkdir -p "$delta/data"
 for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
@@ -123,7 +123,7 @@ node --check "$delta/src/historical-cyclone-overlay-v1.js"
 node --check "$delta/src/historical-cyclone-replay-v1.js"
 test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
 
-# Exact accepted V9.20.2 optimised renderer and memory bounds are deployed
+# Exact accepted V10.0.0 optimised renderer and memory bounds are deployed
 # from the PINNED source, never from the evolving maintenance/QA branch.
 grep -Fq 'const INCREMENTAL_VOLUME_PREVIEW =' "_site/src/live3d-operational-v9.js"
 grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' "_site/src/live3d-operational-v9.js"
@@ -138,7 +138,7 @@ node --check "_site/src/incremental-volume-renderer-v1.js"
 node --check "_site/src/supplemental-radar-volume-v1.js"
 node --check "_site/src/volume-display-opacity-v1.js"
 
-# V9.20.2 secondary-site volumetric restoration, real BoM >=40 dBZ only.
+# V10.0.0 preserves secondary-site volumetric display, real BoM >=40 dBZ only.
 grep -Fq 'selectSupplementalVolumeSampleIndices' "_site/src/supplemental-radar-volume-v1.js"
 grep -Fq 'hashSupplementalPixel' "_site/src/supplemental-volume-sampling-v1.js"
 grep -Fq 'secondarySiteGlyphs' "_site/src/live3d-operational-v9.js"
@@ -146,7 +146,7 @@ grep -Fq 'v9.20.1-secondary-3d-fix' "_site/live3d-operational-v9.html"
 grep -Fq 'v9.20.1-secondary-3d-fix' "_site/index.html"
 node --check "_site/src/supplemental-volume-sampling-v1.js"
 
-# V9.20.2 operator-accepted QLD/NSW satellite continuity and quality lock.
+# V10.0.0 retains accepted QLD/NSW satellite continuity and quality lock.
 grep -Fq 'GLOBAL_SATELLITE_FALLBACK' "_site/src/context-layers/basemap-manager-v1.js"
 grep -Fq 'createGlobalSatelliteFallbackProvider' "_site/src/context-layers/basemap-manager-v1.js"
 grep -Fq 'streetLayer.show=true' "_site/src/context-layers/basemap-manager-v1.js"
@@ -161,3 +161,11 @@ grep -Fq 'stageTotalBudgetMs' "_site/src/multi-radar-display-v9.js"
 node --check "_site/src/context-layers/basemap-manager-v1.js"
 node --check "_site/src/responsive-memory-diagnostics-v1.js"
 node --check "_site/src/volume-category-profile-cache-v1.js"
+
+# V10 accepted operator controls and genuine secondary-site native Doppler.
+grep -Fq 'id="multiRadarDopplerStatus"' "_site/live3d-operational-v9.html"
+grep -Fq 'single-interface-v1.css' "_site/live3d-operational-v9.html"
+grep -Fq 'multisite-native-wind-v1' "_site/index.html"
+grep -Fq 'createSupplementalDopplerDisplay' "_site/src/live3d-operational-v9.js"
+grep -Fq 'MAX_SECONDARY_WIND_OFFSET_MINUTES=8' "_site/src/multi-doppler-display-v1.js"
+node --check "_site/src/multi-doppler-display-v1.js"

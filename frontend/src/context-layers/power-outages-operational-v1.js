@@ -3,7 +3,7 @@ import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1
 import {
   createPowerOutageLayer,
   powerOutageSummary
-} from "./power-outages-v1.js?v=9.13.4";
+} from "./power-outages-v1.js?v=background-incident-refresh-20261017-v1";
 
 const $ = id =>
   document.getElementById(id);

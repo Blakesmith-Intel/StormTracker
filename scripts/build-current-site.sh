@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Source pins checked out by CI: accepted V10.1.1, sealed V9.20.2 rollback and immutable V9.18 QA. Never build root implicitly from main.
+# Source pins checked out by CI: accepted V10.2.0, sealed V9.20.2 rollback and immutable V9.18 QA. Never build root implicitly from main.
 # Exactly the same deterministic package is built in PR dry-runs and Pages deploys.
 set -euo pipefail
-python checked/production-v10.1.1/scripts/build-nsw-radar-places.py \
-  --output checked/production-v10.1.1/frontend/data/nsw-radar-places-v1.json
+python checked/production-v10.2.0/scripts/build-nsw-radar-places.py \
+  --output checked/production-v10.2.0/frontend/data/nsw-radar-places-v1.json
 python - <<'PY'
 import json
 from pathlib import Path
-p=Path("checked/production-v10.1.1/frontend/data/nsw-radar-places-v1.json")
+p=Path("checked/production-v10.2.0/frontend/data/nsw-radar-places-v1.json")
 data=json.loads(p.read_text(encoding="utf-8"))
 assert data.get("schema")=="StormTrackerNSWRadarPlacesV1"
 assert len(data.get("places",[]))>=500
@@ -17,18 +17,18 @@ assert p.stat().st_size<300000
 PY
 
 set -euo pipefail
-production="checked/production-v10.1.1/frontend"
+production="checked/production-v10.2.0/frontend"
 accepted="checked/accepted-v9.18/frontend"
 preview="_site/preview/radar-history-fix"
 mkdir -p _site "$preview/data" "_site/data"
 
-# Sealed root is always generated from its immutable V10.1.1 release source.
+# Sealed root is always generated from its immutable V10.2.0 release source.
 for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
   cp -a "$production/$asset" "_site/$asset"
 done
 cp "$production/data/nsw-radar-places-v1.json" "_site/data/"
-printf 'SEALED StormTracker V10.1.1 source %s\n' \
-  '711d65a72a483b319e80711a09cfeabe2f69bbcd' > _site/BUILD.txt
+printf 'SEALED StormTracker V10.2.0 source %s\n' \
+  '047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' > _site/BUILD.txt
 
 # Identical recipe to the previously accepted QA preview:
 # main frontend supplies path-activated rescue guards, accepted SHA
@@ -69,7 +69,7 @@ node --check "$preview/src/live3d-operational-v9.js"
 node --check "_site/src/live3d-operational-v9.js"
 test -s "$preview/data/nsw-radar-places-v1.json"
 test -s "_site/data/nsw-radar-places-v1.json"
-# V10.1.1 is now the public baseline. Do not keep a mutable candidate
+# V10.2.0 is now the public baseline. Do not keep a mutable candidate
 # preview alongside the sealed root; historical accepted V9.18 QA stays.
 grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' "_site/src/live3d-operational-v9.js"
 grep -Fq 'persistentSatelliteCoverage:' "_site/src/live3d-operational-v9.js"
@@ -89,7 +89,7 @@ node --check "_site/src/context-layers/basemap-manager-v1.js"
 node --check "_site/src/radar-source.js"
 node --check "_site/src/adaptive-threat-cone-v1.js"
 # Optional ongoing delta-preview test route, independent of the
-# immutable V10.1.1 production root. Archived V9.19.0 remains recoverable.
+# immutable V10.2.0 production root. Archived V9.19.0 remains recoverable.
 delta="_site/preview/incremental-3d"
 mkdir -p "$delta/data"
 for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
@@ -123,13 +123,12 @@ node --check "$delta/src/historical-cyclone-overlay-v1.js"
 node --check "$delta/src/historical-cyclone-replay-v1.js"
 test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
 
-# Exact accepted V10.1.1 optimised renderer and memory bounds are deployed
+# Exact accepted V10.2.0 optimised renderer and memory bounds are deployed
 # from the PINNED source, never from the evolving maintenance/QA branch.
 grep -Fq 'const INCREMENTAL_VOLUME_PREVIEW =' "_site/src/live3d-operational-v9.js"
 grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' "_site/src/live3d-operational-v9.js"
 grep -Fq 'const showTrackVolumes = !INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
 grep -Fq 'const retainedVolume=INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
-grep -Fq 'createResponsiveMemoryDiagnostics' "_site/src/live3d-operational-v9.js"
 grep -Fq 'function upsert(key,category,specs,create,patch)' "_site/src/incremental-volume-renderer-v1.js"
 grep -Fq 'function pruneSites(selectedIds=[])' "_site/src/supplemental-radar-volume-v1.js"
 grep -Fq 'v9.20.0-optimised-3d-prod' "_site/index.html"
@@ -138,7 +137,7 @@ node --check "_site/src/incremental-volume-renderer-v1.js"
 node --check "_site/src/supplemental-radar-volume-v1.js"
 node --check "_site/src/volume-display-opacity-v1.js"
 
-# V10.1.1 preserves secondary-site volumetric display, real BoM >=40 dBZ only.
+# V10.2.0 preserves secondary-site volumetric display, real BoM >=40 dBZ only.
 grep -Fq 'selectSupplementalVolumeSampleIndices' "_site/src/supplemental-radar-volume-v1.js"
 grep -Fq 'hashSupplementalPixel' "_site/src/supplemental-volume-sampling-v1.js"
 grep -Fq 'secondarySiteGlyphs' "_site/src/live3d-operational-v9.js"
@@ -146,20 +145,16 @@ grep -Fq 'v9.20.1-secondary-3d-fix' "_site/live3d-operational-v9.html"
 grep -Fq 'v9.20.1-secondary-3d-fix' "_site/index.html"
 node --check "_site/src/supplemental-volume-sampling-v1.js"
 
-# V10.1.1 retains accepted QLD/NSW satellite continuity and quality lock.
+# V10.2.0 retains accepted QLD/NSW satellite continuity and quality lock.
 grep -Fq 'GLOBAL_SATELLITE_FALLBACK' "_site/src/context-layers/basemap-manager-v1.js"
 grep -Fq 'createGlobalSatelliteFallbackProvider' "_site/src/context-layers/basemap-manager-v1.js"
 grep -Fq 'streetLayer.show=true' "_site/src/context-layers/basemap-manager-v1.js"
 grep -Fq 'global-satellite-blue-gap-20261016-v1' "_site/src/live3d-operational-v9.js"
 grep -Fq 'satellite-blue-gap-qa-v1' "_site/live3d-operational-v9.html"
 grep -Fq 'satellite-blue-gap-qa-v1' "_site/index.html"
-grep -Fq 'createResponsiveMemoryDiagnostics' "_site/src/live3d-operational-v9.js"
-grep -Fq 'stormtrackerMemoryDialog' "_site/src/responsive-memory-diagnostics-v1.js"
-grep -Fq 'Memory diagnostics' "_site/src/responsive-memory-diagnostics-v1.js"
 grep -Fq 'createVolumeCategoryProfileCache' "_site/src/live3d-operational-v9.js"
 grep -Fq 'stageTotalBudgetMs' "_site/src/multi-radar-display-v9.js"
 node --check "_site/src/context-layers/basemap-manager-v1.js"
-node --check "_site/src/responsive-memory-diagnostics-v1.js"
 node --check "_site/src/volume-category-profile-cache-v1.js"
 
 # V10 accepted operator controls and genuine secondary-site native Doppler.
@@ -170,7 +165,7 @@ grep -Fq 'createSupplementalDopplerDisplay' "_site/src/live3d-operational-v9.js"
 grep -Fq 'MAX_SECONDARY_WIND_OFFSET_MINUTES=8' "_site/src/multi-doppler-display-v1.js"
 node --check "_site/src/multi-doppler-display-v1.js"
 
-# V10.1.1 source-clock atomic multi-site Doppler: the same prepare-then-
+# V10.2.0 source-clock atomic multi-site Doppler: the same prepare-then-
 # commit boundary as rain radar, original BoM site UTC and Brewarrina IDR93I.
 grep -Fq 'supplementalDopplerDisplay.prepare(source.observedUtc)' "_site/src/live3d-operational-v9.js"
 grep -Fq 'supplementalDopplerDisplay.commit(source.observedUtc)' "_site/src/live3d-operational-v9.js"
@@ -178,8 +173,22 @@ grep -Fq 'function commit(utc)' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'IDR93I' "_site/src/border-radar-sites-v1.js"
 
+# V10.2.0 original source-issued cyclone forecast panel is deployed opt-in,
+# with strictly separate "no cyclone" and "unable to verify" status.
+grep -Fq 'id="openCycloneForecastQa"' "_site/live3d-operational-v9.html"
+grep -Fq 'id="cycloneForecastQaPanel"' "_site/live3d-operational-v9.html"
+grep -Fq 'createHistoricalCycloneForecastQA' "_site/src/live3d-operational-v9.js"
+grep -Fq 'createInternalCycloneLiveQA' "_site/src/live3d-operational-v9.js"
+grep -Fq 'Currently no tropical cyclone warnings' "_site/src/internal-cyclone-live-qa-v1.js"
+grep -Fq 'Unable to verify current tropical cyclone warnings' "_site/src/internal-cyclone-live-qa-v1.js"
+grep -Fq 'validateInternalCycloneSnapshot' "_site/src/internal-cyclone-live-qa-v1.js"
+grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
+node --check "_site/src/internal-cyclone-live-qa-v1.js"
+node --check "_site/src/internal-cyclone-feed-v1.js"
+node --check "_site/src/historical-cyclone-forecast-map-v1.js"
+
 # Regression: Hide controls must remove both sidebar grid tracks, not shrink map.
 grep -Fq 'body.simple-ui #app.sidebar-collapsed' "_site/src/single-interface-v1.css"
 grep -Fq 'grid-template-rows:minmax(0,1fr)' "_site/src/single-interface-v1.css"
-grep -Fq 'full-map-toggle-20261017-v2' "_site/live3d-operational-v9.html"
+grep -Fq 'full-map-controls-gauge-severity-v4' "_site/live3d-operational-v9.html"
 grep -Fq 'hide-controls-full-map-v1' "_site/index.html"

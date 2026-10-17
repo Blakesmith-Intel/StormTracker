@@ -116,6 +116,7 @@ import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 // Memory QA sampling remains available on demand through window.__stormtrackerMemoryDiagnostics in the research preview; no sidebar panel.
 import {createHistoricalCycloneForecastQA} from "./historical-cyclone-forecast-map-v1.js?v=issued-fina-20261017-qa-v1";
+import {createInternalCycloneLiveQA} from "./internal-cyclone-live-qa-v1.js?v=internal-original-gml-qa1";
 import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=single-interface-20261017-v1";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
@@ -478,9 +479,14 @@ mapCamera =
 
 // The verified browser-source QA viewer must never call Cesium.camera.flyTo;
 // StormTracker's stateful camera guardian would cancel it as stray movement.
-if(INCREMENTAL_VOLUME_PREVIEW && window.location.pathname.includes("/preview/incremental-3d/"))
+if(window.location.pathname.includes("/preview/incremental-3d/") ||
+   (/\/live3d-operational-v9\.html$/.test(window.location.pathname) &&
+    !window.location.pathname.includes("/preview/"))) {
   createHistoricalCycloneForecastQA({Cesium,viewer,documentRef:document,
     cameraController:mapCamera});
+  createInternalCycloneLiveQA({Cesium,viewer,documentRef:document,
+    cameraController:mapCamera});
+}
 
 let queenslandTownLabels = null;
 let queenslandStateBorder = null;

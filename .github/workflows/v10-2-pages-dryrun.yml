@@ -1,0 +1,49 @@
+name: V10.2 cyclone production release dry-run
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/build-current-site.sh'
+      - '.github/workflows/pages.yml'
+      - 'frontend/**'
+      - '.github/workflows/v10-2-pages-dryrun.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout proposed release tooling
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Retrieve preserved V9.18 diagnostic source
+        uses: actions/checkout@v4
+        with:
+          ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
+          path: checked/accepted-v9.18
+          persist-credentials: false
+      - name: Retrieve immutable V10.2 cyclone candidate source
+        uses: actions/checkout@v4
+        with:
+          ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
+          path: checked/production-v10.2.0
+          persist-credentials: false
+      - name: Build exact production root and both preserved previews
+        run: |
+          set -euo pipefail
+          test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
+          npm test
+          bash -x scripts/build-current-site.sh
+          grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' _site/BUILD.txt
+          grep -Fq 'id="openCycloneForecastQa"' _site/live3d-operational-v9.html
+          grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
+          grep -Fq 'Unable to verify current tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
+          node --check _site/src/live3d-operational-v9.js
+          test -s _site/preview/radar-history-fix/BUILD.txt
+          test -s _site/preview/incremental-3d/BUILD.txt

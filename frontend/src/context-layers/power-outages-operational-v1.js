@@ -1,5 +1,5 @@
 import {addOfficialSourceRow,powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
-import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=incident-counts-spatial-lga-20261017-v3";
+import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=last-refresh-20261017-v1";
 import {
   createPowerOutageLayer,
   powerOutageSummary
@@ -405,6 +405,7 @@ export function initialiseOperationalPowerOutages({
         Boolean(
           checkbox?.checked
         ),
+      refreshWhileHidden: true,
 
       onStatus:
         status => {

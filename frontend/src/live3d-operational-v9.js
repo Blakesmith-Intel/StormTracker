@@ -479,7 +479,9 @@ mapCamera =
 
 // The verified browser-source QA viewer must never call Cesium.camera.flyTo;
 // StormTracker's stateful camera guardian would cancel it as stray movement.
-if(INCREMENTAL_VOLUME_PREVIEW && window.location.pathname.includes("/preview/incremental-3d/")) {
+if(window.location.pathname.includes("/preview/incremental-3d/") ||
+   (/\/live3d-operational-v9\.html$/.test(window.location.pathname) &&
+    !window.location.pathname.includes("/preview/"))) {
   createHistoricalCycloneForecastQA({Cesium,viewer,documentRef:document,
     cameraController:mapCamera});
   createInternalCycloneLiveQA({Cesium,viewer,documentRef:document,

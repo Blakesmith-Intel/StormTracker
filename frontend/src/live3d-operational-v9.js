@@ -3790,10 +3790,10 @@ async function showDopplerOnlyFrame(index) {
   const next=Math.max(0,Math.min(windPlaybackFrames.length-1,Number(index)));
   const source=windPlaybackFrames[next];
   if (!source) return false;
-  // Prime all selected genuine BoM velocity sources for THIS source UTC
-  // while the primary image decodes; the primary remains the only master clock.
-  // Never block the playback longer than the brief bounded sync budget.
-  const extrasPreparing=supplementalDopplerDisplay.prewarm(source.observedUtc);
+  // Same source-true prepare/commit workflow used by multi-site RAIN:
+  // prepare genuine site-specific Doppler scans while the primary decodes,
+  // stage each optional native image, then reveal all ready sites together.
+  const extrasPreparing=supplementalDopplerDisplay.prepare(source.observedUtc);
   let prepared;
   try {
     prepared=await prepareWindObservation(next);
@@ -3814,7 +3814,9 @@ async function showDopplerOnlyFrame(index) {
   }
   if(renderToken!==hybridSceneRenderToken || !isNativeDopplerPlayback())
     return false;
-  supplementalDopplerDisplay.showAt(source.observedUtc);
+  // Same atomic handover boundary as rain's supplementalRadarDisplay.commit.
+  // No asynchronous site-by-site map changes after primary UTC advances.
+  supplementalDopplerDisplay.commit(source.observedUtc);
   const time=prepared.record?.observedUtc ?? source.observedUtc;
   syncFrameSlider($("hybridFrameSlider"),windPlaybackFrames.length,next);
   $("hybridFrameLabel").textContent=(next+1)+"/"+windPlaybackFrames.length;

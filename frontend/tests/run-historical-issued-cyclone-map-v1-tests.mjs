@@ -13,6 +13,7 @@ const css=read("../src/single-interface-v1.css");
 
 assert.match(html,/id="openCycloneForecastQa"[^>]*aria-expanded="false"/);
 assert.match(html,/id="cycloneForecastQaPanel"[^>]*hidden>/);
+assert.match(html,/id="historicalCycloneMapStamp" hidden/);
 assert.match(html,/id="cycloneGmlFile" type="file"/);
 assert.match(html,/id="cycloneShow72" checked/);
 assert.match(html,/id="cycloneShow120" checked/);
@@ -108,7 +109,7 @@ void truncated;
 // a copy of original BoM geometry in the repository or QA test file.
 const mapEls=new Map();
 for(const id of ["openCycloneForecastQa","cycloneForecastQaPanel","cycloneGmlFile",
- "cycloneForecastQaStatus","cycloneShow72","cycloneShow120",
+ "cycloneForecastQaStatus","historicalCycloneMapStamp","cycloneShow72","cycloneShow120",
  "cycloneForecastQaFocus","cycloneForecastQaClear","cycloneForecastQaClose"]){
  mapEls.set(id,{id,hidden:id==="cycloneForecastQaPanel",checked:id==="cycloneShow72"||id==="cycloneShow120",
   disabled:false,textContent:"",files:[],value:"",listeners:{},
@@ -156,11 +157,14 @@ assert.ok(entities.some(x=>x.name.includes("issued forecast track")));
 assert.ok(entities.some(x=>x.name.includes("forecast")));
 assert.ok(!entities.some(x=>x.name.includes("Warning")));
 assert.match(mapEls.get("cycloneForecastQaStatus").textContent,/ARCHIVED, NOT LIVE/);
+assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,false);
+assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/ARCHIVED BoM FORECAST · NOT LIVE/);
 mapEls.get("cycloneShow72").checked=false;
 mapEls.get("cycloneShow72").listeners.change();
 assert.equal(entities.filter(x=>x.polygon).length,1,"72h toggle removes only that polygon");
 mapEls.get("cycloneForecastQaClear").listeners.click();
 assert.equal(entities.length,0);
+assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,true);
 assert.equal(ui.loaded,null);
 assert.ok(requests>=3);
 console.log("PASS original local BoM cyclone GML browser parser, truthful issued source areas and isolated Cesium QA lifecycle.");

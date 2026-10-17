@@ -8,7 +8,7 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
  const $=id=>documentRef.getElementById(id);
  const button=$("openCycloneForecastQa"),panel=$("cycloneForecastQaPanel");
  if(!button||!panel)throw new Error("Missing historical cyclone QA map UI");
- const input=$("cycloneGmlFile"),status=$("cycloneForecastQaStatus");
+ const input=$("cycloneGmlFile"),status=$("cycloneForecastQaStatus"),stamp=$("historicalCycloneMapStamp");
  const check72=$("cycloneShow72"),check120=$("cycloneShow120");
  const ds=new Cesium.CustomDataSource("Historical cyclone issued map — NOT LIVE");
  viewer.dataSources.add(ds);
@@ -39,6 +39,12 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
  function statusText(text){status.textContent=text;}
  function clear(){
   ds.entities.removeAll();
+  stamp.hidden=!loaded;
+  if(loaded)stamp.textContent="ARCHIVED BoM FORECAST · NOT LIVE · "+
+    loaded.cycloneName+" · issued "+new Date(loaded.issueUtc).toLocaleString("en-AU",{
+      timeZone:"Australia/Brisbane",day:"2-digit",month:"short",year:"numeric",
+      hour:"2-digit",minute:"2-digit",hour12:false
+    })+" AEST";
   viewer.scene?.requestRender?.();
  }
  function redraw(){

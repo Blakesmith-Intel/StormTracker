@@ -165,3 +165,14 @@ body.simple-ui #cycloneForecastQaPanel {
     width:min(370px,calc(100% - 12px));padding:9px;
   }
 }
+
+/* Persistent historical provenance survives closing the QA panel or sidebar.
+   Never allow an archived forecast to look like the live BoM warnings layer. */
+#historicalCycloneMapStamp[hidden]{display:none!important;}
+#historicalCycloneMapStamp {
+  box-sizing:border-box;position:absolute;left:12px;bottom:113px;
+  max-width:min(490px,calc(100% - 24px));z-index:var(--stormtracker-control-z);
+  padding:6px 9px;border-radius:8px;border:1px solid #eab65b;
+  background:#172735ec;color:#ffe1a0;font:700 11px/1.4 system-ui;
+  box-shadow:0 2px 12px #0006;pointer-events:none;
+}

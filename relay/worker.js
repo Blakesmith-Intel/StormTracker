@@ -62,7 +62,9 @@ const ALLOWED_LAYERS = new Set([
   "atm_surf_air_precip_reflectivity_dbz",
 ]);
 
-// Explicit QLD catalogue plus Brewarrina IDR93I only. Never permit arbitrary NSW or user-supplied BoM products.
+// One existing production transport: all approved QLD sites plus Brewarrina
+// IDR93I only. Never permit arbitrary NSW or user-supplied BoM products.
+// The deployed Worker must track the approved source catalogue.
 const ALLOWED_DOPPLER_PRODUCTS = new Set(Object.values(BORDER_RADAR_DOPPLER_PRODUCTS));
 
 const ALLOWED_PARAMS = new Set([

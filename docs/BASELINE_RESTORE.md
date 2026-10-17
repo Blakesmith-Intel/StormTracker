@@ -1,10 +1,10 @@
 # StormTracker V10.2.0 — cyclone UI release and sealed rollback
 
-**New source-pinned release:** `cdea3d6c760b7369a004df21a35a5bc688b365d2` (17 October 2026). Publish/verify before creating new tag.\n\n**Previous sealed V10.1.1 source:** `711d65a72a483b319e80711a09cfeabe2f69bbcd` — preserved as the immediate fallback.
+**New source-pinned release:** `047b3bd1c66b0ed5f070d2298202f46d0cd8dae2` (17 October 2026). Publish/verify before creating new tag.\n\n**Previous sealed V10.1.1 source:** `711d65a72a483b319e80711a09cfeabe2f69bbcd` — preserved as the immediate fallback.
 
 - Public app: https://blakesmith-intel.github.io/StormTracker/
 - Public source check: https://blakesmith-intel.github.io/StormTracker/BUILD.txt
-- Exact marker: `SEALED StormTracker V10.2.0 source cdea3d6c760b7369a004df21a35a5bc688b365d2`
+- Exact marker: `SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2`
 - Immutable annotated tag: `v10.2.0`
 - Immediate recovery branch: `restore/v10.2.0`
 

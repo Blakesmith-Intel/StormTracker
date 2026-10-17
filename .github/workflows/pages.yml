@@ -199,6 +199,11 @@ jobs:
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' <<< "$root"
+          grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/context-layers/river-gauge-layer-v1.js" | grep -F 'recentNextAttemptAt' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/context-layers/bom-recent-river-history-v1.js" | grep -F 'recentFloodHistoryGap' >/dev/null
           grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$preview"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \

@@ -30,6 +30,48 @@ cp "$production/data/nsw-radar-places-v1.json" "_site/data/"
 printf 'SEALED StormTracker V10.2.0 source %s\n' \
   '047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' > _site/BUILD.txt
 
+# Apply ONLY the post-seal river-history recovery fix to the published copy.
+# Checked V10.2 source remains immutable; every other production asset is
+# still taken unchanged from its approved source snapshot. Do not overwrite
+# accepted V9.18 or experimental V10.3 preview assets.
+python - <<'PY'
+from pathlib import Path
+from shutil import copyfile
+
+site = Path("_site")
+source = Path("frontend/src/context-layers")
+layers = site / "src/context-layers"
+for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js"):
+    copyfile(source / filename, layers / filename)
+
+suffix = "-river-history-hotfix-20261018"
+def version_once(relative, needle):
+    path = site / relative
+    data = path.read_text(encoding="utf-8")
+    assert data.count(needle) == 1, f"Expected one production source reference: {relative}"
+    path.write_text(data.replace(needle, needle + suffix, 1), encoding="utf-8")
+
+# Refresh the full import chain so existing browser sessions cannot silently
+# reuse previously cached modules with the same query strings.
+version_once("index.html", "-jasper-alfred-v1")
+version_once("live3d-operational-v9.html", "-jasper-alfred-archive-v1")
+version_once("src/live3d-operational-v9.js",
+    "river-gauges-operational-v1.js?v=9.18.11-gauge-green-yellow-red-v2")
+version_once("src/context-layers/river-gauges-operational-v1.js",
+    "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "bom-recent-river-history-v1.js?v=9.13.1")
+
+assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
+assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
+with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
+    record.write("RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18 (source main)\n")
+PY
+node --check _site/src/live3d-operational-v9.js
+node --check _site/src/context-layers/river-gauges-operational-v1.js
+node --check _site/src/context-layers/river-gauge-layer-v1.js
+node --check _site/src/context-layers/bom-recent-river-history-v1.js
+
 # Identical recipe to the previously accepted QA preview:
 # main frontend supplies path-activated rescue guards, accepted SHA
 # overlays the tested radar, 3-D, basemap and river corrections.

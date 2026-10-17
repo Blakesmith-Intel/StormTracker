@@ -6,11 +6,6 @@
 #controlSidebar .dashboard-heading .simple-brand{
  flex:1 1 auto;min-width:0;
 }
-#controlSidebar .dashboard-heading #simpleModeToggle{
- flex:0 0 auto;min-width:90px;max-width:118px;
- margin:0;min-height:38px;padding:6px 8px;
- white-space:normal;line-height:1.2;font-size:11px;
-}
 #controlSidebar .sidebar-shortcuts{
  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
  gap:7px!important;margin:0!important;padding:0;width:100%;
@@ -41,9 +36,6 @@
 #controlSidebar .sidebar-shortcuts #openPowerOutageExplorer{background:#214356;}
 @media(max-width:700px){
  #controlSidebar .dashboard-heading{gap:6px;}
- #controlSidebar .dashboard-heading #simpleModeToggle{
-  min-height:34px;max-width:104px;min-width:83px;padding:4px 6px;font-size:10px;
- }
  #controlSidebar .sidebar-shortcuts{gap:4px!important;}
  #controlSidebar .sidebar-shortcuts #openPowerOutageExplorer,
  #controlSidebar .sidebar-shortcuts #openRoadLgaExplorer{

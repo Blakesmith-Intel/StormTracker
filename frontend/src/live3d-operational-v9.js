@@ -113,8 +113,7 @@ import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
-import {mountHistoricalCycloneQA} from "./historical-cyclone-overlay-v1.js?v=representative-cyclone-qa-v1";
-import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=simple-ui-20261017-v2";
+import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=single-interface-20261017-v1";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";
@@ -238,8 +237,6 @@ const DEFAULT_OFF_LAYER_IDS = Object.freeze([
   "showQfdTechnicalRescues",
   "showTrackLabels",
   "showTrackThreatCone",
-  "showSevereRadarAlerts",
-  "showExperimentalHookAlerts"
 ]);
 for(const id of DEFAULT_OFF_LAYER_IDS){
   const checkbox=$(id);
@@ -294,12 +291,9 @@ sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.
 createFriendlyMapTools({viewer,Cesium});
 const persistentWeatherLegend=mountPersistentWeatherLegend();
 
-// Historical cyclone QA exists ONLY in the isolated test preview.
-// Neither the sealed production source nor normal live view loads/replays
-// old cyclone tracks. No background polling or radar-scene mutator.
-if(window.location.pathname.includes("/preview/incremental-3d/")){
-  mountHistoricalCycloneQA({Cesium,viewer,sidebar:controlsSidebar});
-}
+// Historical cyclone research is paused and remains available as a separate
+// module for future test work. It no longer mounts a legacy panel inside the
+// approved operator sidebar or creates dormant cyclone controls on page load.
 
 // V9.19.0 production inherits the browser-approved QA guards. The release
 // runs inside live3d-operational-v9.html at the GitHub Pages site root;
@@ -1209,7 +1203,6 @@ function setAdvancedScienceVisible(visible) {
   const dialog = $("detailsDialog");
   if (visible && !dialog.open) dialog.showModal();
   if (!visible && dialog.open) dialog.close();
-  $("showAdvancedScience").checked = Boolean(visible);
 }
 
 function selectDetailsTab(name) {
@@ -1231,7 +1224,8 @@ function colourForDbzh(value) {
 // Cloud-like billboards are presentation only; the AURA-inferred profiles
 // and original reflectivity frames remain unchanged.
 let volumeBlobImage=null;
-function useBlobVolume(){ return $("blobVolume")?.checked ?? true; }
+// The approved rounded-volume rendering is now the only operator mode.
+function useBlobVolume(){ return true; }
 function blobImage(){
   if(!volumeBlobImage)volumeBlobImage=createBlobSpriteDataUrl(document);
   return volumeBlobImage;
@@ -2771,13 +2765,13 @@ function syncSevereStormAlerts(index) {
   const detection = buildSevereStormFrameAlerts({
     frame, result, previousFrame, previousResult,
     dopplerState: dopplerStateForFrame(index),
-    enableExperimentalHook: Boolean($("showExperimentalHookAlerts")?.checked)
+    enableExperimentalHook: false
   });
   severeStormAlertOverlay.setFrame({
     alerts: detection.alerts,
     observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
     windSupported: detection.windSourceSupported,
-    experimentalHook: Boolean($("showExperimentalHookAlerts")?.checked),
+    experimentalHook: false,
     displayedUtc: frame?.observedUtc ?? null,
     atNewestFrame: index === hybridFrames.length - 1
   });
@@ -5252,16 +5246,11 @@ $("jumpLatestButton").addEventListener("click", async () => {
     runSourceLoad(loadLatest);
   }
 });
-$("showAdvancedScience").addEventListener("change", event => {
-  selectDetailsTab("controls");
-  setAdvancedScienceVisible(event.target.checked);
-});
 $("openDetailsButton").addEventListener("click", () => {
   selectDetailsTab("tracks");
   setAdvancedScienceVisible(true);
 });
 $("closeDetailsButton").addEventListener("click", () => setAdvancedScienceVisible(false));
-$("detailsDialog").addEventListener("close", () => { $("showAdvancedScience").checked = false; });
 for (const button of document.querySelectorAll("[data-detail-tab]")) {
   button.addEventListener("click", () => selectDetailsTab(button.dataset.detailTab));
 }
@@ -5299,8 +5288,6 @@ $("showQfdTechnicalRescues").addEventListener("change",event=>{
   if(legend)legend.open=Boolean(event.target.checked);
 });
 $("showTrackLabels").addEventListener("change",updateRenderedTrackLabels);
-$("showSevereRadarAlerts").addEventListener("change", event => severeStormAlertOverlay.setEnabled(event.target.checked));
-$("showExperimentalHookAlerts").addEventListener("change", () => syncSevereStormAlerts(hybridFrameIndex));
 $("trackDisplayFilter").addEventListener("change", event => {
   selectedTrackDisplayId = event.target.value || "";
   if (!selectedTrackDisplayId) $("showTrackThreatCone").checked = false;
@@ -5458,16 +5445,6 @@ $("resetButton").addEventListener(
 );
 
 refreshReflectivityLegend();
-$("blobVolume")?.addEventListener("change",()=>{
-  clearVolumeGeometryCache();
-  if(latestFrame && !isNativeDopplerPlayback()){
-    renderInferredVolume(latestFrame);
-    if(hybridResults.length){
-      applyHybridVolumeMode(hybridFrameIndex);
-      renderHybridTracks(hybridFrameIndex);
-    }
-  }
-});
 
 initialise().catch(
   error => {

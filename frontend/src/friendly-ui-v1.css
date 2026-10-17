@@ -1,5 +1,4 @@
-/* StormTracker friendly UI — QA preview only. Existing app/renderer untouched.
-   Simple is the default; More options exposes every original control. */
+/* StormTracker single operator UI — only the approved, responsive control layout. */
 body.simple-ui #app { grid-template-columns:minmax(292px,328px) minmax(0,1fr);grid-template-rows:minmax(0,1fr); }
 body.simple-ui #controlSidebar {
   display:flex; flex-direction:column; gap:12px; padding:14px;
@@ -10,8 +9,6 @@ body.simple-ui #controlSidebar > * { flex:0 0 auto; }
 .simple-brand {display:grid;gap:2px;min-width:0;}
 .simple-brand strong {font-size:18px;letter-spacing:-.035em;color:#f6fbff;}
 .simple-brand span {font-size:12px;color:#b6ccd9;}
-#simpleModeToggle {white-space:nowrap;font-size:12px;padding:8px 12px;min-height:40px;
-  border-radius:11px;background:#1d3446;color:#f2fbff;}
 .simple-intro {display:none;}
 body.simple-ui .dashboard-heading {display:flex!important;min-height:48px;}
 body.simple-ui .simple-intro {
@@ -25,9 +22,6 @@ body.simple-ui .card {
 }
 .section-title {display:none;margin:0 0 10px;font-size:15px;color:#f4fafc;}
 body.simple-ui .section-title {display:block;}
-body.simple-ui .overview,body.simple-ui #legendDock,body.simple-ui .live-notices,
-body.simple-ui #historicalCycloneQaPanel,body.simple-ui #memoryQaPanel {display:none!important;}
-body.simple-ui .loop-controls > :not(.section-title):not(.control-grid):not(.button-grid):not(.playback-row):not(#hybridFrameSlider) {display:none!important;}
 body.simple-ui .control-grid {display:block;}
 body.simple-ui .control-grid label:has(#playbackSpeed) {display:none!important;}
 body.simple-ui .control-grid label {font-size:13px;gap:7px;}
@@ -42,7 +36,6 @@ body.simple-ui #hybridPlayButton {flex:1;min-width:84px;background:#146e50;borde
 body.simple-ui #jumpLatestButton {flex:1;min-width:84px;}
 body.simple-ui .playback-row label {display:none;}
 body.simple-ui #hybridFrameSlider {height:30px;margin-top:8px;}
-body.simple-ui .layer-controls > :not(.section-title):not(.basemap-row):not(.terrain-row):not(.flood-road-row):not(.power-outage-row):not(.river-gauge-row):not(.qfd-rescue-row) {display:none!important;}
 body.simple-ui .layer-controls .layer-row {
   padding:6px 0;margin:0;min-height:42px;display:flex;align-items:center;flex-wrap:nowrap;
   border-bottom:1px solid #ffffff19;
@@ -52,7 +45,6 @@ body.simple-ui .layer-row label {font-size:12px;line-height:1.4;color:#e5f0f6;}
 body.simple-ui .layer-row input[type=checkbox] {width:20px;height:20px;flex:0 0 20px;}
 body.simple-ui .layer-row select {max-width:100%;width:100%;font-size:12px;min-height:42px;border-radius:8px;}
 body.simple-ui .basemap-row {display:grid!important;grid-template-columns:1fr;gap:5px;}
-body.simple-ui .layer-row button {display:none!important;}
 body.simple-ui .terrain-row > span {display:none;}
 body.simple-ui #status {
   display:block;font-size:11px;max-height:78px;min-height:28px;
@@ -111,14 +103,11 @@ body.simple-ui #controlSidebar:has(.layer-controls) { min-width:0; }
   .measure-actions {grid-template-columns:1fr 1fr;}
   #measureDone {grid-column:1/-1;}
 }
-/* Larger touch targets apply in Advanced view as well, without hiding controls. */
-body:not(.simple-ui) #simpleModeToggle {min-height:40px;}
 @media (prefers-reduced-motion:reduce) {
   #mapMeasurePanel,#mapTools {transition:none!important;animation:none!important;}
 }
 
-/* Mobile QA refinement 2026-10-17: keep the weather map larger than the controls.
-   Preserve a scrollable full Advanced view behind "More options". */
+/* Mobile control strip remains internally scrollable while the weather map dominates. */
 @media (max-width:700px) {
   body.simple-ui #app {
     grid-template-columns:minmax(0,1fr);
@@ -137,12 +126,7 @@ body:not(.simple-ui) #simpleModeToggle {min-height:40px;}
   }
   body.simple-ui .simple-brand strong {font-size:17px;}
   body.simple-ui .simple-brand span {font-size:10px;}
-  body.simple-ui #simpleModeToggle {min-height:38px;padding:5px 11px;font-size:11px;}
   body.simple-ui .simple-intro {display:none!important;}
-  /* Essential playback actions remain visible on opening. Nonessential layers
-     and science controls are still available via the More options switch. */
-  body.simple-ui .layer-controls,body.simple-ui .live-notices,
-  body.simple-ui #status {display:none!important;}
   body.simple-ui .loop-controls {
     padding:7px 9px 8px;
     border-radius:11px;
@@ -163,8 +147,7 @@ body:not(.simple-ui) #simpleModeToggle {min-height:40px;}
   body.simple-ui #hybridFrameSlider {height:18px;margin:3px 0 0;}
   #mapTools {top:50px;left:6px;}
   #measureToggle {min-width:92px;min-height:38px;font-size:12px;padding:5px 9px;border-radius:10px;}
-  /* Panel is a narrow command bar; explanatory text moves to help/documentation
-     instead of covering the live map. Original information remains in DOM. */
+  /* Measurement panel is a compact map command bar on small screens. */
   #mapMeasurePanel {
     left:6px;right:6px;top:94px;
     width:auto;max-height:min(175px,calc(100% - 112px));

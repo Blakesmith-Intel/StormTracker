@@ -152,7 +152,8 @@ assert.ok(removals>0);
 widget.dispose();
 assert.equal(widget.panel.removed,true);
 const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
-assert.match(runtime,/if\(window\.location\.pathname\.includes\("\/preview\/incremental-3d\/"\)\)/);
-assert.match(runtime,/mountHistoricalCycloneQA\(\{Cesium,viewer,sidebar:controlsSidebar\}\)/);
-assert.doesNotMatch(runtime,/mountHistoricalCycloneQA\(\{Cesium,viewer,sidebar:controlsSidebar\}\);\s*\nconst PUBLISHED_PRODUCTION_RUNTIME/);
+// Historical replay remains individually testable, but the removed expanded
+// UI must not mount cyclone test controls into the public operator sidebar.
+assert.doesNotMatch(runtime,/mountHistoricalCycloneQA/);
+assert.match(runtime,/Historical cyclone research is paused/);
 console.log("PASS genuine archived Koji (full 1405-vertex wind geometry) + Yasi tracks, scrubber, correct issue UTC, no forecast fabrication, no background fetch, production route isolated.");

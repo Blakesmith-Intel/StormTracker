@@ -46,7 +46,8 @@ assert.ok(strongTop>weakTop*3,"Per-pixel dBZ must support visibly shorter weak c
 assert.ok(volumeBlobDiameterPx(3,65)>volumeBlobDiameterPx(3,40));
 const html=readFileSync(new URL("../live3d-operational-v9.html",import.meta.url),"utf8");
 assert.match(html,/id="verticalScale"[\s\S]*?value="1"/);
-assert.match(html,/id="blobVolume" checked/);
+assert.doesNotMatch(html,/id="blobVolume"/);
+assert.match(readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8"),/function useBlobVolume\(\)\{ return true; \}/);
 assert.match(html,/id="reflectivityLegend"/);
 assert.doesNotMatch(html,/rainRateLegend|estimated mm\/h/i);
 const live=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");

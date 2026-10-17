@@ -26,13 +26,14 @@ class StubGeodesic {
 assert.equal(sumSurfaceDistances([{x:0},{x:15},{x:32}],ellipsoid,StubGeodesic),32);
 assert.equal(sumSurfaceDistances([{x:0}],ellipsoid,StubGeodesic),0);
 assert.match(shell,/<body class="simple-ui">/);
-assert.match(shell,/id="simpleModeToggle"/);
+assert.doesNotMatch(shell,/id="simpleModeToggle"|More options/);
 for(const id of ["measureToggle","measureSurface","mapMeasurePanel","measureUndo","measureClear","measureDone","mapScaleBar","mapScaleLabel","mapScaleLine"]){
  assert.match(shell,new RegExp('id="'+id+'"'),id);
 }
 assert.match(shell,/friendly-ui-v1\.css/);
 assert.match(js,/createFriendlyMapTools\(\{viewer,Cesium\}\)/);
 assert.match(controls,/new Cesium\.CustomDataSource/);
+assert.doesNotMatch(controls,/simpleModeToggle|updateMode|classList\.toggle\("simple-ui"/);
 assert.match(controls,/Cesium\.Ellipsoid\.WGS84/);
 assert.match(controls,/clampToGround:true/);
 assert.match(controls,/source\.entities\.removeAll\(\)/);
@@ -43,7 +44,7 @@ assert.match(css,/#measureSurface/);
 assert.match(css,/body\.simple-ui #controlSidebar/);
 assert.match(css,/#mapScaleBar/);
 assert.ok(css.includes("grid-template-rows:minmax(0,min(29dvh,250px))"));
-assert.ok(css.includes("body.simple-ui .layer-controls,body.simple-ui .live-notices"));
+assert.doesNotMatch(css,/More options|Advanced view|simpleModeToggle/);
 assert.ok(css.includes("#mapMeasurePanel small {display:none;}"));
 assert.ok(css.includes("#measureDone {grid-column:auto;"));
 assert.ok(controls.includes("Measurement finished."));
@@ -52,6 +53,6 @@ assert.doesNotMatch(controls,/loadBomReflectivityMosaic|loadDopplerFrame|buildSt
 console.log("Friendly UI, distance and scale regression checks passed.");
 
 // Simple mode must expose QFD jobs alongside roads, outages and flood signals.
-assert.ok(css.includes(":not(.river-gauge-row):not(.qfd-rescue-row)"));
+assert.ok(shell.includes('class="card layer-controls"'));
 assert.match(shell,/id="showQfdTechnicalRescues"/);
 assert.match(js,/initialiseOperationalQfdTechnicalRescues/);

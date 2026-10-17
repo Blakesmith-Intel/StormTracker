@@ -41,7 +41,8 @@ assert.match(html,/◫ Layers/);
 assert.ok(!html.includes("▶ Watch radar"));
 assert.ok(!html.includes("◫ What to show"));
 assert.ok(!html.includes('type="checkbox" checked> 3-D terrain'));
-assert.match(html,/id="terrainEnabled" type="checkbox" checked disabled hidden/);
+assert.match(html,/id="runtimeDiagnostics" hidden aria-hidden="true"/);
+assert.match(html,/id="terrainEnabled" type="checkbox" checked disabled/);
 assert.match(controller,/terrainManager\.setEnabled\(true\)/);
 assert.ok(!controller.includes('$("terrainEnabled").addEventListener('));
 assert.match(css,/#controlSidebar #terrainEnabled,/);
@@ -62,6 +63,6 @@ for(const group of ["RESCUE TECHNICAL","RESCUE ROAD CRASH","ASSIST PUBLIC"]){
 assert.match(sourceQfd,/qfdSymbolFor\(group,officialSymbols\)/);
 assert.match(sourceQfd,/Provisional icons/);
 assert.match(css,/#qfdIncidentLegendDetails|\.qfd-incident-key/);
-assert.match(shell,/v8-council-customers/);
+assert.match(shell,/v9-single-operator-ui/);
 assert.match(html,/playback-sidebar-hierarchy-v1\.css\?v=storm-compact-20261017-v3/);
 console.log("Radar playback UI hierarchy, persistent terrain, traffic-light key and QFD legend passed.");

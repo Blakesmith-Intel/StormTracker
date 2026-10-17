@@ -60,5 +60,5 @@ for(const id of ["showPowerOutages","showFloodRoadClosures"]){
  assert.doesNotMatch(html,new RegExp('id="'+id+'" type="checkbox" checked'));
 }
 assert.match(controller, /DEFAULT_OFF_LAYER_IDS/);
-assert.match(entry, /v8-council-customers/);
+assert.match(entry, /v9-single-operator-ui/);
 console.log("Compact sidebar, original-clock visibility and live-source refresh stamps passed.");

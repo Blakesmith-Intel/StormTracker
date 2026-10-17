@@ -79,8 +79,21 @@ try {
     '<table id="tableStyle1"><tr><th>Date/Time</th><th>Water Level (m)</th></tr></table>',
     {status:200});
   const empty=await worker.fetch(new Request(target),{});
-  assert.equal(empty.status,422);
-  assert.equal((await empty.json()).code,"no_usable_observations");
+  assert.equal(empty.status,200);
+  assert.equal(empty.headers.get("Cache-Control"),"public, max-age=60");
+  const unavailable=await empty.json();
+  assert.equal(unavailable.format,"StormTrackerBomRecentRiverHistoryV1");
+  assert.equal(unavailable.availability,"no_recent_observations");
+  assert.deepEqual(unavailable.samples,[]);
+  // A header-valid table with numeric levels but unrecognised timestamps
+  // is a changed schema, not proof that the station has no observations.
+  globalThis.fetch=async()=>new Response(
+    '<table id="tableStyle1"><tr><th>Date/Time</th><th>Water Level (m)</th></tr>'+
+    '<tr><td>unknown-date-format</td><td>2.34</td></tr></table>',
+    {status:200});
+  const changedDates=await worker.fetch(new Request(target),{});
+  assert.equal(changedDates.status,502);
+  assert.equal((await changedDates.json()).code,"source_format_mismatch");
   globalThis.fetch=async()=>new Response("<html>Unexpected login page</html>",{status:200});
   const changedMarkup=await worker.fetch(new Request(target),{});
   assert.equal(changedMarkup.status,502);

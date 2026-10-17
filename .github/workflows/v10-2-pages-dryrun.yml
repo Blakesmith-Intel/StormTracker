@@ -31,16 +31,16 @@ jobs:
       - name: Retrieve immutable V10.2 cyclone candidate source
         uses: actions/checkout@v4
         with:
-          ref: 585615842067448d092ff8d1987c4121ab08086a
+          ref: cdea3d6c760b7369a004df21a35a5bc688b365d2
           path: checked/production-v10.2.0
           persist-credentials: false
       - name: Build exact production root and both preserved previews
         run: |
           set -euo pipefail
-          test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = 585615842067448d092ff8d1987c4121ab08086a
+          test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = cdea3d6c760b7369a004df21a35a5bc688b365d2
           npm test
           bash scripts/build-current-site.sh
-          grep -Fq 'SEALED StormTracker V10.2.0 source 585615842067448d092ff8d1987c4121ab08086a' _site/BUILD.txt
+          grep -Fq 'SEALED StormTracker V10.2.0 source cdea3d6c760b7369a004df21a35a5bc688b365d2' _site/BUILD.txt
           grep -Fq 'id="openCycloneForecastQa"' _site/live3d-operational-v9.html
           grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
           grep -Fq 'Unable to verify current tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js

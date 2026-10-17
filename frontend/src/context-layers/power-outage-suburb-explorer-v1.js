@@ -1,3 +1,4 @@
+import {formatIncidentRefreshTime} from "./incident-refreshed-time-v1.js?v=20261017-refresh-v1";
 import {groupOutagesByLga,filterLgaGroups,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
  from "./incident-lga-model-v1.js?v=case-insensitive-lga-20261017-v2";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
@@ -31,6 +32,18 @@ export function createPowerOutageSuburbExplorer({
   const number=v=>Number(v??0).toLocaleString("en-AU");
   const sidebarOutages=byId("sidebarPowerOutageCount");
   const sidebarCustomers=byId("sidebarPowerCustomerCount");
+  const refreshEl=byId("sidebarPowerLastRefresh");
+  let lastSuccessfulAt=0;
+  function updateSourceRefreshLabel(){
+    if(!refreshEl)return;
+    const report=status;
+    const failed=report.kind==="error";
+    const expired=failed&&/source expired|old .* markers removed/i.test(report.message||"");
+    const ms=lastSuccessfulAt||Number(getLoadedAt());
+    refreshEl.textContent=formatIncidentRefreshTime(ms,{failed,expired});
+    if(ms>0)refreshEl.dateTime=new Date(ms).toISOString();
+    else refreshEl.removeAttribute("datetime");
+  }
   function updateSidebarCounters(){
     if(!sidebarOutages||!sidebarCustomers)return;
     if(!hasSnapshot){
@@ -278,10 +291,13 @@ export function createPowerOutageSuburbExplorer({
   }
   function updateStatus(next){
     if(next)status=next;
+  const checkedAt=Number(status.loadedAt);
+  if(Number.isFinite(checkedAt) && checkedAt>0)lastSuccessfulAt=checkedAt;
     if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||"")){hasSnapshot=false;groups=[];suburbGroups=[];openKeys.clear();}
     const kind=status.kind||"normal";
     state.dataset.kind=kind;
     state.textContent=status.message||"Current unplanned outage data";
+    updateSourceRefreshLabel();
     updateSidebarCounters();
     // Expired snapshots were already cleared by createPowerOutageLayer.onUpdate([]).
     if(dialog.open)render();
@@ -333,6 +349,7 @@ export function createPowerOutageSuburbExplorer({
     reload.removeEventListener("click",onRefresh);
     if(dialog.open)dialog.close();
   };
+  updateSourceRefreshLabel();
   updateSidebarCounters();
   return {updateFeatures,updateStatus,destroy};
 }

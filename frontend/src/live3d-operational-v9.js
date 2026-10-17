@@ -113,7 +113,7 @@ import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
-import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=simple-ui-20261017-v2";
+import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=single-interface-20261017-v1";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
 import { isDopplerOnlyPlaybackStep, sourceAlignedPlaybackDelayMs } from "./combined-loop-playback-v1.js?v=9.16.10";

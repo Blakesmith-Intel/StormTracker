@@ -3028,17 +3028,14 @@ function formatDualClock(utc) {
   return formatProductTime(utc,{compact:true}).split(" / ")[0];
 }
 function updateDualSourceTimes() {
-  const radarUtc=isNativeDopplerPlayback() ? null :
-    hybridFrames[hybridFrameIndex]?.observedUtc ?? latestFrame?.observedUtc;
+  // The original green #status already displays the frame and AEST/UTC.
+  // No additional white rain-radar clock may be reintroduced below it.
+  // Keep only the separate Doppler time when an independent Doppler source
+  // is the active product; this does not modify radar observation timing.
   const windUtc=shouldDisplayDopplerForSelectedWindow() ? independentDopplerRecord?.observedUtc : null;
-  const radar=$("radarPlaybackTime"), wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
+  const wind=$("dopplerPlaybackTime"), gap=$("sourceTimeGap");
   const windOnly=isNativeDopplerPlayback();
-  $("radarClockGroup").hidden=windOnly;
   $("windClockGroup").hidden=!windOnly;
-  if(radar){
-    radar.textContent=radarUtc ? formatDualClock(radarUtc) : "—";
-    radar.title=radarUtc ? formatProductTime(radarUtc) : "No radar observation";
-  }
   if(wind){
     wind.textContent=!shouldDisplayDopplerForSelectedWindow() ? "Rain only" :
       windUtc ? formatDualClock(windUtc) : "Loading";

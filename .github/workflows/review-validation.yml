@@ -49,6 +49,12 @@ jobs:
           ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
           path: checked/production-v10.2.0
           persist-credentials: false
+      - name: Checkout immutable V10.3 radar wind-hook QA for separate preview
+        uses: actions/checkout@v4
+        with:
+          ref: 325d6a49eaf829e765c599876767cd351b01a860
+          path: checked/wind-hook-v10.3-qa
+          persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
           bash -x scripts/build-current-site.sh
@@ -80,4 +86,8 @@ jobs:
           grep -Fq 'v9.20.1-secondary-3d-fix' _site/live3d-operational-v9.html
           test -f _site/preview/incremental-3d/BUILD.txt
           grep -Fq 'EXPERIMENTAL incremental 3-D QA' _site/preview/incremental-3d/BUILD.txt
-          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
+          test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 3
+          test -s _site/preview/wind-hook-v10-3/BUILD.txt
+          grep -Fq '325d6a49eaf829e765c599876767cd351b01a860' _site/preview/wind-hook-v10-3/BUILD.txt
+          test -s _site/preview/wind-hook-v10-3/assets/v10-tornado.svg
+          ! grep -Fq 'isWindHookQaPreview' _site/src/live3d-operational-v9.js

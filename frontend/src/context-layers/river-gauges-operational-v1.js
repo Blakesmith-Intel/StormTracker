@@ -13,6 +13,28 @@ const $ = id =>
     id
   );
 
+// The compact Layers button reuses the same snapshot refresh as the 15-minute
+// poll. Prevent duplicate taps, retain status/error reporting from the layer,
+// and restore the control even if BoM is temporarily unavailable.
+export function bindRiverGaugeManualRefresh(button, refresh) {
+  if(!button)return false;
+  button.addEventListener("click",async()=>{
+    if(button.disabled)return;
+    button.disabled=true;
+    button.setAttribute("aria-busy","true");
+    const originalText=button.textContent;
+    button.textContent="Refreshing…";
+    try{await refresh();}
+    catch{/* createRiverGaugeLayer.refresh already publishes the error status */}
+    finally{
+      button.textContent=originalText;
+      button.setAttribute("aria-busy","false");
+      button.disabled=false;
+    }
+  });
+  return true;
+}
+
 function setRiverGaugeStatus({
   kind =
     "normal",
@@ -775,18 +797,10 @@ export function initialiseOperationalRiverGauges({
       }
     );
 
-  $("refreshRiverGaugesButton")
-    ?.addEventListener(
-      "click",
-      () => {
-        layer.refresh({
-          force:
-            true
-        }).catch(
-          () => {}
-        );
-      }
-    );
+  bindRiverGaugeManualRefresh(
+    $("refreshRiverGaugesButton"),
+    () => layer.refresh({force:true})
+  );
 
   $("closeRiverGaugeInfo")
     ?.addEventListener(

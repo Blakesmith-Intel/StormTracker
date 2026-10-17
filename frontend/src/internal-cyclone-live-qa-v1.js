@@ -59,7 +59,12 @@ export function createInternalCycloneLiveQA({
   status.id="internalCycloneQaStatus";
   status.style.cssText="font-size:11px;white-space:pre-line;color:#cfecf7;overflow-wrap:anywhere;margin-top:7px";
   status.setAttribute("role","status");
-  container.appendChild(status);\n  const bomLink=el("a","Open BoM tropical cyclone warnings");\n  bomLink.href="https://www.bom.gov.au/weather-and-climate/specialised-forecasts-and-observations/tropical-cyclone";\n  bomLink.target="_blank";bomLink.rel="noopener noreferrer";\n  bomLink.style.cssText="display:block;margin:5px 0;font-size:11px;color:#9bdef9";\n  container.appendChild(bomLink);
+  container.appendChild(status);
+  const bomLink=el("a","Open BoM tropical cyclone warnings");
+  bomLink.href="https://www.bom.gov.au/weather-and-climate/specialised-forecasts-and-observations/tropical-cyclone";
+  bomLink.target="_blank";bomLink.rel="noopener noreferrer";
+  bomLink.style.cssText="display:block;margin:5px 0;font-size:11px;color:#9bdef9";
+  container.appendChild(bomLink);
   panel.insertBefore(container,panel.querySelector(".cyclone-qld-cases")??null);
   const mapStamp=el("div","");
   mapStamp.id="internalLiveCycloneMapStamp";

@@ -117,6 +117,7 @@ import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-
 // Memory QA sampling remains available on demand through window.__stormtrackerMemoryDiagnostics in the research preview; no sidebar panel.
 import {createHistoricalCycloneForecastQA} from "./historical-cyclone-forecast-map-v1.js?v=issued-fina-20261017-qa-v1";
 import {createInternalCycloneLiveQA} from "./internal-cyclone-live-qa-v1.js?v=internal-original-gml-qa1";
+import {createOperationalCyclonePanel} from "./operational-cyclone-panel-v1.js?v=operational-only-v10-3";
 import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=single-interface-20261017-v1";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
@@ -479,11 +480,20 @@ mapCamera =
 
 // The verified browser-source QA viewer must never call Cesium.camera.flyTo;
 // StormTracker's stateful camera guardian would cancel it as stray movement.
-if(window.location.pathname.includes("/preview/incremental-3d/") ||
-   (/\/live3d-operational-v9\.html$/.test(window.location.pathname) &&
-    !window.location.pathname.includes("/preview/"))) {
+const onCycloneQaPreview = window.location.pathname.includes("/preview/incremental-3d/");
+const onOperationalApp = !window.location.pathname.includes("/preview/") &&
+  (/\/$|\/index\.html$|\/live3d-operational-v9\.html$/.test(window.location.pathname));
+if (onCycloneQaPreview) {
+  // Authentic issued-product importer and Jasper/Alfred observed references
+  // remain available ONLY on the isolated cyclone QA preview.
   createHistoricalCycloneForecastQA({Cesium,viewer,documentRef:document,
     cameraController:mapCamera});
+  createInternalCycloneLiveQA({Cesium,viewer,documentRef:document,
+    cameraController:mapCamera});
+} else if (onOperationalApp) {
+  // Strip archived reference controls before exposing the production cyclone
+  // panel. No historical entities, sample importers or synthetic products.
+  createOperationalCyclonePanel({documentRef:document});
   createInternalCycloneLiveQA({Cesium,viewer,documentRef:document,
     cameraController:mapCamera});
 }

@@ -82,3 +82,18 @@ const fixes=[...normalized.matchAll(/<fix\b[^>]*>[\s\S]*?<\/fix>/g)].map(x=>{
 console.log(JSON.stringify({sample:"BoM documentation example; not proven authentic historical issuance",
  root,header:header?.slice(0,1200),disturbance,fixCount:fixStarts.length,
  fixOpening:fixStarts.slice(0,9),fixExamples:fixes.slice(0,8)}));
+
+const sourceRoot="ftp://ftp.bom.gov.au/anon/sample/catalogue/Warnings/Tropical_Cyclone_Warning/";
+for(const name of ["IDD65401.gml","IDD65441.xml"]){
+ try{
+  const xml=execFileSync("curl",["-sS","-L","--max-time","18",sourceRoot+name],
+   {encoding:"utf8",timeout:21000,maxBuffer:1200000});
+  const declared=[...new Set([...xml.matchAll(/<([A-Za-z_][\w:.-]*)\b/g)].map(m=>m[1]))];
+  const start=xml.slice(0,3500);
+  const featureWords=[...xml.matchAll(/<(?:\w+:)?(?:featureMember|member|featureMembers)\b[\s\S]*?<(\w+:\w+)\b/g)].slice(0,15).map(m=>m[1]);
+  const geometrySamples=[...xml.matchAll(/<(?:\w+:)?(?:pos|posList|coordinates)\b[^>]*>([^<]{1,500})<\/[^>]+>/g)]
+   .slice(0,7).map(m=>m[1].trim().slice(0,180));
+  const times=[...new Set([...xml.matchAll(/\b20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z?/g)].map(x=>x[0]))].slice(0,13);
+  console.log(JSON.stringify({resource:name,bytes:xml.length,previewHeader:start,elementNames:declared.slice(0,140),featureElements:featureWords,firstGeometries:geometrySamples,sampleDates:times}));
+ }catch(e){console.log(JSON.stringify({resource:name,error:String(e.message).slice(0,350)}))}
+}

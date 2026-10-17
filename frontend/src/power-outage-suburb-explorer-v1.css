@@ -188,3 +188,35 @@
 .outage-locality > .outage-suburb-title .outage-suburb-map:disabled{
   cursor:not-allowed;color:#9bafba;opacity:.7;
 }
+
+/* Council-level outage count + provider-reported impacted customers.
+   Flexible badges prevent long council names and totals from overflowing. */
+#powerOutageExplorer .outage-council>.outage-suburb-title {
+ flex-wrap:wrap;row-gap:5px;
+}
+#powerOutageExplorer .outage-council-metrics {
+ display:inline-flex;flex-wrap:wrap;justify-content:flex-end;
+ gap:5px;align-items:center;min-width:0;max-width:100%;
+}
+#powerOutageExplorer .outage-council-metrics .outage-suburb-count {
+ white-space:nowrap;
+}
+#powerOutageExplorer .outage-council-customers {
+ display:inline-flex;align-items:center;
+ border:1px solid #4f8399;background:#194455;
+ border-radius:999px;padding:4px 8px;
+ font-size:11px;font-weight:750;color:#d7f6ff;
+ white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+#powerOutageExplorer .outage-council-shared {
+ font-size:10px;color:#ffdc9a;white-space:nowrap;
+}
+@media(max-width:700px) {
+ #powerOutageExplorer .outage-council>.outage-suburb-title {
+   align-items:center;gap:6px;padding:9px;
+ }
+ #powerOutageExplorer .outage-council-metrics{
+   margin-left:20px;justify-content:flex-start;gap:4px;
+ }
+ #powerOutageExplorer .outage-council-customers{font-size:10px;padding:4px 6px;}
+}

@@ -6,6 +6,7 @@ import {
   classifyObservedBoMGust, assessObservedBoMGust,
   assessV10RadarFrame
 } from "../src/severe-storm-v10.js";
+import {severeAlertAppearance} from "../src/severe-storm-alert-appearance-v10.js";
 
 let count = 0;
 function test(label, fn) { fn(); count++; console.log("PASS V10 " + label); }
@@ -184,5 +185,27 @@ test("duplicate Doppler samples cannot manufacture high-wind cluster",()=>{
   const {frame,result}=fixture();
   const same=radar(frame,[[48,48,-65],[48,48,-65],[48,48,-65],[48,48,-65]]);
   assert.equal(assessV10RadarFrame({frame,result,dopplerState:same}).alerts.length,0);
+});
+test("research pin colours and icons are category specific and not official alerts",()=>{
+  const expected=[
+    ["strong_radial_signature","wind","v10-gust.svg"],
+    ["hook_shape_only","hook","v10-hook.svg"],
+    ["tornadic_candidate","tornado","v10-tornado.svg"]
+  ];
+  for(const [category,kind,icon] of expected){
+    const style=severeAlertAppearance({category});
+    assert.equal(style.kind,kind);
+    assert.equal(style.icon,icon);
+    assert.match(style.meaning,/not|no verified|unconfirmed/i);
+  }
+  const css=readFileSync(fileURLToPath(
+    new URL("../src/wind-hook-research-v10.css",import.meta.url)),"utf8");
+  assert.match(css,/#F6D94F/i);
+  assert.match(css,/#FF963F/i);
+  assert.match(css,/#D83045/i);
+  const runtime=readFileSync(fileURLToPath(
+    new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
+  assert.match(runtime,/if \(isWindHookQaPreview\) \{/);
+  assert.match(runtime,/qaStyle\.href = "\.\/src\/wind-hook-research-v10\.css/);
 });
 console.log(count+" V10 storm research contract tests passed.");

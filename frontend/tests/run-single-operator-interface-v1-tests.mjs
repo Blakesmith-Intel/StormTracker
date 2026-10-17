@@ -54,7 +54,7 @@ assert.match(runtime,/function useBlobVolume\(\)\{ return true; \}/);
 assert.match(runtime,/terrainManager\.setEnabled\(true\)/);
 assert.doesNotMatch(runtime,/mountHistoricalCycloneQA/);
 assert.match(root,/v9-single-operator-ui/);
-assert.match(html,/single-interface-v1\.css\?v=full-map-toggle-20261017-v2/);
+assert.match(html,/single-interface-v1\.css\?v=cyclone-compact-playback-20261017-v1/);
 assert.match(tools,/new Cesium\.CustomDataSource/);
 assert.match(tools,/viewer\.camera\.changed\.addEventListener/);
 console.log("Single operator UI independent of legacy expanded controls, with core runtime fields grounded.");

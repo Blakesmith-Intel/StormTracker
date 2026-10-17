@@ -114,7 +114,7 @@ import { createBoundedFrameCache } from "./bounded-frame-cache-v1.js?v=9.16.9-pe
 import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-v1.js?v=volume-memory-qa-1";
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
-import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
+// Memory QA sampling remains available on demand through window.__stormtrackerMemoryDiagnostics in the research preview; no sidebar panel.
 import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=single-interface-20261017-v1";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
@@ -1576,12 +1576,8 @@ if(INCREMENTAL_VOLUME_PREVIEW){
       canvasPixelRatio:viewer.resolutionScale
     };
   };
-  createResponsiveMemoryDiagnostics({
-    documentRef:document,
-    sidebar:controlsSidebar,
-    capture:window.__stormtrackerMemoryDiagnostics,
-    clipboard:window.navigator?.clipboard
-  });
+  // Intentionally no Memory diagnostics panel in the operator sidebar.
+  // Capture remains QA-only, manually callable without timers or layout.
 }
 const reflectivityRgbLookup = new Uint8Array(16*3);
 for(const item of SOURCE_PALETTES.reflectivityRgb) {

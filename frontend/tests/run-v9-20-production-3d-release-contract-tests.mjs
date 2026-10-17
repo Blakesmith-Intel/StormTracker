@@ -21,7 +21,10 @@ assert.match(runtime,/measuredRadarProviderCache = INCREMENTAL_VOLUME_PREVIEW/);
 assert.match(runtime,/scene\.globe\.tileCacheSize/);
 assert.match(runtime,/maxCached:INCREMENTAL_VOLUME_PREVIEW[\s\S]*?matches\?12:18/);
 const memoryModal=read("../src/responsive-memory-diagnostics-v1.js");
-assert.match(runtime,/createResponsiveMemoryDiagnostics\(/);
+assert.doesNotMatch(runtime,/createResponsiveMemoryDiagnostics\(/,
+  "Operational controls must not inject memory diagnostics into sidebar");
+assert.match(runtime,/window\.__stormtrackerMemoryDiagnostics=/,
+  "Research diagnostic capture remains explicitly on demand");
 assert.match(memoryModal,/Memory diagnostics/);
 assert.match(memoryModal,/stormtrackerMemoryDialog/);
 assert.match(delta,/function upsert\(key,category,specs,create,patch\)/);

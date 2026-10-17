@@ -22,3 +22,7 @@ V9.10.0 reads the public TMR GeoJSON feed at `https://data.qldtraffic.qld.gov.au
 No QLDTraffic API key is required. The relay applies the shared StormTracker fail-closed classifier and returns only current, published, explicitly flood-related road closures. A five-minute fresh cache and two-hour last-known-good fallback protect the operational layer from temporary upstream failures.
 
 The Worker does **not** perform storm segmentation, tracking, modelling, inference or 3-D processing. All weather science remains in the StormTracker browser application.
+
+## One production Doppler transport
+
+All approved Queensland BoM Doppler sites and Brewarrina NSW `IDR93I` use the existing Worker `stormtracker-bom-relay` through `/radar`, `/radar-history` and `/radar-frame`. The product allowlist stays strict and UTC comes from the genuine BoM source. Moree and Grafton are rain-only. **No separate NSW preview Worker is required.** The sealed V10 production UI remains independently source-pinned.

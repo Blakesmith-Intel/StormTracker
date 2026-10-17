@@ -151,12 +151,28 @@ function persistentHook(frame, result, previousFrame, previousResult, trackId) {
 // needs a persistent hook-like feature AND a same-storm, same-radar local radial
 // velocity couplet. Even that is provisional: aliasing can mimic rotation.
 export function assessV10RadarFrame({
-  frame, result, previousFrame, previousResult, dopplerState
+  frame, result, previousFrame, previousResult, dopplerState,
+  previousDopplerState
 } = {}) {
   if (!validObserved(frame, result)) return {
     alerts: [], availableRadialEvidence: false, experimental: true
   };
   const groups = collectMatchedSamples(frame, result, dopplerState);
+  // Both yellow and red require two DIFFERENT observed BoM Doppler scans.
+  // Never double-count the same scan against separate rain timestamps.
+  const previousGroups = validObserved(previousFrame, previousResult)
+    ? collectMatchedSamples(previousFrame, previousResult, previousDopplerState)
+    : new Map();
+  const windGap=Date.parse(frame.observedUtc)-Date.parse(previousFrame?.observedUtc);
+  const scanOrderValid=Number.isFinite(windGap) &&
+    windGap>0 && windGap<=MAX_ARC_GAP_MINUTES*60000;
+  const persistentGroup = group => {
+    if(!scanOrderValid)return null;
+    const past=previousGroups.get(group.radarId+":"+group.trackId);
+    if(!past || past.sourceUtc===group.sourceUtc)return null;
+    const sourceGap=Date.parse(group.sourceUtc)-Date.parse(past.sourceUtc);
+    return sourceGap>0 && sourceGap<=MAX_ARC_GAP_MINUTES*60000 ? past:null;
+  };
   const hookByTrack = new Map();
   for (const track of result.tracks ?? []) {
     const hook = persistentHook(
@@ -167,13 +183,17 @@ export function assessV10RadarFrame({
   const rotatedTracks = new Set();
   for (const group of groups.values()) {
     // Opposite-sign image clusters are NOT true rotation without dealiasing.
-    const rotation = closeRotationCouplet(group);
-    const hook = hookByTrack.get(group.trackId);
+    const past=persistentGroup(group);
+    const rotation=closeRotationCouplet(group);
+    const oldRotation=past?closeRotationCouplet(past):null;
+    const hook=hookByTrack.get(group.trackId);
     // The velocity couplet must be close to the hook, not merely somewhere
     // inside a potentially sprawling storm footprint.
-    const coupletNearHook = rotation && hook &&
-      distanceKm(rotation.towards, hook) <= 10 &&
-      distanceKm(rotation.away, hook) <= 10;
+    const coupletNearHook=rotation && oldRotation && hook &&
+      distanceKm(rotation.towards,hook)<=10 &&
+      distanceKm(rotation.away,hook)<=10 &&
+      distanceKm(rotation.towards,oldRotation.towards)<=9 &&
+      distanceKm(rotation.away,oldRotation.away)<=9;
     if (coupletNearHook) {
       rotatedTracks.add(group.trackId);
       alerts.push({
@@ -185,13 +205,17 @@ export function assessV10RadarFrame({
         longitude: hook.longitude, latitude: hook.latitude,
         arc_degrees: hook.arc_degrees,
         radial_shear_kmh: rotation.deltaKmh,
+        previous_doppler_utc: past.sourceUtc, persistence_scans: 2,
         velocity_aliasing_verified: false,
         caveat: "Experimental persistent hook + close radar velocity couplet. Velocity aliasing is unverified. NOT a confirmed tornado or official BoM warning."
       });
       continue;
     }
-    const high = highRadialCluster(group);
-    if (high) alerts.push({
+    const high=highRadialCluster(group);
+    const oldHigh=past?highRadialCluster(past):null;
+    if (high && oldHigh &&
+        Math.sign(high.strongest.velocity)===Math.sign(oldHigh.strongest.velocity) &&
+        distanceKm(high.strongest,oldHigh.strongest)<=9) alerts.push({
       id: "v10:radial:" + group.radarId + ":" + group.trackId,
       type: "wind", category: "strong_radial_signature", severity: "research",
       title: "Strong straight-line wind signature candidate",
@@ -199,8 +223,9 @@ export function assessV10RadarFrame({
       observed_utc: frame.observedUtc, source_utc: group.sourceUtc,
       longitude: high.strongest.longitude, latitude: high.strongest.latitude,
       velocity_kmh: high.strongest.velocity, sample_count: high.count,
+      previous_doppler_utc: past.sourceUtc, persistence_scans: 2,
       velocity_aliasing_verified: false,
-      caveat: "Research radial velocity at radar beam height; aliasing unverified. NOT a surface gust or proof of a straight-line downburst; BoM 90/125 km/h thresholds NOT demonstrated."
+      caveat: "Two genuine consecutive Doppler scans show persistent radar-beam radial velocity; aliasing unverified. NOT a surface gust or proof of a straight-line downburst; BoM 90/125 km/h thresholds NOT demonstrated."
     });
   }
   for (const [trackId, hook] of hookByTrack) {

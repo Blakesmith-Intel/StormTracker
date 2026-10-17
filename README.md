@@ -40,3 +40,7 @@ Full `npm test` (including native multiple-Doppler clock/source regression), `no
 
 
 **V10.1.1 immutable release source:** `711d65a72a483b319e80711a09cfeabe2f69bbcd`. Public `BUILD.txt` must show `SEALED StormTracker V10.1.1 source 711d65a72a483b319e80711a09cfeabe2f69bbcd`; annotated tag `v10.0.0` and `restore/v10.0.0` are created only after public verification. Prior V9.20.2 refs remain unchanged. Next: authoritative BoM cyclone forecast tracks and official uncertainty polygons in isolated QA, with no inferred probabilities or fabricated warning geometry.
+
+### Historical cyclone forecast map (development QA only)
+
+The [/preview/incremental-3d/](https://blakesmith-intel.github.io/StormTracker/preview/incremental-3d/) includes **Layers → Cyclone forecast · QA**. Select your own originally issued BoM `*.gml` file to view original past/forecast fixes and the **72h/120h published likely-tracks polygons** (when present). No original BoM cyclone warning geometry is hosted by StormTracker, and the layer is **NOT LIVE**. See [source and QA instructions](docs/V10_HISTORICAL_CYCLONE_FORECAST_MAP_QA_20261017.md). Sealed production V10.1.1 remains unchanged.

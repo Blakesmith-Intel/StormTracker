@@ -12,13 +12,14 @@
   <link rel="stylesheet" href="./src/sidebar-incident-counts-v1.css?v=incident-counts-20261017-v1">
   <link rel="stylesheet" href="./src/playback-sidebar-hierarchy-v1.css?v=storm-compact-20261017-v3">
   <link rel="stylesheet" href="./src/sidebar-compact-refresh-v1.css?v=remove-radar-clock-20261017-v2">
+  <link rel="stylesheet" href="./src/single-interface-v1.css?v=single-ui-20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
 <body class="simple-ui">
 <div id="app">
   <aside id="controlSidebar" aria-label="Live weather controls">
-    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div><button type="button" id="simpleModeToggle" aria-expanded="false" aria-controls="controlSidebar">More options</button></header>
+    <header class="dashboard-heading"><div class="simple-brand"><strong>StormTracker</strong><span>Live weather map</span></div></header>
     <nav class="sidebar-shortcuts" aria-label="Current incidents">
       <button type="button" id="openPowerOutageExplorer" aria-haspopup="dialog" aria-controls="powerOutageExplorer" aria-label="Browse power outages by council">
         <span class="incident-button-name">⚡ Power outages</span>
@@ -31,15 +32,6 @@
         <time class="incident-refresh" id="sidebarRoadLastRefresh">Not checked yet</time>
       </button>
     </nav>
-    <div class="simple-intro" aria-label="Quick start">Choose a radar above the map, press <strong>Play</strong>, or tap <strong>Measure</strong> to check a distance.</div>
-    <section class="card overview">
-      <div class="metric">
-        <span>Display</span><strong id="operationalSourceMode">Latest frame</strong>
-        <span>Source age</span><strong id="operationalSourceAge">—</strong>
-        <span>Loop window</span><strong id="operationalLoopWindow">Checking history</strong>
-        <span>Frames / tracks</span><strong><span id="operationalFramesLoaded">0</span> / <span id="operationalActiveTracks">—</span></strong>
-      </div>
-    </section>
     <section class="card loop-controls"><h2 class="section-title">▶ Radar playback</h2>
       <div class="control-grid">
         <label for="loopDurationMinutes">Available window
@@ -62,9 +54,7 @@
         <label for="volumeOpacity">3-D volume opacity <output id="volumeOpacityValue" for="volumeOpacity">100%</output></label>
         <input id="volumeOpacity" type="range" min="0" max="100" step="5" value="100" aria-label="3-D volume opacity: 0 transparent, 100 opaque; does not change radar intensity">
       </div>
-      <div id="playbackPerformanceSummary" class="note" role="status" aria-live="off" title="Measured playback renderer timing">Frame timing starts when playback loads</div>
       <div id="dualSourceTimes" class="dual-source-times" role="status" aria-live="off"><span id="windClockGroup" hidden>Doppler <strong id="dopplerPlaybackTime">Loading</strong></span><span id="sourceTimeGap" class="source-time-gap" title="Independent source time comparison" hidden></span></div>
-      <div id="sharedHistoryNote" class="note">Radar playback retains up to 3 hours per viewed radar in this browser. Live Bureau history is combined with the local rolling cache; bounded missing intervals may be filled by clearly marked display-only interpolation between real observations.</div>
     </section>
     <section class="card storm-controls" aria-labelledby="stormControlsHeading">
       <h2 id="stormControlsHeading" class="section-title">Storm tracking</h2>
@@ -80,30 +70,20 @@
       <details class="storm-scope-help"><summary>Track scope</summary>
         <div id="trackLabelsScopeNote" class="note" role="note">Storm IDs, tracks and labels currently use the primary radar only. Additional radars provide imagery without storm labels.</div>
       </details>
-      <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label><input id="showSevereRadarAlerts" type="checkbox" disabled> Radar alerts ≥90 km/h — research preview only</label></div>
-      <div class="layer-row storm-severe-layer-row" hidden style="display:none"><label title="Unvalidated scientific research"><input id="showExperimentalHookAlerts" type="checkbox" disabled> Hook-shape candidates (research preview only)</label></div>
     </section>
     <section class="card layer-controls"><h2 class="section-title">◫ Layers</h2>
       <div class="layer-row basemap-row"><label for="basemapSelect">Basemap</label><select id="basemapSelect" aria-label="Map basemap"><option value="street">Street</option><option value="qld-imagery">Satellite · DEA Regional + Local Detail</option></select></div>
-      <div id="basemapStatus" class="note" role="status">Street · OpenStreetMap</div>
-      <!-- Terrain is a permanent base-map capability, not an operator toggle.
-           Hidden compatibility node remains for terrain status/QA contracts. -->
-      <input id="terrainEnabled" type="checkbox" checked disabled hidden aria-hidden="true">
-      <div id="terrainStatus" class="note" role="status">Loading 3-D terrain…</div>
-      <div class="layer-row flood-road-row"><label><input id="showFloodRoadClosures" type="checkbox"> <img id="floodRoadClosureLegendIcon" class="flood-road-key" alt="" aria-hidden="true"> Unplanned road closures</label><button id="refreshFloodRoadClosuresButton" type="button">Refresh</button></div>
-      <div id="floodRoadClosureStatus" class="note" role="status">QLDTraffic · unplanned all-traffic closures</div>
-      <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox"> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Unplanned power outages</label><button id="refreshPowerOutagesButton" type="button">Refresh</button></div>
-      <div id="powerOutageStatus" class="note" role="status">Energex + Ergon + Essential Energy · unplanned outages</div>
+      <div class="layer-row flood-road-row"><label><input id="showFloodRoadClosures" type="checkbox"> <img id="floodRoadClosureLegendIcon" class="flood-road-key" alt="" aria-hidden="true"> Unplanned road closures</label></div>
+      <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox"> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Unplanned power outages</label></div>
       <div class="layer-row river-gauge-row"><label><input id="showRiverGauges" type="checkbox"> <svg class="flood-severity-glyph" aria-hidden="true" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <circle cx="20" cy="20" r="18" fill="#0c1e2a" stroke="#b6d3df" stroke-width="1"/>
         <path d="M20 4 A16 16 0 0 1 35.2 15.1" fill="none" stroke="#e53935" stroke-width="4" stroke-linecap="round"/>
         <path d="M35.8 23.3 A16 16 0 0 1 23.1 35.7" fill="none" stroke="#ffd43b" stroke-width="4" stroke-linecap="round"/>
         <path d="M16.8 35.7 A16 16 0 0 1 4.5 15.9" fill="none" stroke="#2db76f" stroke-width="4" stroke-linecap="round"/>
         <path d="M10 18.5 C13.5 15.3 16.5 21.7 20 18.5 S26.5 15.3 30 18.5 M10 24 C13.5 20.8 16.5 27.2 20 24 S26.5 20.8 30 24" fill="none" stroke="#f0fbff" stroke-width="2.3" stroke-linecap="round"/>
-      </svg> Flood signals</label><button id="refreshRiverGaugesButton" type="button">Refresh</button></div>
-      <div id="riverGaugeStatus" class="note" role="status">BoM · moderate/major flood · rapid rise above minor · unusual tidal rise</div>
+      </svg> Flood signals</label></div>
       <div id="riverGaugeSeverityLegend" class="note flood-severity-legend"><span class="flood-green">●</span> Rapid above minor · <span class="flood-yellow">●</span> Moderate · <span class="flood-red">●</span> Major · <span class="flood-cyan">●</span> Unusual tidal rise (screening)</div>
-      <div class="layer-row qfd-rescue-row"><label><input id="showQfdTechnicalRescues" type="checkbox"> QFD rescue &amp; assistance</label><button id="refreshQfdTechnicalRescuesButton" type="button">Refresh</button></div>
+      <div class="layer-row qfd-rescue-row"><label><input id="showQfdTechnicalRescues" type="checkbox"> QFD rescue &amp; assistance</label></div>
       <details id="qfdIncidentLegendDetails" class="qfd-incident-key">
         <summary>QFD jobs · symbol legend</summary>
         <div id="qfdSymbolLegend" class="qfd-symbol-legend" aria-label="QFD incident symbology">
@@ -113,16 +93,7 @@
         </div>
         <div id="qfdSymbolStatus" class="note qfd-symbol-status" role="status">Checking QFD published incident symbols…</div>
       </details>
-      <div id="qfdTechnicalRescueStatus" class="note" role="status">Off by default · displaying only three public QFD grouped types</div>
-      <!-- Internal source identifier follows the primary radar selector. No second radar picker. -->
-      <input type="hidden" id="dopplerOverlayRadar" value="66">
-      <div class="layer-row volume-blob-toggle"><label><input type="checkbox" id="blobVolume" checked> Rounded 3-D storm volumes (preview)</label></div>
-      <label class="science-toggle"><input id="showAdvancedScience" type="checkbox"> Inference controls</label>
     </section>
-    <div class="live-notices">
-      <div id="dopplerHistoryWarning" class="note" role="status" hidden>One playback control advances independent radar and Doppler frames; source times may differ.</div>
-      <div id="autoRefreshNote" class="note" role="status">Radar and Doppler sources refresh independently every 5 minutes.</div>
-    </div>
   </aside>
   <main id="mapPanel" aria-label="Weather map">
     <div id="cesiumContainer"></div>
@@ -176,6 +147,28 @@
     <div id="mapScaleBar" role="status" aria-label="Map scale" title="Approximate horizontal ground scale" hidden><span id="mapScaleLabel">—</span><span id="mapScaleLine" aria-hidden="true"></span></div>
     <div id="mapTruthLabel">Measured BoM reflectivity · dBZ / inferred 3-D structure</div>
   </main>
+</div>
+<!-- Engine-owned values required by radar, terrain and incident source logic.
+     These are non-interactive diagnostics, not a hidden copy of the removed
+     expanded operator interface. There is exactly one operator sidebar. -->
+<div id="runtimeDiagnostics" hidden aria-hidden="true">
+  <span id="operationalSourceMode">Latest frame</span>
+  <span id="operationalSourceAge">—</span>
+  <span id="operationalLoopWindow">Checking history</span>
+  <span id="operationalFramesLoaded">0</span>
+  <span id="operationalActiveTracks">—</span>
+  <span id="playbackPerformanceSummary">Frame timing starts when playback loads</span>
+  <span id="sharedHistoryNote">Radar playback retains up to 3 hours in the rolling cache.</span>
+  <span id="basemapStatus">Street · OpenStreetMap</span>
+  <span id="terrainStatus">Loading 3-D terrain…</span>
+  <input id="terrainEnabled" type="checkbox" checked disabled>
+  <span id="floodRoadClosureStatus">QLDTraffic · unplanned all-traffic closures</span>
+  <span id="powerOutageStatus">Electricity · unplanned outages</span>
+  <span id="riverGaugeStatus">BoM flood signals</span>
+  <span id="qfdTechnicalRescueStatus">QFD · public grouped incidents</span>
+  <input type="hidden" id="dopplerOverlayRadar" value="66">
+  <span id="dopplerHistoryWarning">Radar and Doppler observations may differ.</span>
+  <span id="autoRefreshNote">Radar and Doppler sources refresh independently.</span>
 </div>
 <dialog id="roadLgaExplorer" aria-labelledby="roadLgaExplorerTitle">
   <header class="outage-explorer-heading">
@@ -370,6 +363,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v4-sidebar-refresh-track-no-radar-clock-v1"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v4-sidebar-refresh-track-no-radar-clock-v1-single-interface"></script>
 </body>
 </html>

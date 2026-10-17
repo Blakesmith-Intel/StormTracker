@@ -4,7 +4,6 @@ import {chooseScaleDistance,formatMapDistance,sumSurfaceDistances} from "./map-m
 // Does not inspect or modify BoM observation, Doppler, storm tracking or 3-D.
 export function createFriendlyMapTools({viewer,Cesium}) {
   const el=id=>document.getElementById(id);
-  const button=el("simpleModeToggle");
   const startButton=el("measureToggle");
   const panel=el("mapMeasurePanel");
   const surface=el("measureSurface");
@@ -12,7 +11,7 @@ export function createFriendlyMapTools({viewer,Cesium}) {
   const scale=el("mapScaleBar");
   const scaleLine=el("mapScaleLine");
   const scaleLabel=el("mapScaleLabel");
-  if (!button || !startButton || !panel || !surface || !status || !scale) {
+  if (!startButton || !panel || !surface || !status || !scale) {
     throw new Error("Friendly map controls are missing from the page");
   }
 
@@ -30,20 +29,10 @@ export function createFriendlyMapTools({viewer,Cesium}) {
   let pendingPreview=null;
   let destroyed=false;
 
-  const updateMode=(advanced)=>{
-    document.body.classList.toggle("simple-ui",!advanced);
-    button.textContent=advanced?"Simple view":"More options";
-    button.setAttribute("aria-expanded",String(advanced));
-    button.setAttribute("aria-label",advanced?"Use simple controls":"Show all radar and science controls");
-    requestAnimationFrame(()=>{
-      if(destroyed)return;
-      viewer.resize();
-      scene.requestRender();
-      updateScale();
-    });
-  };
-  button.addEventListener("click",()=>updateMode(document.body.classList.contains("simple-ui")));
-  updateMode(false);
+  // Permanent operator interface. No expanded-mode switch or alternative
+  // control tree exists; map tools depend only on their own DOM and Cesium.
+  // The static simple-ui class names the approved responsive stylesheet.
+  document.body.classList.add("simple-ui");
 
   function cartesianAt(x,y) {
     const pixel=new Cesium.Cartesian2(x,y);

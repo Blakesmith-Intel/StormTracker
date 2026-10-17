@@ -2923,8 +2923,9 @@ async function researchRecordsForRadarFrame(frame, sources) {
   return records.filter(x=>x.status==="fulfilled" && x.value).map(x=>x.value);
 }
 async function syncSevereStormAlerts(index) {
-  if (!windHookResearchEnabled || !isWindHookQaPreview ||
-      isNativeDopplerPlayback()) return;
+  if (!windHookResearchEnabled) return; // No analysis when toggled off.
+  if (!isWindHookQaPreview) return; // Never execute in production.
+  if (isNativeDopplerPlayback()) return; // Separate genuine Doppler path.
   const generation=++windHookAnalysisGeneration;
   const frame=hybridFrames[index], result=hybridResults[index];
   // A new radar frame must clear any prior marker BEFORE asynchronous wind

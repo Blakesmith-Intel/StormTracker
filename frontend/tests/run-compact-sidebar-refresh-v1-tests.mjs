@@ -60,5 +60,5 @@ for(const id of ["showPowerOutages","showFloodRoadClosures"]){
  assert.doesNotMatch(html,new RegExp('id="'+id+'" type="checkbox" checked'));
 }
 assert.match(controller, /DEFAULT_OFF_LAYER_IDS/);
-assert.match(entry, /v6-sidebar-refresh-track/);
+assert.match(entry, /v7-white-radar-clock-removed/);
 console.log("Compact sidebar, original-clock visibility and live-source refresh stamps passed.");

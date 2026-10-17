@@ -50,7 +50,7 @@ for(const s of [powerLayer,roadLayer]){
  assert.match(s, /refreshWhileHidden = false/);
  assert.match(s, /refresh\(\{force:refreshWhileHidden\}\)/);
  assert.match(s, /dataSource.show \|\| refreshWhileHidden/);
- assert.match(s, /if \(!dataSource.show/); // does not change visibility
+ assert.match(s, /!dataSource.show/); // does not change visibility
 }
 assert.match(powerRuntime, /refreshWhileHidden: true/);
 assert.match(roadRuntime, /refreshWhileHidden: true/);

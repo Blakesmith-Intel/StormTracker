@@ -97,10 +97,18 @@ test("measured gusts require station source, valid location and fresh timestamp"
   assert.equal(assessObservedBoMGust(observation,"2026-10-08T04:16:00Z"),null);
   assert.equal(assessObservedBoMGust({...observation,longitude:NaN},now),null);
 });
-test("radar-only strong radial cluster remains explicitly non-damaging-wind classification",()=>{
+test("strong radial-wind candidate requires two different genuine Doppler scan times",()=>{
+  const previous=fixture("2026-10-08T04:00:00Z");
   const {frame,result}=fixture();
-  const out=assessV10RadarFrame({frame,result,dopplerState:radar(frame,radial)});
+  const single=assessV10RadarFrame({frame,result,dopplerState:radar(frame,radial)});
+  assert.equal(single.alerts.length,0,"No first-scan wind candidate");
+  const out=assessV10RadarFrame({
+    frame,result,previousFrame:previous.frame,previousResult:previous.result,
+    dopplerState:radar(frame,radial),
+    previousDopplerState:radar(previous.frame,radial)
+  });
   assert.equal(out.alerts.length,1);
+  assert.equal(out.alerts[0].persistence_scans,2);
   assert.equal(out.alerts[0].category,"strong_radial_signature");
   assert.equal(out.alerts[0].type,"wind");
   assert.equal(out.alerts[0].velocity_kmh,-65);
@@ -118,9 +126,11 @@ test("two measured hook arcs plus colocated Doppler couplet become experimental 
   const out=assessV10RadarFrame({
     frame:now.frame,result:now.result,
     previousFrame:prev.frame,previousResult:prev.result,
-    dopplerState:radar(now.frame,couplet)
+    dopplerState:radar(now.frame,couplet),
+    previousDopplerState:radar(prev.frame,couplet)
   });
   assert.equal(out.alerts.some(a=>a.category==="tornadic_candidate"),true);
+  assert.equal(out.alerts.find(a=>a.category==="tornadic_candidate").persistence_scans,2);
   const tornado=out.alerts.find(a=>a.category==="tornadic_candidate");
   assert.equal(tornado.type,"hook");
   assert.ok(tornado.radial_shear_kmh>=80);
@@ -167,9 +177,31 @@ test("wrong radar, mismatched observation or palette-exceeding value rejected",(
 test("research is preview-only and main production alerts remain disabled",()=>{
   const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
   assert.match(runtime,/assessV10RadarFrame\(/);
+  assert.match(runtime,/assessConsecutiveDopplerWind\(/);
+  assert.match(runtime,/syncIndependentDopplerResearch\(/);
+  assert.match(runtime,/previousDopplerState/);
+  assert.match(runtime,/loadDopplerHistoriesAndPalettes\(/);
   assert.match(runtime,/isWindHookQaPreview/);
   assert.match(runtime,/severeStormAlertOverlay\.setEnabled\(false\)/);
   assert.match(runtime,/if \(!windHookResearchEnabled\)/);
+});
+test("same original Doppler scan cannot be counted twice against consecutive rain frames",()=>{
+  const prev=fixture("2026-10-08T04:00:00Z");
+  const now=fixture("2026-10-08T04:05:00Z");
+  const shared=radar(now.frame,radial);
+  const out=assessV10RadarFrame({frame:now.frame,result:now.result,
+    previousFrame:prev.frame,previousResult:prev.result,
+    dopplerState:shared,previousDopplerState:shared});
+  assert.equal(out.alerts.filter(a=>a.type==="wind").length,0);
+});
+test("tornadic circulation does not appear with one Doppler scan despite two hooks",()=>{
+  const prev=fixture("2026-10-08T04:00:00Z","arc");
+  const now=fixture("2026-10-08T04:05:00Z","arc");
+  const out=assessV10RadarFrame({frame:now.frame,result:now.result,
+    previousFrame:prev.frame,previousResult:prev.result,
+    dopplerState:radar(now.frame,couplet)});
+  assert.equal(out.alerts.some(a=>a.category==="tornadic_candidate"),false);
+  assert.equal(out.alerts.some(a=>a.category==="hook_shape_only"),true);
 });
 test("untrusted provenance or unverified native geometry is refused",()=>{
   const {frame,result}=fixture();

@@ -41,10 +41,10 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "power-outages-v1.js"):
+for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -55,6 +55,8 @@ def version_once(relative, needle):
 # reuse previously cached modules with the same query strings.
 version_once("index.html", "-jasper-alfred-v1")
 version_once("live3d-operational-v9.html", "-jasper-alfred-archive-v1")
+version_once("live3d-operational-v9.html",
+    "single-interface-v1.css?v=jasper-alfred-20261017-qa-v1")
 version_once("src/live3d-operational-v9.js",
     "river-gauges-operational-v1.js?v=9.18.11-gauge-green-yellow-red-v2")
 version_once("src/context-layers/river-gauges-operational-v1.js",
@@ -66,6 +68,30 @@ version_once("src/live3d-operational-v9.js",
 version_once("src/context-layers/power-outages-operational-v1.js",
     "power-outages-v1.js?v=background-incident-refresh-20261017-v1")
 
+# Overlay ONLY the missing manual refresh control, without replacing the
+# pinned V10.2 HTML/CSS or altering its accepted operator layout.
+from re import search
+operator_html = Path("frontend/live3d-operational-v9.html").read_text(encoding="utf-8")
+button_match=search(r'<button id="refreshRiverGaugesButton"[^>]*>[^<]*</button>',operator_html)
+assert button_match, "Manual refresh control absent from maintenance source"
+html_path=site / "live3d-operational-v9.html"
+html=html_path.read_text(encoding="utf-8")
+needle="Flood signals</label></div>"
+assert html.count(needle)==1
+html_path.write_text(html.replace(
+    needle,"Flood signals</label>"+button_match.group(0)+"</div>"),encoding="utf-8")
+
+style_source=Path("frontend/src/single-interface-v1.css").read_text(encoding="utf-8")
+start=style_source.index("/* One-row flood gauge refresh:")
+end=style_source.index("/* Historical cyclone forecast",start)
+style=style_source[start:end]
+assert "#refreshRiverGaugesButton" in style
+style_path=site / "src/single-interface-v1.css"
+with style_path.open("a",encoding="utf-8") as out:
+    out.write("\\n"+style)
+
+assert "bindRiverGaugeManualRefresh(" in (
+    layers / "river-gauges-operational-v1.js").read_text()
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
@@ -77,9 +103,12 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18 (source main)\n")
     record.write("RIVER-HISTORY NO-DATA V2 2026-10-18 (200 empty, source-format guarded)\n")
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
+    record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
 PY
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js
+grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
+grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css
 node --check _site/src/context-layers/river-gauge-layer-v1.js
 node --check _site/src/context-layers/bom-recent-river-history-v1.js
 node --check _site/src/context-layers/power-outages-v1.js

@@ -1,4 +1,4 @@
-# StormTracker — V10.1.1 accepted production source
+# StormTracker — V10.2.0 cyclone-interface production release
 
 StormTracker is a **browser-only Queensland and southern NSW border BoM radar situational-awareness viewer**. It is **not** an official warning service or an emergency decision-making tool. Original source radar reflectivity is in **dBZ**, native Doppler is radial velocity, and vertical 3-D structures and storm cones are explicitly **empirical/inferred**, not measured 3-D weather radar.
 
@@ -6,7 +6,7 @@ StormTracker is a **browser-only Queensland and southern NSW border BoM radar si
 
 **https://blakesmith-intel.github.io/StormTracker/**
 
-- **V10.1.1:** Single simplified interface with correctly expanding full-screen map on Hide controls, rain-style synchronised native multi-site Doppler with a primary source clock, genuine per-site ±8-minute matching, Brewarrina IDR93I, plus operator-accepted continuous QLD/NSW satellite basemap, high-quality persistent 3-D on primary and additional radar sites, original full-resolution BoM data, bounded caches/CPU performance optimisations, viewport-fit diagnostics. Pin/tag/restore SHA is in `docs/CURRENT_ACCEPTED_BASELINE.md` after CI cutover.
+- **V10.2.0:** Opt-in BoM source-authentic cyclone forecast-map display and historical Jasper/Alfred reference overlays, no invented uncertainty polygons, explicit live-source validity and BoM's 'Currently no tropical cyclone warnings' text only after a successfully verified empty source check. An offline FTP retrieval audit and authentic historical Fina GML decode passed. The public site's automatic live data bridge is **not operational**, so it must instead state the feed cannot be verified when unavailable. Original V10.1.1 radar/Doppler functions and recovery references remain preserved. Pinned cyclone UI source `585615842067448d092ff8d1987c4121ab08086a`; see `docs/CURRENT_ACCEPTED_BASELINE.md` for rollout verification.\n- **V10.1.1:** Single simplified interface with correctly expanding full-screen map on Hide controls, rain-style synchronised native multi-site Doppler with a primary source clock, genuine per-site ±8-minute matching, Brewarrina IDR93I, plus operator-accepted continuous QLD/NSW satellite basemap, high-quality persistent 3-D on primary and additional radar sites, original full-resolution BoM data, bounded caches/CPU performance optimisations, viewport-fit diagnostics. Pin/tag/restore SHA is in `docs/CURRENT_ACCEPTED_BASELINE.md` after CI cutover.
 - Earlier sealed `v10.1.0`: `11f0012170c4632bd5ef2448bf5671326fdd287e`, `restore/v10.1.0` (preserved).
 - Earlier sealed `v10.0.0`: `e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5`, `restore/v10.0.0` (preserved).
 - Historical sealed `v9.20.1`: `efaceb59427f0b71859b15a61a6758a80d08547e`, `restore/v9.20.1`.

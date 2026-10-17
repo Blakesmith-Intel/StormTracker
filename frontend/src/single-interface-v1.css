@@ -70,3 +70,46 @@ body.simple-ui #app.sidebar-collapsed > #mapPanel {
   width:100%;
   height:100%;
 }
+
+/* V10 development: radar playback is an ordinary native disclosure, closed
+   by default. Only the summary may take sidebar height until requested. 
+   Stronger than older "!important" rules for direct playback children. */
+body.simple-ui #controlSidebar #radarPlaybackDetails {
+  display:block;
+  padding:6px 10px;
+  flex:0 0 auto;
+}
+body.simple-ui #controlSidebar #radarPlaybackDetails > summary.section-title {
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:31px;
+  margin:0!important;
+  padding:1px 2px;
+  cursor:pointer;
+  list-style:none;
+  font-weight:750;
+  line-height:1.25;
+}
+body.simple-ui #radarPlaybackDetails > summary::-webkit-details-marker {display:none;}
+body.simple-ui #radarPlaybackDetails > summary::after {
+  content:"Show";
+  font-size:11px;
+  font-weight:600;
+  color:#adccde;
+}
+body.simple-ui #radarPlaybackDetails[open] > summary::after {content:"Hide";}
+body.simple-ui #controlSidebar #radarPlaybackDetails:not([open]) > :not(summary) {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #radarPlaybackDetails[open] > summary {
+  margin-bottom:8px!important;
+}
+/* Keep the general controls reachable on ordinary desktop viewports without
+   stealing space from the map. Small-height screens remain scrollable rather
+   than silently clipping layers or incident buttons. */
+@media (min-width:701px) {
+  body.simple-ui #controlSidebar {gap:clamp(3px,.6dvh,7px)!important;}
+  body.simple-ui #controlSidebar > .dashboard-heading {min-height:30px;}
+}

@@ -1,20 +1,20 @@
-# StormTracker V10.1.1 — production recovery and sealed rollback
+# StormTracker V10.2.0 — cyclone UI release and sealed rollback
 
-**Accepted production source:** `711d65a72a483b319e80711a09cfeabe2f69bbcd` (17 October 2026).
+**New source-pinned release:** `585615842067448d092ff8d1987c4121ab08086a` (17 October 2026). Publish/verify before creating new tag.\n\n**Previous sealed V10.1.1 source:** `711d65a72a483b319e80711a09cfeabe2f69bbcd` — preserved as the immediate fallback.
 
 - Public app: https://blakesmith-intel.github.io/StormTracker/
 - Public source check: https://blakesmith-intel.github.io/StormTracker/BUILD.txt
-- Exact marker: `SEALED StormTracker V10.1.1 source 711d65a72a483b319e80711a09cfeabe2f69bbcd`
-- Immutable annotated tag: `v10.1.1`
-- Immediate recovery branch: `restore/v10.1.1`
+- Exact marker: `SEALED StormTracker V10.2.0 source 585615842067448d092ff8d1987c4121ab08086a`
+- Immutable annotated tag: `v10.2.0`
+- Immediate recovery branch: `restore/v10.2.0`
 
-The Pages workflow first checks out and tests the **exact accepted source** into `checked/production-v10.1.1`, builds a deterministic root, verifies the public BUILD marker and source assets, and **only then** creates the tag and restore branch. Never repoint sealed tags/branches.
+The Pages workflow checks out and tests the **exact source** into `checked/production-v10.2.0`, builds a deterministic root, verifies the public BUILD marker and source assets, and **only then** creates the tag and restore branch. Never repoint sealed tags/branches.
 
 ## Older retained recovery references
 
 | Tag and restore branch | Exact source commit |
 |---|---|
-| `v10.1.0` / `restore/v10.1.0` | `11f0012170c4632bd5ef2448bf5671326fdd287e` |
+| `v10.1.1` / `restore/v10.1.1` | `711d65a72a483b319e80711a09cfeabe2f69bbcd` |\n| `v10.1.0` / `restore/v10.1.0` | `11f0012170c4632bd5ef2448bf5671326fdd287e` |
 | `v10.0.0` / `restore/v10.0.0` | `e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5` |
 | `v9.20.2` / `restore/v9.20.2` | `b8be458acbae942a3bb0b530a5c17618b6d03134` |
 | `v9.20.1` / `restore/v9.20.1` | `efaceb59427f0b71859b15a61a6758a80d08547e` |
@@ -29,3 +29,4 @@ The V9.18.0 `/preview/radar-history-fix/` diagnostic stays pinned at `acfa0ebd37
 **V10.1.1 science:** primary UTC controls native Doppler, secondary genuine BoM scans ≤8 minutes offset; optional staged site images commit as one synchronous handover. Source time and BoM imagery remain genuine; no secondary wind drives circulation science until its geometry is validated.
 
 **V10.1.1 UI-specific correction:** The source-pinned CSS fixes a specificity conflict between collapsed map and simple UI layout. A cache version bump updates the iframe and stylesheet; source/tests guarantee collapse fills desktop and mobile. The Doppler synchronisation and original source/3-D rendering are unchanged from V10.1.0.
+\n**Cyclone source boundary:** Forecast panel and authentic GML import are enabled, source off until operator toggles. BoM's 'Currently no tropical cyclone warnings' is displayed only after a verified empty current-product feed; network failure must never appear as an all-clear. Live FTP-to-browser bridge and automatic `IDQ20023` bulletin pairing are not delivered in this version.\n

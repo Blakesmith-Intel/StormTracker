@@ -75,10 +75,16 @@ try {
     assert.equal(payload.code,code);
     assert.equal(payload.upstreamStatus,upstreamStatus);
   }
-  globalThis.fetch=async()=>new Response("<html>No readings</html>",{status:200});
+  globalThis.fetch=async()=>new Response(
+    '<table id="tableStyle1"><tr><th>Date/Time</th><th>Water Level (m)</th></tr></table>',
+    {status:200});
   const empty=await worker.fetch(new Request(target),{});
   assert.equal(empty.status,422);
   assert.equal((await empty.json()).code,"no_usable_observations");
+  globalThis.fetch=async()=>new Response("<html>Unexpected login page</html>",{status:200});
+  const changedMarkup=await worker.fetch(new Request(target),{});
+  assert.equal(changedMarkup.status,502);
+  assert.equal((await changedMarkup.json()).code,"source_format_mismatch");
   globalThis.fetch=async()=>{throw Error("upstream connection failed");};
   const unreachable=await worker.fetch(new Request(target),{});
   assert.equal(unreachable.status,503);

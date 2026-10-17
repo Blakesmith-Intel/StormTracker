@@ -113,7 +113,7 @@ jobs:
           grep -Fq 'body class="simple-ui"' checked/production-v10.2.0/frontend/live3d-operational-v9.html
           test -f checked/production-v10.2.0/frontend/tests/run-multi-native-doppler-v1-tests.mjs
           grep -Fq 'body.simple-ui #app.sidebar-collapsed' checked/production-v10.2.0/frontend/src/single-interface-v1.css
-          grep -Fq 'full-map-toggle-20261017-v2' checked/production-v10.2.0/frontend/live3d-operational-v9.html
+          grep -Fq 'full-map-controls-gauge-severity-v4' checked/production-v10.2.0/frontend/live3d-operational-v9.html
           grep -Fq 'hide-controls-full-map-v1' checked/production-v10.2.0/frontend/index.html
           grep -Fq 'supplementalDopplerDisplay.prepare(source.observedUtc)' checked/production-v10.2.0/frontend/src/live3d-operational-v9.js
           grep -Fq 'supplementalDopplerDisplay.commit(source.observedUtc)' checked/production-v10.2.0/frontend/src/live3d-operational-v9.js
@@ -226,7 +226,7 @@ jobs:
             'src/multi-doppler-display-v1.js|SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' \
             'src/border-radar-sites-v1.js|IDR93I' \
             'src/single-interface-v1.css|body.simple-ui #app.sidebar-collapsed' \
-            'live3d-operational-v9.html|full-map-toggle-20261017-v2' \
+            'live3d-operational-v9.html|full-map-controls-gauge-severity-v4' \
             'index.html|hide-controls-full-map-v1' \
             'live3d-operational-v9.html|multiRadarDopplerStatus' \
             'live3d-operational-v9.html|single-interface-v1.css' \

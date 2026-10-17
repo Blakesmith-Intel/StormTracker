@@ -1028,6 +1028,10 @@ const isWindHookQaPreview =
 let windHookResearchEnabled = false;
 severeStormAlertOverlay.setEnabled(false);
 if (isWindHookQaPreview) {
+  const qaStyle = document.createElement("link");
+  qaStyle.rel = "stylesheet";
+  qaStyle.href = "./src/wind-hook-research-v10.css?v=qa-v10-3";
+  document.head.appendChild(qaStyle);
   const row = document.createElement("label");
   row.id = "windHookResearchQaControl";
   row.style.cssText = "position:absolute;right:16px;bottom:22px;z-index:33;display:flex;align-items:center;gap:7px;padding:7px 10px;background:#0c2939ef;border:1px solid #739db2;border-radius:7px;color:#f5f8fc;font:12px system-ui;max-width:min(92vw,270px)";

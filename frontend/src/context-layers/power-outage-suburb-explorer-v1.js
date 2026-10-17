@@ -1,5 +1,5 @@
 import {formatIncidentRefreshTime} from "./incident-refreshed-time-v1.js?v=20261017-refresh-v1";
-import {groupOutagesByLga,filterLgaGroups,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
+import {groupOutagesByLga,filterLgaGroups,councilOutageCustomerSummary,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
  from "./incident-lga-model-v1.js?v=case-insensitive-lga-20261017-v2";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {resolveOutageCouncilNames} from "./outage-lga-geographic-fallback-v1.js?v=outage-spatial-councils-20261017-v1";
@@ -132,14 +132,29 @@ export function createPowerOutageSuburbExplorer({
       parent.addEventListener("toggle",()=>parent.open
         ?openKeys.add("lga:"+council.key):openKeys.delete("lga:"+council.key));
       const parentTitle=create("summary","outage-suburb-title");
-      parentTitle.append(create("span","outage-suburb-name",council.name),
+      const totals=councilOutageCustomerSummary(council,groups);
+      const badges=create("span","outage-council-metrics");
+      badges.append(
         create("span","outage-suburb-count",
-          `${council.items.length} outage${council.items.length===1?"":"s"}`));
+          `${totals.outages} outage${totals.outages===1?"":"s"}`),
+        create("span","outage-council-customers",
+          `${number(totals.customers)} customer${totals.customers===1?"":"s"}`)
+      );
+      if(totals.crossCouncilEvents){
+        badges.append(create("span","outage-council-shared","Shared*"));
+        badges.title="Includes outage-wide customer totals for events listed in more than one council. These are not council-specific customer allocations.";
+      } else {
+        badges.title="Unique outage IDs within this council; customers affected as reported by the electricity providers.";
+      }
+      parentTitle.append(create("span","outage-suburb-name",council.name),badges);
       parent.append(parentTitle);
       const parentInner=create("div","outage-suburb-inner outage-lga-inner");
       if(council.name===UNKNOWN_LGA)
         parentInner.append(create("p","outage-suburb-note",
           "Council could not be verified from the official Queensland locality data."));
+      if(totals.crossCouncilEvents)
+        parentInner.append(create("p","outage-suburb-note",
+          "* Shared outages can appear under multiple councils. Customer totals represent entire provider events, not customers allocated to each council."));
       for(const group of council.suburbs){
       const section=create("details","outage-suburb outage-locality");
       section.open=openKeys.has(group.key);

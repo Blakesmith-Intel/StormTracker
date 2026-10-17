@@ -7,7 +7,8 @@ import {
 // Isolated, opt-in QA layer. No polling, no background renderer work,
 // no mutation of the primary or secondary BoM imagery and 3-D layers.
 export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=document,fetchRef=fetch,
-  caseIds=HISTORICAL_CYCLONE_IDS,defaultWind=true,onStateChange=()=>{}}){
+  caseIds=HISTORICAL_CYCLONE_IDS,defaultWind=true,onStateChange=()=>{},
+  focusCoordinates=null}){
   if(!Array.isArray(caseIds)||!caseIds.length||
     caseIds.some(id=>!HISTORICAL_CYCLONE_IDS.includes(id)))
     throw new Error("Invalid Queensland historical case selection");
@@ -271,14 +272,15 @@ export function mountHistoricalCycloneQA({Cesium,viewer,sidebar,documentRef=docu
   function focus(){
     if(!bundle)return;
     const points=bundle.fixes.map(f=>f.position);
-    const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
     const margin=bundle.id==="yasi-2011"?2.4:1.5;
-    viewer.camera.flyTo({
-      destination:Cesium.Rectangle.fromDegrees(
-        Math.min(...xs)-margin,Math.min(...ys)-margin,
-        Math.max(...xs)+margin,Math.max(...ys)+margin
-      ),duration:0.6
-    });
+    // This app disables Cesium native camera inputs. The camera guardian
+    // restores unauthorized direct camera.flyTo() motion after 250ms.
+    // Feed the original archived fixes to the owning controller instead.
+    if(typeof focusCoordinates!=="function"){
+      status.textContent="Focus unavailable: StormTracker camera controller not ready.";
+      return;
+    }
+    focusCoordinates(points,{marginDegrees:margin});
   }
   toggle.addEventListener("change",load);
   pick.addEventListener("change",load);

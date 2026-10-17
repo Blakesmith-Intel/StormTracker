@@ -292,11 +292,8 @@ function setSidebarCollapsed(collapsed){
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.hidden));
 // QA-only usability controls; separate geodesic annotations cannot affect weather.
 createFriendlyMapTools({viewer,Cesium});
-// The accepted public production source is separately SHA-pinned. In V10 QA,
-// cyclone forecasts are local-only; importing historical source data never
-// enables polling, radar track science or a live-warning control.
-if(INCREMENTAL_VOLUME_PREVIEW && window.location.pathname.includes("/preview/incremental-3d/"))
-  createHistoricalCycloneForecastQA({Cesium,viewer,documentRef:document});
+// Cyclone QA mounts after the stateful map camera exists (below), so focus
+// uses the same controller as regular StormTracker navigation.
 const persistentWeatherLegend=mountPersistentWeatherLegend();
 
 // Historical cyclone research is paused and remains available as a separate
@@ -478,6 +475,12 @@ mapCamera =
       queenslandTownLabels?.setNavigationActive(false);
     }
   });
+
+// The verified browser-source QA viewer must never call Cesium.camera.flyTo;
+// StormTracker's stateful camera guardian would cancel it as stray movement.
+if(INCREMENTAL_VOLUME_PREVIEW && window.location.pathname.includes("/preview/incremental-3d/"))
+  createHistoricalCycloneForecastQA({Cesium,viewer,documentRef:document,
+    cameraController:mapCamera});
 
 let queenslandTownLabels = null;
 let queenslandStateBorder = null;

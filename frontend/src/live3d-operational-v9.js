@@ -5265,6 +5265,10 @@ $("basemapSelect").addEventListener(
 $("loopDurationMinutes").addEventListener("change", () => {
   persistentWeatherLegend.sync();
   motionTransition.cancel();
+  // Immediately retire all additional velocity imagery when leaving native
+  // Doppler, before any new source request can be delayed by a long load.
+  if (selectedLoopSelection() !== DOPPLER_AVAILABLE_LOOP_VALUE)
+    supplementalDopplerDisplay.setEnabled(false);
   // Invalidate any pending combined-frame handover BEFORE clearing Doppler.
   // Otherwise an awaiting native BoM image can resurrect the outgoing wind.
   ++hybridSceneRenderToken;

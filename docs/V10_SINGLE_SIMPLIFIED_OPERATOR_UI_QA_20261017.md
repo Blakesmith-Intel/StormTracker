@@ -35,3 +35,5 @@ The otherwise-retired hidden `#terrainEnabled` checkbox and its JavaScript readb
 
 ## Multi-site native Doppler fix (17 October 2026)
 The additional-radar selector also drives independently sourced BoM Doppler imagery during Doppler-only playback, limited to verified-supported product sites. Each supplemental scan has its own original UTC and palette, aligned within eight minutes of the primary Doppler frame. Unavailable or mismatched frames are omitted rather than fabricated. Native pixel RGB is preserved, and the source-time diagnostics appear inside the radar chooser. Each site has bounded record cache and a single coalescing preparation path to prevent rapid-scrub request pileups. Primary remains the only storm-tracking/3-D science source. NSW Brewarrina Doppler remains excluded pending geographic verification, and Moree/Grafton have no verified Doppler product.
+
+Final mode-change safeguard: switching from Doppler to rain immediately retires every secondary wind layer before asynchronous radar loading starts; stale native layers cannot linger during source changes.

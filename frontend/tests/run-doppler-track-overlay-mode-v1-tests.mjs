@@ -47,6 +47,7 @@ assert.deepEqual(trackSource.entities.values,[]);
 
 const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
 assert.match(runtime,/function clearReflectivityForDoppler\(\)[\s\S]*?clearReflectivityOverlaysForDoppler\(\{/);
+assert.match(runtime,/if \(selectedLoopSelection\(\) !== DOPPLER_AVAILABLE_LOOP_VALUE\)\s*supplementalDopplerDisplay\.setEnabled\(false\);/, "Leaving wind mode must synchronously retire all extra-site Doppler layers");
 assert.match(runtime,/if \(selectedLoopSelection\(\) === DOPPLER_AVAILABLE_LOOP_VALUE\)\s*clearReflectivityForDoppler\(\);\s*renderDopplerOverlay\(\)/,
   "Changing the selector must remove old radar overlays BEFORE the async Doppler load");
 assert.match(runtime,/showSupplementalRadarSites\(null\);\s*supplementalDopplerDisplay\.setEnabled\(true\);\s*\/\/ All reflectivity-only objects[\s\S]*?clearReflectivityForDoppler\(\);/,

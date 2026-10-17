@@ -17,6 +17,10 @@ assert.match(html,/id="historicalCycloneMapStamp" hidden/);
 assert.match(html,/id="cycloneGmlFile" type="file"/);
 assert.match(html,/id="cycloneShow72" checked/);
 assert.match(html,/id="cycloneShow120" checked/);
+assert.match(html,/id="cycloneUseJasper"/);
+assert.match(html,/id="cycloneUseAlfred"/);
+assert.match(source,/caseIds:\["jasper-2023","alfred-2025"\]/);
+assert.match(source,/NO ORIGINAL ISSUED FORECAST GML RECOVERED/);
 assert.match(runtime,/if\(INCREMENTAL_VOLUME_PREVIEW && window\.location\.pathname\.includes\("\/preview\/incremental-3d\/"\)\)/);
 assert.doesNotMatch(source,/\bfetch\s*\(|setInterval\s*\(|\bWorker\s*\(/);
 assert.match(source,/new Cesium\.CustomDataSource/);
@@ -110,7 +114,8 @@ void truncated;
 const mapEls=new Map();
 for(const id of ["openCycloneForecastQa","cycloneForecastQaPanel","cycloneGmlFile",
  "cycloneForecastQaStatus","historicalCycloneMapStamp","cycloneShow72","cycloneShow120",
- "cycloneForecastQaFocus","cycloneForecastQaClear","cycloneForecastQaClose"]){
+ "cycloneForecastQaFocus","cycloneForecastQaClear","cycloneForecastQaClose",
+ "cycloneUseJasper","cycloneUseAlfred"]){
  mapEls.set(id,{id,hidden:id==="cycloneForecastQaPanel",checked:id==="cycloneShow72"||id==="cycloneShow120",
   disabled:false,textContent:"",files:[],value:"",listeners:{},
   addEventListener(event,cb){this.listeners[event]=cb},
@@ -142,9 +147,16 @@ const viewer={
  scene:{requestRender(){requests++}},
  camera:{flyTo(){flights++}}
 };
+let archiveLoads=0,archiveFocuses=0,archiveClears=0;
+const archive={
+ panel:{open:false},pick:{value:""},toggle:{checked:false},status:{textContent:""},
+ get activeCase(){return this.toggle.checked?this.pick.value:null;},
+ async load(){archiveLoads++;if(!this.toggle.checked)archiveClears++;},
+ focus(){archiveFocuses++},dispose(){}
+};
 const ui=createHistoricalCycloneForecastQA({
  Cesium,viewer,documentRef:{getElementById:id=>mapEls.get(id)},
- decode:()=>result
+ decode:()=>result,mountArchive:()=>archive
 });
 assert.equal(entities.length,0,"No cyclone imagery on page load");
 mapEls.get("openCycloneForecastQa").listeners.click();
@@ -167,4 +179,32 @@ assert.equal(entities.length,0);
 assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,true);
 assert.equal(ui.loaded,null);
 assert.ok(requests>=3);
-console.log("PASS original local BoM cyclone GML browser parser, truthful issued source areas and isolated Cesium QA lifecycle.");
+mapEls.get("cycloneUseJasper").listeners.click();
+await Promise.resolve();await Promise.resolve();
+assert.equal(archive.pick.value,"jasper-2023");
+assert.equal(archive.panel.open,true);
+assert.equal(archive.toggle.checked,true);
+assert.equal(archiveLoads,1);
+assert.equal(archiveFocuses,1);
+assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/OBSERVED TRACK · NOT A FORECAST/);
+assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,false);
+assert.match(mapEls.get("cycloneForecastQaStatus").textContent,/No 72h\/120h forecast uncertainty is supplied/);
+mapEls.get("cycloneShow72").checked=true;
+mapEls.get("cycloneShow72").listeners.change();
+assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,false,
+  "Cyclone archived-observed provenance must persist across the GML polygon toggle");
+mapEls.get("cycloneUseAlfred").listeners.click();
+await Promise.resolve();await Promise.resolve();
+assert.equal(archive.activeCase,"alfred-2025");
+assert.equal(archiveLoads,3,"Switch invalidates prior observations and loads the new case");
+assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/ALFRED 2025/);
+assert.equal(entities.length,0,"Observed source must not generate 72h/120h forecast area");
+mapEls.get("cycloneGmlFile").files=[{size:500,name:"IDD65401.gml",text:async()=>XML}];
+await mapEls.get("cycloneGmlFile").listeners.change();
+assert.equal(archive.toggle.checked,false,
+ "Original issued GML replaces the Queensland observed reference, not a misleading combination");
+assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/ARCHIVED BoM FORECAST · NOT LIVE/);
+mapEls.get("cycloneForecastQaClear").listeners.click();
+assert.equal(archive.toggle.checked,false);
+assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,true);
+console.log("PASS Jasper and Alfred original QLD observed references + source-only BoM forecast: no invented uncertainty and independent Cesium lifecycle.");

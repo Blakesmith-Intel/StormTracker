@@ -40,12 +40,16 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
  function statusText(text){status.textContent=text;}
  function clear(){
   ds.entities.removeAll();
-  mapStamp.hidden=!loaded;
+  const observedCase=!loaded && archived?.toggle.checked ? archived.activeCase : null;
+  mapStamp.hidden=!loaded&&!observedCase;
   if(loaded)mapStamp.textContent="ARCHIVED BoM FORECAST · NOT LIVE · "+
     loaded.cycloneName+" · issued "+new Date(loaded.issueUtc).toLocaleString("en-AU",{
       timeZone:"Australia/Brisbane",day:"2-digit",month:"short",year:"numeric",
-      hour:"2-digit",minute:"2-digit",hour12:false
+      hour:"2-digit",hour12:false
     })+" AEST";
+  else if(observedCase)mapStamp.textContent=
+    "ARCHIVED QLD / BoM OBSERVED TRACK · NOT A FORECAST · NOT LIVE · "+
+    (observedCase==="jasper-2023"?"JASPER 2023":"ALFRED 2025");
   viewer.scene?.requestRender?.();
  }
  function redraw(){
@@ -167,7 +171,11 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
   archived.pick.value=id;
   archived.toggle.checked=true;
   statusText("Loading Queensland Government / BoM observed "+id+" archive…");
-  await archived.load();
+  try{await archived.load();}catch(error){
+    statusText("Queensland historical archive could not load: "+String(error));
+    mapStamp.hidden=true;
+    return;
+  }
   if(archived.activeCase===id&&archived.toggle.checked){
    mapStamp.hidden=false;
    mapStamp.textContent="ARCHIVED QLD / BoM OBSERVED TRACK · NOT A FORECAST · NOT LIVE · "+

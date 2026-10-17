@@ -133,8 +133,7 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models assets;
 done
 cp "$production/data/nsw-radar-places-v1.json" "$wind_preview/data/"
 cp -a "$wind_source/data/cyclone-history" "$wind_preview/data/"
-printf 'EXPERIMENTAL V10.3 wind-hook original radar QA source %s; production sealed V10.2.0 untouched\\n' \\
-  '325d6a49eaf829e765c599876767cd351b01a860' > "$wind_preview/BUILD.txt"
+echo "EXPERIMENTAL V10.3 wind-hook original radar QA source 325d6a49eaf829e765c599876767cd351b01a860; production sealed V10.2.0 untouched" > "$wind_preview/BUILD.txt"
 grep -Fq 'wind-hook-v10-3/' "$wind_preview/src/live3d-operational-v9.js"
 grep -Fq 'assessV10RadarFrame' "$wind_preview/src/live3d-operational-v9.js"
 grep -Fq 'createOperationalCyclonePanel' "$wind_preview/src/live3d-operational-v9.js"

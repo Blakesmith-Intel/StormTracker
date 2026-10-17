@@ -56,7 +56,7 @@ assert.match(runtime,/createHistoricalCycloneForecastQA/);
 assert.match(runtime,/createInternalCycloneLiveQA/);
 assert.match(runtime,/\/index\\.html/);
 assert.match(runtime,/isWindHookQaPreview/);
-assert.match(runtime,/window\\.location\\.pathname\\.includes\\("\\/preview\/wind-hook-v10-3\/"\\)/);
+assert.ok(runtime.includes('window.location.pathname.includes("/preview/wind-hook-v10-3/")'));
 assert.match(runtime,/if \(!windHookResearchEnabled\) return/);
 assert.match(runtime,/if \(!isWindHookQaPreview\) return/);
 assert.match(runtime,/severeStormAlertOverlay\.setEnabled\(false\)/);

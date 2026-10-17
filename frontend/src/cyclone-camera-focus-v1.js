@@ -22,9 +22,11 @@ export function cycloneCameraFitState(coordinates,{
  if(!Array.isArray(coordinates)||!coordinates.length||
     coordinates.some(p=>!safePoint(p))||coordinates.length>150_000)
    throw new Error("Missing/invalid original cyclone positions");
- const xs=coordinates.map(p=>p[0]),ys=coordinates.map(p=>p[1]);
- const west=Math.min(...xs),east=Math.max(...xs),
-   south=Math.min(...ys),north=Math.max(...ys);
+ let west=180,east=-180,south=90,north=-90;
+ for(const [lon,lat] of coordinates){
+   if(lon<west)west=lon;if(lon>east)east=lon;
+   if(lat<south)south=lat;if(lat>north)north=lat;
+ }
  if(east-west>180)throw new Error("Cyclone spans longitude seam; no safe automatic focus");
  const centreLon=(west+east)/2,centreLat=(south+north)/2;
  const pad=Number.isFinite(marginDegrees)?Math.max(0,Math.min(6,marginDegrees)):1.25;

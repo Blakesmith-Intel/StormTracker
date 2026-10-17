@@ -88,7 +88,7 @@ class SourceIntegrity(unittest.TestCase):
         self.assertEqual(roles.count("uncertainty_area"), 2)
         self.assertEqual(roles.count("warning_area"), 1)
         self.assertEqual(roles.count("forecast_track"), 1)
-        self.assertEqual(decoded["features"][0]["geometry"]["coordinates"][0][0],
+        self.assertEqual(decoded["features"][0]["geometry"]["coordinates"][0],
                          [[131,-11],[132.5,-11],[132.5,-12],[131,-12],[131,-11]])
         self.assertEqual(decoded["features"][2]["geometry"]["coordinates"],
                          [[132,-10],[131.5,-10.5],[131,-11]])

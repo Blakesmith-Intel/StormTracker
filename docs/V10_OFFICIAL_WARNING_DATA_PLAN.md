@@ -67,3 +67,8 @@ See `docs/V10_HISTORICAL_CYCLONE_FORECAST_MAP_QA_20261017.md`. A small `Cyclone 
 ## Queensland Jasper and Alfred reference overlays — 17 October 2026
 
 Integrated both into the existing floating cyclone QA panel (not an expanded sidebar): quick-load authentic Queensland / BoM archive observations, original categories, observed positions and track, optional actual issue-specific wind footprints, with historical time selector. Reused existing `historical-cyclone-overlay-v1.js` / source snapshots and tightened to only the two chosen cases. Status and map provenance say **OBSERVED · NOT A FORECAST · NOT LIVE**. Original BoM GML importer remains the only pathway to *published 72h/120h forecast uncertainty*. Follow source distinction and retrieval result in `docs/V10_HISTORICAL_CYCLONE_FORECAST_MAP_QA_20261017.md`.
+
+
+## Operator-identified current cyclone map / product-source mapping — 17 October 2026
+
+The operator supplied BoM's official tropical cyclone page and identified `IDQ20023`. Verification against BoM's warning-products user guide v2.8 confirms `IDQ20023` is **Tropical Cyclone Advice 1 (QLD)** (text/XML), **not GML forecast geometry**. Match QLD Advice 1–3 (`IDQ20023`, `IDQ20026`, `IDQ20029`) to GML map 1–3 (`IDQ65248`, `IDQ65249`, `IDQ65250`), technical CXML (`IDQ65255`, `IDQ65256`, `IDQ65257`) and independent CAP advice threat areas (`IDQ24500`, `IDQ24510`, `IDQ24520`). Details, source links, additional NSW/NT products, rights/transport gate and QA cases: **[V10 cyclone live source mapping](V10_CYCLONE_LIVE_SOURCE_MAPPING_20261017.md)**. This is product-code mapping only; **no live fetch/polling/redistribution is enabled** and V10.1.1 production stays pinned.

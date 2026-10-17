@@ -1,4 +1,4 @@
-name: Deploy StormTracker — sealed V10.0.0 production and historical QA
+name: Deploy StormTracker — sealed V10.1.0 production and historical QA
 
 on:
   push:
@@ -95,23 +95,29 @@ jobs:
           grep -Fq 'selectSupplementalVolumeSampleIndices' checked/production-v9.20.2/frontend/src/supplemental-radar-volume-v1.js
           grep -Fq 'hashSupplementalPixel' checked/production-v9.20.2/frontend/src/supplemental-volume-sampling-v1.js
 
-      - name: Checkout exact V10.0.0 accepted UI + multi-site Doppler source
+      - name: Checkout exact V10.1.0 accepted UI + multi-site Doppler source
         uses: actions/checkout@v4
         with:
-          ref: e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5
-          path: checked/production-v10.0.0
+          ref: 11f0012170c4632bd5ef2448bf5671326fdd287e
+          path: checked/production-v10.1.0
           persist-credentials: false
-      - name: Validate exact immutable V10.0.0 release candidate
+      - name: Validate exact immutable V10.1.0 release candidate
         run: |
           set -euo pipefail
-          test "$(git -C checked/production-v10.0.0 rev-parse HEAD)" = "e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5"
-          (cd checked/production-v10.0.0 && npm test)
-          node --check checked/production-v10.0.0/relay/worker.js
-          node --check checked/production-v10.0.0/frontend/src/multi-doppler-display-v1.js
-          grep -Fq 'createSupplementalDopplerDisplay' checked/production-v10.0.0/frontend/src/live3d-operational-v9.js
-          grep -Fq 'id="multiRadarDopplerStatus"' checked/production-v10.0.0/frontend/live3d-operational-v9.html
-          grep -Fq 'body class="simple-ui"' checked/production-v10.0.0/frontend/live3d-operational-v9.html
-          test -f checked/production-v10.0.0/frontend/tests/run-multi-native-doppler-v1-tests.mjs
+          test "$(git -C checked/production-v10.1.0 rev-parse HEAD)" = "11f0012170c4632bd5ef2448bf5671326fdd287e"
+          (cd checked/production-v10.1.0 && npm test)
+          node --check checked/production-v10.1.0/relay/worker.js
+          node --check checked/production-v10.1.0/frontend/src/multi-doppler-display-v1.js
+          grep -Fq 'createSupplementalDopplerDisplay' checked/production-v10.1.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'id="multiRadarDopplerStatus"' checked/production-v10.1.0/frontend/live3d-operational-v9.html
+          grep -Fq 'body class="simple-ui"' checked/production-v10.1.0/frontend/live3d-operational-v9.html
+          test -f checked/production-v10.1.0/frontend/tests/run-multi-native-doppler-v1-tests.mjs
+          grep -Fq 'supplementalDopplerDisplay.prepare(source.observedUtc)' checked/production-v10.1.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'supplementalDopplerDisplay.commit(source.observedUtc)' checked/production-v10.1.0/frontend/src/live3d-operational-v9.js
+          grep -Fq 'function commit(utc)' checked/production-v10.1.0/frontend/src/multi-doppler-display-v1.js
+          grep -Fq 'SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' checked/production-v10.1.0/frontend/src/multi-doppler-display-v1.js
+          grep -Fq 'IDR93I' checked/production-v10.1.0/frontend/src/border-radar-sites-v1.js
+          grep -Fq 'stormtracker-bom-relay.stormtracker-bom-relay.workers.dev' checked/production-v10.1.0/frontend/src/bom-doppler-intake-v3.js
 
       - name: Verify historical V9.18.0 rollback source is immutable
         run: |
@@ -141,7 +147,7 @@ jobs:
           test "$(git ls-remote origin 'refs/tags/v9.20.1^{}' | cut -f1)" = "efaceb59427f0b71859b15a61a6758a80d08547e"
           test "$(git ls-remote origin refs/heads/restore/v9.20.1 | cut -f1)" = "efaceb59427f0b71859b15a61a6758a80d08547e"
 
-      - name: Build pinned V10.0.0 production and preserved diagnostic QA
+      - name: Build pinned V10.1.0 production and preserved diagnostic QA
         run: bash scripts/build-current-site.sh
 
       - name: Configure GitHub Pages
@@ -156,7 +162,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Verify published V10.0.0 source and existing historical QA
+      - name: Verify published V10.1.0 source and existing historical QA
         shell: bash
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
@@ -165,7 +171,7 @@ jobs:
           base="${PAGES_URL%/}"
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
-          grep -Fq 'SEALED StormTracker V10.0.0 source e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5' <<< "$root"
+          grep -Fq 'SEALED StormTracker V10.1.0 source 11f0012170c4632bd5ef2448bf5671326fdd287e' <<< "$root"
           grep -Fq 'acfa0ebd3717a793369e3e887e2d1a54785620b7' <<< "$preview"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/preview/radar-history-fix/src/supplemental-radar-volume-v1.js" \
@@ -208,7 +214,11 @@ jobs:
           done
           for component in \
             'src/multi-doppler-display-v1.js|MAX_SECONDARY_WIND_OFFSET_MINUTES=8' \
-            'src/live3d-operational-v9.js|supplementalDopplerDisplay.showAt(source.observedUtc)' \
+            'src/live3d-operational-v9.js|supplementalDopplerDisplay.prepare(source.observedUtc)' \
+            'src/live3d-operational-v9.js|supplementalDopplerDisplay.commit(source.observedUtc)' \
+            'src/multi-doppler-display-v1.js|function commit(utc)' \
+            'src/multi-doppler-display-v1.js|SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' \
+            'src/border-radar-sites-v1.js|IDR93I' \
             'live3d-operational-v9.html|multiRadarDopplerStatus' \
             'live3d-operational-v9.html|single-interface-v1.css' \
             'index.html|multisite-native-wind-v1'; do
@@ -217,16 +227,18 @@ jobs:
             curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
               "$base/$path" | grep -F "$needle" >/dev/null
           done
-          echo 'Verified sealed V10.0.0 source e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5, single UI, native multi-site BoM Doppler, previous full-quality 3-D, and V9.18 QA.'
+          echo 'Verified sealed V10.1.0 source 11f0012170c4632bd5ef2448bf5671326fdd287e, single UI, native multi-site BoM Doppler, previous full-quality 3-D, and V9.18 QA.'
 
-      - name: Seal V10.0.0 annotated tag and new rollback branch after public verification
+      - name: Seal V10.1.0 annotated tag and new rollback branch after public verification
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          release_sha="e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5"
-          tag="v10.0.0"
-          restore="restore/v10.0.0"
+          release_sha="11f0012170c4632bd5ef2448bf5671326fdd287e"
+          tag="v10.1.0"
+          restore="restore/v10.1.0"
           # Earlier sealed release refs remain immutable and may never be repointed.
+          test "$(git ls-remote origin 'refs/tags/v10.0.0^{}' | cut -f1)" = "e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5"
+          test "$(git ls-remote origin refs/heads/restore/v10.0.0 | cut -f1)" = "e3f7f6d007f52e4ca48e103288bc5ffa77fac9b5"
           test "$(git ls-remote origin 'refs/tags/v9.20.2^{}' | cut -f1)" = "b8be458acbae942a3bb0b530a5c17618b6d03134"
           test "$(git ls-remote origin refs/heads/restore/v9.20.2 | cut -f1)" = "b8be458acbae942a3bb0b530a5c17618b6d03134"
           test "$(git ls-remote origin 'refs/tags/v9.20.1^{}' | cut -f1)" = "efaceb59427f0b71859b15a61a6758a80d08547e"
@@ -247,12 +259,12 @@ jobs:
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
             git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
             test "$(git rev-list -n 1 "$tag")" = "$release_sha"
-            echo "Existing release tag points to the sealed V10.0.0 source."
+            echo "Existing release tag points to the sealed V10.1.0 source."
           else
             git -c user.name="StormTracker Release Automation" \
                 -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
                 tag -a "$tag" "$release_sha" \
-                -m "StormTracker V10.0.0 — accepted single UI, multi-radar native Doppler and full-fidelity 3-D (17 October 2026)"
+                -m "StormTracker V10.1.0 — rain-style synchronised Doppler, genuine Brewarrina wind and accepted single UI (17 October 2026)"
             git push origin "refs/tags/$tag"
             echo "Created annotated $tag at $release_sha"
           fi

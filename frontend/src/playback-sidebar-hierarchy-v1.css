@@ -135,9 +135,6 @@ body.simple-ui #controlSidebar .layer-controls > #riverGaugeSeverityLegend {
 body.simple-ui #controlSidebar .storm-controls .track-display-controls{
   display:grid!important;
 }
-body.simple-ui #controlSidebar .layer-controls > .volume-blob-toggle{
-  display:none!important;
-}
 @media(max-width:700px){
   #controlSidebar .loop-controls > .section-title,
   #controlSidebar .storm-controls > .section-title,

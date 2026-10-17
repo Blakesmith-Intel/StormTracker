@@ -54,4 +54,13 @@ Run the single-shot command in your **internal** scheduler at a conservative 5-m
 - Private ingestion engine: **development source committed; NOT yet verified against a live Queensland issued GML.**
 - Offline fixture tests: **added**; do not claim green execution until CI or a local runner reports success.
 - Internal distribution/authentication: **not configured or tested**.
-- Real-time forecast and bulletin UI: **not operational**; historical QA and sealed production unchanged.
+- Opt-in original cyclone GML UI: **source-connected in isolated QA code only**, but no authenticated private feed deployment exists yet. Historical QA and sealed production unchanged.
+- Live advice / CAP / CXML matching: **not connected**; `IDQ20023/26/29` remain the documented bulletin IDs, not the GML maps.
+
+## Isolated QA browser handoff (not deployed internally)
+
+The `/preview/incremental-3d/` module now mounts **Internal live QA** within the existing floating cyclone panel. The operator must explicitly enable it; no background fetch is made when off. It requests only `GET /internal/cyclones.json` from the browser's **same origin** with same-origin credentials and `cache: no-store`, requires JSON rather than a redirected sign-in page, applies size limits, validates original product IDs/source hash/issue/expiry/source forecast geometry and refuses absent/stale/malformed input. The source is rechecked conservatively every five minutes while selected; disabling clears all Cesium entities immediately. It can select multiple authentic simultaneous cyclone systems, focus through the existing map-camera controller, and shows original 72h/120h likely-tracks areas only if the source actually supplied them. Historical observed-only maps are still separate; no live source data or credentials are bundled.
+
+**Critical security note:** a static GitHub Pages site cannot securely provide `/internal/cyclones.json` or prove Queensland Government employee authorisation. Serve that URL through a truly restricted, identity-enforcing **internal host** using actual organisation access controls. Simply hosting a JSON file in an unlisted route is **not secure**. On existing public Pages, the toggle will fail closed and display source unavailable; never substitute an open unauthenticated public Cloudflare route. Access policy, reverse proxy, scheduled FTP fetch and end-to-end live cyclone validation are still deployment tasks. Only accept user-visible status `active` after genuine fresh original BoM input.
+
+Browser data-contract regression suite: `frontend/tests/run-internal-cyclone-feed-v1-tests.mjs`; Python ingestion tests are invoked by `frontend/tests/run-internal-cyclone-ingest-v1-tests.mjs`. Both are now included in standard `npm test` discovery.

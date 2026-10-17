@@ -36,7 +36,7 @@ const fetchImpl=async url=>{
     if(mode==="service-down")return new Response(JSON.stringify({
       code:"source_transport_failure"}),{
         status:503,headers:{"Content-Type":"application/json"}});
-    if(mode==="station-missing"&&u.includes("540384"))
+    if(mode==="station-missing"&&u.includes("540385"))
       return new Response(JSON.stringify({code:"no_usable_observations"}),{
         status:422,headers:{"Content-Type":"application/json"}});
     return {ok:true,json:async()=>({
@@ -101,11 +101,11 @@ assert.ok(statuses.some(s=>s.screeningIncomplete===0&&s.kind==="ok"),
 
 // Missing observations for one station are not a service outage: continue
 // processing the next station, and leave the first explicitly unassessed.
-clock+=16*minute;mode="station-missing";features.push(gauge("540385"));
+clock+=16*minute;mode="station-missing";features.push(gauge("540385"),gauge("540386"));
 await layer.refresh({force:true});
 await waitHistory(()=>layer.diagnostics?.recentHistory?.failed===1);
 assert.ok(layer.diagnostics.historyScreeningIncomplete>=1);
 assert.equal(layer.diagnostics.historySourceMissing,0);
-assert.equal(layer.recentHistoryRequestCount,2);
+assert.equal(layer.recentHistoryRequestCount,3);
 assert.ok(statuses.at(-1).screeningIncomplete>=1);
 console.log("River history recovery checks passed: source failure cooldown and retry, current map independence, truthful screening gap, restored verified signal, and station-specific no-data.");

@@ -141,29 +141,40 @@ const Cesium={
  LabelStyle:{FILL_AND_OUTLINE:1},
  HorizontalOrigin:{LEFT:1}
 };
-let flights=0,requests=0;
+let flights=0,requests=0,focusSetViews=0;
+let lastFocused=null;
 const viewer={
  dataSources:{add(x){return x},remove(){}},
  scene:{requestRender(){requests++}},
- camera:{flyTo(){flights++}}
+ camera:{flyTo(){flights++;throw new Error("Unauthorised Cesium camera flyTo() must not be used")}}
 };
-let archiveLoads=0,archiveFocuses=0,archiveClears=0;
+const cameraController={
+  setView(view){focusSetViews++;lastFocused={...view}},
+  getState(){return lastFocused}
+};
+let archiveLoads=0,archiveFocuses=0,archiveClears=0;let archiveFocusCallback=null;
 const archive={
  panel:{open:false},pick:{value:""},toggle:{checked:false},status:{textContent:""},
  get activeCase(){return this.toggle.checked?this.pick.value:null;},
  async load(){archiveLoads++;if(!this.toggle.checked)archiveClears++;},
- focus(){archiveFocuses++},dispose(){}
+ focus(){archiveFocuses++;archiveFocusCallback(
+   [[151,-22],[156,-30]],{marginDegrees:1.5});},dispose(){}
 };
 const ui=createHistoricalCycloneForecastQA({
  Cesium,viewer,documentRef:{getElementById:id=>mapEls.get(id)},
- decode:()=>result,mountArchive:()=>archive
+ decode:()=>result,cameraController,mountArchive:({focusCoordinates})=>{
+   archiveFocusCallback=focusCoordinates;return archive;
+ }
 });
 assert.equal(entities.length,0,"No cyclone imagery on page load");
 mapEls.get("openCycloneForecastQa").listeners.click();
 assert.equal(mapEls.get("cycloneForecastQaPanel").hidden,false);
 mapEls.get("cycloneGmlFile").files=[{size:500,name:"IDD65401.gml",text:async()=>XML}];
 await mapEls.get("cycloneGmlFile").listeners.change();
-assert.equal(flights,1,"Load should focus original issued positions");
+assert.equal(flights,0,"Cesium native flight would be reverted by camera guardian");
+assert.equal(focusSetViews,1,"Original GML must focus the stateful controller");
+assert.ok(lastFocused.latitude<0&&lastFocused.longitude>100);
+assert.ok(lastFocused.range>=800&&lastFocused.range<=5_000_000);
 assert.equal(entities.filter(x=>x.polygon).length,2,"Render the two original areas");
 assert.ok(entities.some(x=>x.name.includes("issued forecast track")));
 assert.ok(entities.some(x=>x.name.includes("forecast")));
@@ -179,6 +190,12 @@ assert.equal(entities.length,0);
 assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,true);
 assert.equal(ui.loaded,null);
 assert.ok(requests>=3);
+mapEls.get("cycloneForecastQaFocus").listeners.click();
+assert.equal(focusSetViews,1,"Cleared source cannot move the camera");
+mapEls.get("cycloneGmlFile").files=[{size:500,name:"IDD65401.gml",text:async()=>XML}];
+await mapEls.get("cycloneGmlFile").listeners.change();
+mapEls.get("cycloneForecastQaFocus").listeners.click();
+assert.equal(focusSetViews,3,"Explicit Focus forecast must update the guardian too");
 mapEls.get("cycloneUseJasper").listeners.click();
 await Promise.resolve();await Promise.resolve();
 assert.equal(archive.pick.value,"jasper-2023");
@@ -186,6 +203,8 @@ assert.equal(archive.panel.open,true);
 assert.equal(archive.toggle.checked,true);
 assert.equal(archiveLoads,1);
 assert.equal(archiveFocuses,1);
+assert.equal(focusSetViews,4,"Jasper must focus through StormTracker camera state");
+assert.ok(lastFocused.longitude>151&&lastFocused.longitude<156);
 assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/OBSERVED TRACK · NOT A FORECAST/);
 assert.equal(mapEls.get("historicalCycloneMapStamp").hidden,false);
 assert.match(mapEls.get("cycloneForecastQaStatus").textContent,/No 72h\/120h forecast uncertainty is supplied/);
@@ -197,12 +216,14 @@ mapEls.get("cycloneUseAlfred").listeners.click();
 await Promise.resolve();await Promise.resolve();
 assert.equal(archive.activeCase,"alfred-2025");
 assert.equal(archiveLoads,3,"Switch invalidates prior observations and loads the new case");
+assert.equal(focusSetViews,5,"Alfred must focus through StormTracker camera state");
 assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/ALFRED 2025/);
 assert.equal(entities.length,0,"Observed source must not generate 72h/120h forecast area");
 mapEls.get("cycloneGmlFile").files=[{size:500,name:"IDD65401.gml",text:async()=>XML}];
 await mapEls.get("cycloneGmlFile").listeners.change();
 assert.equal(archive.toggle.checked,false,
  "Original issued GML replaces the Queensland observed reference, not a misleading combination");
+assert.equal(focusSetViews,6,"Selecting an original bulletin focuses the camera guardian");
 assert.match(mapEls.get("historicalCycloneMapStamp").textContent,/ARCHIVED BoM FORECAST · NOT LIVE/);
 mapEls.get("cycloneForecastQaClear").listeners.click();
 assert.equal(archive.toggle.checked,false);

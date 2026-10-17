@@ -81,14 +81,14 @@ class Element{
 const documentRef={createElement:tag=>new Element(tag),
   createTextNode:text=>({nodeType:3,textContent:text})};
 const sidebar=new Element("aside");
-let objects=[],removals=0,lastFly=null;
+let objects=[],removals=0,lastFly=null,lastFocus=null;
 const viewer={
   entities:{
     add:obj=>{objects.push(obj);return obj;},
     remove:obj=>{objects=objects.filter(x=>x!==obj);removals++;return true;}
   },
   scene:{requestRender(){}},
-  camera:{flyTo:data=>{lastFly=data;}}
+  camera:{flyTo:data=>{lastFly=data;throw new Error("Cyclone may not override guarded camera")}}
 };
 let fetched=0;
 const fixtureMap={"koji-2026":koji,"yasi-2011":yasi,
@@ -97,6 +97,7 @@ const fixtureMap={"koji-2026":koji,"yasi-2011":yasi,
   "jasper-2023":load("jasper-2023")};
 const widget=mountHistoricalCycloneQA({
   Cesium:fakeCesium,viewer,sidebar,documentRef,
+  focusCoordinates:(points,{marginDegrees})=>{lastFocus={points,marginDegrees}},
   fetchRef:async path=>{
     fetched++;
     assert.match(path,/^\.\/data\/cyclone-history\/(?:koji-2026|yasi-2011|alfred-2025|narelle-2026|jasper-2023)\.json$/);
@@ -136,7 +137,10 @@ widget.range.value="0";widget.draw();
 assert.equal(objects.filter(x=>x.polygon).length,0,
   "At earlier observation time do NOT show future warning areas");
 widget.focus();
-assert.equal(lastFly.destination.length,4);
+assert.equal(lastFly,null,"No unguarded native camera flight");
+assert.equal(lastFocus.points.length,koji.fixes.length,
+  "Observed cyclone focus must fit actual archived source fixes");
+assert.equal(lastFocus.marginDegrees,1.5);
 widget.pick.value="yasi-2011";
 await widget.load();
 assert.equal(widget.activeCase,"yasi-2011");

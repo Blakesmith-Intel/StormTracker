@@ -1,11 +1,13 @@
 import {decodeHistoricalBomCycloneGml,cycloneForecastSummary}
  from "./bom-historical-forecast-gml-v1.js?v=source-true-v1";
 import {mountHistoricalCycloneQA} from "./historical-cyclone-overlay-v1.js?v=jasper-alfred-qa-v1";
+import {focusCycloneThroughController} from "./cyclone-camera-focus-v1.js?v=v10-camera-guardian-fix-1";
 
 // Dev-only opt-in historical preview. No network, BoM relay, source timer or
 // changes to the existing radar, 3-D, camera controls or original weather layers.
 export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=document,
-  decode=decodeHistoricalBomCycloneGml,mountArchive=mountHistoricalCycloneQA}){
+  decode=decodeHistoricalBomCycloneGml,mountArchive=mountHistoricalCycloneQA,
+  cameraController}){
  const $=id=>documentRef.getElementById(id);
  const button=$("openCycloneForecastQa"),panel=$("cycloneForecastQaPanel");
  if(!button||!panel)throw new Error("Missing historical cyclone QA map UI");
@@ -122,19 +124,16 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
   }
   viewer.scene?.requestRender?.();
  }
+ const focusCoordinates=(coordinates,{marginDegrees=1.25}={})=>
+   focusCycloneThroughController({coordinates,controller:cameraController,viewer,marginDegrees});
  function focus(){
    if(!loaded)return;
    const all=loaded.features.filter(f=>
      ["forecast_fix","forecast_track","uncertainty_area"].includes(f.role))
      .flatMap(f=>flatten(f.geometry));
    if(!all.length)return;
-   const longs=all.map(v=>v[0]),lats=all.map(v=>v[1]);
-   const west=Math.min(...longs),east=Math.max(...longs),
-     south=Math.min(...lats),north=Math.max(...lats);
-   if(east-west>180)return; // Don't accidentally fly around the whole globe
-   viewer.camera.flyTo({destination:Cesium.Rectangle.fromDegrees(
-     Math.max(-180,west-1),Math.max(-90,south-1),
-     Math.min(180,east+1),Math.min(90,north+1)),duration:1.1});
+   try{focusCoordinates(all,{marginDegrees:1.0});}
+   catch(error){statusText("Cannot focus issued cyclone: "+String(error?.message??error));}
  }
  function clearArchived(){
   if(!archived)return;
@@ -166,6 +165,7 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
   if(!archived){
    archived=mountArchive({Cesium,viewer,sidebar:panel,documentRef,
      caseIds:["jasper-2023","alfred-2025"],defaultWind:false,
+     focusCoordinates,
      onStateChange(activeId){
       if(!activeId){
        if(!loaded)mapStamp.hidden=true;

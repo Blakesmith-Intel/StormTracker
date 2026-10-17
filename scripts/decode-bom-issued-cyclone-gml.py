@@ -108,7 +108,7 @@ def geometry_srs(node):
 
 
 def gml_coordinates(node, kind):
-    geometries = [n for n in node.iter() if tag_name(n.tag) == kind]
+    geometries = [n for n in node.iter() if tag_name(n.tag).lower() == kind.lower()]
     if len(geometries) != 1:
         raise SourceError("Missing or ambiguous BoM " + kind)
     entries = [n for n in geometries[0].iter() if tag_name(n.tag) == "coordinates"]

@@ -129,6 +129,7 @@ import { clearReflectivityOverlaysForDoppler } from "./reflectivity-overlay-mode
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
 import { assessV10RadarFrame } from "./severe-storm-v10.js?v=v10-3-original-evidence-qa1";
+import { assessConsecutiveDopplerWind } from "./doppler-persistence-v10-3.js?v=observed-scans-pair1";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
 import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule, buildDopplerOnlySchedule } from "./doppler-available-window-v1.js?v=9.16.11-doppler-only";
@@ -1005,8 +1006,8 @@ let selectedTrackDisplayId =
 const severeStormAlertOverlay = createSevereStormAlertOverlay({
   scene, CesiumRef: Cesium, container: $("mapPanel"),
   onFocus: alert => {
-    selectedTrackDisplayId = alert.track_id;
-    if (hybridFrames.length) {
+    selectedTrackDisplayId = alert.track_id || "";
+    if (hybridFrames.length && !isNativeDopplerPlayback() && alert.track_id) {
       updateTrackDisplayControls(hybridFrameIndex);
       applyHybridVolumeMode(hybridFrameIndex);
       renderHybridTracks(hybridFrameIndex);
@@ -1027,6 +1028,10 @@ const severeStormAlertOverlay = createSevereStormAlertOverlay({
 const isWindHookQaPreview =
   window.location.pathname.includes("/preview/wind-hook-v10-3/");
 let windHookResearchEnabled = false;
+let windHookAnalysisGeneration = 0;
+let windHookResearchSources = null;
+let windHookResearchSourcePromise = null;
+let windHookResearchSiteKey = "";
 severeStormAlertOverlay.setEnabled(false);
 if (isWindHookQaPreview) {
   const qaStyle = document.createElement("link");
@@ -1044,9 +1049,15 @@ if (isWindHookQaPreview) {
   $("mapPanel").appendChild(row);
   check.addEventListener("change", () => {
     windHookResearchEnabled = check.checked;
+    ++windHookAnalysisGeneration;
     severeStormAlertOverlay.setEnabled(windHookResearchEnabled);
-    if (windHookResearchEnabled) syncSevereStormAlerts(hybridFrameIndex);
-    else severeStormAlertOverlay.setFrame();
+    if (windHookResearchEnabled) {
+      if (isNativeDopplerPlayback()) {
+        void showDopplerOnlyFrame(independentDopplerIndexValue);
+      } else {
+        void syncSevereStormAlerts(hybridFrameIndex);
+      }
+    } else severeStormAlertOverlay.setFrame();
   });
 }
 
@@ -2865,29 +2876,119 @@ function dopplerStateForFrame(
   );
 }
 
-function syncSevereStormAlerts(index) {
-  if (!windHookResearchEnabled) return; // Zero work when disabled.
-  if (!isWindHookQaPreview) return; // Hard production boundary.
-  const frame = hybridFrames[index];
-  const result = hybridResults[index];
-  const previousFrame = hybridFrames[index - 1] ?? null;
-  const previousResult = hybridResults[index - 1] ?? null;
-  const state = dopplerStateForFrame(index);
-  const originalRecords = (state?.records ?? [])
-    .filter(record => QLD_RADAR_SITES[record.radarId]?.analysisGeorefVerified === true)
-    .map(record => ({...record,geometryVerified:true}));
-  const detection = assessV10RadarFrame({
+// The standard rain timeline deliberately supplies no velocity records.
+// QA fetches the original BoM Doppler history independently, and only after
+// explicit opt-in; never change the normal radar/Doppler presentation.
+async function windHookOriginalSources() {
+  const siteKey=selectedSourceRadars().join(",")+":"+selectedRadarRegion();
+  if (siteKey!==windHookResearchSiteKey) {
+    windHookResearchSiteKey=siteKey;
+    windHookResearchSources=null;
+    windHookResearchSourcePromise=null;
+  }
+  if (windHookResearchSources)return windHookResearchSources;
+  if (!windHookResearchSourcePromise) {
+    windHookResearchSourcePromise=loadDopplerHistoriesAndPalettes()
+      .then(sources=>{
+        if(windHookResearchSiteKey===siteKey)windHookResearchSources=sources;
+        return sources;
+      }).finally(()=>{
+        if(windHookResearchSiteKey===siteKey)windHookResearchSourcePromise=null;
+      });
+  }
+  return windHookResearchSourcePromise;
+}
+async function researchRecordsForRadarFrame(frame, sources) {
+  if(!frame || frame.sourceMetadata?.temporalInference)return [];
+  const times=Number.isFinite(Date.parse(frame.observedUtc))
+    ? Date.parse(frame.observedUtc):NaN;
+  if(!Number.isFinite(times))return [];
+  const approved=selectedSourceRadars().filter(radarId=>
+    ["08","50","66"].includes(radarId) &&
+    QLD_RADAR_SITES[radarId]?.analysisGeorefVerified===true);
+  const records=await Promise.allSettled(approved.map(async radarId=>{
+    const history=sources.histories.get(radarId);
+    const frames=buildIndependentDopplerFrames(history,null);
+    const match=frames.filter(f=>f.source_kind!=="latest" &&
+      Number.isFinite(Date.parse(f.observedUtc)) &&
+      Math.abs(Date.parse(f.observedUtc)-times)<=8*60000)
+      .sort((a,b)=>Math.abs(Date.parse(a.observedUtc)-times)-
+        Math.abs(Date.parse(b.observedUtc)-times))[0];
+    if(!match)return null;
+    const record=await decodeHistoricalDopplerFrame(
+      radarId,match,sources.palettes);
+    return Array.isArray(record.samples) && record.nativePanel?.data
+      ? {...record,geometryVerified:true}:null;
+  }));
+  return records.filter(x=>x.status==="fulfilled" && x.value).map(x=>x.value);
+}
+async function syncSevereStormAlerts(index) {
+  if (!windHookResearchEnabled || !isWindHookQaPreview ||
+      isNativeDopplerPlayback()) return;
+  const generation=++windHookAnalysisGeneration;
+  const frame=hybridFrames[index], result=hybridResults[index];
+  // A new radar frame must clear any prior marker BEFORE asynchronous wind
+  // science finishes; do not show the preceding scan as the current alert.
+  severeStormAlertOverlay.setFrame();
+  if (!frame || !result || frame.sourceMetadata?.temporalInference)return;
+  const previousFrame=hybridFrames[index-1]??null;
+  const previousResult=hybridResults[index-1]??null;
+  let records=[],previousRecords=[];
+  try {
+    const sources=await windHookOriginalSources();
+    [records,previousRecords]=await Promise.all([
+      researchRecordsForRadarFrame(frame,sources),
+      researchRecordsForRadarFrame(previousFrame,sources)
+    ]);
+  } catch(error) {
+    console.warn("V10.3 authentic Doppler analysis unavailable:",error);
+    // Reflectivity-only hook analysis may still proceed; wind/red cannot.
+  }
+  if(generation!==windHookAnalysisGeneration ||
+     !windHookResearchEnabled || !isWindHookQaPreview ||
+     isNativeDopplerPlayback() ||
+     hybridFrames[index]?.observedUtc!==frame.observedUtc)return;
+  const detection=assessV10RadarFrame({
     frame,result,previousFrame,previousResult,
-    dopplerState:{records:originalRecords}
+    dopplerState:{records},previousDopplerState:{records:previousRecords}
   });
   severeStormAlertOverlay.setFrame({
-    alerts: detection.alerts,
-    observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
-    windSupported: detection.availableRadialEvidence,
-    experimentalHook: true,
-    researchV10:true,
-    displayedUtc: frame?.observedUtc ?? null,
-    atNewestFrame: index === hybridFrames.length - 1
+    alerts:detection.alerts,
+    observedFrame:true,
+    windSupported:detection.availableRadialEvidence,
+    experimentalHook:true,researchV10:true,
+    displayedUtc:frame.observedUtc,atNewestFrame:index===hybridFrames.length-1
+  });
+}
+async function syncIndependentDopplerResearch(index, currentRecord, renderToken) {
+  if(!isWindHookQaPreview || !windHookResearchEnabled ||
+    !isNativeDopplerPlayback())return;
+  const generation=++windHookAnalysisGeneration;
+  severeStormAlertOverlay.setFrame();
+  const radarId=String(currentRecord?.radarId??"");
+  if(!["08","50","66"].includes(radarId) ||
+     QLD_RADAR_SITES[radarId]?.analysisGeorefVerified!==true ||
+     index<1)return;
+  const earlier=windPlaybackFrames[index-1];
+  if(!earlier || earlier.source_kind==="latest")return;
+  let previous;
+  try{
+    previous=await decodeHistoricalDopplerFrame(radarId,earlier);
+  }catch(error){
+    console.warn("V10.3 previous genuine Doppler scan unavailable:",error);
+    return;
+  }
+  if(generation!==windHookAnalysisGeneration ||
+    !windHookResearchEnabled || !isNativeDopplerPlayback() ||
+    renderToken!==hybridSceneRenderToken)return;
+  const current={...currentRecord,geometryVerified:true};
+  const prior={...previous,geometryVerified:true};
+  const result=assessConsecutiveDopplerWind(prior,current);
+  severeStormAlertOverlay.setFrame({
+    alerts:result.alerts,observedFrame:true,windSupported:true,
+    experimentalHook:true,researchV10:true,
+    displayedUtc:current.observedUtc,
+    atNewestFrame:index===windPlaybackFrames.length-1
   });
 }
 
@@ -3886,6 +3987,7 @@ async function showDopplerOnlyFrame(index) {
     meter.title="Native measured wind animation; radar surface and volumetric geometry are not redrawn";
   }
   prewarmUpcomingFrames(next);
+  void syncIndependentDopplerResearch(next,prepared.record,renderToken);
   setStatus(`Genuine BoM Doppler ${next+1}/${windPlaybackFrames.length} · ${formatProductTime(time,{compact:true})} · radial wind, not measured surface gust`,"ok");
   return true;
 }
@@ -3999,7 +4101,7 @@ async function showHybridFrame(index) {
     updateTrackDisplayControls(requestedIndex);
     applyHybridVolumeMode(requestedIndex);
     renderHybridTracks(requestedIndex);
-    syncSevereStormAlerts(requestedIndex);
+    void syncSevereStormAlerts(requestedIndex);
     if(supplementalMeasurable){
       if(supplementalAnchor.held &&
          supplementalRadarDisplay.targetTime!==supplementalAnchor.observedUtc){

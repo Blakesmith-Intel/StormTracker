@@ -107,7 +107,9 @@ function corsHeaders(origin) {
       "ETag",
       "X-StormTracker-Product",
       "X-StormTracker-Observed-UTC",
-      "X-StormTracker-Time-Source"
+      "X-StormTracker-Time-Source",
+      "X-StormTracker-Error-Code",
+      "X-StormTracker-Upstream-Status"
     ].join(",")
   );
 
@@ -887,26 +889,69 @@ async function relayRiverHeightBulletins(
 const QLD_RECENT_PRODUCT_IDS = new Set(
   Array.from({length:12},(_,i)=>"IDQ"+(65388+i))
 );
+// Keep optional history errors machine-readable. A missing/stale station table
+// is not a gateway outage, and a BoM access refusal is not a missing station.
+function riverHistoryError(status,code,message,origin,upstreamStatus=null) {
+  const headers=corsHeaders(origin);
+  headers.set("Content-Type","application/json; charset=utf-8");
+  headers.set("Cache-Control","no-store");
+  headers.set("X-StormTracker-Error-Code",code);
+  if(upstreamStatus!==null)
+    headers.set("X-StormTracker-Upstream-Status",String(upstreamStatus));
+  return new Response(JSON.stringify({
+    format:"StormTrackerBomRecentRiverHistoryErrorV1",
+    code,message,upstreamStatus
+  }),{status,headers});
+}
+
 // The existing relay handles CORS. No new server, storage or infrastructure.
 async function relayRiverRecentHistory(request,incoming,origin){
   const product=String(incoming.searchParams.get("product")??"").toUpperCase();
   const station=String(incoming.searchParams.get("station")??"");
   if(!QLD_RECENT_PRODUCT_IDS.has(product)||!new RegExp("^\\d{5,7}$").test(station))
-    return errorResponse("Invalid QLD BoM recent-history station",400,origin);
+    return riverHistoryError(400,"invalid_station",
+      "Invalid QLD BoM recent-history station",origin);
   const url="https://www.bom.gov.au/fwo/"+product+"/"+product+"."+station+".tbl.shtml";
+  const abort=new AbortController();
+  const timeout=setTimeout(()=>abort.abort(),12000);
   let response;
   try {
-    response=await fetch(url,{headers:{Accept:"text/html"},
+    response=await fetch(url,{headers:{Accept:"text/html"},signal:abort.signal,
       cf:{cacheEverything:true,cacheTtl:300}});
-  }catch {
-    return errorResponse("BoM recent-data source unavailable",502,origin);
+  }catch(error) {
+    const timedOut=abort.signal.aborted||error?.name==="AbortError";
+    return riverHistoryError(timedOut?504:503,
+      timedOut?"source_timeout":"source_transport_failure",
+      "BoM recent-history source not reachable",origin);
+  }finally{clearTimeout(timeout);}
+  if(!response.ok){
+    const upstreamStatus=response.status;
+    if(upstreamStatus===404||upstreamStatus===410)
+      return riverHistoryError(404,"station_history_not_published",
+        "BoM station history not published",origin,upstreamStatus);
+    if(upstreamStatus===429)
+      return riverHistoryError(429,"source_rate_limited",
+        "BoM history service rate limited",origin,upstreamStatus);
+    if(upstreamStatus===403)
+      return riverHistoryError(503,"source_access_denied",
+        "BoM history service refused relay access",origin,upstreamStatus);
+    return riverHistoryError(upstreamStatus>=500?503:502,"bom_upstream_http",
+      "BoM station history upstream HTTP "+upstreamStatus,origin,upstreamStatus);
   }
-  if(!response.ok)return errorResponse(
-    "BoM recent-data HTTP "+response.status,502,origin);
-  const html=await response.text();
-  if(html.length>1200000)return errorResponse("BoM recent-data response too large",502,origin);
-  const samples=parseBomRecentWaterLevels(html,{nowMs:Date.now(),maxAgeHours:48});
-  if(!samples.length)return errorResponse("BoM station has no usable recent observations",502,origin);
+  let html,samples;
+  try {
+    html=await response.text();
+    if(html.length>1200000)
+      return riverHistoryError(502,"source_response_too_large",
+        "BoM recent-data response too large",origin);
+    samples=parseBomRecentWaterLevels(html,{nowMs:Date.now(),maxAgeHours:48});
+  }catch{
+    return riverHistoryError(502,"source_parse_failure",
+      "BoM history response unreadable",origin);
+  }
+  if(!samples.length)
+    return riverHistoryError(422,"no_usable_observations",
+      "BoM station has no parseable recent observations",origin);
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");
   headers.set("Cache-Control","public, max-age=300");

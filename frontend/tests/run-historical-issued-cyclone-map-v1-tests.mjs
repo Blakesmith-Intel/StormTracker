@@ -82,7 +82,7 @@ assert.equal(summary.uncertainty72,1);
 assert.equal(summary.uncertainty120,1);
 assert.equal(summary.forecastTracks,1);
 assert.equal(summary.observedFixes,1);
-assert.equal(result.features.find(x=>x.areaKey==="120").geometry.coordinates[0],
+assert.deepEqual(result.features.find(x=>x.areaKey==="120").geometry.coordinates[0],
   [[132,-11],[133,-11],[133,-12],[132,-12],[132,-11]],
  "Original source polygon ring is not buffered, rounded or simplified");
 assert.equal(result.features.find(x=>x.role==="forecast_fix").geometry.coordinates[1],-10.29);

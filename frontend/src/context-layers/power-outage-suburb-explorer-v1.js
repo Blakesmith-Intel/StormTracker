@@ -1,6 +1,6 @@
 import {formatIncidentRefreshTime} from "./incident-refreshed-time-v1.js?v=20261017-refresh-v1";
 import {groupOutagesByLga,filterLgaGroups,councilOutageCustomerSummary,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
- from "./incident-lga-model-v1.js?v=case-insensitive-lga-20261017-v2";
+ from "./incident-lga-model-v1.js?v=council-customers-20261017-v1";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {resolveOutageCouncilNames} from "./outage-lga-geographic-fallback-v1.js?v=outage-spatial-councils-20261017-v1";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}

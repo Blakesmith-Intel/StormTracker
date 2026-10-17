@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
           npm test
-          bash scripts/build-current-site.sh
+          bash -x scripts/build-current-site.sh
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' _site/BUILD.txt
           grep -Fq 'id="openCycloneForecastQa"' _site/live3d-operational-v9.html
           grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js

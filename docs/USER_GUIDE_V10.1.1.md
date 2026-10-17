@@ -1,0 +1,7 @@
+# StormTracker V10.1.1 — Operator guide
+
+Open **https://blakesmith-intel.github.io/StormTracker/**. In the map's top navigation, select **Hide controls** to display the weather map across the **full browser width and height**. Select **Show controls** to restore the accepted compact sidebar, including all radar, layer and incident settings. On phones the controls' top row also disappears so the map fills the screen. No radar source or renderer quality changes are caused by the toggle.
+
+All other controls and scientific descriptions remain those of the accepted V10.1.0 build. Choose a primary BoM radar; select up to three extras under **Radars**. In Doppler — All available, primary source UTC governs the playback, secondary stations show nearest genuine BoM scans within ±8 minutes and synchronously commit staged imagery at the frame edge. Brewarrina offers `IDR93I` Doppler for situational awareness; its native image ground-control registration is still provisional. Moree and Grafton are rain only.
+
+Radar reflectivity remains dBZ; ≥40 dBZ 3-D volumes are inferred. Doppler is radial velocity, not surface gusts. Storm ID/track and optional illustrative +90-minute cone use primary radar only and are not official BoM warnings or probabilistic cyclone forecast tracks. Layer toggles for QFD incidents, BoM floods, road closures and unplanned outages start off; source refresh and impacted customer counts are in their respective controls. This platform is for situational awareness only.

@@ -40,11 +40,11 @@ jobs:
           ref: b8be458acbae942a3bb0b530a5c17618b6d03134
           path: checked/production-v9.20.2
           persist-credentials: false
-      - name: Checkout exact V10.1.0 candidate for final package audit
+      - name: Checkout exact V10.1.1 candidate for final package audit
         uses: actions/checkout@v4
         with:
-          ref: 11f0012170c4632bd5ef2448bf5671326fdd287e
-          path: checked/production-v10.1.0
+          ref: 711d65a72a483b319e80711a09cfeabe2f69bbcd
+          path: checked/production-v10.1.1
           persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
@@ -52,7 +52,7 @@ jobs:
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
           test ! -e _site/preview/next-baseline/BUILD.txt
-          grep -Fq 'SEALED StormTracker V10.1.0 source 11f0012170c4632bd5ef2448bf5671326fdd287e' _site/BUILD.txt
+          grep -Fq 'SEALED StormTracker V10.1.1 source 711d65a72a483b319e80711a09cfeabe2f69bbcd' _site/BUILD.txt
           grep -Fq 'createSupplementalDopplerDisplay' _site/src/live3d-operational-v9.js
           grep -Fq 'supplementalDopplerDisplay.prepare(source.observedUtc)' _site/src/live3d-operational-v9.js
           grep -Fq 'supplementalDopplerDisplay.commit(source.observedUtc)' _site/src/live3d-operational-v9.js

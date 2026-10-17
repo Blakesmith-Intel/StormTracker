@@ -240,6 +240,8 @@ jobs:
 
       - name: Seal V10.2.0 annotated tag and new rollback branch after public verification
         if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
         run: |
           set -euo pipefail
           release_sha="047b3bd1c66b0ed5f070d2298202f46d0cd8dae2"
@@ -266,20 +268,29 @@ jobs:
             test "$current_restore" = "$release_sha"
             echo "Existing $restore is pinned correctly."
           else
-            git push origin "$release_sha:refs/heads/$restore"
-            echo "Created recovery branch $restore at $release_sha"
+            # Git push can be rejected when the source commit contains workflow
+            # changes and the runner app has no Workflows write permission.
+            # Git Data REST creates a reference without pushing workflow files.
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+            echo "Created recovery branch $restore using GitHub Git Data API"
           fi
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
             git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
             test "$(git rev-list -n 1 "$tag")" = "$release_sha"
             echo "Existing release tag points to the sealed V10.2.0 source."
           else
-            git -c user.name="StormTracker Release Automation" \
-                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-                tag -a "$tag" "$release_sha" \
-                -m "StormTracker V10.2.0 — opt-in original BoM cyclone forecast interface, preserved V10.1.1 radar baseline (17 October 2026)"
-            git push origin "refs/tags/$tag"
-            echo "Created annotated $tag at $release_sha"
+            # Create a real annotated Git tag object and then its ref through
+            # the Git Data API. Do not push a Git ref through a checkout token
+            # that cannot modify .github/workflows in the pinned source commit.
+            tag_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.0 — original BoM cyclone forecast interface (17 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$tag_sha"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$tag_sha" >/dev/null
+            echo "Created annotated $tag via GitHub Git Data API, object $tag_sha"
           fi
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"

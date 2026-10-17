@@ -90,7 +90,7 @@ assert.equal(result.features.find(x=>x.role==="warning_area").areaKey,null);
 assert.throws(()=>parse({filename:"IDQ00000.gml"}),/documented original/);
 assert.throws(()=>decodeHistoricalBomCycloneGml("<!DOCTYPE x>"+XML,{
  filename:"IDD65401.gml",parseXml:fakeParse}),/unsafe/);
-const a=area(72);
+const a=root.children.find(node=>node.localName==="tcForecastArea");
 a.children.find(x=>x.localName==="areaType")._text="Calculated Cone";
 assert.throws(parse,/likely-tracks polygon/);
 a.children.find(x=>x.localName==="areaType")._text="Likely Tracks Area";

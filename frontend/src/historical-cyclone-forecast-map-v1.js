@@ -1,10 +1,11 @@
 import {decodeHistoricalBomCycloneGml,cycloneForecastSummary}
  from "./bom-historical-forecast-gml-v1.js?v=source-true-v1";
+import {mountHistoricalCycloneQA} from "./historical-cyclone-overlay-v1.js?v=jasper-alfred-qa-v1";
 
 // Dev-only opt-in historical preview. No network, BoM relay, source timer or
 // changes to the existing radar, 3-D, camera controls or original weather layers.
 export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=document,
-  decode=decodeHistoricalBomCycloneGml}){
+  decode=decodeHistoricalBomCycloneGml,mountArchive=mountHistoricalCycloneQA}){
  const $=id=>documentRef.getElementById(id);
  const button=$("openCycloneForecastQa"),panel=$("cycloneForecastQaPanel");
  if(!button||!panel)throw new Error("Missing historical cyclone QA map UI");
@@ -12,7 +13,7 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
  const check72=$("cycloneShow72"),check120=$("cycloneShow120");
  const ds=new Cesium.CustomDataSource("Historical cyclone issued map — NOT LIVE");
  viewer.dataSources.add(ds);
- let loaded=null;
+ let loaded=null,archived=null;
  const stamp=v=>new Date(v).toLocaleString("en-AU",{timeZone:"Australia/Brisbane",
    day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",
    hour12:false})+" AEST";
@@ -131,7 +132,15 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
      Math.max(-180,west-1),Math.max(-90,south-1),
      Math.min(180,east+1),Math.min(90,north+1)),duration:1.1});
  }
+ function clearArchived(){
+  if(!archived)return;
+  archived.toggle.checked=false;
+  // `load()` synchronously drops all retired Cesium entities and
+  // invalidates asynchronous selection requests, including stale responses.
+  archived.load();
+ }
  function reset(){
+  clearArchived();
   input.value="";loaded=null;clear();
   statusText("Select an original BoM cyclone GML file to view its issued forecast. No source is loaded.");
   $("cycloneForecastQaFocus").disabled=true;
@@ -146,9 +155,41 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
  $("cycloneForecastQaClose").addEventListener("click",()=>open(false));
  $("cycloneForecastQaFocus").addEventListener("click",focus);
  $("cycloneForecastQaClear").addEventListener("click",reset);
+ async function loadObservedCase(id){
+  if(id!=="jasper-2023"&&id!=="alfred-2025")
+    throw new Error("Unsupported Queensland historical reference");
+  reset();
+  if(!archived){
+   archived=mountArchive({Cesium,viewer,sidebar:panel,documentRef,
+     caseIds:["jasper-2023","alfred-2025"],defaultWind:false});
+  }
+  archived.panel.open=true;
+  archived.pick.value=id;
+  archived.toggle.checked=true;
+  statusText("Loading Queensland Government / BoM observed "+id+" archive…");
+  await archived.load();
+  if(archived.activeCase===id&&archived.toggle.checked){
+   mapStamp.hidden=false;
+   mapStamp.textContent="ARCHIVED QLD / BoM OBSERVED TRACK · NOT A FORECAST · NOT LIVE · "+
+      (id==="jasper-2023"?"JASPER 2023":"ALFRED 2025");
+   statusText((id==="jasper-2023"?"Jasper (2023)":"Alfred (2025)")+
+     " · Queensland Government / BoM observed cyclone archive\n"+
+     "NO ORIGINAL ISSUED FORECAST GML RECOVERED FOR THIS CASE.\n"+
+     "No 72h/120h forecast uncertainty is supplied or drawn.\n"+
+     "Select genuine archived observation/wind issue times below. Source wind polygons, if enabled, are NOT forecast uncertainty.");
+   archived.focus();
+  }else{
+   mapStamp.hidden=true;
+   statusText("Original Queensland observations could not be loaded. No forecast was displayed. "+
+     (archived.status?.textContent??""));
+  }
+ }
+ $("cycloneUseJasper")?.addEventListener("click",()=>void loadObservedCase("jasper-2023"));
+ $("cycloneUseAlfred")?.addEventListener("click",()=>void loadObservedCase("alfred-2025"));
  check72.addEventListener("change",redraw);
  check120.addEventListener("change",redraw);
  input.addEventListener("change",async()=>{
+  clearArchived();
   loaded=null;clear();statusText("Validating original GML…");
   $("cycloneForecastQaFocus").disabled=true;
   $("cycloneForecastQaClear").disabled=true;
@@ -177,5 +218,5 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
   }
  });
  return {get loaded(){return loaded},clear:reset,render:redraw,
-   destroy(){clear();viewer.dataSources.remove(ds,true);open(false)}};
+   destroy(){clearArchived();archived?.dispose();clear();viewer.dataSources.remove(ds,true);open(false)}};
 }

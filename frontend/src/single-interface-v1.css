@@ -176,3 +176,23 @@ body.simple-ui #cycloneForecastQaPanel {
   background:#172735ec;color:#ffe1a0;font:700 11px/1.4 system-ui;
   box-shadow:0 2px 12px #0006;pointer-events:none;
 }
+
+/* Queensland case presets use the existing cyclone floating panel, never the
+   operator sidebar. Observed paths cannot be mistaken for source forecast. */
+#cycloneForecastQaPanel .cyclone-qld-cases{
+  border:1px solid #567b91;border-radius:9px;padding:8px;
+  margin:9px 0;background:#182e3c;
+}
+#cycloneForecastQaPanel .cyclone-qld-cases strong{display:block;font-size:12px;}
+#cycloneForecastQaPanel .cyclone-qld-cases p{color:#ffdb93;font-size:11px;}
+#cycloneForecastQaPanel .cyclone-qld-actions{
+  display:flex;flex-wrap:wrap;gap:7px;
+}
+#cycloneForecastQaPanel .cyclone-qld-actions button{
+  flex:1 1 126px;border:1px solid #93b9cb;
+  background:#25475a;color:#f4fbff;padding:7px;
+}
+#cycloneForecastQaPanel #historicalCycloneQaPanel {
+  background:#142d3e;max-width:100%;font-size:11px;
+}
+#cycloneForecastQaPanel #historicalCycloneQaPanel summary {cursor:pointer;}

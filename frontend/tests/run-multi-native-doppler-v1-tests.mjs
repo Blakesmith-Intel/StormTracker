@@ -8,7 +8,7 @@ import {
 
 assert.equal(MAX_SECONDARY_WIND_OFFSET_MINUTES,8);
 assert.equal(SECONDARY_WIND_BLEND_MS,120);
-assert.equal(SECONDARY_WIND_FRAME_SYNC_WAIT_MS,160);
+assert.equal(SECONDARY_WIND_FRAME_SYNC_WAIT_MS,350);
 assert.equal(await waitForSecondaryWindPreparation(Promise.resolve()),true);
 assert.equal(await waitForSecondaryWindPreparation(Promise.reject(Error("Optional site offline"))),false);
 assert.equal(await waitForSecondaryWindPreparation(new Promise(()=>{}),5),false,
@@ -37,7 +37,7 @@ assert.equal(matchingSecondaryWindFrame(frames,"not-a-date"),null);
 
 const visibleLayers=[],transitions=new Map(),hits=[],updates=[],blendDurations=[];
 const imageryLayers={
-  add(layer){visibleLayers.push(layer);},
+  add(layer){if(!visibleLayers.includes(layer))visibleLayers.push(layer);},
   remove(layer){const i=visibleLayers.indexOf(layer);if(i>=0)visibleLayers.splice(i,1);},
   indexOf(layer){return visibleLayers.indexOf(layer);},
   raiseToTop(layer){const i=visibleLayers.indexOf(layer);if(i>=0){visibleLayers.splice(i,1);visibleLayers.push(layer);}}
@@ -47,12 +47,13 @@ let delay=null,resolveDelay=null;
 function makeTransition(){
   const s={currentLayer:null,currentKey:null,
     clear(){if(this.currentLayer)imageryLayers.remove(this.currentLayer);this.currentLayer=null;this.currentKey=null;},
-    async replacePrepared({layer,key,onAdded,durationMs}){
+    replace({layer,key,onAdded,durationMs}){
       blendDurations.push(durationMs);
       if(this.currentLayer)imageryLayers.remove(this.currentLayer);
       this.currentLayer=layer;this.currentKey=key;
       imageryLayers.add(layer);onAdded();return {changed:true,layer};
-    }
+    },
+    async replacePrepared(args){return this.replace(args);}
   };
   transitions.set(transitions.size,s);return s;
 }
@@ -78,7 +79,10 @@ async function until(condition,msg){
 ctrl.configure("66",["50","08","93","24"]);
 assert.deepEqual(ctrl.snapshot().selected,["50","08","93"]);
 ctrl.setEnabled(true);
-ctrl.showAt("2026-10-17T00:12:00Z");
+await ctrl.prepare("2026-10-17T00:12:00Z");
+assert.equal(ctrl.visibleSites.length,0,
+  "As for rain, staging three wind layers must not expose them early");
+ctrl.commit("2026-10-17T00:12:00Z");
 await until(()=>ctrl.visibleSites.length===3,"three genuine extra sites including Brewarrina");
 assert.deepEqual(ctrl.visibleSites.sort(),["08","50","93"]);
 assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,3);
@@ -95,11 +99,14 @@ await ctrl.prewarm("2026-10-17T00:15:00Z");
 assert.ok(hits.filter(s=>s==="frame:50:f15").length===1);
 assert.ok(hits.filter(s=>s==="frame:08:f15").length===1);
 assert.ok(hits.filter(s=>s==="frame:93:f15").length===1);
-ctrl.showAt("2026-10-17T00:12:00Z");
-await new Promise(r=>setTimeout(r,15));
+await ctrl.prepare("2026-10-17T00:12:00Z");
+ctrl.commit("2026-10-17T00:12:00Z");
 assert.equal(hits.length,before+3,"prewarming one future real scan per site should not refetch the current scan");
 
-ctrl.showAt("2026-10-17T00:30:00Z");
+await ctrl.prepare("2026-10-17T00:30:00Z");
+assert.equal(ctrl.visibleSites.length,3,
+  "Before commit, previous source must remain fully visible (like rain)");
+ctrl.commit("2026-10-17T00:30:00Z");
 await until(()=>ctrl.visibleSites.length===0,"out-of-range source clears");
 assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,0);
 assert.equal(ctrl.snapshot().sources.filter(s=>s.offsetMinutes!==null).length,0,
@@ -107,7 +114,9 @@ assert.equal(ctrl.snapshot().sources.filter(s=>s.offsetMinutes!==null).length,0,
 ctrl.setEnabled(false);
 assert.equal(visibleLayers.length,0,"rain-only mode must clear all wind images");
 ctrl.setEnabled(true);
-ctrl.showAt("2026-10-17T00:15:00Z");
+await ctrl.prepare("2026-10-17T00:15:00Z");
+assert.equal(ctrl.visibleSites.length,0,"Wind staging must be hidden");
+ctrl.commit("2026-10-17T00:15:00Z");
 await until(()=>ctrl.visibleSites.length===3,"restore all three supported wind sites after rain");
 ctrl.configure("66",[]);
 assert.equal(visibleLayers.length,0,"unselect site must retire its imagery");
@@ -126,10 +135,17 @@ const ctrl2=createSupplementalDopplerDisplay({
   }
 });
 ctrl2.configure("66",["50"]);ctrl2.setEnabled(true);
-ctrl2.showAt("2026-10-17T00:10:00Z");
+const stale=ctrl2.prepare("2026-10-17T00:10:00Z");
 await until(()=>typeof resolveDelay==="function","first scan started");
-ctrl2.showAt("2026-10-17T00:15:00Z");
+const newest=ctrl2.prepare("2026-10-17T00:15:00Z");
 resolveDelay();
+await stale;
+assert.deepEqual(ctrl2.commit("2026-10-17T00:10:00Z"),[],
+  "Superseded source UTC must never commit");
+await newest;
+assert.equal(ctrl2.snapshot().sources[0].observedUtc,null,
+  "New source remains hidden until master clock commit");
+ctrl2.commit("2026-10-17T00:15:00Z");
 await until(()=>ctrl2.snapshot().sources[0].observedUtc==="2026-10-17T00:15:00Z",
   "newest measured scan wins");
 assert.equal(ctrl2.snapshot().sources[0].observedUtc,"2026-10-17T00:15:00Z");
@@ -147,15 +163,20 @@ const down=createSupplementalDopplerDisplay({
   loadSiteFrame:async()=>{throw Error("Should not decode a failed source");}
 });
 down.configure("66",["50"]);down.setEnabled(true);
-down.showAt("2026-10-17T00:10:00Z");
+await down.prepare("2026-10-17T00:10:00Z");
+down.commit("2026-10-17T00:10:00Z");
 await until(()=>down.snapshot().sources[0].error!==null,"first unavailable source");
 assert.equal(sourceFailureHits.length,1);
-for(let i=0;i<10;i++)down.showAt("2026-10-17T00:15:00Z");
+for(let i=0;i<10;i++){
+  await down.prepare("2026-10-17T00:15:00Z");
+  down.commit("2026-10-17T00:15:00Z");
+}
 await new Promise(resolve=>setTimeout(resolve,25));
 assert.equal(sourceFailureHits.length,1,
   "Animated frames must not flood a failed optional Doppler relay");
 clock+=SECONDARY_WIND_RETRY_COOLDOWN_MS+1;
-down.showAt("2026-10-17T00:10:00Z");
+await down.prepare("2026-10-17T00:10:00Z");
+down.commit("2026-10-17T00:10:00Z");
 await until(()=>sourceFailureHits.length===2,"retry after cooldown");
 down.destroy();
 console.log("PASS secondary Doppler warm cache, source backoff and staged transitions.");
@@ -164,13 +185,15 @@ import {readFileSync} from "node:fs";
 const primaryPlayback=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
 const windFrameBlock=primaryPlayback.slice(primaryPlayback.indexOf("async function showDopplerOnlyFrame"),
   primaryPlayback.indexOf("async function showHybridFrame"));
-assert.ok(windFrameBlock.indexOf("supplementalDopplerDisplay.prewarm(source.observedUtc)")<
+assert.ok(windFrameBlock.indexOf("supplementalDopplerDisplay.prepare(source.observedUtc)")<
   windFrameBlock.indexOf("commitWindObservation(prepared"),
-  "Secondary sites must start preparing alongside primary before its image reveal");
+  "Same rain-radar prepare staging before the primary measured image reveal");
 assert.ok(windFrameBlock.indexOf("waitForSecondaryWindPreparation(extrasPreparing)")<
   windFrameBlock.indexOf("commitWindObservation(prepared"),
   "Short bounded sync preparation before the master clock advances");
 assert.ok(windFrameBlock.indexOf("commitWindObservation(prepared")<
-  windFrameBlock.indexOf("supplementalDopplerDisplay.showAt(source.observedUtc)"),
-  "Do not reveal extra-site time before the primary image commits");
+  windFrameBlock.indexOf("supplementalDopplerDisplay.commit(source.observedUtc)"),
+  "Extra Doppler sites synchronously commit after the primary image stage");
+assert.doesNotMatch(windFrameBlock,/supplementalDopplerDisplay\.showAt\(/,
+  "Per-radar asynchronous reveal must not control Doppler playback");
 console.log("PASS bounded multi-site Doppler sync preparation and honest source UTC offsets.");

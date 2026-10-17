@@ -21,7 +21,11 @@ assert.match(html,/id="cycloneUseJasper"/);
 assert.match(html,/id="cycloneUseAlfred"/);
 assert.match(source,/caseIds:\["jasper-2023","alfred-2025"\]/);
 assert.match(source,/NO ORIGINAL ISSUED FORECAST GML RECOVERED/);
-assert.match(runtime,/window\.location\.pathname\.includes\("\/preview\/incremental-3d\/"\)/);\nassert.match(runtime,/!window\.location\.pathname\.includes\("\/preview\/"\)/,\n "Live cyclone overlay may mount on production but not retained historical diagnostics");\nassert.match(runtime,/createInternalCycloneLiveQA\(/,\n "Production needs independent opt-in current BoM cyclone source verification");
+assert.match(runtime,/window\.location\.pathname\.includes\("\/preview\/incremental-3d\/"\)/);
+assert.match(runtime,/!window\.location\.pathname\.includes\("\/preview\/"\)/,
+ "Live cyclone overlay may mount on production but not retained historical diagnostics");
+assert.match(runtime,/createInternalCycloneLiveQA\(/,
+ "Production needs independent opt-in current BoM cyclone source verification");
 assert.doesNotMatch(source,/\bfetch\s*\(|setInterval\s*\(|\bWorker\s*\(/);
 assert.match(source,/new Cesium\.CustomDataSource/);
 assert.match(css,/#cycloneForecastQaPanel\[hidden\]\{display:none!important;\}/);

@@ -1,0 +1,53 @@
+/* Final single-UI contract: no advanced/expanded mode, no legacy controls.
+   Keep the operator-approved desktop layout and mobile map dominance. */
+body.simple-ui #app {
+  min-height:0;
+  height:100dvh;
+  max-height:100dvh;
+}
+body.simple-ui #controlSidebar {
+  min-height:0;
+  max-height:100dvh;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+body.simple-ui #controlSidebar > .dashboard-heading {
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-start;
+  width:100%;
+  min-height:33px;
+}
+body.simple-ui .dashboard-heading .simple-brand {
+  min-width:0;
+  flex:1 1 auto;
+}
+body.simple-ui #runtimeDiagnostics,
+#runtimeDiagnostics[hidden] {
+  display:none!important;
+}
+body.simple-ui #controlSidebar .layer-controls {
+  display:block!important;
+}
+body.simple-ui #controlSidebar .storm-controls {
+  display:block!important;
+}
+/* Preserve original frame status and live playback and independent Doppler. */
+body.simple-ui #controlSidebar .loop-controls > #status {
+  display:block!important;
+}
+body.simple-ui #mapPanel {
+  min-height:0;
+  isolation:isolate;
+}
+@media (max-width:700px) {
+  body.simple-ui #controlSidebar {
+    max-height:100%;
+    scrollbar-gutter:auto;
+  }
+  body.simple-ui #app {
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:minmax(0,min(29dvh,250px)) minmax(0,1fr);
+  }
+}

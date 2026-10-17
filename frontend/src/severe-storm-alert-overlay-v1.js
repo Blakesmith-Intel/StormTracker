@@ -59,7 +59,7 @@ export function createSevereStormAlertOverlay({
     detail.className = "storm-severe-alert-detail v10-" + appearance.kind;
     const title = documentRef.createElement("strong");
     title.className = "storm-v10-alert-detail-heading";
-    title.textContent = appearance.detailLabel + " · " + alert.track_id;
+    title.textContent = appearance.detailLabel + (alert.track_id ? " · " + alert.track_id : " · Radar " + alert.radar_id);
     appendAlertIcon(title, appearance);
     const measured = documentRef.createElement("p");
     measured.textContent = alert.type === "wind"
@@ -73,8 +73,13 @@ export function createSevereStormAlertOverlay({
             alert.radial_shear_kmh.toFixed(0) + " km/h (NOT a surface gust)"
           : "");
     const source = documentRef.createElement("p");
-    source.textContent = "Reflectivity " + alert.observed_utc +
-      (alert.source_utc ? " · Doppler " + alert.source_utc : "");
+    source.textContent = alert.prior_source_utc && !alert.track_id
+      ? "Genuine BoM Doppler " + alert.prior_source_utc +
+        " → " + alert.source_utc + " · two sequential measured velocity scans"
+      : "Reflectivity " + alert.observed_utc +
+        (alert.source_utc ? " · Doppler " + alert.source_utc : "") +
+        (alert.previous_doppler_utc ? " · previous Doppler " +
+          alert.previous_doppler_utc : "");
     const warning = documentRef.createElement("p");
     warning.textContent = alert.caveat;
     const sourceLink = documentRef.createElement("a");
@@ -142,7 +147,8 @@ export function createSevereStormAlertOverlay({
         " v10-" + appearance.kind +
         (alert.category === "tornadic_candidate" ? " tornadic" : "");
       button.dataset.alertCategory = alert.category ?? "unknown";
-      button.textContent = appearance.shortLabel + " · " + alert.track_id + " · " +
+      button.textContent = appearance.shortLabel + " · " +
+        (alert.track_id || "radar " + alert.radar_id) + " · " +
         (alert.type === "wind"
           ? Math.abs(alert.velocity_kmh).toFixed(0) + " km/h radial"
           : alert.category === "tornadic_candidate" ? "hook + velocity couplet" :
@@ -162,8 +168,9 @@ export function createSevereStormAlertOverlay({
       } else {
         pin.textContent = "?";
       }
-      pin.setAttribute("aria-label", appearance.detailLabel + ", track " +
-        alert.track_id + ". Experimental radar candidate, not a BoM warning.");
+      pin.setAttribute("aria-label", appearance.detailLabel + ", " +
+        (alert.track_id ? "track " + alert.track_id : "radar " + alert.radar_id) +
+        ". Experimental radar candidate, not a BoM warning.");
       pin.addEventListener("click", () => reveal(alert));
       pinsRoot.appendChild(pin);
       markers.push({

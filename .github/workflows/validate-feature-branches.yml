@@ -30,6 +30,9 @@ jobs:
       - name: Validate relay worker syntax
         run: node --check relay/worker.js
 
+      - name: One-time authentic BoM-issued archive + FTP product audit
+        run: node scripts/audit-issued-cyclone-forecast-20261017.mjs
+
 
       - name: Probe Brewarrina BoM Doppler transport (advisory)
         run: node scripts/probe-brewarrina-wind-source.mjs

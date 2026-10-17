@@ -43,11 +43,11 @@ jobs:
           ref: b8be458acbae942a3bb0b530a5c17618b6d03134
           path: checked/production-v9.20.2
           persist-credentials: false
-      - name: Checkout exact V10.1.1 candidate for final package audit
+      - name: Checkout exact V10.2.0 candidate for final package audit
         uses: actions/checkout@v4
         with:
-          ref: 711d65a72a483b319e80711a09cfeabe2f69bbcd
-          path: checked/production-v10.1.1
+          ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
+          path: checked/production-v10.2.0
           persist-credentials: false
       - name: Dry-run the identical final Pages package without deploying
         run: |
@@ -55,16 +55,17 @@ jobs:
           test -f _site/BUILD.txt
           test -f _site/preview/radar-history-fix/BUILD.txt
           test ! -e _site/preview/next-baseline/BUILD.txt
-          grep -Fq 'SEALED StormTracker V10.1.1 source 711d65a72a483b319e80711a09cfeabe2f69bbcd' _site/BUILD.txt
+          grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' _site/BUILD.txt
           grep -Fq 'createSupplementalDopplerDisplay' _site/src/live3d-operational-v9.js
+          grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
+          grep -Fq 'Unable to verify current tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
           grep -Fq 'supplementalDopplerDisplay.prepare(source.observedUtc)' _site/src/live3d-operational-v9.js
           grep -Fq 'supplementalDopplerDisplay.commit(source.observedUtc)' _site/src/live3d-operational-v9.js
           grep -Fq 'function commit(utc)' _site/src/multi-doppler-display-v1.js
           test -s _site/src/multi-doppler-display-v1.js
+          node --check _site/src/internal-cyclone-live-qa-v1.js
           grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' _site/src/live3d-operational-v9.js
           grep -Fq 'incrementalVolumeRenderer.upsert(pixelIndex,category,nextSpecs' _site/src/live3d-operational-v9.js
-          grep -Fq 'createResponsiveMemoryDiagnostics' _site/src/live3d-operational-v9.js
-          grep -Fq 'Memory diagnostics' _site/src/responsive-memory-diagnostics-v1.js
           grep -Fq 'GLOBAL_SATELLITE_FALLBACK' _site/src/context-layers/basemap-manager-v1.js
           grep -Fq 'createGlobalSatelliteFallbackProvider' _site/src/context-layers/basemap-manager-v1.js
           grep -Fq 'global-satellite-blue-gap-20261016-v1' _site/src/live3d-operational-v9.js

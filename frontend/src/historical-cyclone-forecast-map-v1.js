@@ -3,7 +3,8 @@ import {decodeHistoricalBomCycloneGml,cycloneForecastSummary}
 
 // Dev-only opt-in historical preview. No network, BoM relay, source timer or
 // changes to the existing radar, 3-D, camera controls or original weather layers.
-export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=document}){
+export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=document,
+  decode=decodeHistoricalBomCycloneGml}){
  const $=id=>documentRef.getElementById(id);
  const button=$("openCycloneForecastQa"),panel=$("cycloneForecastQaPanel");
  if(!button||!panel)throw new Error("Missing historical cyclone QA map UI");
@@ -150,7 +151,7 @@ export function createHistoricalCycloneForecastQA({Cesium,viewer,documentRef=doc
   try{
    if(file.size>3_000_000)throw new Error("Original BoM GML exceeds 3 MB safety limit");
    const text=await file.text();
-   const result=decodeHistoricalBomCycloneGml(text,{filename:file.name});
+   const result=decode(text,{filename:file.name});
    loaded=result;
    const s=cycloneForecastSummary(result);
    statusText(result.cycloneName+" · "+result.productId+"\n"+

@@ -66,7 +66,7 @@ export function createInternalCycloneLiveQA({
   mapStamp.style.cssText="position:absolute;z-index:12;left:12px;top:58px;max-width:min(70vw,500px);padding:5px 9px;background:#052433e8;color:#fff;pointer-events:none;font-size:11px;border:1px solid #76c5cf;border-radius:6px";
   mapStamp.hidden=true;
   mapPanel.appendChild(mapStamp);
-  const layer=new Cesium.CustomDataSource("INTERNAL · ORIGINAL BoM cyclone forecast");
+  const layer=new Cesium.CustomDataSource("Original BoM cyclone forecast · source verified");
   viewer.dataSources.add(layer);
   const shade72=Cesium.Color.fromCssColorString("#36d1bc");
   const shade120=Cesium.Color.fromCssColorString("#edba4b");
@@ -110,7 +110,7 @@ export function createInternalCycloneLiveQA({
       clear();status.textContent="Issued cyclone map has expired. Refreshing or unavailable.";
       return;
     }
-    const provenance="ORIGINAL BoM cyclone forecast · INTERNAL LIVE QA · "+
+    const provenance="ORIGINAL BoM cyclone forecast · ISSUED SOURCE · "+
       s.productId+" · issued "+fmt(s.issueUtc)+" · expiry "+fmt(s.expiresUtc);
     for(const f of s.features){
       if(f.role==="uncertainty_area"){
@@ -159,7 +159,7 @@ export function createInternalCycloneLiveQA({
         });
       }
     }
-    mapStamp.textContent="INTERNAL LIVE BoM SOURCE · "+s.cycloneName+
+    mapStamp.textContent="BoM ISSUED FORECAST · "+s.cycloneName+
       " · issued "+fmt(s.issueUtc)+" · NOT a standalone official warning";
     mapStamp.hidden=false;focus.disabled=false;
     viewer.scene?.requestRender?.();
@@ -191,7 +191,7 @@ export function createInternalCycloneLiveQA({
       if(!response.ok||response.redirected||
         !String(response.headers.get("content-type")).includes("application/json"))
         throw new Error(response.status===401||response.status===403
-          ?"Internal authorisation required":"No authenticated cyclone JSON feed available");
+          ?"Cyclone feed access denied":"No verified cyclone data feed available");
       if(Number(response.headers.get("content-length")||0)>16000000)
         throw new Error("Internal feed exceeds safety size");
       const raw=await response.text();

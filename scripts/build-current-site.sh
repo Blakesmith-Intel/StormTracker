@@ -190,5 +190,5 @@ node --check "_site/src/historical-cyclone-forecast-map-v1.js"
 # Regression: Hide controls must remove both sidebar grid tracks, not shrink map.
 grep -Fq 'body.simple-ui #app.sidebar-collapsed' "_site/src/single-interface-v1.css"
 grep -Fq 'grid-template-rows:minmax(0,1fr)' "_site/src/single-interface-v1.css"
-grep -Fq 'full-map-toggle-20261017-v2' "_site/live3d-operational-v9.html"
+grep -Fq 'full-map-controls-gauge-severity-v4' "_site/live3d-operational-v9.html"
 grep -Fq 'hide-controls-full-map-v1' "_site/index.html"

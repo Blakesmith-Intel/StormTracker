@@ -90,7 +90,7 @@ class SourceIntegrity(unittest.TestCase):
         self.assertEqual(roles.count("forecast_track"), 1)
         self.assertEqual(decoded["features"][0]["geometry"]["coordinates"][0][0],
                          [[131,-11],[132.5,-11],[132.5,-12],[131,-12],[131,-11]])
-        self.assertEqual(decoded["features"][3]["geometry"]["coordinates"],
+        self.assertEqual(decoded["features"][2]["geometry"]["coordinates"],
                          [[132,-10],[131.5,-10.5],[131,-11]])
         matching = decoder.validate_companion(decoded,decoder.decode_cxml(self.cxml))
         self.assertEqual(matching["matchingForecastFixes"], 3)

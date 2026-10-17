@@ -47,6 +47,10 @@ jobs:
           npm test
           bash -x scripts/build-current-site.sh
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' _site/BUILD.txt
+          grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' _site/BUILD.txt
+          grep -Fq 'recentNextAttemptAt' _site/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'recentFloodHistoryGap' _site/src/context-layers/bom-recent-river-history-v1.js
+          grep -Fq 'river-history-hotfix-20261018' _site/src/context-layers/river-gauges-operational-v1.js
           grep -Fq 'id="openCycloneForecastQa"' _site/live3d-operational-v9.html
           grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
           grep -Fq 'Unable to verify current tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js

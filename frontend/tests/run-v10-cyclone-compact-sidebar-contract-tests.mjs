@@ -22,7 +22,7 @@ assert.match(js,/window\.__stormtrackerMemoryDiagnostics=/,
 assert.doesNotMatch(js,/createResponsiveMemoryDiagnostics\(|sidebar:controlsSidebar,\s*capture:/);
 assert.doesNotMatch(html,/id="memoryQaPanel"|Memory diagnostics/);
 assert.match(index,/cyclone-compact-playback-v1/);
-assert.match(html,/cyclone-compact-playback-20261017-v1/);
+assert.match(html,/cyclone-historical-map-20261017-v1/);
 assert.match(html,/<body class="simple-ui">/);
 assert.match(js,/function setSidebarCollapsed\(collapsed\)/,
   "Previously sealed full-map control must remain independent");

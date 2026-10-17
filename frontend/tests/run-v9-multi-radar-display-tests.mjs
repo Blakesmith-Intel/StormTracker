@@ -226,7 +226,12 @@ console.log(passed+" browser-only V9 multi-radar display contract tests passed."
 const multiWindSource=readFileSync(fileURLToPath(new URL("../src/multi-doppler-display-v1.js",import.meta.url)),"utf8");
 assert.match(runtime,/createSupplementalDopplerDisplay/);
 assert.match(runtime,/supplementalDopplerDisplay\.configure\(primary,additionalRadarSiteIds\)/);
-assert.match(runtime,/supplementalDopplerDisplay\.showAt\(source\.observedUtc\)/);
+assert.match(runtime,/supplementalDopplerDisplay\.prepare\(source\.observedUtc\)/);
+assert.match(runtime,/supplementalDopplerDisplay\.commit\(source\.observedUtc\)/);
+assert.doesNotMatch(runtime.slice(runtime.indexOf("async function showDopplerOnlyFrame"),
+  runtime.indexOf("async function showHybridFrame")),
+  /supplementalDopplerDisplay\.showAt\(source\.observedUtc\)/,
+  "Native wind loop now uses the existing rain-style prepare/commit boundary");
 assert.match(runtime,/supplementalDopplerDisplay\.setEnabled\(true\)/);
 assert.match(runtime,/supplementalDopplerDisplay\.setEnabled\(false\)/);
 assert.match(runtime,/loadDopplerHistory\(id\),loadDopplerDiagnostic\(id\)/);

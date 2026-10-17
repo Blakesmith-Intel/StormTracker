@@ -28,7 +28,7 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models; do
 done
 cp "$production/data/nsw-radar-places-v1.json" "_site/data/"
 printf 'SEALED StormTracker V10.2.0 source %s\n' \
-  'd3037f4217213459ab2889d8da6d20f909005afe' > _site/BUILD.txt
+  '585615842067448d092ff8d1987c4121ab08086a' > _site/BUILD.txt
 
 # Identical recipe to the previously accepted QA preview:
 # main frontend supplies path-activated rescue guards, accepted SHA

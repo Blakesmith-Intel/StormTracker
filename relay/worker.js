@@ -946,7 +946,7 @@ async function relayRiverRecentHistory(request,incoming,origin){
         "BoM recent-data response too large",origin);
     // A login/error page or changed BoM HTML is a shared source-format fault,
     // NOT proof an individual station has no recent observations.
-    if(!/<table\\b[^>]*\\bid\\s*=\\s*["']tableStyle1["']/i.test(html))
+    if(!/<table\b[^>]*\bid\s*=\s*["']tableStyle1["']/i.test(html))
       return riverHistoryError(502,"source_format_mismatch",
         "BoM station history table is absent or changed",origin);
     samples=parseBomRecentWaterLevels(html,{nowMs:Date.now(),maxAgeHours:48});

@@ -175,7 +175,7 @@ import {
 
 import {
   initialiseOperationalPowerOutages
-} from "./context-layers/power-outages-operational-v1.js?v=sidebar-refresh-track-20261017-v1";
+} from "./context-layers/power-outages-operational-v1.js?v=council-customers-20261017-v1";
 
 import {
   initialiseOperationalRiverGauges

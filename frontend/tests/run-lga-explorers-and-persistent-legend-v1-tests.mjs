@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {officialLocalityUrl,parseOfficialLocalities,groupOutagesByLga,
- filterLgaGroups,UNKNOWN_LGA,localityKey}
+ filterLgaGroups,councilOutageCustomerSummary,UNKNOWN_LGA,localityKey}
  from "../src/context-layers/incident-lga-model-v1.js";
 import {groupRoadClosuresByLga,searchRoadCouncilGroups}
  from "../src/context-layers/road-closure-lga-model-v1.js";
@@ -43,6 +43,24 @@ assert.equal(council.find(x=>x.name==="LOGAN CITY").items.length,1);
 assert.equal(council.at(-1).name,UNKNOWN_LGA);
 assert.equal(filterLgaGroups(council,"Coomera").length,1);
 assert.equal(filterLgaGroups(council,"GOLD COAST CITY").length,1);
+assert.deepEqual(councilOutageCustomerSummary(gold,council),
+ {outages:1,customers:44,crossCouncilEvents:0},
+ "multiple suburbs in the same council share one provider event total");
+const sharedCouncilGroups=groupOutagesByLga(groupOutagesBySuburb([
+  outage(7,"Ormeau, Coomera, Eagleby"),
+  outage(8,"Ormeau")
+]),resolved);
+const goldWithCross=sharedCouncilGroups.find(x=>x.name==="GOLD COAST CITY");
+const loganWithCross=sharedCouncilGroups.find(x=>x.name==="LOGAN CITY");
+assert.deepEqual(councilOutageCustomerSummary(goldWithCross,sharedCouncilGroups),
+ {outages:2,customers:88,crossCouncilEvents:1});
+assert.deepEqual(councilOutageCustomerSummary(loganWithCross,sharedCouncilGroups),
+ {outages:1,customers:44,crossCouncilEvents:1});
+const justCoomera=filterLgaGroups(sharedCouncilGroups,"Coomera")[0];
+assert.deepEqual(councilOutageCustomerSummary(justCoomera,sharedCouncilGroups),
+ {outages:1,customers:44,crossCouncilEvents:1},
+ "search-filtered counts reflect matching incidents but shared flag uses full LGA dataset");
+
 function road(id,localGovernmentArea,locality){
  return {properties:{id,road_summary:{
   road_name:"Pacific Motorway",local_government_area:localGovernmentArea,locality},
@@ -82,6 +100,13 @@ assert.match(closureIntegration,/explorer\.updateFeatures\(features\)/);
 assert.match(closureIntegration,/explorer\.updateStatus\(next\)/);
 assert.match(closureIntegration,/explorer\.destroy\(\)/);
 assert.match(outageUi,/groupOutagesByLga/);
+assert.match(outageUi,/councilOutageCustomerSummary\(council,groups\)/);
+assert.match(outageUi,/outage-council-customers/);
+assert.match(outageUi,/crossCouncilEvents/);
+const outageCss=read("../src/power-outage-suburb-explorer-v1.css");
+assert.match(outageCss,/outage-council-metrics/);
+assert.match(outageCss,/outage-council-customers/);
+
 assert.match(outageUi,/resolveQueenslandLocalityLgas/);
 assert.match(roadUi,/groupRoadClosuresByLga/);
 assert.match(roadUi,/mapCamera\.setView/);

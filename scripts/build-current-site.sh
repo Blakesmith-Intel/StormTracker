@@ -125,7 +125,7 @@ node --check "$delta/src/historical-cyclone-replay-v1.js"
 # replace the immutable V10.2.0 root or either existing historical QA route.
 wind_source="checked/wind-hook-v10.3-qa/frontend"
 wind_preview="_site/preview/wind-hook-v10-3"
-test "$(git -C checked/wind-hook-v10.3-qa rev-parse HEAD)" = "325d6a49eaf829e765c599876767cd351b01a860"
+test "$(git -C checked/wind-hook-v10.3-qa rev-parse HEAD)" = "f3a07688ca02f5f0234ae6425fc1177722518c53"
 mkdir -p "$wind_preview/data"
 for asset in index.html live3d-operational-v9.html app.css src 3d-models assets; do
   test -e "$wind_source/$asset"
@@ -133,7 +133,7 @@ for asset in index.html live3d-operational-v9.html app.css src 3d-models assets;
 done
 cp "$production/data/nsw-radar-places-v1.json" "$wind_preview/data/"
 cp -a "$wind_source/data/cyclone-history" "$wind_preview/data/"
-echo "EXPERIMENTAL V10.3 wind-hook original radar QA source 325d6a49eaf829e765c599876767cd351b01a860; production sealed V10.2.0 untouched" > "$wind_preview/BUILD.txt"
+echo "EXPERIMENTAL V10.3 wind-hook original radar QA source f3a07688ca02f5f0234ae6425fc1177722518c53; production sealed V10.2.0 untouched" > "$wind_preview/BUILD.txt"
 grep -Fq 'wind-hook-v10-3/' "$wind_preview/src/live3d-operational-v9.js"
 grep -Fq 'assessV10RadarFrame' "$wind_preview/src/live3d-operational-v9.js"
 grep -Fq 'createOperationalCyclonePanel' "$wind_preview/src/live3d-operational-v9.js"
@@ -148,6 +148,10 @@ for icon in v10-gust.svg v10-hook.svg v10-tornado.svg; do
 done
 node --check "$wind_preview/src/live3d-operational-v9.js"
 node --check "$wind_preview/src/severe-storm-v10.js"
+node --check "$wind_preview/src/doppler-persistence-v10-3.js"
+grep -Fq 'syncIndependentDopplerResearch' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'previousDopplerState' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'two sequential measured velocity scans' "$wind_preview/src/severe-storm-alert-overlay-v1.js"
 node --check "$wind_preview/src/operational-cyclone-panel-v1.js"
 # All three previews remain separate. QA is prohibited from the root runtime.
 ! grep -Fq 'isWindHookQaPreview' "_site/src/live3d-operational-v9.js"

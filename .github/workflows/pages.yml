@@ -202,6 +202,15 @@ jobs:
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
           grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' <<< "$root"
+          grep -Fq 'MANUAL FLOOD GAUGE REFRESH 2026-10-18' <<< "$root"
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/live3d-operational-v9.html" | grep -F 'id="refreshRiverGaugesButton"' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/context-layers/river-gauges-operational-v1.js" | grep -F 'bindRiverGaugeManualRefresh(' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/single-interface-v1.css" | grep -F 'body.simple-ui #controlSidebar #refreshRiverGaugesButton' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/index.html" | grep -F 'flood-gauge-refresh-v1-20261018' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/src/context-layers/power-outages-v1.js" | grep -F 'styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \

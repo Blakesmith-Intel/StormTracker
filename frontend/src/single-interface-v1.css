@@ -114,6 +114,32 @@ body.simple-ui #controlSidebar #radarPlaybackDetails[open] > summary {
   body.simple-ui #controlSidebar > .dashboard-heading {min-height:30px;}
 }
 
+/* One-row flood gauge refresh: works in the accepted compact operator UI
+   without introducing another sidebar row or changing the legend layout. */
+body.simple-ui #controlSidebar .river-gauge-row {
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:6px;
+}
+body.simple-ui #controlSidebar .river-gauge-row > label {
+  flex:1 1 auto;
+  min-width:0;
+  margin:0;
+}
+body.simple-ui #controlSidebar #refreshRiverGaugesButton {
+  flex:0 0 auto;
+  white-space:nowrap;
+  min-height:27px;
+  padding:3px 8px;
+  font-size:11px;
+  line-height:1.2;
+}
+body.simple-ui #controlSidebar #refreshRiverGaugesButton[disabled] {
+  cursor:progress;
+  opacity:.7;
+}
+
 /* Historical cyclone forecast, QA only: a single compact button in Layers.
    Large controls float over the map, never lengthen the operator sidebar. */
 body.simple-ui #controlSidebar .cyclone-forecast-row {

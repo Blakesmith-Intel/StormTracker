@@ -25,7 +25,12 @@ assert.doesNotMatch(html,/id="terrainEnabled"/);
 assert.doesNotMatch(runtime,/terrainControl|\$\("terrainEnabled"\)/);
 assert.ok(!html.includes("id=\"refreshPowerOutagesButton\""));
 assert.ok(!html.includes("id=\"refreshFloodRoadClosuresButton\""));
-assert.ok(!html.includes("id=\"refreshRiverGaugesButton\""));
+assert.ok(html.includes('id="refreshRiverGaugesButton"'),
+  "Flood-gauge manual refresh must be visible in the single operator UI");
+assert.match(river,/bindRiverGaugeManualRefresh\(/,
+  "Visible flood-gauge refresh must be wired to the operational controller");
+assert.match(singleCss,/#refreshRiverGaugesButton/,
+  "Manual refresh must remain compact within the existing Layers row");
 assert.ok(!html.includes("id=\"refreshQfdTechnicalRescuesButton\""));
 for (const adapter of [power,road,river,qfd]) {
  assert.match(adapter,/\?\.addEventListener\(/,
@@ -41,7 +46,7 @@ for(const id of [
   "jumpLatestButton","hybridFrameSlider","playbackSpeed","status",
   "radarOpacity","volumeOpacity","showTrackLabels","trackDisplayFilter",
   "showTrackThreatCone","openDetailsButton","detailsDialog","basemapSelect",
-  "showFloodRoadClosures","showPowerOutages","showRiverGauges",
+  "showFloodRoadClosures","showPowerOutages","showRiverGauges","refreshRiverGaugesButton",
   "showQfdTechnicalRescues","qfdSymbolLegend","riverGaugeSeverityLegend",
   "openRoadLgaExplorer","openPowerOutageExplorer","sidebarPowerLastRefresh",
   "sidebarRoadLastRefresh","radarSite","multiRadarSelectButton",

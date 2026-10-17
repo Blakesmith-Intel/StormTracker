@@ -50,6 +50,12 @@ jobs:
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' _site/BUILD.txt
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' _site/BUILD.txt
           grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' _site/BUILD.txt
+          grep -Fq 'MANUAL FLOOD GAUGE REFRESH 2026-10-18' _site/BUILD.txt
+          grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
+          grep -Fq 'aria-label="Refresh BoM flood-gauge observations"' _site/live3d-operational-v9.html
+          grep -Fq 'bindRiverGaugeManualRefresh(' _site/src/context-layers/river-gauges-operational-v1.js
+          grep -Fq 'body.simple-ui #controlSidebar #refreshRiverGaugesButton' _site/src/single-interface-v1.css
+          grep -Fq 'flood-gauge-refresh-v1-20261018' _site/index.html
           grep -Fq 'styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)' _site/src/context-layers/power-outages-v1.js
           grep -Fq 'terrain-outline-v1-20261018' _site/src/context-layers/power-outages-operational-v1.js
           grep -Fq 'noData++' _site/src/context-layers/river-gauge-layer-v1.js

@@ -12,8 +12,8 @@ assert.ok(runtime.includes("return isDopplerSourceActive() && isCombinedDopplerW
 assert.ok(runtime.includes("hasNewDopplerWindow() && hybridCombinedSchedule.length"));
 assert.ok(runtime.includes("const selected = choices.some(choice => choice.value === previous && !choice.disabled)"));
 assert.ok(!html.includes('id="showDopplerOverlay"'));
-assert.ok(html.includes('id="showSevereRadarAlerts" type="checkbox" disabled'));
-assert.ok(html.includes('id="showExperimentalHookAlerts" type="checkbox" disabled'));
+assert.ok(!html.includes('id="showSevereRadarAlerts"'));
+assert.ok(!html.includes('id="showExperimentalHookAlerts"'));
 assert.ok(runtime.includes("severeStormAlertOverlay.setEnabled(false)"));
 assert.ok(runtime.includes("function syncSevereStormAlerts(index) {\n  // Preserve the research implementation for isolated previews, but do not\n  // calculate or display experimental classifications in production.\n  return;"));
 console.log("PASS V9.16 BoM-aligned production playback with research alert calculations and UI disabled.");

@@ -49,3 +49,36 @@ for(const url of sampleHosts){
    root:b.match(/<([A-Za-z_][\w:.-]*)\b/)?.[1]??null,sampleLinks:names}));
  }catch(e){console.log(JSON.stringify({resource:url,error:String(e).slice(0,160)}));}
 }
+
+import {execFileSync} from "node:child_process";
+for(const url of [
+ "ftp://ftp.bom.gov.au/anon/sample/catalogue/Warnings/Tropical_Cyclone_Warning/",
+ "ftp://ftp.bom.gov.au/anon/sample/catalogue/Warnings/Tropical_Cyclone_Warning/IDQ65248.gml",
+ "ftp://ftp.bom.gov.au/anon/sample/catalogue/Warnings/Tropical_Cyclone_Warning/IDQ65248.zip",
+ "https://www.bom.gov.au/cyclone/cxmlinfo/CXML_example.xml"
+]){
+ try{
+  const out=execFileSync("curl",["-sS","-L","--max-time","9",url],
+  {encoding:"utf8",timeout:10000,maxBuffer:500000});
+  const doc=out.slice(0,4000);
+  console.log(JSON.stringify({method:"curl",resource:url,
+   bytes:out.length,firstWords:doc.slice(0,100),root:doc.match(/<([\w:.-]+)[\s>]/)?.[1]??null,
+   listing:doc.split("\n").slice(0,25)}));
+ }catch(e){console.log(JSON.stringify({method:"curl",resource:url,error:String(e.message).slice(0,320)}))}
+}
+const doc=await(await fetch("https://www.bom.gov.au/cyclone/cxmlinfo/CXML_example.xml")).text();
+const normalized=doc.replace(/xmlns(?::\w+)?=["'][^"']*["']/g,"");
+const root=normalized.match(/<cxml[^>]*>/)?.[0];
+const header=normalized.match(/<header[\s\S]*?<\/header>/)?.[0];
+const disturbance=normalized.match(/<disturbance[^>]*>/)?.[0];
+const fixStarts=[...normalized.matchAll(/<fix\b[^>]*>/g)].map(x=>x[0]);
+const fixes=[...normalized.matchAll(/<fix\b[^>]*>[\s\S]*?<\/fix>/g)].map(x=>{
+ const t=x[0];
+ const fields=[...t.matchAll(/<([\w:-]+)\b[^>]*>([^<>]*)<\/\1>/g)]
+   .filter(y=>/(time|latitude|longitude|category|name|valid|intensity)/i.test(y[1]))
+   .slice(0,10).map(y=>[y[1],y[2].trim()]);
+ return {opening:t.slice(0,150),fields};
+});
+console.log(JSON.stringify({sample:"BoM documentation example; not proven authentic historical issuance",
+ root,header:header?.slice(0,1200),disturbance,fixCount:fixStarts.length,
+ fixOpening:fixStarts.slice(0,9),fixExamples:fixes.slice(0,8)}));

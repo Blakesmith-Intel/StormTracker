@@ -41,10 +41,10 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js"):
+for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
-suffix = "-river-history-nodata-v2-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -61,19 +61,29 @@ version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
     "bom-recent-river-history-v1.js?v=9.13.1")
+version_once("src/live3d-operational-v9.js",
+    "power-outages-operational-v1.js?v=council-customers-20261017-v1")
+version_once("src/context-layers/power-outages-operational-v1.js",
+    "power-outages-v1.js?v=background-incident-refresh-20261017-v1")
 
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
+power = (layers / "power-outages-v1.js").read_text()
+assert "styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)" in power
+assert "entity.polygon\n          .outline =\n          true;" not in power
 with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18 (source main)\n")
     record.write("RIVER-HISTORY NO-DATA V2 2026-10-18 (200 empty, source-format guarded)\n")
+    record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
 PY
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js
 node --check _site/src/context-layers/river-gauge-layer-v1.js
 node --check _site/src/context-layers/bom-recent-river-history-v1.js
+node --check _site/src/context-layers/power-outages-v1.js
+node --check _site/src/context-layers/power-outages-operational-v1.js
 
 # Identical recipe to the previously accepted QA preview:
 # main frontend supplies path-activated rescue guards, accepted SHA

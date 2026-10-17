@@ -816,6 +816,16 @@ export async function loadPowerOutages({
   };
 }
 
+// Ground-clamped Cesium polygon fills cannot use Entity geometry outlines.
+// They were silently discarded by the renderer and emitted a warning on every
+// outage refresh. PointGraphics outlines remain valid and untouched.
+export function styleTerrainClampedPowerOutagePolygon(polygon,colour) {
+  if(!polygon)return false;
+  polygon.material=colour.withAlpha(0.34);
+  polygon.outline=false;
+  return true;
+}
+
 export function createPowerOutageLayer({
   viewer,
 
@@ -985,26 +995,10 @@ export function createPowerOutageLayer({
           disableDepthTestDistance: Number.POSITIVE_INFINITY
         });
       }
-      if (
-        entity.polygon
-      ) {
-        entity.polygon
-          .material =
-          unplannedColour.withAlpha(
-            0.34
-          );
-
-        entity.polygon
-          .outline =
-          true;
-
-        entity.polygon
-          .outlineColor =
-          outlineColour
-            .withAlpha(
-              0.92
-            );
-      }
+      // The provider polygon is clamped to the real terrain, so outline
+      // graphics are unsupported by Cesium. Keep the existing translucent
+      // fill and suppress the previously ineffective geometry outline.
+      styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour);
     }
 
     viewer.scene

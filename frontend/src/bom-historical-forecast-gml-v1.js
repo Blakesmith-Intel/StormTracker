@@ -132,7 +132,8 @@ export function decodeHistoricalBomCycloneGml(xmlText,{
        throw new Error("Invalid original BoM category");
      const rawOffset=optionalText(element,"timeOffset");
      const lead=rawOffset===null?null:Number(rawOffset);
-     if(lead!==null&&(!Number.isFinite(lead)||lead< -96||lead>121))
+     if(lead!==null&&(!Number.isFinite(lead)||lead< -1000||lead>121||
+       (role==="forecast_fix"&&lead<=0)))
        throw new Error("Invalid original lead time");
      geometry={type:"Point",coordinates:coords[0]};
      detail={validUtc:validTime,category,leadHours:lead,fixType:kind};

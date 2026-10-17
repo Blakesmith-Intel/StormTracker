@@ -113,7 +113,6 @@ import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 import {createResponsiveMemoryDiagnostics} from "./responsive-memory-diagnostics-v1.js?v=quality-diagnostics-20261016-v1";
-import {mountHistoricalCycloneQA} from "./historical-cyclone-overlay-v1.js?v=representative-cyclone-qa-v1";
 import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=simple-ui-20261017-v2";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
@@ -238,8 +237,6 @@ const DEFAULT_OFF_LAYER_IDS = Object.freeze([
   "showQfdTechnicalRescues",
   "showTrackLabels",
   "showTrackThreatCone",
-  "showSevereRadarAlerts",
-  "showExperimentalHookAlerts"
 ]);
 for(const id of DEFAULT_OFF_LAYER_IDS){
   const checkbox=$(id);
@@ -294,12 +291,9 @@ sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.
 createFriendlyMapTools({viewer,Cesium});
 const persistentWeatherLegend=mountPersistentWeatherLegend();
 
-// Historical cyclone QA exists ONLY in the isolated test preview.
-// Neither the sealed production source nor normal live view loads/replays
-// old cyclone tracks. No background polling or radar-scene mutator.
-if(window.location.pathname.includes("/preview/incremental-3d/")){
-  mountHistoricalCycloneQA({Cesium,viewer,sidebar:controlsSidebar});
-}
+// Historical cyclone research is paused and remains available as a separate
+// module for future test work. It no longer mounts a legacy panel inside the
+// approved operator sidebar or creates dormant cyclone controls on page load.
 
 // V9.19.0 production inherits the browser-approved QA guards. The release
 // runs inside live3d-operational-v9.html at the GitHub Pages site root;
@@ -2777,7 +2771,7 @@ function syncSevereStormAlerts(index) {
     alerts: detection.alerts,
     observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
     windSupported: detection.windSourceSupported,
-    experimentalHook: Boolean($("showExperimentalHookAlerts")?.checked),
+    experimentalHook: false,
     displayedUtc: frame?.observedUtc ?? null,
     atNewestFrame: index === hybridFrames.length - 1
   });

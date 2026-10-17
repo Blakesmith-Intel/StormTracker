@@ -40,5 +40,7 @@ assert.match(runtime,/shouldPrepareSupplementalForPlayback\(supplementalAnchor\)
 // Publishing is still pinned by the separate release pipeline, not by main.
 assert.match(packageScript,/checked\/production-v10\.2\.0\/frontend/,
   "V10 root must use exact accepted source, never unpinned main");
-assert.match(packageScript,/SEALED StormTracker V10\.2\.0 source/);\nassert.doesNotMatch(packageScript,/^production="frontend"$/m,\n  "Never deploy mutable main as the production source");
+assert.match(packageScript,/SEALED StormTracker V10\.2\.0 source/);
+assert.doesNotMatch(packageScript,/^production="frontend"$/m,
+  "Never deploy mutable main as the production source");
 console.log("PASS V9.20.0 source gate, accepted 3-D delta, memory caps, BoM guards and fresh production entrypoint.");

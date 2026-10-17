@@ -481,7 +481,8 @@ mapCamera =
 
 // The verified browser-source QA viewer must never call Cesium.camera.flyTo;
 // StormTracker's stateful camera guardian would cancel it as stray movement.
-const onCycloneQaPreview = window.location.pathname.includes("/preview/incremental-3d/");
+const onCycloneQaPreview = window.location.pathname.includes("/preview/incremental-3d/") ||
+  window.location.pathname.includes("/preview/wind-hook-v10-3/");
 const onOperationalApp = !window.location.pathname.includes("/preview/") &&
   (/\/$|\/index\.html$|\/live3d-operational-v9\.html$/.test(window.location.pathname));
 if (onCycloneQaPreview) {
@@ -1024,7 +1025,7 @@ const severeStormAlertOverlay = createSevereStormAlertOverlay({
 // V10.3 scientific work runs only in the separately addressed QA preview.
 // Production remains strictly free of research alert pins and extra controls.
 const isWindHookQaPreview =
-  window.location.pathname.includes("/preview/incremental-3d/");
+  window.location.pathname.includes("/preview/wind-hook-v10-3/");
 let windHookResearchEnabled = false;
 severeStormAlertOverlay.setEnabled(false);
 if (isWindHookQaPreview) {

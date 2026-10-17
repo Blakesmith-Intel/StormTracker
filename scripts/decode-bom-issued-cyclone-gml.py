@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -29,6 +30,11 @@ ALLOWED_SRS = {
 LIMIT_BYTES = 3_000_000
 LIMIT_FEATURES = 300
 LIMIT_VERTICES = 20000
+ALLOWED_GML_PRODUCTS = frozenset((
+    'IDQ65248', 'IDQ65249', 'IDQ65250', 'IDQ65251', 'IDQ65252',
+    'IDD65401', 'IDD65402', 'IDD65408', 'IDD65409',
+    'IDW60266', 'IDW60267', 'IDW60268', 'IDW60283'
+))
 
 
 class SourceError(ValueError):
@@ -154,6 +160,9 @@ def category(element):
 
 
 def decode_gml(path):
+    product_id = Path(path).stem
+    if product_id not in ALLOWED_GML_PRODUCTS:
+        raise SourceError("Not a documented BoM cyclone GML product identifier")
     root = parse_file(path, "tcData")
     if not root.tag.startswith("{" + TC + "}"):
         raise SourceError("Unverified cyclone tcData namespace")
@@ -182,6 +191,10 @@ def decode_gml(path):
             else:
                 raise SourceError("Unknown fixType " + kind_value)
             when = utc(direct_text(element, "fixTime"))
+            base_ms = datetime.fromisoformat(forecast_base.replace("Z", "+00:00"))
+            when_ms = datetime.fromisoformat(when.replace("Z", "+00:00"))
+            if role == "forecast_fix" and not (base_ms < when_ms <= base_ms + __import__("datetime").timedelta(hours=121)):
+                raise SourceError("Forecast centre outside BoM 120-hour map")
             point = gml_coordinates(element, "Point")
             if len(point) != 1:
                 raise SourceError("GML fix must contain exactly one point")
@@ -209,6 +222,12 @@ def decode_gml(path):
             role = {"tcForecastArea": "uncertainty_area",
                     "tcWatchArea": "watch_area", "tcWarningArea": "warning_area",
                     "tcWindArea": "gale_wind_area"}[kind]
+            if kind == "tcForecastArea":
+                area_type = direct_text(element, "areaType")
+                extent = direct_text(element, "extent")
+                if area_type != "Likely Tracks Area" or extent not in (
+                        "Up to 72 hours", "Up to 120 hours"):
+                    raise SourceError("Unsupported forecast area type; not a verified uncertainty envelope")
             polygons = feature_rings(element)
             geometry = ({"type": "Polygon", "coordinates": polygons[0]} if len(polygons) == 1
                         else {"type": "MultiPolygon", "coordinates": polygons})
@@ -228,7 +247,7 @@ def decode_gml(path):
                            "issuedUtc": issue, "forecastBaseUtc": forecast_base,
                            "systemId": system_id, "systemName": name,
                            "expiresAfterHours": int(expiry),
-                           "productId": Path(path).stem,
+                           "productId": product_id,
                            "sourceFormat": "BoM original tcData GML"},
             "features": features}
 
@@ -272,6 +291,41 @@ def decode_cxml(path):
             "fixes": fixes, "source": "BoM-issued CXML"}
 
 
+def validate_companion(collection, companion):
+    if companion is None:
+        return None
+    meta = collection["properties"]
+    if companion["name"] != meta["systemName"]:
+        raise SourceError("Forecast CXML and track map are different storms")
+    if companion["forecastBaseUtc"] != meta["forecastBaseUtc"]:
+        raise SourceError("CXML and track-map base times differ")
+    gml_issued = datetime.fromisoformat(meta["issuedUtc"].replace("Z", "+00:00"))
+    cxml_issued = datetime.fromisoformat(companion["issueUtc"].replace("Z", "+00:00"))
+    if abs((gml_issued - cxml_issued).total_seconds()) > 5400:
+        raise SourceError("Incompatible issued bulletin cycles")
+    cxml_by_time = {f["validUtc"]: f for f in companion["fixes"]}
+    checked = 0
+    max_delta_deg = 0
+    for f in collection["features"]:
+        if f["properties"]["role"] != "forecast_fix":
+            continue
+        when = f["properties"]["validUtc"]
+        counterpart = cxml_by_time.get(when)
+        if counterpart is None:
+            continue
+        lon_lat = f["geometry"]["coordinates"]
+        delta = max(abs(a - b) for a, b in zip(lon_lat, counterpart["position"]))
+        if delta > 0.02:
+            raise SourceError("GML and CXML forecast centres disagree at original valid UTC")
+        max_delta_deg = max(max_delta_deg, delta)
+        checked += 1
+    if checked < 3:
+        raise SourceError("Not enough matched original GML+CXML forecast centres")
+    return {"matchingForecastFixes": checked,
+            "maxLonLatComponentDifferenceDeg": round(max_delta_deg, 6),
+            "comparison": "Original CXML rounded positions, NOT interpolated"}
+
+
 def summary(collection, companion=None):
     types = {}
     forecasts = []
@@ -293,6 +347,7 @@ def summary(collection, companion=None):
                           "bboxLonLat": [min(p[0] for p in vertices), min(p[1] for p in vertices),
                                          max(p[0] for p in vertices), max(p[1] for p in vertices)]})
     return {"gml": collection["properties"], "roleCounts": types,
+            "crossProductChecks": validate_companion(collection, companion),
             "genuineForecastFixes": forecasts[:35],
             "sourceIssuedUncertaintyAreas": areas,
             "cxml": ({"name": companion["name"], "baseUtc": companion["forecastBaseUtc"],
@@ -309,8 +364,7 @@ def main():
     args = cli.parse_args()
     col = decode_gml(args.gml)
     companion = decode_cxml(args.cxml) if args.cxml else None
-    if companion and companion["name"] != col["properties"]["systemName"]:
-        raise SourceError("Forecast CXML and track map are different storms")
+    validate_companion(col, companion)
     if args.output:
         Path(args.output).write_text(json.dumps(col, separators=(",", ":")), encoding="utf-8")
     print(json.dumps(summary(col, companion), indent=2))

@@ -34,7 +34,13 @@ jobs:
           ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
           path: checked/production-v10.2.0
           persist-credentials: false
-      - name: Build exact production root and both preserved previews
+      - name: Checkout immutable V10.3 radar wind-hook QA for separate preview
+        uses: actions/checkout@v4
+        with:
+          ref: 325d6a49eaf829e765c599876767cd351b01a860
+          path: checked/wind-hook-v10.3-qa
+          persist-credentials: false
+      - name: Build exact production root and all three separate previews
         run: |
           set -euo pipefail
           test "$(git -C checked/production-v10.2.0 rev-parse HEAD)" = 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
@@ -47,3 +53,7 @@ jobs:
           node --check _site/src/live3d-operational-v9.js
           test -s _site/preview/radar-history-fix/BUILD.txt
           test -s _site/preview/incremental-3d/BUILD.txt
+          test -s _site/preview/wind-hook-v10-3/BUILD.txt
+          grep -Fq '325d6a49eaf829e765c599876767cd351b01a860' _site/preview/wind-hook-v10-3/BUILD.txt
+          test -s _site/preview/wind-hook-v10-3/assets/v10-tornado.svg
+          ! grep -Fq 'isWindHookQaPreview' _site/src/live3d-operational-v9.js

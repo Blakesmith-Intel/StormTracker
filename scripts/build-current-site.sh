@@ -121,7 +121,37 @@ grep -Fq 'Koji 2026' "$delta/data/cyclone-history/koji-2026.json"
 grep -Fq 'Yasi 2011' "$delta/data/cyclone-history/yasi-2011.json"
 node --check "$delta/src/historical-cyclone-overlay-v1.js"
 node --check "$delta/src/historical-cyclone-replay-v1.js"
-test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 2
+# Independently pinned V10.3 wind/hook research preview. This MUST NOT
+# replace the immutable V10.2.0 root or either existing historical QA route.
+wind_source="checked/wind-hook-v10.3-qa/frontend"
+wind_preview="_site/preview/wind-hook-v10-3"
+test "$(git -C checked/wind-hook-v10.3-qa rev-parse HEAD)" = "325d6a49eaf829e765c599876767cd351b01a860"
+mkdir -p "$wind_preview/data"
+for asset in index.html live3d-operational-v9.html app.css src 3d-models assets; do
+  test -e "$wind_source/$asset"
+  cp -a "$wind_source/$asset" "$wind_preview/"
+done
+cp "$production/data/nsw-radar-places-v1.json" "$wind_preview/data/"
+cp -a "$wind_source/data/cyclone-history" "$wind_preview/data/"
+echo "EXPERIMENTAL V10.3 wind-hook original radar QA source 325d6a49eaf829e765c599876767cd351b01a860; production sealed V10.2.0 untouched" > "$wind_preview/BUILD.txt"
+grep -Fq 'wind-hook-v10-3/' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'assessV10RadarFrame' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'createOperationalCyclonePanel' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'if (!windHookResearchEnabled) return' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'createHistoricalCycloneForecastQA' "$wind_preview/src/live3d-operational-v9.js"
+grep -Fq 'Original BoM' "$wind_preview/src/internal-cyclone-live-qa-v1.js"
+grep -Fq '#F6D94F' "$wind_preview/src/wind-hook-research-v10.css"
+grep -Fq '#FF963F' "$wind_preview/src/wind-hook-research-v10.css"
+grep -Fq '#D83045' "$wind_preview/src/wind-hook-research-v10.css"
+for icon in v10-gust.svg v10-hook.svg v10-tornado.svg; do
+  test -s "$wind_preview/assets/$icon"
+done
+node --check "$wind_preview/src/live3d-operational-v9.js"
+node --check "$wind_preview/src/severe-storm-v10.js"
+node --check "$wind_preview/src/operational-cyclone-panel-v1.js"
+# All three previews remain separate. QA is prohibited from the root runtime.
+! grep -Fq 'isWindHookQaPreview' "_site/src/live3d-operational-v9.js"
+test "$(find _site/preview -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 3
 
 # Exact accepted V10.2.0 optimised renderer and memory bounds are deployed
 # from the PINNED source, never from the evolving maintenance/QA branch.

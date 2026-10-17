@@ -238,8 +238,19 @@ jobs:
           done
           echo 'Verified sealed V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2, single UI, native multi-site BoM Doppler, previous full-quality 3-D, and V9.18 QA.'
 
+  seal:
+    name: Seal verified cyclone release references
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source for version/reference verification
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Seal V10.2.0 annotated tag and new rollback branch after public verification
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
         run: |

@@ -5,10 +5,10 @@ import {nearestDopplerFrameForTime} from "./bom-doppler-intake-v3.js";
 
 export const MAX_SECONDARY_WIND_OFFSET_MINUTES=8;
 export const SECONDARY_WIND_BLEND_MS=120;
-export const SECONDARY_WIND_FRAME_SYNC_WAIT_MS=160;
+export const SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350;
 export const SECONDARY_WIND_RETRY_COOLDOWN_MS=60000;
 // Stage genuine secondary scans concurrently with primary decoding. At each
-// primary frame boundary, wait at most 160 ms for extra-site preparation;
+// primary frame boundary, wait at most 350 ms for extra-site preparation;
 // never let an unavailable/sluggish radar freeze the operator playback.
 // Return false on timeout/error, with the source promise safely handled.
 export async function waitForSecondaryWindPreparation(preparation,
@@ -41,7 +41,10 @@ export function createSupplementalDopplerDisplay({
   historyFreshMs=300000,requestTimeoutMs=7000
 }){
   const states=new Map();
+  // Rain radar's existing pattern: prepare source-true selected images while
+  // primary decodes, then commit the ready layers together at its frame edge.
   let primary="",selected=[],enabled=false,targetUtc=null,generation=0;
+  let preparingKey="",preparingPromise=null;
   const reported=()=>({
     enabled,targetUtc,selected:[...selected],
     sources:selected.map(id=>{
@@ -57,9 +60,19 @@ export function createSupplementalDopplerDisplay({
     })
   });
   function report(){onStatus(reported());}
+  function removeStage(s){
+    if(!s.staged)return;
+    const staged=s.staged;
+    s.staged=null;
+    if(staged.layer){
+      try{
+        if(!retireLayer?.(staged.layer))
+          imageryLayers.remove(staged.layer,true);
+      }catch{}
+    }
+  }
   function release(s){
-    s.token++;
-    s.desiredUtc=null;
+    removeStage(s);
     s.observedUtc=null;
     s.transition.clear();
     s.entries.clear();
@@ -70,37 +83,41 @@ export function createSupplementalDopplerDisplay({
   function stateFor(id){
     let s=states.get(id);
     if(!s){
-      s={id,token:0,desiredUtc:null,observedUtc:null,error:null,
+      s={id,observedUtc:null,error:null,staged:null,
         history:null,historyAt:0,historyTask:null,historyRetryAt:0,
-        pumping:false,entries:new Map(),failedFrameUntil:new Map(),
+        entries:new Map(),failedFrameUntil:new Map(),
         transition:createTransition({imageryLayers,scene,retireLayer,
           requestRender:()=>scene.requestRender()})};
       states.set(id,s);
     }
     return s;
   }
+  function invalidateStages(){
+    generation++;preparingKey="";preparingPromise=null;
+    for(const s of states.values())removeStage(s);
+  }
   function configure(primaryId,extras=[]){
     const next=supportedSecondaryWindSites(primaryId,extras,sites);
     if(primary===primaryId && selected.join(",")===next.join(","))return;
     const prevPrimary=primary;
-    primary=primaryId;
-    selected=next;
-    generation++;
-    for(const [id,s] of states)
-      if(!next.includes(id)||prevPrimary!==primaryId){release(s);states.delete(id);}
+    invalidateStages();
+    primary=primaryId;selected=next;
+    for(const [id,s] of states){
+      if(!next.includes(id)||prevPrimary!==primaryId){
+        release(s);states.delete(id);
+      }
+    }
     for(const id of next)stateFor(id);
-    if(enabled && targetUtc)showAt(targetUtc);
+    if(enabled&&targetUtc)showAt(targetUtc);
     else report();
   }
   function setEnabled(next){
     const active=Boolean(next);
     if(active===enabled)return;
+    invalidateStages();
     enabled=active;
-    generation++;
     if(!enabled){
       for(const s of states.values()){
-        s.token++;
-        s.desiredUtc=null;
         s.observedUtc=null;
         s.transition.clear();
       }
@@ -157,83 +174,139 @@ export function createSupplementalDopplerDisplay({
     task.catch(()=>{if(s.entries.get(key)===task)s.entries.delete(key);});
     return task;
   }
-  function isCurrent(s,token,utc){
-    return enabled && selected.includes(s.id) && states.get(s.id)===s &&
-      s.token===token && s.desiredUtc===utc && targetUtc===utc;
+  // Same prepare-then-commit discipline as supplemental rain radar.
+  // Every extra site selects its own genuine nearest BoM velocity observation
+  // (at most 8 minutes either side); no same-UTC scan is manufactured.
+  function current(mine,utc){
+    return enabled && generation===mine && targetUtc===utc;
   }
-  async function pump(s){
-    if(s.pumping)return;
-    s.pumping=true;
-    try {
-      // Only one network/decode pipeline per site; fast scrubbing coalesces
-      // to the most recent requested timestamp, never multiplying requests.
-      while(enabled && selected.includes(s.id) && s.desiredUtc){
-        const utc=s.desiredUtc,token=s.token;
-        try{
-          const {frames,palette}=await ensureHistory(s);
-          if(!isCurrent(s,token,utc))continue;
-          const match=matchingSecondaryWindFrame(frames,utc);
-          if(!match){
-            s.transition.clear();s.observedUtc=null;
-            s.error="No measured Doppler scan within 8 minutes";report();
-            break;
-          }
-          if(s.observedUtc===match.frame.observedUtc &&
-             s.transition.currentLayer?.show!==false){s.error=null;report();break;}
-          const result=await frameFor(s,match.frame,palette);
-          if(!isCurrent(s,token,utc))continue;
-          const layer=createLayer(result.provider);
-          const key=s.id+"@"+match.frame.observedUtc;
-          const handover=await s.transition.replacePrepared({
-            layer,key,alpha:1,durationMs:SECONDARY_WIND_BLEND_MS,timeoutMs:1000,
-            onAdded:()=>{
-              const wind=getPrimaryLayer();
-              if(wind && imageryLayers.indexOf(wind)>=0)imageryLayers.raiseToTop(wind);
-              const surface=getSurfaceLayer();
-              if(surface && imageryLayers.indexOf(surface)>=0)imageryLayers.raiseToTop(surface);
-            }
-          });
-          if(!isCurrent(s,token,utc)){
-            // A newer requested frame or a disabled layer wins; never allow
-            // an older asynchronous wind request to resurrect stale imagery.
-            s.transition.clear();s.observedUtc=null;
-            continue;
-          }
-          if(handover?.ready===false || handover?.cancelled)
-            throw Error("Secondary Doppler tile did not stage");
-          s.observedUtc=match.frame.observedUtc;s.error=null;
-          scene.requestRender();report();break;
-        }catch(error){
-          if(!isCurrent(s,token,utc))continue;
-          s.transition.clear();s.observedUtc=null;
-          s.error=String(error?.message??error);
-          report();
-          break;
-        }
+  async function waitForStage(layer,valid){
+    if(!scene?.postRender?.addEventListener)return true;
+    return new Promise(resolve=>{
+      let done=false,frames=0,remove=()=>{};
+      let timer;
+      const finish=ok=>{
+        if(done)return;
+        done=true;remove();clearTimeout(timer);resolve(ok);
+      };
+      remove=scene.postRender.addEventListener(()=>{
+        if(!valid()){finish(false);return;}
+        if(++frames>=3){finish(true);return;}
+        scene.requestRender();
+      });
+      timer=setTimeout(()=>finish(false),700);
+      scene.requestRender();
+    });
+  }
+  async function prepareSite(s,utc,mine){
+    const valid=()=>current(mine,utc)&&selected.includes(s.id) &&
+      states.get(s.id)===s;
+    let layer=null;
+    try{
+      const {frames,palette}=await ensureHistory(s);
+      if(!valid())return;
+      const match=matchingSecondaryWindFrame(frames,utc);
+      if(!match){
+        s.error="No measured Doppler scan within 8 minutes";
+        return;
       }
+      // Existing source-accurate scan can remain visible at this clock time.
+      if(s.observedUtc===match.frame.observedUtc &&
+         s.transition.currentLayer?.show!==false){
+        s.staged={utc,observedUtc:match.frame.observedUtc,reuse:true};
+        s.error=null;return;
+      }
+      const result=await frameFor(s,match.frame,palette);
+      if(!valid())return;
+      layer=createLayer(result.provider);
+      layer.alpha=.001;
+      const previous=s.transition.currentLayer;
+      if(typeof imageryLayers.indexOf==="function"&&previous &&
+         imageryLayers.indexOf(previous)>=0){
+        imageryLayers.add(layer,imageryLayers.indexOf(previous));
+      }else imageryLayers.add(layer);
+      const staged=await waitForStage(layer,valid);
+      if(!valid()||!staged)return;
+      s.staged={utc,observedUtc:match.frame.observedUtc,layer};
+      layer=null;
+      s.error=null;
+    }catch(error){
+      if(valid())s.error=String(error?.message??error);
     }finally{
-      s.pumping=false;
-      // A time change during final cleanup will have a newer token.
-      // The caller runs pump again on showAt; the loop above handles changes
-      // during awaits without spawning parallel per-site requests.
+      if(layer){
+        try{if(!retireLayer?.(layer))imageryLayers.remove(layer,true);}catch{}
+      }
     }
   }
-  function showAt(utc){
-    targetUtc=Number.isFinite(Date.parse(utc))?utc:null;
-    if(!enabled || !targetUtc){report();return;}
+  function prepare(utc){
+    if(!enabled || !Number.isFinite(Date.parse(utc)))return Promise.resolve([]);
+    const key=primary+"|"+selected.join(",")+"|"+utc;
+    if(preparingKey===key && preparingPromise)return preparingPromise;
+    invalidateStages();
+    targetUtc=utc;
+    const mine=generation;
+    preparingKey=key;
+    preparingPromise=Promise.all(selected.map(async id=>{
+      const site=stateFor(id);
+      await prepareSite(site,utc,mine);
+      return site.staged?.utc===utc?id:null;
+    })).then(ids=>current(mine,utc)?ids.filter(Boolean):[]);
+    return preparingPromise;
+  }
+  // Synchronous coordinated reveal at the primary scan boundary. If an
+  // optional source hasn't staged within the bounded budget, OMIT its stale
+  // imagery rather than let it pop onto the map at a later playback time.
+  function commit(utc){
+    if(!enabled||targetUtc!==utc)return [];
+    const ready=[];
     for(const id of selected){
       const s=stateFor(id);
-      if(s.desiredUtc!==targetUtc){
-        s.token++;s.desiredUtc=targetUtc;
-        // Never show last frame outside permitted measured source-time delta.
-        if(s.observedUtc && !matchingSecondaryWindFrame(
-          [{filename:"displayed",observedUtc:s.observedUtc}],targetUtc)){
+      const entry=s.staged?.utc===utc?s.staged:null;
+      if(entry?.reuse){
+        ready.push(id);
+        s.error=null;
+      }else if(entry?.layer){
+        s.staged=null;  // adopted by the transition, never remove it
+        try{
+          const key=id+"@"+entry.observedUtc;
+          s.transition.replace({
+            layer:entry.layer,key,alpha:1,durationMs:SECONDARY_WIND_BLEND_MS,
+            onAdded:()=>{
+              const wind=getPrimaryLayer();
+              if(wind&&imageryLayers.indexOf(wind)>=0)imageryLayers.raiseToTop(wind);
+              const surface=getSurfaceLayer();
+              if(surface&&imageryLayers.indexOf(surface)>=0)
+                imageryLayers.raiseToTop(surface);
+            }
+          });
+          s.observedUtc=entry.observedUtc;
+          s.error=null;
+          ready.push(id);
+        }catch(error){
+          s.error=String(error?.message??error);
+          try{if(!retireLayer?.(entry.layer))
+            imageryLayers.remove(entry.layer,true);}catch{}
           s.transition.clear();s.observedUtc=null;
         }
+      }else{
+        // Rain's source-time atomic policy: missing partner means no stale
+        // Doppler overlay; never mix observations beyond the source window.
+        s.transition.clear();
+        s.observedUtc=null;
+        if(!s.error)s.error="Measured wind not ready for selected frame";
       }
-      void pump(s);
     }
-    report();
+    invalidateStages(); // late async loads cannot resurrect an old frame
+    scene.requestRender();report();
+    return ready;
+  }
+  function showAt(utc){
+    // Clicking a radar while paused uses the identical prepare/commit path.
+    void prepare(utc).then(()=>{
+      if(enabled&&targetUtc===utc)commit(utc);
+    }).catch(error=>{
+      console.warn("Supplemental measured wind unavailable",error);
+    });
   }
   // Decode and geographically project ONE upcoming observed scan per site
   // off the critical displayed-frame path. Only genuine, per-site BoM frames
@@ -262,6 +335,6 @@ export function createSupplementalDopplerDisplay({
     for(const s of states.values())release(s);
     states.clear();selected=[];targetUtc=null;report();
   }
-  return {configure,setEnabled,showAt,prewarm,refresh,destroy,snapshot:reported,
+  return {configure,setEnabled,prepare,commit,showAt,prewarm,refresh,destroy,snapshot:reported,
     get visibleSites(){return [...states].filter(([,s])=>s.observedUtc).map(([id])=>id);}};
 }

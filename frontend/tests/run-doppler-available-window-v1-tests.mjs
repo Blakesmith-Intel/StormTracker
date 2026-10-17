@@ -68,6 +68,7 @@ assert.doesNotMatch(html,/id="dopplerOpacity"/,
   "Native Doppler is an independent 100%-opacity feed");
 assert.match(html,/id="hybridPlayButton"/);
 assert.match(html,/id="hybridFrameSlider"/);
-assert.match(html,/id="radarPlaybackTime"/);
+assert.doesNotMatch(html,/id="radarPlaybackTime"/,"Original green source status is the only radar timestamp");
+assert.doesNotMatch(source,/radarClockGroup/,"Frame changes must not recreate the duplicate radar clock");
 assert.match(html,/id="dopplerPlaybackTime"/);
 console.log("PASS seven real wind frames, every rain observation, aligned 31-minute shared restart; no Doppler toggle.");

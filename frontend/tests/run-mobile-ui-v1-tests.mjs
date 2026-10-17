@@ -18,7 +18,8 @@ assert.doesNotMatch(html,/id="dopplerOpacity"/,"Standalone Doppler has no transp
 assert.doesNotMatch(js,/\$\("dopplerOpacity"\)/,"Doppler opacity is fixed at 100%");
 assert.match(html,/id="basemapSelect"/);
 assert.match(html,/value="qld-imagery"/);
-assert.match(html,/id="terrainEnabled"/);
+assert.doesNotMatch(html, /id="terrainEnabled"/, "Removed legacy terrain checkbox must stay absent");
+assert.match(js, /terrainManager\.setEnabled\(true\)/, "3-D terrain must still initialise");
 assert.match(html,/id="terrainStatus"/);
 assert.match(html,/id="showFloodRoadClosures"/);
 assert.match(html,/id="floodRoadClosureStatus"/);

@@ -1,5 +1,6 @@
 import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 import { BORDER_RADAR_SITES, primaryRadarDopplerSites } from "./border-radar-sites-v1.js";
+import {createSupplementalDopplerDisplay, supportedSecondaryWindSites} from "./multi-doppler-display-v1.js?v=v10-wind-sites-20261017-v1";
 import { createRadarSiteNameOverlay } from "./context-layers/radar-site-name-overlay-v1.js?v=nsw-border-radar-v1";
 import {
   loadLatestBomReflectivityMosaic,
@@ -910,6 +911,50 @@ const dopplerOverlayTransition =
         scene.requestRender()
   });
 
+// Selected extra radar sites render their own genuine, source-timed wind
+// imagery in Doppler-only mode. Never reuse the primary velocity pixels.
+const supplementalDopplerDisplay=createSupplementalDopplerDisplay({
+  sites:BORDER_RADAR_SITES,imageryLayers:viewer.imageryLayers,scene,
+  createTransition:createDopplerLayerTransition,
+  createLayer:provider=>new Cesium.ImageryLayer(provider),
+  getPrimaryLayer:()=>dopplerOverlayTransition.currentLayer,
+  getSurfaceLayer:()=>surfaceLayer,
+  retireLayer:deferredImageryRetirement?.retire,
+  loadSiteHistory:async id=>{
+    const [history,latest]=await Promise.all([
+      loadDopplerHistory(id),loadDopplerDiagnostic(id)
+    ]);
+    const palette=paletteFromLatestDopplerImage(canvasImageData(latest.canvas));
+    return {frames:history.frames,palette};
+  },
+  loadSiteFrame:async (id,frame,palette)=>{
+    const source=await loadDopplerFrame(id,frame);
+    if(source.observedUtc && source.observedUtc!==frame.observedUtc)
+      throw Error("Secondary Doppler UTC disagrees with published filename");
+    const nativePanel=extractNativeDopplerPanel(canvasImageData(source.canvas),palette);
+    if(!nativePanel.nativePixelCount)
+      throw Error("No calibrated radial velocity pixels in this BoM scan");
+    const record={nativePanel,observedUtc:frame.observedUtc,filename:frame.filename};
+    const provider=await prepareNativeDopplerProvider(id,record);
+    return {provider,observedUtc:frame.observedUtc,pixelCount:nativePanel.nativePixelCount};
+  },
+  onStatus:snapshot=>{
+    const output=$("multiRadarDopplerStatus");
+    if(!output)return;
+    const count=snapshot.selected.length;
+    const live=snapshot.sources.filter(s=>s.matched).length;
+    output.textContent=!count
+      ? "Select an additional Doppler-capable site to view simultaneous measured wind."
+      : !snapshot.enabled
+        ? count+" additional Doppler-capable site"+(count===1?"":"s")+" selected · available in Doppler playback"
+        : "Measured Doppler "+live+"/"+count+" additional sites · "+
+          snapshot.sources.map(s=>s.id+" "+
+            (s.matched ? formatProductTime(s.observedUtc,{compact:true})
+              : (s.error??"loading"))).join(" · ");
+  }
+});
+window.addEventListener("pagehide",()=>supplementalDopplerDisplay.destroy(),{once:true});
+
 let dopplerOverlayRenderToken =
   0;
 
@@ -1302,8 +1347,8 @@ for (const site of Object.values(BORDER_RADAR_SITES).sort((a,b) => a.name.locale
   option.textContent = `${site.name}${site.state==="NSW" ? " (NSW)" : ""}${site.dopplerIntegrated===false ? " · Doppler pending" : site.dopplerProduct ? "" : " · radar only"}`;
   if (site.id !== DEFAULT_RADAR_SITE_ID) $("radarSite").append(option);
 }
-// The primary site alone drives Doppler, storm tracks and inferred 3-D.
-// Extra checked sites show source-time-matched original 2-D BoM images only.
+// Primary alone owns storm tracks and inferred 3-D science. Extra sites
+// show source-timed reflectivity OR their own BoM native Doppler on wind mode.
 $("radarSite").value = DEFAULT_RADAR_SITE_ID;
 configureRadarSite();
 function refreshAdditionalRadarChoices(){
@@ -1321,6 +1366,7 @@ function refreshAdditionalRadarChoices(){
   $("multiRadarSelectButton").title=
     (1+additionalRadarSiteIds.length)+" BoM radar sites selected";
   supplementalRadarDisplay.configure(primary,additionalRadarSiteIds);
+  supplementalDopplerDisplay.configure(primary,additionalRadarSiteIds);
 }
 function supplementalAnchorForFrame(frame){
   return frame && frame.sourceMetadata?.region===selectedRadarRegion() &&
@@ -1369,6 +1415,9 @@ function setAdditionalRadarSelection(next){
   if(INCREMENTAL_VOLUME_PREVIEW)
     supplementalVolumeDisplay?.pruneSites(additionalRadarSiteIds);
   if(latestFrame)showSupplementalRadarSites(latestFrame);
+  if(isNativeDopplerPlayback() && windPlaybackFrames.length)
+    supplementalDopplerDisplay.showAt(
+      windPlaybackFrames[independentDopplerIndexValue]?.observedUtc);
 
 }
 for(const site of Object.values(BORDER_RADAR_SITES).sort((a,b)=>
@@ -1378,6 +1427,13 @@ for(const site of Object.values(BORDER_RADAR_SITES).sort((a,b)=>
   checkbox.type="checkbox";checkbox.value=site.id;
   const name=document.createElement("span");name.textContent=site.name;
   label.append(checkbox,name);
+  const type=document.createElement("small");
+  type.textContent=site.dopplerProduct && site.dopplerIntegrated!==false
+    ? " · Doppler + rain"
+    : site.dopplerIntegrated===false
+      ? " · rain (Doppler pending verification)"
+      : " · rain only";
+  label.append(type);
   $("multiRadarChecklist").append(label);
   checkbox.addEventListener("change",()=>{
     // New selections are valid even while the primary source history is
@@ -2289,6 +2345,7 @@ function dopplerCrossfadeDurationMs() {
 function clearDopplerOverlay({
   smooth = false
 } = {}) {
+  supplementalDopplerDisplay.setEnabled(false);
   dopplerOverlayRenderToken++;
 
   dopplerOverlayTransition.clear({
@@ -3073,6 +3130,7 @@ async function refreshIndependentDopplerHistory(automatic=false) {
     // The Doppler source is fetched independently, never from the radar loop.
     const sources=await loadDopplerHistoriesAndPalettes();
     if(region!==selectedRadarRegion()||radarId!==$("dopplerOverlayRadar").value)return;
+    if(isNativeDopplerPlayback())void supplementalDopplerDisplay.refresh();
     dopplerHistories=sources.histories;
     dopplerPalettes=sources.palettes;
     dopplerLatestRecords=sources.latestRecords;
@@ -3745,6 +3803,7 @@ async function showDopplerOnlyFrame(index) {
   }
   if(renderToken!==hybridSceneRenderToken || !isNativeDopplerPlayback())
     return false;
+  supplementalDopplerDisplay.showAt(source.observedUtc);
   const time=prepared.record?.observedUtc ?? source.observedUtc;
   syncFrameSlider($("hybridFrameSlider"),windPlaybackFrames.length,next);
   $("hybridFrameLabel").textContent=(next+1)+"/"+windPlaybackFrames.length;
@@ -4133,8 +4192,10 @@ async function loadDopplerSequence(automatic=false) {
   const recovered=automatic ? windPlaybackFrames.findIndex(frame=>
     frame.observedUtc===oldTime) : 0;
   independentDopplerIndexValue=Math.max(0,recovered);
-  // Additional rain windows never remain in Doppler-only playback.
+  // Extra reflectivity is removed; measured Doppler from selected additional
+  // sites now replaces it when each genuine scan has a nearby UTC.
   showSupplementalRadarSites(null);
+  supplementalDopplerDisplay.setEnabled(true);
   // All reflectivity-only objects are removed, including the selected +90m
   // threat cone and standalone Cesium primitives (not controlled by Labels).
   clearReflectivityForDoppler();
@@ -4158,6 +4219,7 @@ async function loadDopplerSequence(automatic=false) {
 async function loadHybridSequence(automatic = false) {
   if(selectedLoopSelection()===DOPPLER_AVAILABLE_LOOP_VALUE)
     return loadDopplerSequence(automatic);
+  supplementalDopplerDisplay.setEnabled(false);
   windPlaybackFrames=[];
   hybridSource.show=true;
   $("showTrackLabels").disabled=false;

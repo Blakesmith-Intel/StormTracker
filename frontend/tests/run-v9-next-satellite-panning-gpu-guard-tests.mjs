@@ -53,7 +53,7 @@ for(const [name,source] of [["power",power],["road",road],["gauge",gauge]]){
   assert.match(source,/LEFT_CLICK/,
     name+" must keep explicit marker click interaction functional");
 }
-assert.match(build,/production="checked\/production-v10\.1\.1\/frontend"/,
+assert.match(build,/production="checked\/production-v10\.2\.0\/frontend"/,
   "the public site must copy an exact pinned, validated release source");
 assert.match(build,/grep -Fq 'PUBLISHED_PRODUCTION_RUNTIME' "_site\/src\/live3d-operational-v9\.js"/,
   "published production must preserve preview safety behavior");

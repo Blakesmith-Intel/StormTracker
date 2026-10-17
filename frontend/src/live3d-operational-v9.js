@@ -115,6 +115,7 @@ import {createBoundedRenderProviderCache} from "./bounded-render-provider-cache-
 import { createIncrementalVolumeRenderer } from "./incremental-volume-renderer-v1.js?v=delta-reuse-20261016-v2";
 import {createVolumeCategoryProfileCache} from "./volume-category-profile-cache-v1.js?v=render-profile-cache-20261016-v1";
 // Memory QA sampling remains available on demand through window.__stormtrackerMemoryDiagnostics in the research preview; no sidebar panel.
+import {createHistoricalCycloneForecastQA} from "./historical-cyclone-forecast-map-v1.js?v=issued-fina-20261017-qa-v1";
 import {createFriendlyMapTools} from "./friendly-map-tools-v1.js?v=single-interface-20261017-v1";
 import {mountPersistentWeatherLegend} from "./persistent-weather-legend-v1.js?v=lga-ui-legend-20261017-v1";
 import { createPlaybackPerformanceMeter } from "./playback-performance-meter-v1.js?v=9.16.9-perf";
@@ -291,6 +292,11 @@ function setSidebarCollapsed(collapsed){
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!controlsSidebar.hidden));
 // QA-only usability controls; separate geodesic annotations cannot affect weather.
 createFriendlyMapTools({viewer,Cesium});
+// The accepted public production source is separately SHA-pinned. In V10 QA,
+// cyclone forecasts are local-only; importing historical source data never
+// enables polling, radar track science or a live-warning control.
+if(INCREMENTAL_VOLUME_PREVIEW && window.location.pathname.includes("/preview/incremental-3d/"))
+  createHistoricalCycloneForecastQA({Cesium,viewer,documentRef:document});
 const persistentWeatherLegend=mountPersistentWeatherLegend();
 
 // Historical cyclone research is paused and remains available as a separate

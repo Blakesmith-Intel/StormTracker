@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./src/sidebar-incident-counts-v1.css?v=single-interface-20261017-v1">
   <link rel="stylesheet" href="./src/playback-sidebar-hierarchy-v1.css?v=storm-compact-20261017-v4">
   <link rel="stylesheet" href="./src/sidebar-compact-refresh-v1.css?v=remove-radar-clock-20261017-v2">
-  <link rel="stylesheet" href="./src/single-interface-v1.css?v=cyclone-compact-playback-20261017-v1">
+  <link rel="stylesheet" href="./src/single-interface-v1.css?v=cyclone-historical-map-20261017-v1">
   <script>window.CESIUM_BASE_URL = "https://unpkg.com/cesium@1.145.0/Build/Cesium/";</script>
   <script src="https://unpkg.com/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 </head>
@@ -73,6 +73,7 @@
       </details>
     </section>
     <section class="card layer-controls"><h2 class="section-title">◫ Layers</h2>
+      <div class="layer-row cyclone-forecast-row"><button id="openCycloneForecastQa" type="button" aria-controls="cycloneForecastQaPanel" aria-expanded="false">🌀 Cyclone forecast · QA</button></div>
       <div class="layer-row basemap-row"><label for="basemapSelect">Basemap</label><select id="basemapSelect" aria-label="Map basemap"><option value="street">Street</option><option value="qld-imagery">Satellite · DEA Regional + Local Detail</option></select></div>
       <div class="layer-row flood-road-row"><label><input id="showFloodRoadClosures" type="checkbox"> <img id="floodRoadClosureLegendIcon" class="flood-road-key" alt="" aria-hidden="true"> Unplanned road closures</label></div>
       <div class="layer-row power-outage-row"><label><input id="showPowerOutages" type="checkbox"> <span class="power-outage-key power-outage-key-unplanned" aria-hidden="true"></span> Unplanned power outages</label></div>
@@ -111,6 +112,22 @@
       <div class="note">3-D is inferred. Doppler is radial velocity, not storm motion.</div>
     </section>
 
+    <section id="cycloneForecastQaPanel" aria-label="Historical BoM cyclone forecast track (QA only)" hidden>
+      <header><div><strong>Historical BoM cyclone forecast</strong><small>ORIGINAL ISSUED MAP · NOT LIVE · QA ONLY</small></div><button id="cycloneForecastQaClose" type="button" aria-label="Close cyclone forecast panel">×</button></header>
+      <p>Display original forecast centres, observed/forecast tracks and the actual BoM-issued likely-tracks areas. Never an active warning.</p>
+      <label for="cycloneGmlFile">Original BoM-issued GML track-map file</label>
+      <input id="cycloneGmlFile" type="file" accept=".gml,.xml,text/xml,application/xml">
+      <div class="cyclone-forecast-toggles">
+        <label><input type="checkbox" id="cycloneShow72" checked> 72h area <span class="cyclone-key-72"></span></label>
+        <label><input type="checkbox" id="cycloneShow120" checked> 120h area <span class="cyclone-key-120"></span></label>
+      </div>
+      <div class="cyclone-forecast-actions">
+        <button type="button" id="cycloneForecastQaFocus" disabled>Focus forecast</button>
+        <button type="button" id="cycloneForecastQaClear" disabled>Clear forecast</button>
+      </div>
+      <p id="cycloneForecastQaStatus" role="status" aria-live="polite">Select an original BoM cyclone GML file to view its issued forecast. No source is loaded.</p>
+      <p class="cyclone-forecast-source">Reference case: Fina, 20 November 2025 · BoM <code>IDD65401.gml</code> from its <a href="https://www.bom.gov.au/catalogue/Bureau_of_Meteorology_Anonymous_FTP_Service_user_guide.pdf" target="_blank" rel="noopener noreferrer">official anonymous FTP guide</a>. Use an FTP-capable client to download the original file for personal/local QA; StormTracker never uploads it.</p>
+    </section>
     <div id="nav"><button type="button" id="sidebarToggle" aria-controls="controlSidebar" aria-expanded="true" title="Maximise weather map">Hide controls</button><select id="radarSite" aria-label="Primary radar site in Queensland or northern New South Wales"><option value="66" selected>Brisbane (Mt Stapylton)</option></select><button id="multiRadarSelectButton" type="button" aria-controls="multiRadarPanel" aria-expanded="false">Radars <span id="multiRadarCount">1</span></button><button id="resetButton">Reset view</button></div>
     <div id="mapTools" aria-label="Map tools"><button id="measureToggle" type="button" aria-pressed="false" aria-controls="mapMeasurePanel">Measure</button></div>
     <div id="measureSurface" aria-label="Tap locations to measure distance on the map" hidden></div>
@@ -364,6 +381,6 @@
     <p class="note">Nearest scan must be within 8 minutes and inside the shared history. Analysis uses strict samples inside measured ≥40 dBZ storm footprints; the broader display decoder is display-only.</p>
   </div>
 </dialog>
-<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v4-sidebar-refresh-track-no-radar-clock-v1-single-interface-single-interface-terrain-headless-qa-multisite-native-wind-v1-doppler-handover-qa-v1-brewarrina-georef-qa-v1-doppler-sync-qa-v1-sidebar-fold-v1"></script>
+<script type="module" src="./src/live3d-operational-v9.js?v=v9-next-inferred-mosaic-sidebar-cone-webgl-track-river-20261013-clock-sync-pan-persist-atomic-3d-v3-river-gateway-v1-regional-satellite-v3-inferred-playback-gauge-v4-nsw-regional-dea-v5-mt-isa-cone-v2-anchor-plane-v3-cone-tip-v4-motion-confidence-v5-delta-reuse-20261016-v2-v9.20.0-optimised-3d-prod-v9.20.1-secondary-3d-fix-render-cache-qa-20261016-v1-responsive-memory-fidelity-v1-satellite-blue-gap-qa-v1-historical-koji-yasi-qa-v1-edge-sidebar-terrainfix-v1-representative-cyclones-v1-simple-ui-measure-v2-mobile-lga-roads-legend-v3-counts-spatial-navigation-qfd-v4-sidebar-refresh-track-no-radar-clock-v1-single-interface-single-interface-terrain-headless-qa-multisite-native-wind-v1-doppler-handover-qa-v1-brewarrina-georef-qa-v1-doppler-sync-qa-v1-sidebar-fold-v1-cyclone-issued-qa-v1"></script>
 </body>
 </html>

@@ -113,3 +113,55 @@ body.simple-ui #controlSidebar #radarPlaybackDetails[open] > summary {
   body.simple-ui #controlSidebar {gap:clamp(3px,.6dvh,7px)!important;}
   body.simple-ui #controlSidebar > .dashboard-heading {min-height:30px;}
 }
+
+/* Historical cyclone forecast, QA only: a single compact button in Layers.
+   Large controls float over the map, never lengthen the operator sidebar. */
+body.simple-ui #controlSidebar .cyclone-forecast-row {
+  display:block;
+  min-height:37px;
+  padding:4px 0;
+}
+body.simple-ui #openCycloneForecastQa {
+  width:100%;min-height:36px;text-align:left;
+  padding:6px 10px;border:1px solid #6a8da3;border-radius:9px;
+  background:#244457;color:#e7f7ff;font-size:12px;font-weight:700;
+}
+#cycloneForecastQaPanel[hidden]{display:none!important;}
+body.simple-ui #cycloneForecastQaPanel {
+  box-sizing:border-box;position:absolute;z-index:var(--stormtracker-control-z);
+  top:72px;right:10px;width:min(390px,calc(100% - 20px));
+  max-height:calc(100% - 82px);overflow:auto;
+  padding:12px;border:1px solid #729bb1;border-radius:13px;
+  background:#112733f7;color:#eaf8ff;
+  box-shadow:0 9px 27px #0008;font:12px/1.45 system-ui;
+}
+#cycloneForecastQaPanel header {display:flex;align-items:flex-start;gap:8px;justify-content:space-between;}
+#cycloneForecastQaPanel header strong {font-size:14px;display:block;}
+#cycloneForecastQaPanel header small {font-size:10px;color:#f1bc65;display:block;margin-top:3px;}
+#cycloneForecastQaPanel p {margin:9px 0;line-height:1.5;}
+#cycloneForecastQaPanel a {color:#9cdaff;}
+#cycloneForecastQaPanel button {min-height:35px;font:inherit;border-radius:8px;}
+#cycloneForecastQaClose {min-width:38px;font-size:20px!important;}
+#cycloneForecastQaPanel label[for="cycloneGmlFile"] {display:block;margin:8px 0 5px;font-weight:700;}
+#cycloneGmlFile {display:block;width:100%;max-width:100%;font-size:12px;}
+#cycloneForecastQaPanel .cyclone-forecast-toggles,
+#cycloneForecastQaPanel .cyclone-forecast-actions {
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:10px 0;
+}
+#cycloneForecastQaPanel .cyclone-forecast-toggles label {
+  display:flex;align-items:center;gap:6px;min-height:32px;
+}
+#cycloneForecastQaPanel input[type=checkbox] {width:18px;height:18px;}
+#cycloneForecastQaPanel .cyclone-forecast-actions button {flex:1 1 120px;}
+#cycloneForecastQaStatus {white-space:pre-wrap;overflow-wrap:anywhere;
+  background:#19384a;padding:10px;border-radius:8px;font:12px/1.55 system-ui;}
+#cycloneForecastQaPanel .cyclone-forecast-source {font-size:10px;color:#afcbd8;}
+.cyclone-key-72,.cyclone-key-120 {width:12px;height:12px;border-radius:2px;display:inline-block;border:2px solid;}
+.cyclone-key-72 {background:#36d1bc33;border-color:#36d1bc;}
+.cyclone-key-120 {background:#edba4b22;border-color:#edba4b;}
+@media(max-width:700px) {
+  body.simple-ui #cycloneForecastQaPanel{
+    top:66px;max-height:calc(100% - 74px);right:6px;
+    width:min(370px,calc(100% - 12px));padding:9px;
+  }
+}

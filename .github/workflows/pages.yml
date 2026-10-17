@@ -125,6 +125,25 @@ jobs:
           grep -Fq 'createInternalCycloneLiveQA' checked/production-v10.2.0/frontend/src/live3d-operational-v9.js
           grep -Fq 'Currently no tropical cyclone warnings' checked/production-v10.2.0/frontend/src/internal-cyclone-live-qa-v1.js
 
+      # QA is an independently pinned third preview. Never change the V10.2.0
+      # production source, nor the two existing diagnostic QA subpaths.
+      - name: Checkout isolated V10.3 wind-hook scientific QA source
+        uses: actions/checkout@v4
+        with:
+          ref: 325d6a49eaf829e765c599876767cd351b01a860
+          path: checked/wind-hook-v10.3-qa
+          persist-credentials: false
+
+      - name: Verify scientific QA tests and immutable preview source
+        run: |
+          set -euo pipefail
+          test "$(git -C checked/wind-hook-v10.3-qa rev-parse HEAD)" = "325d6a49eaf829e765c599876767cd351b01a860"
+          (cd checked/wind-hook-v10.3-qa && npm test)
+          node --check checked/wind-hook-v10.3-qa/frontend/src/severe-storm-v10.js
+          node --check checked/wind-hook-v10.3-qa/frontend/src/live3d-operational-v9.js
+          grep -Fq 'wind-hook-v10-3/' checked/wind-hook-v10.3-qa/frontend/src/live3d-operational-v9.js
+          grep -Fq 'const onCycloneQaPreview' checked/wind-hook-v10.3-qa/frontend/src/live3d-operational-v9.js
+
       - name: Verify historical V9.18.0 rollback source is immutable
         run: |
           set -euo pipefail
@@ -198,6 +217,24 @@ jobs:
           grep -Fq 'EXPERIMENTAL incremental 3-D QA' <<< "$preview_marker"
           preview_engine="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/incremental-3d/src/incremental-volume-renderer-v1.js")"
           grep -Fq 'createIncrementalVolumeRenderer' <<< "$preview_engine"
+          # A publicly hosted EXPERIMENTAL QA route, not active BoM warning
+          # service. Live operational app remains exactly pinned to V10.2.0.
+          wind_preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/wind-hook-v10-3/BUILD.txt")"
+          grep -Fq 'EXPERIMENTAL V10.3 wind-hook original radar QA source 325d6a49eaf829e765c599876767cd351b01a860' <<< "$wind_preview"
+          grep -Fq 'production sealed V10.2.0 untouched' <<< "$wind_preview"
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/preview/wind-hook-v10-3/src/live3d-operational-v9.js" \
+            | grep -F 'isWindHookQaPreview' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/preview/wind-hook-v10-3/src/severe-storm-v10.js" \
+            | grep -F 'assessV10RadarFrame' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/preview/wind-hook-v10-3/src/wind-hook-research-v10.css" \
+            | grep -F '#F6D94F' >/dev/null
+          for icon in v10-gust.svg v10-hook.svg v10-tornado.svg; do
+            curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+              "$base/preview/wind-hook-v10-3/assets/$icon" >/dev/null
+          done
           for component in \
             'src/responsive-memory-diagnostics-v1.js|Memory diagnostics' \
             'src/context-layers/basemap-manager-v1.js|GLOBAL_SATELLITE_FALLBACK' \

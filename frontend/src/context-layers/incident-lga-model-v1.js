@@ -95,3 +95,30 @@ export function filterLgaGroups(groups,query){
     items:[...new Map(suburbs.flatMap(s=>s.items).map(i=>[i.id,i])).values()]}:null;
  }).filter(Boolean);
 }
+
+// Council summary uses event IDs (never suburb rows) to prevent duplicates.
+// Provider customersAffected describes a whole outage event. When that event
+// appears under more than one council we flag the figure as shared, because
+// it must not be read as an exact number of customers inside either LGA.
+export function councilOutageCustomerSummary(council,allCouncils=[]){
+ const unique=new Map();
+ for(const item of council?.items||[]){
+   const id=String(item?.id||"");
+   if(id&&!unique.has(id))unique.set(id,item);
+ }
+ const crossCouncilIds=new Set();
+ for(const other of allCouncils){
+   if(other.key===council?.key)continue;
+   for(const item of other.items||[])
+     if(unique.has(String(item?.id||"")))crossCouncilIds.add(String(item.id));
+ }
+ const customers=[...unique.values()].reduce((sum,item)=>{
+   const count=Number(item?.summary?.customersAffected);
+   return sum+(Number.isFinite(count)&&count>0?count:0);
+ },0);
+ return {
+  outages:unique.size,
+  customers,
+  crossCouncilEvents:crossCouncilIds.size
+ };
+}

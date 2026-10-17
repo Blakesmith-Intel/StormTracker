@@ -15,7 +15,7 @@ import math
 import re
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 TC = "http://www.bom.gov.au/dtd/tc"
@@ -193,7 +193,7 @@ def decode_gml(path):
             when = utc(direct_text(element, "fixTime"))
             base_ms = datetime.fromisoformat(forecast_base.replace("Z", "+00:00"))
             when_ms = datetime.fromisoformat(when.replace("Z", "+00:00"))
-            if role == "forecast_fix" and not (base_ms < when_ms <= base_ms + __import__("datetime").timedelta(hours=121)):
+            if role == "forecast_fix" and not (base_ms < when_ms <= base_ms + timedelta(hours=121)):
                 raise SourceError("Forecast centre outside BoM 120-hour map")
             point = gml_coordinates(element, "Point")
             if len(point) != 1:

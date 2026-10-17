@@ -1,6 +1,7 @@
 import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 import { BORDER_RADAR_SITES, primaryRadarDopplerSites } from "./border-radar-sites-v1.js";
-import {createSupplementalDopplerDisplay, supportedSecondaryWindSites} from "./multi-doppler-display-v1.js?v=v10-wind-sites-20261017-v1";
+import {createSupplementalDopplerDisplay, supportedSecondaryWindSites,
+  waitForSecondaryWindPreparation} from "./multi-doppler-display-v1.js?v=v10-wind-sites-20261017-sync-qa-v1";
 import { createRadarSiteNameOverlay } from "./context-layers/radar-site-name-overlay-v1.js?v=nsw-border-radar-v1";
 import {
   loadLatestBomReflectivityMosaic,
@@ -955,7 +956,8 @@ const supplementalDopplerDisplay=createSupplementalDopplerDisplay({
         ? count+" additional Doppler-capable site"+(count===1?"":"s")+" selected · available in Doppler playback"
         : "Measured Doppler "+live+"/"+count+" additional sites · "+
           snapshot.sources.map(s=>s.id+" "+
-            (s.matched ? formatProductTime(s.observedUtc,{compact:true})
+            (s.matched ? formatProductTime(s.observedUtc,{compact:true})+
+              (s.offsetMinutes===null?"":` (${s.offsetMinutes>0?"+":""}${s.offsetMinutes}m)`)
               : (s.error??"loading"))).join(" · ");
   }
 });
@@ -3788,9 +3790,14 @@ async function showDopplerOnlyFrame(index) {
   const next=Math.max(0,Math.min(windPlaybackFrames.length-1,Number(index)));
   const source=windPlaybackFrames[next];
   if (!source) return false;
+  // Same source-true prepare/commit workflow used by multi-site RAIN:
+  // prepare genuine site-specific Doppler scans while the primary decodes,
+  // stage each optional native image, then reveal all ready sites together.
+  const extrasPreparing=supplementalDopplerDisplay.prepare(source.observedUtc);
   let prepared;
   try {
     prepared=await prepareWindObservation(next);
+    await waitForSecondaryWindPreparation(extrasPreparing);
   } catch(error) {
     setStatus("Doppler scan unavailable: "+error.message,"warning");
     return false;
@@ -3807,7 +3814,9 @@ async function showDopplerOnlyFrame(index) {
   }
   if(renderToken!==hybridSceneRenderToken || !isNativeDopplerPlayback())
     return false;
-  supplementalDopplerDisplay.showAt(source.observedUtc);
+  // Same atomic handover boundary as rain's supplementalRadarDisplay.commit.
+  // No asynchronous site-by-site map changes after primary UTC advances.
+  supplementalDopplerDisplay.commit(source.observedUtc);
   const time=prepared.record?.observedUtc ?? source.observedUtc;
   syncFrameSlider($("hybridFrameSlider"),windPlaybackFrames.length,next);
   $("hybridFrameLabel").textContent=(next+1)+"/"+windPlaybackFrames.length;

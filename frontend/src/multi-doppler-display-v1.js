@@ -5,7 +5,24 @@ import {nearestDopplerFrameForTime} from "./bom-doppler-intake-v3.js";
 
 export const MAX_SECONDARY_WIND_OFFSET_MINUTES=8;
 export const SECONDARY_WIND_BLEND_MS=120;
+export const SECONDARY_WIND_FRAME_SYNC_WAIT_MS=160;
 export const SECONDARY_WIND_RETRY_COOLDOWN_MS=60000;
+// Stage genuine secondary scans concurrently with primary decoding. At each
+// primary frame boundary, wait at most 160 ms for extra-site preparation;
+// never let an unavailable/sluggish radar freeze the operator playback.
+// Return false on timeout/error, with the source promise safely handled.
+export async function waitForSecondaryWindPreparation(preparation,
+  maxWaitMs=SECONDARY_WIND_FRAME_SYNC_WAIT_MS){
+  let timer;
+  try{
+    return await Promise.race([
+      Promise.resolve(preparation).then(()=>true,()=>false),
+      new Promise(resolve=>{
+        timer=setTimeout(()=>resolve(false),Math.max(0,maxWaitMs));
+      })
+    ]);
+  }finally{if(timer!=null)clearTimeout(timer);}
+}
 export function supportedSecondaryWindSites(primary,extras,sites){
   return [...new Set(extras??[])].filter(id=>id!==primary &&
     Boolean(sites?.[id]?.dopplerProduct) && sites[id].dopplerIntegrated!==false);
@@ -29,8 +46,13 @@ export function createSupplementalDopplerDisplay({
     enabled,targetUtc,selected:[...selected],
     sources:selected.map(id=>{
       const s=states.get(id);
+      const measured=Date.parse(s?.observedUtc??"");
+      const selectedTime=Date.parse(targetUtc??"");
+      const offsetMinutes=Number.isFinite(measured)&&Number.isFinite(selectedTime)
+        ? Math.round((measured-selectedTime)/6000)/10:null;
       return {id,observedUtc:s?.observedUtc??null,
-        error:s?.error??null,matched:Boolean(s?.observedUtc &&
+        offsetMinutes,error:s?.error??null,
+        matched:Boolean(s?.observedUtc &&
           matchingSecondaryWindFrame([{filename:"displayed",observedUtc:s.observedUtc}],targetUtc))};
     })
   });

@@ -1,6 +1,7 @@
 import { QLD_RADAR_SITES } from "./qld-radar-sites-v1.js";
 import { BORDER_RADAR_SITES, primaryRadarDopplerSites } from "./border-radar-sites-v1.js";
-import {createSupplementalDopplerDisplay, supportedSecondaryWindSites} from "./multi-doppler-display-v1.js?v=v10-wind-sites-20261017-v1";
+import {createSupplementalDopplerDisplay, supportedSecondaryWindSites,
+  waitForSecondaryWindPreparation} from "./multi-doppler-display-v1.js?v=v10-wind-sites-20261017-sync-qa-v1";
 import { createRadarSiteNameOverlay } from "./context-layers/radar-site-name-overlay-v1.js?v=nsw-border-radar-v1";
 import {
   loadLatestBomReflectivityMosaic,
@@ -955,7 +956,8 @@ const supplementalDopplerDisplay=createSupplementalDopplerDisplay({
         ? count+" additional Doppler-capable site"+(count===1?"":"s")+" selected · available in Doppler playback"
         : "Measured Doppler "+live+"/"+count+" additional sites · "+
           snapshot.sources.map(s=>s.id+" "+
-            (s.matched ? formatProductTime(s.observedUtc,{compact:true})
+            (s.matched ? formatProductTime(s.observedUtc,{compact:true})+
+              (s.offsetMinutes===null?"":` (${s.offsetMinutes>0?"+":""}${s.offsetMinutes}m)`)
               : (s.error??"loading"))).join(" · ");
   }
 });
@@ -3788,9 +3790,14 @@ async function showDopplerOnlyFrame(index) {
   const next=Math.max(0,Math.min(windPlaybackFrames.length-1,Number(index)));
   const source=windPlaybackFrames[next];
   if (!source) return false;
+  // Prime all selected genuine BoM velocity sources for THIS source UTC
+  // while the primary image decodes; the primary remains the only master clock.
+  // Never block the playback longer than the brief bounded sync budget.
+  const extrasPreparing=supplementalDopplerDisplay.prewarm(source.observedUtc);
   let prepared;
   try {
     prepared=await prepareWindObservation(next);
+    await waitForSecondaryWindPreparation(extrasPreparing);
   } catch(error) {
     setStatus("Doppler scan unavailable: "+error.message,"warning");
     return false;

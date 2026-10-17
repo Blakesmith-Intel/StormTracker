@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import {
   MAX_SECONDARY_WIND_OFFSET_MINUTES,SECONDARY_WIND_BLEND_MS,
+  SECONDARY_WIND_FRAME_SYNC_WAIT_MS,waitForSecondaryWindPreparation,
   SECONDARY_WIND_RETRY_COOLDOWN_MS,supportedSecondaryWindSites,
   matchingSecondaryWindFrame,createSupplementalDopplerDisplay
 } from "../src/multi-doppler-display-v1.js";
 
 assert.equal(MAX_SECONDARY_WIND_OFFSET_MINUTES,8);
 assert.equal(SECONDARY_WIND_BLEND_MS,120);
+assert.equal(SECONDARY_WIND_FRAME_SYNC_WAIT_MS,160);
+assert.equal(await waitForSecondaryWindPreparation(Promise.resolve()),true);
+assert.equal(await waitForSecondaryWindPreparation(Promise.reject(Error("Optional site offline"))),false);
+assert.equal(await waitForSecondaryWindPreparation(new Promise(()=>{}),5),false,
+  "Slow optional Doppler must never stop the primary timeline");
 assert.equal(SECONDARY_WIND_RETRY_COOLDOWN_MS,60000);
 const sites={
   "66":{dopplerProduct:"IDR66I"},
@@ -76,6 +82,8 @@ ctrl.showAt("2026-10-17T00:12:00Z");
 await until(()=>ctrl.visibleSites.length===3,"three genuine extra sites including Brewarrina");
 assert.deepEqual(ctrl.visibleSites.sort(),["08","50","93"]);
 assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,3);
+assert.ok(ctrl.snapshot().sources.every(s=>s.offsetMinutes===-2),
+  "Extra Doppler shows its observed UTC offset from the primary clock");
 assert.ok(hits.some(s=>s==="frame:08:f10"));
 assert.ok(hits.some(s=>s==="frame:50:f10"));
 assert.ok(hits.some(s=>s==="frame:93:f10"));
@@ -94,6 +102,8 @@ assert.equal(hits.length,before+3,"prewarming one future real scan per site shou
 ctrl.showAt("2026-10-17T00:30:00Z");
 await until(()=>ctrl.visibleSites.length===0,"out-of-range source clears");
 assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,0);
+assert.equal(ctrl.snapshot().sources.filter(s=>s.offsetMinutes!==null).length,0,
+  "Never report a measured offset for a missing Doppler scan");
 ctrl.setEnabled(false);
 assert.equal(visibleLayers.length,0,"rain-only mode must clear all wind images");
 ctrl.setEnabled(true);
@@ -149,3 +159,18 @@ down.showAt("2026-10-17T00:10:00Z");
 await until(()=>sourceFailureHits.length===2,"retry after cooldown");
 down.destroy();
 console.log("PASS secondary Doppler warm cache, source backoff and staged transitions.");
+
+import {readFileSync} from "node:fs";
+const primaryPlayback=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
+const windFrameBlock=primaryPlayback.slice(primaryPlayback.indexOf("async function showDopplerOnlyFrame"),
+  primaryPlayback.indexOf("async function showHybridFrame"));
+assert.ok(windFrameBlock.indexOf("supplementalDopplerDisplay.prewarm(source.observedUtc)")<
+  windFrameBlock.indexOf("commitWindObservation(prepared"),
+  "Secondary sites must start preparing alongside primary before its image reveal");
+assert.ok(windFrameBlock.indexOf("waitForSecondaryWindPreparation(extrasPreparing)")<
+  windFrameBlock.indexOf("commitWindObservation(prepared"),
+  "Short bounded sync preparation before the master clock advances");
+assert.ok(windFrameBlock.indexOf("commitWindObservation(prepared")<
+  windFrameBlock.indexOf("supplementalDopplerDisplay.showAt(source.observedUtc)"),
+  "Do not reveal extra-site time before the primary image commits");
+console.log("PASS bounded multi-site Doppler sync preparation and honest source UTC offsets.");

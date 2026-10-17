@@ -221,7 +221,7 @@ def decode_gml(path):
             # positions. Watch, warning and wind areas are NOT that range.
             role = {"tcForecastArea": "uncertainty_area",
                     "tcWatchArea": "watch_area", "tcWarningArea": "warning_area",
-                    "tcWindArea": "gale_wind_area"}[kind]
+                    "tcWindArea": "source_issued_wind_area"}[kind]
             if kind == "tcForecastArea":
                 area_type = direct_text(element, "areaType")
                 extent = direct_text(element, "extent")

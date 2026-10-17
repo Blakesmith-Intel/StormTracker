@@ -40,7 +40,7 @@ Some real issued **forecast fixes** `[longitude,latitude]`:
 | 2025-11-23 06:00 (+72 h) | 129.18669 | −12.63761 | 2 |
 | 2025-11-25 06:00 (+120 h) | 126.27685 | −13.44687 | 2 |
 
-These are forecasts **as issued**, *not* later observed best-track locations. The companion CXML contains its own original lead 0, 6, 12, 18, 24 … 120 h positions rounded to two decimals; no interpolated GML points or computed uncertainty polygons are admitted.
+These are forecasts **as issued**, *not* later observed best-track locations. The companion CXML contains its own original lead 0, 6, 12, 18, 24 … 120 h positions rounded to two decimals; no interpolated GML points or computed uncertainty polygons are admitted. **Eight matching forecast fix times** were checked against both original files; the largest lon/lat component difference was **0.00487°**, consistent with the CXML's two-decimal rounding. The other fix timestamps are not fabricated to force a one-to-one match.
 
 ## Reproduce strictly as a development audit
 

@@ -1,10 +1,10 @@
 # StormTracker — V10.2.0 cyclone UI baseline (17 October 2026)
 
-**Source-pinned release candidate:** `585615842067448d092ff8d1987c4121ab08086a` · release `v10.2.0` and restore branch `restore/v10.2.0` are created **only after** successful GitHub Pages production build and public post-deploy verification. The previous independently sealed V10.1.1 remains an immutable emergency recovery point.
+**Source-pinned release candidate:** `cdea3d6c760b7369a004df21a35a5bc688b365d2` · release `v10.2.0` and restore branch `restore/v10.2.0` are created **only after** successful GitHub Pages production build and public post-deploy verification. The previous independently sealed V10.1.1 remains an immutable emergency recovery point.
 
 **Production:** https://blakesmith-intel.github.io/StormTracker/
 
-**Expected public build marker after verified deployment:** `SEALED StormTracker V10.2.0 source 585615842067448d092ff8d1987c4121ab08086a`.
+**Expected public build marker after verified deployment:** `SEALED StormTracker V10.2.0 source cdea3d6c760b7369a004df21a35a5bc688b365d2`.
 
 ## Preserved accepted radar platform
 

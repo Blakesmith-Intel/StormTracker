@@ -201,6 +201,11 @@ jobs:
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' <<< "$root"
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
+          grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' <<< "$root"
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/context-layers/power-outages-v1.js" | grep -F 'styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)' >/dev/null
+          curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
+            "$base/src/context-layers/power-outages-operational-v1.js" | grep -F 'terrain-outline-v1-20261018' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/src/context-layers/river-gauge-layer-v1.js" | grep -F 'noData++' >/dev/null
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \

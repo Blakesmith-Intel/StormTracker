@@ -4,6 +4,8 @@
 import {nearestDopplerFrameForTime} from "./bom-doppler-intake-v3.js";
 
 export const MAX_SECONDARY_WIND_OFFSET_MINUTES=8;
+export const SECONDARY_WIND_BLEND_MS=120;
+export const SECONDARY_WIND_RETRY_COOLDOWN_MS=60000;
 export function supportedSecondaryWindSites(primary,extras,sites){
   return [...new Set(extras??[])].filter(id=>id!==primary &&
     Boolean(sites?.[id]?.dopplerProduct) && sites[id].dopplerIntegrated!==false);
@@ -39,13 +41,16 @@ export function createSupplementalDopplerDisplay({
     s.observedUtc=null;
     s.transition.clear();
     s.entries.clear();
+    s.failedFrameUntil.clear();
+    s.historyRetryAt=0;
     s.error=null;
   }
   function stateFor(id){
     let s=states.get(id);
     if(!s){
       s={id,token:0,desiredUtc:null,observedUtc:null,error:null,
-        history:null,historyAt:0,historyTask:null,pumping:false,entries:new Map(),
+        history:null,historyAt:0,historyTask:null,historyRetryAt:0,
+        pumping:false,entries:new Map(),failedFrameUntil:new Map(),
         transition:createTransition({imageryLayers,scene,retireLayer,
           requestRender:()=>scene.requestRender()})};
       states.set(id,s);
@@ -91,11 +96,18 @@ export function createSupplementalDopplerDisplay({
   async function ensureHistory(s,force=false){
     if(!force && s.history && now()-s.historyAt<historyFreshMs)return s.history;
     if(s.historyTask)return s.historyTask;
+    if(!force && now()<s.historyRetryAt)
+      throw Error("BoM Doppler history temporarily unavailable; waiting before retry");
     const task=bounded(Promise.resolve().then(()=>loadSiteHistory(s.id))).then(result=>{
       if(!Array.isArray(result?.frames) || !result?.palette)
         throw Error("No source-calibrated BoM velocity history");
-      s.history=result;s.historyAt=now();s.error=null;
+      s.history=result;s.historyAt=now();s.error=null;s.historyRetryAt=0;
       return result;
+    }).catch(error=>{
+      // Without backoff, each animation frame refetches the same rejected
+      // optional radar (often HTTP 403/502) and saturates the map/relay.
+      s.historyRetryAt=now()+SECONDARY_WIND_RETRY_COOLDOWN_MS;
+      throw error;
     });
     s.historyTask=task;
     try{return await task;}finally{if(s.historyTask===task)s.historyTask=null;}
@@ -103,12 +115,20 @@ export function createSupplementalDopplerDisplay({
   async function frameFor(s,frame,palette){
     const key=frame.filename;
     if(s.entries.has(key))return s.entries.get(key);
+    if(now()<(s.failedFrameUntil.get(key)??0))
+      throw Error("BoM Doppler image temporarily unavailable; waiting before retry");
     const task=bounded(Promise.resolve().then(()=>
       loadSiteFrame(s.id,frame,palette))).then(result=>{
       // A mislabeled source frame cannot be presented under a different UTC.
       if(!result?.provider || result.observedUtc!==frame.observedUtc)
         throw Error("BoM Doppler source UTC mismatch or imagery missing");
+      s.failedFrameUntil.delete(key);
       return result;
+    }).catch(error=>{
+      s.failedFrameUntil.set(key,now()+SECONDARY_WIND_RETRY_COOLDOWN_MS);
+      while(s.failedFrameUntil.size>12)
+        s.failedFrameUntil.delete(s.failedFrameUntil.keys().next().value);
+      throw error;
     });
     s.entries.set(key,task);
     while(s.entries.size>3)s.entries.delete(s.entries.keys().next().value);
@@ -143,7 +163,7 @@ export function createSupplementalDopplerDisplay({
           const layer=createLayer(result.provider);
           const key=s.id+"@"+match.frame.observedUtc;
           const handover=await s.transition.replacePrepared({
-            layer,key,alpha:1,durationMs:0,timeoutMs:1000,
+            layer,key,alpha:1,durationMs:SECONDARY_WIND_BLEND_MS,timeoutMs:1000,
             onAdded:()=>{
               const wind=getPrimaryLayer();
               if(wind && imageryLayers.indexOf(wind)>=0)imageryLayers.raiseToTop(wind);
@@ -193,6 +213,18 @@ export function createSupplementalDopplerDisplay({
     }
     report();
   }
+  // Decode and geographically project ONE upcoming observed scan per site
+  // off the critical displayed-frame path. Only genuine, per-site BoM frames
+  // are cached; no interpolation or extra source timestamps are created.
+  async function prewarm(utc){
+    if(!enabled || !Number.isFinite(Date.parse(utc)))return;
+    await Promise.allSettled(selected.map(async id=>{
+      const s=stateFor(id);
+      const {frames,palette}=await ensureHistory(s);
+      const match=matchingSecondaryWindFrame(frames,utc);
+      if(match)await frameFor(s,match.frame,palette);
+    }));
+  }
   async function refresh(){
     if(!enabled || !selected.length)return;
     await Promise.allSettled(selected.map(async id=>{
@@ -208,6 +240,6 @@ export function createSupplementalDopplerDisplay({
     for(const s of states.values())release(s);
     states.clear();selected=[];targetUtc=null;report();
   }
-  return {configure,setEnabled,showAt,refresh,destroy,snapshot:reported,
+  return {configure,setEnabled,showAt,prewarm,refresh,destroy,snapshot:reported,
     get visibleSites(){return [...states].filter(([,s])=>s.observedUtc).map(([id])=>id);}};
 }

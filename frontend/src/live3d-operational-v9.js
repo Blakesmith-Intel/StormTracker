@@ -793,8 +793,14 @@ function prewarmUpcomingFrames(index){
       const frame=windMode ? windPlaybackFrames[next] : hybridFrames[next];
       if(!frame)continue;
       try {
-        if (windMode) await prepareWindObservation(next);
-        else await prepareRadarSurfaceProvider(frame);
+        if (windMode) {
+          // Prepare one upcoming real secondary Doppler observation in
+          // parallel with the primary. Never gate the operator playback.
+          const upcoming=offset===1
+            ? supplementalDopplerDisplay.prewarm(frame.observedUtc)
+            : Promise.resolve();
+          await Promise.allSettled([prepareWindObservation(next),upcoming]);
+        } else await prepareRadarSurfaceProvider(frame);
       } catch(error) {
         // Genuine source images can expire from BoM; this is best effort.
         console.warn("Playback prewarm skipped",frame.observedUtc,error);

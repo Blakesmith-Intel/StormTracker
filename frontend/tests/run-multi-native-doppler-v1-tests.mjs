@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import {
-  MAX_SECONDARY_WIND_OFFSET_MINUTES,supportedSecondaryWindSites,
+  MAX_SECONDARY_WIND_OFFSET_MINUTES,SECONDARY_WIND_BLEND_MS,
+  SECONDARY_WIND_RETRY_COOLDOWN_MS,supportedSecondaryWindSites,
   matchingSecondaryWindFrame,createSupplementalDopplerDisplay
 } from "../src/multi-doppler-display-v1.js";
 
 assert.equal(MAX_SECONDARY_WIND_OFFSET_MINUTES,8);
+assert.equal(SECONDARY_WIND_BLEND_MS,120);
+assert.equal(SECONDARY_WIND_RETRY_COOLDOWN_MS,60000);
 const sites={
   "66":{dopplerProduct:"IDR66I"},
   "50":{dopplerProduct:"IDR50I"},
@@ -26,7 +29,7 @@ assert.equal(matchingSecondaryWindFrame(frames,"2026-10-17T00:12:00Z").frame.fil
 assert.equal(matchingSecondaryWindFrame(frames,"2026-10-17T00:26:00Z"),null);
 assert.equal(matchingSecondaryWindFrame(frames,"not-a-date"),null);
 
-const visibleLayers=[],transitions=new Map(),hits=[],updates=[];
+const visibleLayers=[],transitions=new Map(),hits=[],updates=[],blendDurations=[];
 const imageryLayers={
   add(layer){visibleLayers.push(layer);},
   remove(layer){const i=visibleLayers.indexOf(layer);if(i>=0)visibleLayers.splice(i,1);},
@@ -38,7 +41,8 @@ let delay=null,resolveDelay=null;
 function makeTransition(){
   const s={currentLayer:null,currentKey:null,
     clear(){if(this.currentLayer)imageryLayers.remove(this.currentLayer);this.currentLayer=null;this.currentKey=null;},
-    async replacePrepared({layer,key,onAdded}){
+    async replacePrepared({layer,key,onAdded,durationMs}){
+      blendDurations.push(durationMs);
       if(this.currentLayer)imageryLayers.remove(this.currentLayer);
       this.currentLayer=layer;this.currentKey=key;
       imageryLayers.add(layer);onAdded();return {changed:true,layer};
@@ -75,10 +79,15 @@ assert.equal(ctrl.snapshot().sources.filter(s=>s.matched).length,2);
 assert.ok(hits.some(s=>s==="frame:08:f10"));
 assert.ok(hits.some(s=>s==="frame:50:f10"));
 assert.ok(!hits.some(s=>s.includes(":93")||s.includes(":24")));
+assert.ok(blendDurations.every(ms=>ms===SECONDARY_WIND_BLEND_MS),
+  "Secondary wind transitions must preserve primary-like staged presentation");
 const before=hits.length;
+await ctrl.prewarm("2026-10-17T00:15:00Z");
+assert.ok(hits.filter(s=>s==="frame:50:f15").length===1);
+assert.ok(hits.filter(s=>s==="frame:08:f15").length===1);
 ctrl.showAt("2026-10-17T00:12:00Z");
 await new Promise(r=>setTimeout(r,15));
-assert.equal(hits.length,before,"same measured scan should reuse cached provider");
+assert.equal(hits.length,before+2,"prewarming one future real scan per site should not refetch the current scan");
 
 ctrl.showAt("2026-10-17T00:30:00Z");
 await until(()=>ctrl.visibleSites.length===0,"out-of-range source clears");
@@ -115,3 +124,26 @@ assert.equal(ctrl2.snapshot().sources[0].observedUtc,"2026-10-17T00:15:00Z");
 ctrl2.destroy();
 assert.equal(visibleLayers.length,0,"destroy retires all native wind textures");
 console.log("PASS simultaneous BoM secondary Doppler source selection, UTC matching, cache, stale async rejection, rain reset and cleanup.");
+
+const sourceFailureHits=[];
+let clock=0;
+const down=createSupplementalDopplerDisplay({
+  sites,imageryLayers,scene,createTransition:makeTransition,
+  createLayer:provider=>({provider}),
+  now:()=>clock,
+  loadSiteHistory:async id=>{sourceFailureHits.push(id);throw Error("HTTP 502");},
+  loadSiteFrame:async()=>{throw Error("Should not decode a failed source");}
+});
+down.configure("66",["50"]);down.setEnabled(true);
+down.showAt("2026-10-17T00:10:00Z");
+await until(()=>down.snapshot().sources[0].error!==null,"first unavailable source");
+assert.equal(sourceFailureHits.length,1);
+for(let i=0;i<10;i++)down.showAt("2026-10-17T00:15:00Z");
+await new Promise(resolve=>setTimeout(resolve,25));
+assert.equal(sourceFailureHits.length,1,
+  "Animated frames must not flood a failed optional Doppler relay");
+clock+=SECONDARY_WIND_RETRY_COOLDOWN_MS+1;
+down.showAt("2026-10-17T00:10:00Z");
+await until(()=>sourceFailureHits.length===2,"retry after cooldown");
+down.destroy();
+console.log("PASS secondary Doppler warm cache, source backoff and staged transitions.");

@@ -1,0 +1,42 @@
+name: Deploy Brewarrina Doppler isolated NSW preview relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy-nsw-doppler-preview.yml"
+      - "relay/worker.js"
+      - "relay/doppler-history-v1.js"
+      - "relay/wrangler-nsw-preview.jsonc"
+      - "frontend/src/border-radar-sites-v1.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stormtracker-nsw-doppler-preview-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate NSW Doppler contract and existing radar sources
+        run: |
+          npm test
+          node --check relay/worker.js
+      - name: Deploy NSW preview Cloudflare Worker only (never the Queensland worker)
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: relay
+          command: deploy --config wrangler-nsw-preview.jsonc
+      - name: Verify NSW Worker route and probe authentic Brewarrina source
+        run: node scripts/probe-brewarrina-wind-source.mjs

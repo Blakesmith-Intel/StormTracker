@@ -16,7 +16,7 @@ assert.ok(!html.includes('id="showSevereRadarAlerts"'));
 assert.ok(!html.includes('id="showExperimentalHookAlerts"'));
 assert.ok(runtime.includes("severeStormAlertOverlay.setEnabled(false)"));
 assert.ok(runtime.includes('const isWindHookQaPreview ='));
-assert.ok(runtime.includes('window.location.pathname.includes("/preview/incremental-3d/")'));
+assert.ok(runtime.includes('window.location.pathname.includes("/preview/wind-hook-v10-3/")'));
 assert.ok(runtime.includes('if (!windHookResearchEnabled) return;'));
 assert.ok(runtime.includes('if (!isWindHookQaPreview) return;'));
 assert.ok(!html.includes('id="enableWindHookResearch"'));

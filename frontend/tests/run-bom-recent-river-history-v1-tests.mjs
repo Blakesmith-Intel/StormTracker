@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   officialRecentTableTarget,
   parseBomRecentWaterLevels,
+  inspectBomRecentWaterLevelTable,
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
   classifyBoMRecentHistoryFailure,
@@ -45,6 +46,15 @@ assert.deepEqual(parsed,[
 assert.equal(parseBomRecentWaterLevels(table([["07/10/2026 10:00","-0.31"]]),{nowMs:now}).at(0).height,-0.31);
 assert.equal(parseBomRecentWaterLevels("<table><tr><td>wrong</td></tr></table>",{nowMs:now}).length,0);
 assert.equal(parseBomRecentWaterLevels(table([["06/10/2026 16:15","1.3"]]),{nowMs:now,maxAgeHours:4}).length,0);
+assert.deepEqual(inspectBomRecentWaterLevelTable(table([]),{nowMs:now}).samples,[]);
+assert.equal(inspectBomRecentWaterLevelTable(table([]),{nowMs:now}).formatRecognised,true);
+assert.equal(inspectBomRecentWaterLevelTable(
+  table([["08/10/2026 18:00","No Data"]]),{nowMs:now}).formatRecognised,true);
+assert.equal(inspectBomRecentWaterLevelTable(
+  table([["broken-date","1.25"]]),{nowMs:now}).formatRecognised,false);
+assert.equal(inspectBomRecentWaterLevelTable("<html>Blocked</html>").formatRecognised,false);
+assert.equal(inspectBomRecentWaterLevelTable(table([["08/10/2026 17:30","1.42"]]),
+  {nowMs:now}).samples.length,1);
 const feature=(tidal=true,flood="")=>({id:"bom:540384",properties:{
  location_types:tidal?"water level gauge;tide gauge;":"water level gauge;",
  STORMTRACKER_FLOOD_CLASS:flood,STORMTRACKER_TENDENCY:"rising",

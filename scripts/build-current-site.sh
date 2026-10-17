@@ -88,7 +88,7 @@ style=style_source[start:end]
 assert "#refreshRiverGaugesButton" in style
 style_path=site / "src/single-interface-v1.css"
 with style_path.open("a",encoding="utf-8") as out:
-    out.write("\\n"+style)
+    out.write("\n"+style)
 
 assert "bindRiverGaugeManualRefresh(" in (
     layers / "river-gauges-operational-v1.js").read_text()

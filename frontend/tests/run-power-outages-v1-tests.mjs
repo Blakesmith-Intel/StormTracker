@@ -17,8 +17,21 @@ import {
   filterCurrentPowerOutages,
   isCurrentPowerOutage,
   loadPowerOutages,
-  powerOutageSummary
+  powerOutageSummary,
+  styleTerrainClampedPowerOutagePolygon
 } from "../src/context-layers/power-outages-v1.js";
+
+// The warning "Entity geometry outlines are unsupported on terrain" must
+// never be triggered by outage-area polygon styling. Keep real terrain and
+// the original translucent fill; do not disable point-marker outlines.
+const currentPolygon={outline:true,outlineColor:"legacy"};
+const simulatedUnplannedColour={withAlpha:alpha=>({name:"unplanned",alpha})};
+assert.equal(styleTerrainClampedPowerOutagePolygon(currentPolygon,simulatedUnplannedColour),true);
+assert.equal(currentPolygon.outline,false);
+assert.deepEqual(currentPolygon.material,{name:"unplanned",alpha:0.34});
+assert.equal(currentPolygon.outlineColor,"legacy",
+  "Unneeded polygon outline colour can remain without enabling outline geometry");
+assert.equal(styleTerrainClampedPowerOutagePolygon(null,simulatedUnplannedColour),false);
 
 const now =
   Date.parse(

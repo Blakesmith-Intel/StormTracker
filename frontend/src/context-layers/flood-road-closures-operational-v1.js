@@ -4,7 +4,7 @@ import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=
 import {
   createFloodRoadClosureLayer,
   QLD_TRAFFIC_ATTRIBUTION
-} from "./flood-road-closures-v1.js?v=9.15.0-unplanned";
+} from "./flood-road-closures-v1.js?v=background-incident-refresh-20261017-v1";
 
 import {
   floodRoadClosureSummary

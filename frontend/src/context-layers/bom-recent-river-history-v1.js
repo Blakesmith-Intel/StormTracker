@@ -157,7 +157,11 @@ export async function fetchBoMRecentHistory(target,{
     const payload=await response.json();
     if(payload.format!=="StormTrackerBomRecentRiverHistoryV1"||
       payload.station!==target.station||payload.product!==target.product||
-      !Array.isArray(payload.samples))throw new Error("BoM station history response mismatch");
+      !Array.isArray(payload.samples)||
+      (payload.availability!==undefined &&
+        !["available","no_recent_observations"].includes(payload.availability))||
+      (payload.availability==="no_recent_observations" && payload.samples.length!==0))
+      throw new Error("BoM station history response mismatch");
     return payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
       .slice(-225);
   }finally {

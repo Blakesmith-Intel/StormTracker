@@ -56,6 +56,33 @@ export function parseBomRecentWaterLevels(html,{nowMs=Date.now(),maxAgeHours=48}
     .slice(-225).map(([time,height])=>({time,height}));
 }
 
+// Keep genuine missing observations separate from a changed HTML format.
+// No-date/no-level rows are normal for some BoM stations; numeric water levels
+// with unparseable date strings indicate a source contract change instead.
+export function inspectBomRecentWaterLevelTable(html,options={}) {
+  const source=String(html??"");
+  const table=source.match(/<table\b[^>]*\bid\s*=\s*["']tableStyle1["'][^>]*>([\s\S]*?)<\/table>/i);
+  if(!table)return {formatRecognised:false,samples:[],dataRows:0};
+  const rows=[...table[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+  if(!rows.length || !/Date\/Time/i.test(cleanCell(rows[0][1])) ||
+    !/Water\s*Level\s*\(m\)/i.test(cleanCell(rows[0][1])))
+    return {formatRecognised:false,samples:[],dataRows:Math.max(0,rows.length-1)};
+  let numericRows=0,parseableNumericRows=0;
+  for(const row of rows.slice(1,3000)){
+    const cells=[...row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)];
+    if(cells.length!==2)continue;
+    const height=cleanCell(cells[1][1]);
+    if(!/^[-+]?\d+(?:\.\d+)?$/.test(height))continue;
+    numericRows++;
+    if(parseTableDate(cleanCell(cells[0][1]))!==null)parseableNumericRows++;
+  }
+  if(numericRows>0 && parseableNumericRows===0)
+    return {formatRecognised:false,samples:[],dataRows:rows.length-1};
+  return {formatRecognised:true,
+    samples:parseBomRecentWaterLevels(source,options),
+    dataRows:Math.max(0,rows.length-1)};
+}
+
 // A gap also exists when BoM supplies no valid table link. Do not silently
 // treat an unscreenable rising gauge as a negative rapid-rise result.
 export function recentFloodHistoryGap(feature,history={},nowMs=Date.now()) {

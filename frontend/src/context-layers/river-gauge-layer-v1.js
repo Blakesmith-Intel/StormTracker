@@ -23,6 +23,8 @@ import {
 
 import {
   recentFloodHistoryCandidate,
+  recentFloodHistoryGap,
+  classifyBoMRecentHistoryFailure,
   fetchBoMRecentHistory
 } from "./bom-recent-river-history-v1.js?v=9.13.1";
 
@@ -337,16 +339,28 @@ export function createRiverGaugeLayer({
   let diagnostics = null;
   // Per-session bounded requests. The existing worker handles CORS, while
   // observations and flood classification remain entirely in the browser.
-  const recentRequested = new Set();
+  // Record attempted stations for diagnostics, not as a permanent retry ban.
+  const recentAttempted = new Set();
+  const recentNextAttemptAt = new Map();
   let recentLoading = null;
   // Optional historical station pages must never flood the relay or hold up
   // the core radar map when an upstream 403/429/502/503/504 occurs.
   let recentRelayBlockedUntil = 0;
   let latestSourceFeatures = [];
+  let lastBulletinsPartial = false;
 
   function persistHistory(){
     try {storage?.setItem(FLOOD_SIGNAL_STORAGE_KEY,JSON.stringify(history));}
     catch {/* storage quotas/private mode must not break the map */}
+  }
+
+  function recentHistoryCoverage(features=latestSourceFeatures,at=now()){
+    const gaps=features.map(feature=>recentFloodHistoryGap(feature,history,at))
+      .filter(Boolean);
+    return {
+      incomplete:gaps.length,
+      missingSource:gaps.filter(gap=>!gap.target).length
+    };
   }
 
   async function backfillRecentBoMHistory(features){
@@ -355,24 +369,28 @@ export function createRiverGaugeLayer({
     if(nowMs<recentRelayBlockedUntil)return null;
     const list=features.map(f=>recentFloodHistoryCandidate(f,history,nowMs))
       .filter(Boolean).sort((a,b)=>Number(a.tidal)-Number(b.tidal));
-    const candidates=list.filter(item=>!recentRequested.has(item.id))
-      .slice(0,Math.max(0,Math.min(24,48-recentRequested.size)));
+    // A previously failed or insufficient station becomes eligible again
+    // after its own cooldown. Cap each pass and fetch serially to protect BoM.
+    const candidates=list.filter(item=>nowMs >= (recentNextAttemptAt.get(item.id)??0))
+      .slice(0,24);
     if(!candidates.length)return null;
     recentLoading=(async()=>{
-      let success=0,failures=0;
-      // One optional BoM history lookup at a time. Previously four requests
-      // were already in flight when the first upstream 502 armed cooldown,
-      // generating repeated failures on an otherwise functional map.
-      // A bad gateway is a relay/source failure, NOT a reason to keep
-      // probing other stations in this same refresh.
+      let success=0,failures=0,lastFailureScope=null;
       for(const target of candidates){
         if(now()<recentRelayBlockedUntil)break;
-        recentRequested.add(target.id);
+        recentAttempted.add(target.id);
+        // A successful but still insufficient table may gain observations
+        // later; never permanently blacklist this station.
+        recentNextAttemptAt.set(target.id,now()+15*60*1000);
         try{
           const observations=await fetchBoMRecentHistory(target,{
             fetchImpl,timeoutMs:10000
           });
-          if(!observations.length){failures++;continue;}
+          if(!observations.length){
+            const empty=new Error("No usable BoM station observations");
+            empty.status=422;empty.code="no_usable_observations";
+            throw empty;
+          }
           const existing=new Map((history[target.id]??[])
             .map(x=>[x.time,x.height]));
           for(const obs of observations){
@@ -383,37 +401,61 @@ export function createRiverGaugeLayer({
           success++;
         }catch(error){
           failures++;
-          const message=String(error?.message??error);
-          const gatewayFailure=/BoM recent data HTTP (403|429|502|503|504)\b/.test(message);
-          if(gatewayFailure)recentRelayBlockedUntil=now()+15*60*1000;
-          // Native browser GET logs still show one genuine HTTP rejection.
-          // Do not add redundant warnings or continue a failing request
-          // burst; current official BoM bulletins remain authoritative.
+          const scope=classifyBoMRecentHistoryFailure(error);
+          lastFailureScope=scope;
+          if(scope==="station"){
+            // Missing/expired tables are station-specific. Other stations
+            // can still be checked on the same pass.
+            recentNextAttemptAt.set(target.id,now()+60*60*1000);
+          }else{
+            // Upstream denial, timeout or transport failure affects the
+            // whole optional service; one failure ends this request burst.
+            recentRelayBlockedUntil=now()+15*60*1000;
+          }
           if(failures===1)console.warn(
-            "Optional BoM station history unavailable; current flood bulletins retained:",message
+            "Optional BoM station history unavailable; current flood bulletins retained:",
+            String(error?.message??error)
           );
-          if(gatewayFailure)break;
+          if(scope==="service")break;
         }
       }
-      history=compactFloodHistory(history,latestSourceFeatures,now());
-      persistHistory();
-      // A 15-minute poll may have arrived while a station page loaded.
-      // Classify against the latest published BoM bulletin, never a stale one.
-      const signals=reconcileFloodEvents(
-        latestSourceFeatures,history,floodEvents,now()
-      );
-      floodEvents=signals.events;
-      persistEventState();
-      diagnostics={...(diagnostics??{}),floodSignalCounts:signals.counts,
-        recentHistory:{loaded:success,failed:failures,attempted:recentRequested.size}};
-      render({type:"FeatureCollection",features:signals.features});
-      if(failures || success){
-        const severity=failures?"warning":"ok";
-        onStatus({kind:severity,message:
-          `${signals.features.length} qualifying flood signals · ${success} BoM station histories loaded`+
-          (failures?` · ${failures} unavailable (screening incomplete)`:"")+
-          " · BoM warnings remain authoritative",
-          count:signals.features.length,...signals.counts,
+      if(success){
+        history=compactFloodHistory(history,latestSourceFeatures,now());
+        persistHistory();
+        // Only re-render when genuine new observations arrived. A failed
+        // optional history fetch must not rebuild the Cesium map.
+        const signals=reconcileFloodEvents(
+          latestSourceFeatures,history,floodEvents,now()
+        );
+        floodEvents=signals.events;
+        persistEventState();
+        render({type:"FeatureCollection",features:signals.features});
+        diagnostics={...(diagnostics??{}),floodSignalCounts:signals.counts};
+      }
+      const coverage=recentHistoryCoverage();
+      diagnostics={...(diagnostics??{}),
+        historyScreeningIncomplete:coverage.incomplete,
+        historySourceMissing:coverage.missingSource,
+        recentHistory:{loaded:success,failed:failures,
+          attempted:recentAttempted.size,screeningIncomplete:coverage.incomplete,
+          missingSource:coverage.missingSource,blockedUntil:recentRelayBlockedUntil}};
+      if(failures||success){
+        const counts=diagnostics.floodSignalCounts??{};
+        const count=currentFeatures.length;
+        const incompleteText=coverage.incomplete
+          ? ` · rapid-rise screening incomplete for ${coverage.incomplete} rising gauge(s)`
+          : "";
+        const missingText=coverage.missingSource
+          ? ` · ${coverage.missingSource} without a valid history link`
+          : "";
+        onStatus({kind:coverage.incomplete||lastBulletinsPartial?"warning":"ok",
+          message:`${count} qualifying flood signals · ${success} station histories loaded`+
+            (failures?` · ${failures} unavailable (${lastFailureScope??"unknown"})`:"")+
+            incompleteText+missingText+
+            " · screening only; follow BoM warnings",
+          count,...counts,partial:lastBulletinsPartial,
+          screeningIncomplete:coverage.incomplete,
+          historySourceMissing:coverage.missingSource,
           historyLoaded:success,historyFailed:failures});
       }
     })();
@@ -581,6 +623,7 @@ export function createRiverGaugeLayer({
         }
 
         latestSourceFeatures = result.payload.features;
+        lastBulletinsPartial = Boolean(result.partialBulletins);
         const alerts = reconcileFloodEvents(
           result.payload.features,history,floodEvents,observedAt
         );
@@ -599,6 +642,10 @@ export function createRiverGaugeLayer({
 
         const {major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
 
+        const screening=recentHistoryCoverage(latestSourceFeatures,observedAt);
+        diagnostics.historyScreeningIncomplete=screening.incomplete;
+        diagnostics.historySourceMissing=screening.missingSource;
+
         const partialText =
           result.partialBulletins
             ? ` · partial (${result.failedProducts.length} product${result.failedProducts.length === 1 ? "" : "s"} unavailable)`
@@ -606,12 +653,12 @@ export function createRiverGaugeLayer({
 
         onStatus({
           kind:
-            result.partialBulletins
+            (result.partialBulletins || screening.incomplete)
               ? "warning"
               : "ok",
 
           message:
-            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText} · screening only; follow BoM warnings`,
+            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}${screening.incomplete ? ` · rapid-rise screening incomplete for ${screening.incomplete} rising gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
 
           count:
             summaries.length,
@@ -623,6 +670,12 @@ export function createRiverGaugeLayer({
 
           partial:
             result.partialBulletins,
+
+          screeningIncomplete:
+            screening.incomplete,
+
+          historySourceMissing:
+            screening.missingSource,
 
           failedProducts:
             result.failedProducts,
@@ -785,7 +838,7 @@ export function createRiverGaugeLayer({
     get activeScreeningEvents(){return Object.keys(floodEvents).length;},
 
     get recentHistoryRequestCount() {
-      return recentRequested.size;
+      return recentAttempted.size;
     },
 
     attribution:

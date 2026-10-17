@@ -56,7 +56,9 @@ export function parseBomRecentWaterLevels(html,{nowMs=Date.now(),maxAgeHours=48}
     .slice(-225).map(([time,height])=>({time,height}));
 }
 
-export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now()) {
+// A gap also exists when BoM supplies no valid table link. Do not silently
+// treat an unscreenable rising gauge as a negative rapid-rise result.
+export function recentFloodHistoryGap(feature,history={},nowMs=Date.now()) {
   const p=feature?.properties??{};
   const tidal=String(p.location_types??"").toLowerCase().includes("tide gauge");
   const flood=String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase();
@@ -64,20 +66,33 @@ export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now())
   if(observed===null || nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS ||
      String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising" ||
      (!tidal&&flood!=="minor"))return null;
-  const target=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
-  if(!target)return null;
-  // Only candidate gauges whose history is insufficient for classification.
   const sample=history[String(feature?.id??"")]??[];
-  const valid=Array.isArray(sample)?sample.filter(x=>Number.isFinite(x?.time)): [];
-  if(tidal){
-    if(tidalRiseBaseline(valid,nowMs)!==null && latestRiseRate(valid,nowMs)!==null)return null;
-  }else if(valid.length>=2){
-    const sorted=[...valid].sort((a,b)=>a.time-b.time);
-    if(sorted.at(-1).time>=nowMs-90*60000 &&
-      sorted.some(x=>sorted.at(-1).time-x.time>=30*60000 &&
-       sorted.at(-1).time-x.time<=120*60000))return null;
-  }
-  return {id:String(feature.id),...target,tidal};
+  const valid=Array.isArray(sample)?sample.filter(x=>
+    Number.isFinite(x?.time)&&Number.isFinite(x?.height)): [];
+  const rate=latestRiseRate(valid,nowMs);
+  const aligned=rate!==null&&Math.abs(rate.observedAt-observed)<=10*60000;
+  if(aligned&&(!tidal||tidalRiseBaseline(valid,nowMs)!==null))return null;
+  return {
+    id:String(feature?.id??""),
+    tidal,
+    target:officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF)
+  };
+}
+
+export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now()) {
+  const gap=recentFloodHistoryGap(feature,history,nowMs);
+  return gap?.target?{id:gap.id,...gap.target,tidal:gap.tidal}:null;
+}
+
+// Distinguish an individual unavailable history table from a shared service
+// failure. Unknown/network/timeout errors use service-level backoff.
+export function classifyBoMRecentHistoryFailure(error) {
+  const status=Number(error?.status)||0;
+  const code=String(error?.code??"");
+  if(["no_usable_observations","station_history_not_published",
+      "invalid_station"].includes(code)||
+      [400,404,410,422].includes(status))return "station";
+  return "service";
 }
 
 export const RECENT_HISTORY_RELAY_URL =
@@ -98,7 +113,20 @@ export async function fetchBoMRecentHistory(target,{
     const response=await fetchImpl(url.toString(),{
       headers:{Accept:"application/json"},signal:abort.signal
     });
-    if(!response.ok)throw new Error("BoM recent data HTTP "+response.status);
+    if(!response.ok){
+      // The Worker returns typed JSON; legacy plain-text failures still fall
+      // back to their HTTP status without discarding the failure.
+      let failure=null;
+      try{failure=await response.json();}catch{}
+      const code=String(failure?.code??"").slice(0,80);
+      const error=new Error("BoM recent data HTTP "+response.status+
+        (code?" ("+code+")":""));
+      error.status=response.status;
+      error.code=code;
+      error.upstreamStatus=Number(failure?.upstreamStatus)||null;
+      error.scope=classifyBoMRecentHistoryFailure(error);
+      throw error;
+    }
     const payload=await response.json();
     if(payload.format!=="StormTrackerBomRecentRiverHistoryV1"||
       payload.station!==target.station||payload.product!==target.product||

@@ -54,6 +54,35 @@ try {
     headers:{Origin:"https://evil.example"}
   }),{});
   assert.equal(blocked.status,403);
+  // Do not collapse no-data, BoM access refusal and genuine upstream faults
+  // into indistinguishable 502 errors.
+  const scenarios=[
+    [404,404,"station_history_not_published"],
+    [410,404,"station_history_not_published"],
+    [403,503,"source_access_denied"],
+    [429,429,"source_rate_limited"],
+    [500,503,"bom_upstream_http"]
+  ];
+  for(const [upstreamStatus,expectedStatus,code] of scenarios){
+    globalThis.fetch=async()=>new Response("upstream error",{status:upstreamStatus});
+    const response=await worker.fetch(new Request(target,{
+      headers:{Origin:"https://blakesmith-intel.github.io"}
+    }),{});
+    assert.equal(response.status,expectedStatus);
+    assert.equal(response.headers.get("X-StormTracker-Error-Code"),code);
+    assert.equal(response.headers.get("Cache-Control"),"no-store");
+    const payload=await response.json();
+    assert.equal(payload.code,code);
+    assert.equal(payload.upstreamStatus,upstreamStatus);
+  }
+  globalThis.fetch=async()=>new Response("<html>No readings</html>",{status:200});
+  const empty=await worker.fetch(new Request(target),{});
+  assert.equal(empty.status,422);
+  assert.equal((await empty.json()).code,"no_usable_observations");
+  globalThis.fetch=async()=>{throw Error("upstream connection failed");};
+  const unreachable=await worker.fetch(new Request(target),{});
+  assert.equal(unreachable.status,503);
+  assert.equal((await unreachable.json()).code,"source_transport_failure");
 }finally {
   globalThis.fetch=originalFetch;
 }

@@ -23,9 +23,10 @@ assert.equal(formatIncidentRefreshTime(Date.parse("2026-10-17T00:45:00Z"),{faile
   "Refresh failed · last successful 10:45 AEST");
 assert.equal(formatIncidentRefreshTime(Date.parse("2026-10-17T00:45:00Z"),{failed:true,expired:true}),
   "Data expired · last successful 10:45 AEST");
-assert.equal((html.match(/id="radarClockGroup"/g)||[]).length,1);
-assert.match(html, /id="radarClockGroup" hidden aria-hidden="true"/);
-assert.match(css, /#controlSidebar #radarClockGroup\[hidden\]\{display:none!important;\}/);
+assert.equal((html.match(/id="radarClockGroup"/g)||[]).length,0);
+assert.doesNotMatch(html,/id="radarPlaybackTime"/);
+assert.doesNotMatch(css,/radarClockGroup/);
+assert.doesNotMatch(controller,/radarClockGroup|radarPlaybackTime/);
 assert.match(html, /id="windClockGroup" hidden/);
 assert.match(html, /id="status" class="radar-playback-status"/);
 assert.equal((html.match(/id="status"/g)||[]).length,1);

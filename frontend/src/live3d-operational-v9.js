@@ -128,6 +128,7 @@ import { setStormTrackTrailVisibility } from "./storm-track-trail-visibility-v1.
 import { clearReflectivityOverlaysForDoppler } from "./reflectivity-overlay-mode-v1.js?v=20261013";
 import { buildSevereStormFrameAlerts } from "./severe-storm-alerts-v1.js?v=9.16-preview";
 import { createSevereStormAlertOverlay } from "./severe-storm-alert-overlay-v1.js?v=9.16-preview";
+import { assessV10RadarFrame } from "./severe-storm-v10.js?v=v10-3-original-evidence-qa1";
 import { sourceFrameLoadDecision, summariseSkippedObservedFrames } from "./radar-frame-availability-v1.js?v=9.16-frame-health";
 import { buildIndependentDopplerFrames, independentDopplerIndex, nearestIndependentDopplerFrameIndex, nextNativeDopplerIndex } from "./independent-doppler-loop-v1.js?v=9.16-common-controls";
 import { DOPPLER_AVAILABLE_LOOP_VALUE, dopplerAvailableWindow, buildDopplerAvailableSchedule, buildDopplerOnlySchedule } from "./doppler-available-window-v1.js?v=9.16.11-doppler-only";
@@ -1020,8 +1021,29 @@ const severeStormAlertOverlay = createSevereStormAlertOverlay({
     scene.requestRender();
   }
 });
-// V9.16.0 production: unvalidated research alerts cannot appear.
+// V10.3 scientific work runs only in the separately addressed QA preview.
+// Production remains strictly free of research alert pins and extra controls.
+const isWindHookQaPreview =
+  window.location.pathname.includes("/preview/incremental-3d/");
+let windHookResearchEnabled = false;
 severeStormAlertOverlay.setEnabled(false);
+if (isWindHookQaPreview) {
+  const row = document.createElement("label");
+  row.id = "windHookResearchQaControl";
+  row.style.cssText = "position:absolute;right:16px;bottom:22px;z-index:33;display:flex;align-items:center;gap:7px;padding:7px 10px;background:#0c2939ef;border:1px solid #739db2;border-radius:7px;color:#f5f8fc;font:12px system-ui;max-width:min(92vw,270px)";
+  const check = document.createElement("input");
+  check.type = "checkbox";
+  check.id = "enableWindHookResearch";
+  check.checked = false;
+  row.append(check, document.createTextNode("Wind / hook radar signatures · RESEARCH"));
+  $("mapPanel").appendChild(row);
+  check.addEventListener("change", () => {
+    windHookResearchEnabled = check.checked;
+    severeStormAlertOverlay.setEnabled(windHookResearchEnabled);
+    if (windHookResearchEnabled) syncSevereStormAlerts(hybridFrameIndex);
+    else severeStormAlertOverlay.setFrame();
+  });
+}
 
 // Prevent an older asynchronous radar-image load from replacing a newer
 // frame after rapid scrubbing/playback.
@@ -2839,23 +2861,26 @@ function dopplerStateForFrame(
 }
 
 function syncSevereStormAlerts(index) {
-  // Preserve the research implementation for isolated previews, but do not
-  // calculate or display experimental classifications in production.
-  return;
+  if (!windHookResearchEnabled) return; // Zero work when disabled.
+  if (!isWindHookQaPreview) return; // Hard production boundary.
   const frame = hybridFrames[index];
   const result = hybridResults[index];
   const previousFrame = hybridFrames[index - 1] ?? null;
   const previousResult = hybridResults[index - 1] ?? null;
-  const detection = buildSevereStormFrameAlerts({
-    frame, result, previousFrame, previousResult,
-    dopplerState: dopplerStateForFrame(index),
-    enableExperimentalHook: false
+  const state = dopplerStateForFrame(index);
+  const originalRecords = (state?.records ?? [])
+    .filter(record => QLD_RADAR_SITES[record.radarId]?.analysisGeorefVerified === true)
+    .map(record => ({...record,geometryVerified:true}));
+  const detection = assessV10RadarFrame({
+    frame,result,previousFrame,previousResult,
+    dopplerState:{records:originalRecords}
   });
   severeStormAlertOverlay.setFrame({
     alerts: detection.alerts,
     observedFrame: Boolean(frame && result && !frame.sourceMetadata?.temporalInference),
-    windSupported: detection.windSourceSupported,
-    experimentalHook: false,
+    windSupported: detection.availableRadialEvidence,
+    experimentalHook: true,
+    researchV10:true,
     displayedUtc: frame?.observedUtc ?? null,
     atNewestFrame: index === hybridFrames.length - 1
   });

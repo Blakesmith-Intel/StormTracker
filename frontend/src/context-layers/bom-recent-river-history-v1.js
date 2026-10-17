@@ -33,7 +33,7 @@ function parseTableDate(value) {
 
 export function parseBomRecentWaterLevels(html,{nowMs=Date.now(),maxAgeHours=48}={}) {
   const source=String(html??"");
-  const table=source.match(/<table\b[^>]*\bid=["']tableStyle1["'][^>]*>([\s\S]*?)<\/table>/i);
+  const table=source.match(/<table\b[^>]*\bid\s*=\s*["']tableStyle1["'][^>]*>([\s\S]*?)<\/table>/i);
   if(!table)return [];
   const rows=[...table[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
   if(!rows.length || !/Date\/Time/i.test(cleanCell(rows[0][1])) ||

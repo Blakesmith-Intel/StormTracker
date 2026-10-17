@@ -97,3 +97,21 @@ for(const name of ["IDD65401.gml","IDD65441.xml"]){
   console.log(JSON.stringify({resource:name,bytes:xml.length,previewHeader:start,elementNames:declared.slice(0,140),featureElements:featureWords,firstGeometries:geometrySamples,sampleDates:times}));
  }catch(e){console.log(JSON.stringify({resource:name,error:String(e.message).slice(0,350)}))}
 }
+
+import {mkdtempSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+const temp=mkdtempSync(join(tmpdir(),"bom-issued-gml-"));
+try{
+ const gml=join(temp,"IDD65401.gml"),cxml=join(temp,"IDD65441.xml");
+ for(const [id,path] of [["IDD65401.gml",gml],["IDD65441.xml",cxml]]){
+   execFileSync("curl",["--fail","--silent","--show-error","-L",
+     "--max-time","20","--output",path,sourceRoot+id],{timeout:25000});
+ }
+ const output=execFileSync("python3",["scripts/decode-bom-issued-cyclone-gml.py",
+   "--gml",gml,"--cxml",cxml],{encoding:"utf8",timeout:15000,maxBuffer:150000});
+ console.log("BOF_FORECAST_DECODER_START");
+ console.log(output.slice(0,22000));
+ console.log("BOF_FORECAST_DECODER_END");
+}catch(e){console.error("Authentic sample source decode failed: "+String(e));process.exitCode=1;}
+finally{rmSync(temp,{recursive:true,force:true});}

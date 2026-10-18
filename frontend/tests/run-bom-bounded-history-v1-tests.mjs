@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {discoverBoundedBomReflectivityHistory}
   from "../src/bom-wmts-loop-v2.js";
-const now=Date.parse("2026-10-13T05:23:00Z");
+const now=Date.parse("2026-10-13T05:15:00Z");
 const times=Array.from({length:8},(_,i)=>
   new Date(Date.parse("2026-10-13T04:30:00Z")+i*300000)
     .toISOString().replace(".000Z","Z"));

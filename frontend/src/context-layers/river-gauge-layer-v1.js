@@ -22,6 +22,11 @@ import {
 } from "./river-flood-events-v1.js?v=9.13.2";
 
 import {
+  OFFICIAL_FLOOD_STORAGE_KEY,cleanConfirmedFloodStations,
+  retainConfirmedFloodStations
+} from "./river-official-flood-persistence-v1.js?v=20261018-stage-persistence";
+
+import {
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
   classifyBoMRecentHistoryFailure,
@@ -120,6 +125,8 @@ export function riverGaugeOperationalSummary(
       typeof properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H === "number"
         ? properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H : null,
 
+    observationStale:Boolean(properties.STORMTRACKER_OBSERVATION_STALE),
+    officialObservedAt:Number(properties.STORMTRACKER_OFFICIAL_OBSERVED_AT)||null,
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
     recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0),
     rapidRise:Boolean(properties.STORMTRACKER_RAPID_RISE),
@@ -207,6 +214,16 @@ export function createRiverGaugeLayer({
   let currentFeatures = [];
   let history = {};
   let floodEvents={};
+  let confirmedFloodCache={};
+  try {
+    confirmedFloodCache=cleanConfirmedFloodStations(
+      JSON.parse(storage?.getItem(OFFICIAL_FLOOD_STORAGE_KEY)??"{}"),now()
+    );
+  }catch{confirmedFloodCache={};}
+  const persistConfirmedFloods=()=>{
+    try{storage?.setItem(OFFICIAL_FLOOD_STORAGE_KEY,JSON.stringify(confirmedFloodCache));}
+    catch{/* private browsing or storage pressure: retain in session */}
+  };
   try {
     floodEvents=cleanFloodEvents(
       JSON.parse(storage?.getItem(FLOOD_EVENTS_STORAGE_KEY)??"{}"),now()
@@ -496,10 +513,15 @@ export function createRiverGaugeLayer({
           // Browser storage may be disabled or full; fresh evidence still works.
         }
 
-        latestSourceFeatures = result.payload.features;
+        const retained=retainConfirmedFloodStations(
+          result.payload.features,confirmedFloodCache,observedAt
+        );
+        confirmedFloodCache=retained.cache;
+        persistConfirmedFloods();
+        latestSourceFeatures=retained.features;
         lastBulletinsPartial = Boolean(result.partialBulletins);
         const alerts = reconcileFloodEvents(
-          result.payload.features,history,floodEvents,observedAt
+          retained.features,history,floodEvents,observedAt
         );
         floodEvents=alerts.events;
         persistEventState();
@@ -515,6 +537,8 @@ export function createRiverGaugeLayer({
           );
 
         const {minor,major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
+        const staleOfficial=alerts.features.filter(f=>
+          f.properties?.STORMTRACKER_OBSERVATION_STALE).length;
 
         const screening=recentHistoryCoverage(latestSourceFeatures,observedAt);
         diagnostics.historyScreeningIncomplete=screening.incomplete;
@@ -527,7 +551,7 @@ export function createRiverGaugeLayer({
 
         onStatus({
           kind:
-            (result.partialBulletins || screening.incomplete)
+            (result.partialBulletins || screening.incomplete || staleOfficial)
               ? "warning"
               : "ok",
 
@@ -542,6 +566,7 @@ export function createRiverGaugeLayer({
           minor,
           rapidRise,
           tidalAnomaly,
+          staleOfficial,
 
           partial:
             result.partialBulletins,
@@ -570,18 +595,24 @@ export function createRiverGaugeLayer({
     try {
       return await loading;
     } catch (error) {
-      // Never leave old warning-looking markers in place after a prolonged
-      // upstream outage: an old reading is not a current flood signal.
-      const expired = lastLoadedAt && now()-lastLoadedAt > FLOOD_SIGNAL_MAX_AGE_MS;
-      if (expired) {
-        render({type:"FeatureCollection",features:[]});
+      // An outage is not a measured fall below minor. Retain source-backed
+      // stations with a visibly stale observation; no old rapid-rise arrow.
+      const retained=retainConfirmedFloodStations(
+        [],confirmedFloodCache,now()
+      );
+      confirmedFloodCache=retained.cache;
+      if(retained.features.length){
+        const alerts=reconcileFloodEvents(
+          retained.features,history,floodEvents,now()
+        );
+        render({type:"FeatureCollection",features:alerts.features});
       }
       onStatus({
         kind:
           "error",
 
         message:
-          `${error?.message ?? String(error)}${expired ? " · old flood markers cleared" : ""}`
+          `${error?.message ?? String(error)}${Object.keys(confirmedFloodCache).length ? " · last confirmed flood stages retained, observations stale" : ""}`
       });
 
       throw error;

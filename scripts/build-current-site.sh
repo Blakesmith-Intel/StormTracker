@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -60,7 +60,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -87,6 +87,21 @@ old='const relayUnavailable=pressureGuardActive &&\n        /HTTP (?:403|429|502
 new='const relayUnavailable=pressureGuardActive &&\n        /HTTP (?:400|403|429|502|503|504)\\b/'
 assert data.count(old)==1,"Expected one bounded radar prewarm error guard"
 engine.write_text(data.replace(old,new,1),encoding="utf-8")
+# Attach ONLY the new opt-in rainfall layer to the sealed operator runtime.
+# This does not alter radar, cyclone, Doppler, tracking or 3D science.
+rain_engine=Path("frontend/src/live3d-operational-v9.js").read_text(encoding="utf-8")
+rain_import=('import {initialiseOperationalSignificantRainfall} from\n'
+  '  "./context-layers/significant-rainfall-operational-v1.js?v=20261018-rain-v1";')
+assert rain_engine.count(rain_import)==1
+assert data.count('import {\n  initialiseOperationalQfdTechnicalRescues\n}')==1
+data=data.replace('import {\n  initialiseOperationalQfdTechnicalRescues\n}',
+  rain_import+'\nimport {\n  initialiseOperationalQfdTechnicalRescues\n}',1)
+rain_mount='initialiseOperationalSignificantRainfall({viewer});'
+assert rain_engine.count(rain_mount)==1
+mount_anchor='initialiseOperationalQfdTechnicalRescues({\n  viewer\n});'
+assert data.count(mount_anchor)==1
+data=data.replace(mount_anchor,mount_anchor+'\n'+rain_mount,1)
+engine.write_text(data,encoding="utf-8")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
@@ -126,8 +141,20 @@ old_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-leg
 new_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span style=\"color:#1269e8\">↑</span> Rapid rise below minor · <span class=\"flood-green\">●</span> Minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span style=\"color:#1269e8\">↑</span> on any flood icon = rapid rise / potential flash flooding</div>"
 assert html.count(old_legend)==1, "Pinned production legend layout changed"
 html=html.replace(old_legend,new_legend,1)
-html_path.write_text(html.replace(
-    needle,"Flood signals</label>"+button_match.group(0)+"</div>"),encoding="utf-8")
+html=html.replace(needle,"Flood signals</label>"+button_match.group(0)+"</div>",1)
+# Copy the two exact maintenance-source rainfall controls into pinned HTML;
+# preserve the accepted one-screen sidebar and original panel ordering.
+for start_tag,end_tag,anchor in (
+  ("<!-- SIG_RAIN_ROW_START -->","<!-- SIG_RAIN_ROW_END -->",
+   '<div class="layer-row qfd-rescue-row">'),
+  ("<!-- SIG_RAIN_CARD_START -->","<!-- SIG_RAIN_CARD_END -->",
+   '<section id="riverGaugeInfo"')):
+    start=operator_html.index(start_tag)
+    end=operator_html.index(end_tag,start)+len(end_tag)
+    fragment=operator_html[start:end]
+    assert html.count(anchor)==1
+    html=html.replace(anchor,fragment+'\n    '+anchor,1)
+html_path.write_text(html,encoding="utf-8")
 
 style_source=Path("frontend/src/single-interface-v1.css").read_text(encoding="utf-8")
 start=style_source.index("/* One-row flood gauge refresh:")
@@ -137,7 +164,16 @@ assert "#refreshRiverGaugesButton" in style
 style_path=site / "src/single-interface-v1.css"
 with style_path.open("a",encoding="utf-8") as out:
     out.write("\n"+style)
+    rain_style=style_source[style_source.index("/* Significant rainfall adds one compact row"):]
+    assert ".significant-rainfall-row" in rain_style
+    out.write("\n"+rain_style)
 
+assert "initialiseOperationalSignificantRainfall({viewer})" in (
+    site / "src/live3d-operational-v9.js").read_text()
+assert "significantRainfallPeriod" in (
+    site / "live3d-operational-v9.html").read_text()
+assert "qualifiesRainfallSnapshot" in (
+    layers / "significant-rainfall-source-v1.js").read_text()
 assert "bindRiverGaugeManualRefresh(" in (
     layers / "river-gauges-operational-v1.js").read_text()
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
@@ -199,6 +235,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18\n")
     record.write("ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN 2026-10-18\n")
     record.write("FIRST-PARTY SVG FAVICON 2026-10-18\n")
+    record.write("SOURCE-VERIFIED QLD SIGNIFICANT RAINFALL 9AM/1HR ORANGE 50-99.9 RED 100+ 2026-10-18\n")
     record.write("OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18 (skip tagged tides, inland recovery, four serial requests, streamed deadline)\n")
     record.write("BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN AND BLUE-RISE MODIFIER 2026-10-18\n")
     record.write("BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18 (source-tag and measured oscillation)\\n")
@@ -223,6 +260,11 @@ node --check _site/src/context-layers/river-official-flood-persistence-v1.js
 grep -Fq "WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18" _site/BUILD.txt
 grep -Fq "retainConfirmedFloodStations(" _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq "last-confirmed-bom-flood-class" _site/src/context-layers/river-flood-signals-v1.js
+node --check _site/src/context-layers/significant-rainfall-source-v1.js
+node --check _site/src/context-layers/significant-rainfall-operational-v1.js
+grep -Fq 'SOURCE-VERIFIED QLD SIGNIFICANT RAINFALL 9AM/1HR ORANGE 50-99.9 RED 100+' _site/BUILD.txt
+grep -Fq 'significantRainfallPeriod' _site/live3d-operational-v9.html
+grep -Fq 'initialiseOperationalSignificantRainfall({viewer})' _site/src/live3d-operational-v9.js
 node --check _site/src/bom-doppler-intake-v3.js
 node --check _site/src/bom-wmts-loop-v2.js
 node --check _site/src/bom-wmts-published-times-v1.js

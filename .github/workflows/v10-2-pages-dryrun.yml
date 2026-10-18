@@ -55,6 +55,12 @@ jobs:
           grep -Fq 'WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18' _site/BUILD.txt
           grep -Fq 'ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN 2026-10-18' _site/BUILD.txt
           grep -Fq 'FIRST-PARTY SVG FAVICON 2026-10-18' _site/BUILD.txt
+          grep -Fq 'SOURCE-VERIFIED QLD SIGNIFICANT RAINFALL 9AM/1HR ORANGE 50-99.9 RED 100+' _site/BUILD.txt
+          grep -Fq 'showSignificantRainfall' _site/live3d-operational-v9.html
+          grep -Fq 'significantRainfallPeriod' _site/live3d-operational-v9.html
+          grep -Fq 'initialiseOperationalSignificantRainfall({viewer})' _site/src/live3d-operational-v9.js
+          grep -Fq 'parseBomRainfallMap' _site/src/context-layers/significant-rainfall-source-v1.js
+          grep -Fq 'SIGNIFICANT_RAINFALL_RELAY' _site/src/context-layers/significant-rainfall-operational-v1.js
           test -s _site/favicon.svg
           grep -Fq 'WMTS_SOURCE_FRESHNESS_MS' _site/src/bom-wmts-loop-v2.js
           grep -Fq 'unavailableTime.reject(observedUtc)' _site/src/bom-wmts-loop-v2.js

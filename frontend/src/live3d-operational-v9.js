@@ -187,6 +187,8 @@ import {
 import {
   initialiseOperationalQfdTechnicalRescues
 } from "./context-layers/qfd-technical-rescues-operational-v1.js?v=9.15.0-icons-onload";
+import {initialiseOperationalSignificantRainfall} from
+  "./context-layers/significant-rainfall-operational-v1.js?v=20261018-rain-v1";
 
 import {
   addVolumeDisplayPoint,
@@ -763,6 +765,7 @@ initialiseOperationalRiverGauges({
 initialiseOperationalQfdTechnicalRescues({
   viewer
 });
+initialiseOperationalSignificantRainfall({viewer});
 
 let hybridFrames = [];
 let hybridResults = [];

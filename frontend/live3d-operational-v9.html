@@ -85,6 +85,19 @@
         <path d="M10 18.5 C13.5 15.3 16.5 21.7 20 18.5 S26.5 15.3 30 18.5 M10 24 C13.5 20.8 16.5 27.2 20 24 S26.5 20.8 30 24" fill="none" stroke="#f0fbff" stroke-width="2.3" stroke-linecap="round"/>
       </svg> Flood signals</label><button id="refreshRiverGaugesButton" type="button" aria-label="Refresh BoM flood-gauge observations" title="Check for the latest available BoM river heights">↻ Refresh</button></div>
       <div id="riverGaugeSeverityLegend" class="note flood-severity-legend"><span style="color:#1269e8">↑</span> Rapid rise below minor · <span class="flood-green">●</span> Minor · <span class="flood-yellow">●</span> Moderate · <span class="flood-red">●</span> Major · <span style="color:#1269e8">↑</span> on any flood icon = rapid rise / potential flash flooding</div>
+
+      <!-- SIG_RAIN_ROW_START -->
+      <div class="layer-row significant-rainfall-row">
+        <label title="Show BoM rain gauges reporting at least 50 mm"><input id="showSignificantRainfall" type="checkbox"> <span class="significant-rain-icon" aria-hidden="true">●</span> Significant rain</label>
+        <select id="significantRainfallPeriod" aria-label="Rainfall observation period">
+          <option value="since9am">Since 9 am</option><option value="lastHour">Last hour</option>
+        </select>
+        <button id="refreshSignificantRainfallButton" type="button" title="Refresh significant rainfall observations" aria-label="Refresh rainfall">↻</button>
+      </div>
+      <details class="significant-rainfall-details"><summary><span class="significant-orange">●</span> 50–99.9 mm · <span class="significant-red">●</span> ≥100 mm</summary>
+        <div id="significantRainfallStatus" class="note" role="status" aria-live="off">Off by default · official BoM station totals</div>
+      </details>
+      <!-- SIG_RAIN_ROW_END -->
       <div class="layer-row qfd-rescue-row"><label><input id="showQfdTechnicalRescues" type="checkbox"> QFD rescue &amp; assistance</label></div>
       <details id="qfdIncidentLegendDetails" class="qfd-incident-key">
         <summary>QFD jobs · symbol legend</summary>
@@ -167,6 +180,14 @@
       <header><div class="qfd-rescue-info-heading"><img id="qfdTechnicalRescueInfoIcon" class="qfd-info-icon" alt="" aria-hidden="true"><div><span class="map-info-kicker">QFD PUBLIC INCIDENT · GROUPED TYPE</span><strong id="qfdTechnicalRescueInfoTitle">Technical rescue</strong></div></div><button id="closeQfdTechnicalRescueInfo" type="button" aria-label="Close QFD rescue details">×</button></header>
       <div id="qfdTechnicalRescueInfoRows" class="metric"></div>
     </section>
+
+    <!-- SIG_RAIN_CARD_START -->
+    <section id="significantRainfallInfo" class="map-info-card significant-rainfall-info" aria-live="polite" hidden>
+      <header><div><span class="map-info-kicker">BoM RAINFALL OBSERVATION</span><strong id="significantRainfallInfoTitle">Rainfall station</strong></div>
+      <button id="closeSignificantRainfallInfo" type="button" aria-label="Close rainfall details">×</button></header>
+      <div id="significantRainfallInfoRows" class="metric"></div>
+    </section>
+    <!-- SIG_RAIN_CARD_END -->
     <section id="riverGaugeInfo" class="map-info-card river-gauge-info" aria-live="polite" hidden>
       <header><div class="river-gauge-info-heading"><span class="river-gauge-key river-gauge-key-large" aria-hidden="true"></span><div><span id="riverGaugeInfoKicker" class="map-info-kicker">RIVER GAUGE</span><strong id="riverGaugeInfoTitle">River gauge</strong></div></div><button id="closeRiverGaugeInfo" type="button" aria-label="Close river gauge details">×</button></header>
       <div id="riverGaugeInfoRows" class="metric"></div>

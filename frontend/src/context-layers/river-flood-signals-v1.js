@@ -91,17 +91,83 @@ export function cleanFloodSignalHistory(data,nowMs=Date.now()) {
   return history;
 }
 
-// Only the tidal rate screen needs two days of measurements. Retain four
-// hours for other river gauges so 1,000+ monitored sites fit mobile storage.
+// Source station ID remains the ONLY join key. Tidal identification is a
+// separate HYDROLOGICAL screening decision using source metadata and actual
+// height observations. No station or locality name-based matches.
+export function observedTidalOscillation(samples, nowMs=Date.now()) {
+  const data=(Array.isArray(samples)?samples:[]).filter(p=>
+    finite(p?.time)&&finite(p?.height) &&
+    p.time>=nowMs-FLOOD_SIGNAL_HISTORY_MS &&
+    p.time<=nowMs+5*60000).sort((a,b)=>a.time-b.time);
+  if(data.length<12 || data.at(-1).time-data[0].time<16*3600000)return false;
+  const runs=[];
+  for(let i=1;i<data.length;i++){
+    const dt=data[i].time-data[i-1].time;
+    if(dt<10*60000 || dt>120*60000)continue;
+    const delta=data[i].height-data[i-1].height;
+    // Ignore sensor jitter: a normal tide has sustained material limbs.
+    if(Math.abs(delta)<0.035)continue;
+    const sign=Math.sign(delta);
+    const prev=runs.at(-1);
+    if(prev && prev.sign===sign){
+      prev.finish=data[i].time;
+      prev.change+=Math.abs(delta);
+    }else{
+      runs.push({sign,start:data[i-1].time,finish:data[i].time,change:Math.abs(delta)});
+    }
+  }
+  const limbs=runs.filter(r=>
+    r.finish-r.start>=60*60000 && r.change>=0.18);
+  if(limbs.length<4)return false;
+  // At least three alternating significant tidal-like reversals, over a
+  // sensible time window. A single flash-flood wave cannot establish this.
+  for(let i=3;i<limbs.length;i++){
+    const tail=limbs.slice(i-3,i+1);
+    if(tail.some((r,j)=>j>0 && (r.sign===tail[j-1].sign ||
+        r.start-tail[j-1].finish>120*60000)))continue;
+    if(tail[3].finish-tail[0].start>=12*3600000)return true;
+  }
+  return false;
+}
+
+function recentTidalReversal(samples,nowMs=Date.now()){
+  const pts=(Array.isArray(samples)?samples:[]).filter(p=>finite(p?.time)&&finite(p?.height)&&
+    p.time>=nowMs-6*3600000 && p.time<=nowMs+5*60000).sort((a,b)=>a.time-b.time);
+  if(pts.length<4)return false;
+  let up=false,down=false;
+  for(let i=1;i<pts.length;i++){
+    const dt=pts[i].time-pts[i-1].time;
+    if(dt<10*60000||dt>120*60000)continue;
+    const delta=pts[i].height-pts[i-1].height;
+    if(delta>0.12)up=true;
+    if(delta< -0.12)down=true;
+  }
+  return up&&down;
+}
+
+export function isObservedTidalGauge(feature,samples=[],nowMs=Date.now()){
+  const types=String(feature?.properties?.location_types??"").toLowerCase();
+  // Source metadata "tide gauge" is decisive; observed tidal oscillation
+  // catches river-level stations that are tide affected but not tagged.
+  return /tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types) ||
+    observedTidalOscillation(samples,nowMs);
+}
+
+// Retain longer history only for officially tidal gauges or gauged water
+// levels showing source-observed tidal behaviour. Another river stays bounded
+// to four hours to preserve mobile storage (1,000+ QLD sites).
 // Missing stations preserve their recent history through a partial bulletin.
 export function compactFloodHistory(history, features=[], nowMs=Date.now()) {
   const types=new Map((features??[]).map(f=>[
     String(f?.id??""),
-    String(f?.properties?.location_types??"").toLowerCase().includes("tide gauge")
+    f
   ]));
   const stored={};
   for(const [id,samples] of Object.entries(history??{})) {
-    const age=types.get(id)===false ? 4*3600000 : FLOOD_SIGNAL_HISTORY_MS;
+    const f=types.get(id);
+    const keepTidal=Boolean(f && (isObservedTidalGauge(f,samples,nowMs) ||
+      recentTidalReversal(samples,nowMs)));
+    const age=keepTidal?FLOOD_SIGNAL_HISTORY_MS:4*3600000;
     const current=Array.isArray(samples) ? samples.filter(p=>
       finite(p?.time) && finite(p?.height) &&
       p.time >= nowMs-age && p.time <= nowMs+5*60000
@@ -159,9 +225,9 @@ export function tidalRiseBaseline(samples,nowMs=Date.now()){
 export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const p=feature?.properties??{};
   const level=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
-  const tidal=String(p.location_types??"").toLowerCase().includes("tide gauge");
-  const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
   const samples=history[String(feature?.id??"")]??[];
+  const tidal=isObservedTidalGauge(feature,samples,nowMs);
+  const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
   const recent=latestRiseRate(samples,nowMs);
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
   const timely=observed!==null && nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
@@ -169,12 +235,13 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   if(!timely)return {show:false,reason:"Missing or stale current BoM flood observation"};
   const rateMatches=recent && tendency==="rising" &&
     Math.abs(recent.observedAt-observed)<=10*60000;
-  const tidalBaseline=rateMatches && tidal?tidalRiseBaseline(samples,nowMs):null;
-  const rapidlyRising=Boolean(rateMatches && (tidal
-    ? tidalBaseline!==null &&
-      recent.rateMetresPerHour>=TIDAL_MIN_ANOMALOUS_RISE_M_PER_H &&
-      recent.rateMetresPerHour>=tidalBaseline*TIDAL_ANOMALY_FACTOR
-    : recent.rateMetresPerHour>=NON_TIDAL_RAPID_RISE_M_PER_H));
+  // A flood or flash-flood signature cannot be diagnosed from a normal
+  // incoming tide. For source-tagged or observation-confirmed tidal sites,
+  // suppress this independent rate-only modifier entirely. Original BoM
+  // minor/moderate/major classifications still display without restriction.
+  const rapidlyRising=Boolean(rateMatches && !tidal &&
+    recent.rateMetresPerHour>=NON_TIDAL_RAPID_RISE_M_PER_H);
+  const tidalBaseline=tidal?tidalRiseBaseline(samples,nowMs):null;
   if(["minor","moderate","major"].includes(level)){
     return {show:true,state:level,source:"bom-classification",
       reason:level+" flood classification (BoM)"+
@@ -184,7 +251,7 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   }
   if(rapidlyRising){
     return {show:true,state:"rapid-rise",rapidRise:true,
-      source:tidal?"local-tide-rate-screen":"local-rate-screen",
+      source:"local-rate-screen",
       reason:"Measured rapid rise below minor; potential flash flooding, not a confirmed BoM flash-flood warning",
       rise:recent,tidalBaselineMetresPerHour:tidalBaseline};
   }
@@ -199,8 +266,7 @@ export function filterOperationalFloodGauges(features,history={},nowMs=Date.now(
     if(!result.show)continue;
     if(["minor","moderate","major"].includes(result.state))counts[result.state]++;
     if(result.rapidRise)counts.rapidRise++;
-    if(result.rapidRise && String(feature?.properties?.location_types??"").toLowerCase().includes("tide gauge"))
-      counts.tidalAnomaly++;
+    // Tidal behaviour cannot cause a flash-rise marker or anomaly count.
     selected.push({...feature,properties:{
       ...feature.properties,
       STORMTRACKER_DISPLAY_STATE:result.state,

@@ -1,6 +1,7 @@
 import {addOfficialSourceRow,bomGaugePlotUrl,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.13.2";
 import {
   createRiverGaugeLayer,
+  createRiverGaugeMarkerImage,
   riverGaugeOperationalSummary
 } from "./river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015";
 
@@ -134,6 +135,24 @@ function addDetailRow(
   );
 }
 
+// The selected gauge panel uses the EXACT marker renderer and current BoM
+// flood category from the map. Its blue arrow is never a separate warning
+// colour; rate-only tidal change does not qualify for that modifier.
+export function riverGaugePanelAppearance(summary) {
+  const state=["minor","moderate","major"].includes(summary?.displayState)
+    ? summary.displayState:"rapid-rise";
+  const rise=Boolean(summary?.rapidRise) || state==="rapid-rise";
+  const category=state==="rapid-rise"
+    ? "RAPID RISE BELOW MINOR · SCREENING"
+    : "BOM "+state.toUpperCase()+" FLOOD"+(rise?" · RAPID RISE":"");
+  return {
+    state,
+    rapidRise:rise,
+    category,
+    image:createRiverGaugeMarkerImage(state,rise)
+  };
+}
+
 function showRiverGaugeInfo(
   feature
 ) {
@@ -164,7 +183,8 @@ function showRiverGaugeInfo(
     panel.dataset
       .gaugeId =
       "";
-
+    panel.dataset.gaugeState = "";
+    panel.dataset.rapidRise = "false";
     return;
   }
 
@@ -191,20 +211,20 @@ function showRiverGaugeInfo(
     .gaugeId =
     summary.id;
 
-  panel.dataset
-    .gaugeState =
-    summary.displayState;
+  const appearance=riverGaugePanelAppearance(summary);
+  panel.dataset.gaugeState=appearance.state;
+  panel.dataset.rapidRise=String(appearance.rapidRise);
 
-  title.textContent =
-    summary.name;
-
-  if (kicker) {
-    kicker.textContent =
-      summary.displayState === "tidal-anomaly"
-        ? "UNUSUAL TIDAL RISE · SCREENING"
-        : summary.displayState === "rapid-rise"
-          ? "RAPID RIVER RISE · SCREENING"
-          : "BOM RIVER FLOOD CLASSIFICATION";
+  title.textContent=summary.name;
+  if(kicker)kicker.textContent=appearance.category;
+  const pin=panel.querySelector(".river-gauge-key");
+  if(pin){
+    // Replace obsolete generic circle with the same SVG used on Cesium.
+    const icon=document.createElement("img");
+    icon.src=appearance.image;
+    icon.alt="";
+    icon.setAttribute("aria-hidden","true");
+    pin.replaceChildren(icon);
   }
 
   rows.replaceChildren();
@@ -245,10 +265,14 @@ function showRiverGaugeInfo(
   addDetailRow(
     rows,
     "Flood class",
-    labelFloodClass(
-      summary.floodClass
-    )
+    labelFloodClass(summary.floodClass)
   );
+  addDetailRow(rows,"Rapid rise / flash-flood potential",
+    appearance.rapidRise
+      ? "Measured rapid rise · screening indicator, not a BoM flash-flood warning"
+      : summary.tidalScreened
+        ? "Tidal influence · rate-only alerts excluded"
+        : "Not indicated by current measured observations");
 
   addDetailRow(
     rows,
@@ -308,10 +332,10 @@ function showRiverGaugeInfo(
     directPlot?"View recent observations and river-height plot":"View BoM river-height station data",
     directPlot||OFFICIAL_SOURCE_LINKS.bom);
 
-  addDetailRow(rows, "Interpretation",
-    summary.displayState === "rapid-rise" || summary.displayState === "tidal-anomaly"
-      ? "Screening indicator only; check BoM warnings and local conditions. Not a confirmed flash flood."
-      : "Observed BoM flood classification; follow current official warnings and emergency advice.");
+  addDetailRow(rows,"Interpretation",
+    appearance.state==="rapid-rise"
+      ? "Measured rapid-rise screening only. Potential flash flooding is not an official BoM warning."
+      : "Current BoM flood classification controls colour. The blue arrow only appears for independent qualifying measured rapid rise; consult BoM warnings.");
 
   panel.hidden =
     false;

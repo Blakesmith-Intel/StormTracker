@@ -59,12 +59,13 @@ await layer.refresh();
 // An official minor gauge now appears before optional station history
 // loads. Wait for the separate async measured-rate screen to UPGRADE it.
 for(let i=0;i<60 &&
- layer.features[0]?.properties?.STORMTRACKER_DISPLAY_STATE!=="rapid-rise";i++){
+ layer.features[0]?.properties?.STORMTRACKER_RAPID_RISE!==true;i++){
  await new Promise(resolve=>setTimeout(resolve,15));
 }
 assert.equal(layer.features.length,1,
  "BoM history should surface measured rapid rise on first page load");
-assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
+assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
+assert.equal(layer.features[0].properties.STORMTRACKER_RAPID_RISE,true);
 assert.ok(layer.features[0].properties.STORMTRACKER_RISE_RATE_M_PER_H>0.30);
 assert.equal(layer.features[0].id,gauge.id);
 assert.equal(upstreamHistoryCalls,1);

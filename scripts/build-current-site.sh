@@ -44,7 +44,7 @@ layers = site / "src/context-layers"
 for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -96,6 +96,7 @@ assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
+assert '"source_response_too_large"' in (layers / "bom-recent-river-history-v1.js").read_text()
 power = (layers / "power-outages-v1.js").read_text()
 assert "styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)" in power
 assert "entity.polygon\n          .outline =\n          true;" not in power
@@ -104,6 +105,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("RIVER-HISTORY NO-DATA V2 2026-10-18 (200 empty, source-format guarded)\n")
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
+    record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
 PY
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js

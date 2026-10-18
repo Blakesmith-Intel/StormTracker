@@ -86,6 +86,7 @@ const target=officialRecentTableTarget("/fwo/IDQ65388/IDQ65388.540384.plt.shtml"
 for(const [status,code,scope] of [
   [422,"no_usable_observations","station"],
   [404,"station_history_not_published","station"],
+  [502,"source_response_too_large","station"],
   [503,"source_access_denied","service"],
   [429,"source_rate_limited","service"]
 ]){

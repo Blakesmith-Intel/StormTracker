@@ -53,7 +53,10 @@ jobs:
           grep -Fq 'MANUAL FLOOD GAUGE REFRESH 2026-10-18' _site/BUILD.txt
           grep -Fq 'BOUNDED STREAMING BOM RIVER TABLES 2026-10-18' _site/BUILD.txt
           grep -Fq 'STATEWIDE TIDAL REFERENCE RAPID-RISE THRESHOLD 1.40 M_PER_H 2026-10-18' _site/BUILD.txt
-          grep -Fq 'NON_TIDAL_RAPID_RISE_M_PER_H = 1.40' _site/src/context-layers/river-flood-signals-v1.js
+          grep -Fq 'NON_TIDAL_RAPID_RISE_M_PER_H = 0.30' _site/src/context-layers/river-flood-signals-v1.js
+          grep -Fq 'COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H = 1.40' _site/src/context-layers/river-flood-signals-v1.js
+          grep -Fq 'INLAND_COAST_BUFFER_KM = 125' _site/src/context-layers/river-gauge-coastal-screen-v1.js
+          grep -Fq 'INLAND RAPID RISE 0.30 M_PER_H COASTAL 1.40 M_PER_H 125 KM' _site/BUILD.txt
           grep -Fq 'source_response_too_large' _site/src/context-layers/bom-recent-river-history-v1.js
           grep -Fq 'river-large-table-stream-v1-20261018' _site/index.html
           grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html

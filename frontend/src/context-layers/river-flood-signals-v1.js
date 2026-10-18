@@ -1,23 +1,22 @@
 // StormTracker operational flood signals, not BoM-issued flash-flood warnings.
 // Severe classifications are authoritative. Rise-rate flags are deliberately
 // conservative heuristics and require real successive observed timestamps.
+import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
+
 export const FLOOD_SIGNAL_STORAGE_KEY = "stormtracker.qld-flood-observations.v1";
 export const FLOOD_SIGNAL_HISTORY_MS = 48 * 60 * 60 * 1000;
 export const FLOOD_SIGNAL_MAX_AGE_MS = 90 * 60 * 1000;
 export const FLOOD_SIGNAL_MAX_INTERVAL_MS = 120 * 60 * 1000;
 export const FLOOD_SIGNAL_MIN_INTERVAL_MS = 30 * 60 * 1000;
-// Conservative statewide screening floor derived from 2026 MSQ tidal planes.
-// Equal-port illustrative sinusoidal SPRING-TIDE maximum-rise estimates at 9
-// east-coast semidiurnal and 3 northern diurnal reference ports give an
-// approximate 0.63 m/h mean and 1.23 m/h largest reference-port peak.
-// These are not measured tide rates or a proven flash-flood discriminator.
-// Observed tidal stations remain excluded entirely from rate-only alerts.
-// An unclassified site must exceed the upper reference envelope plus a
-// screening allowance; this deliberately trades some low-rate sensitivity
-// for fewer ordinary tidal false positives in sparse first-hour histories.
+// MSQ 2026 tidal planes describe COASTAL reference rates, not inland floods.
+// Preserve conservative screening for *coastal-uncertain* and unlocated sites.
+// Far-inland stations are demonstrably outside the mapped 125 km tidal-risk
+// buffer, and must regain the previous sensitive 0.30 m/h rise screening.
+// This remains an inferred screening indicator, NOT a BoM flash flood warning.
 export const QLD_TIDAL_REFERENCE_MEAN_PEAK_M_PER_H = 0.63;
 export const QLD_TIDAL_REFERENCE_UPPER_PEAK_M_PER_H = 1.23;
-export const NON_TIDAL_RAPID_RISE_M_PER_H = 1.40;
+export const NON_TIDAL_RAPID_RISE_M_PER_H = 0.30;
+export const COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H = 1.40;
 export const TIDAL_MIN_ANOMALOUS_RISE_M_PER_H = 0.25;
 export const TIDAL_ANOMALY_FACTOR = 1.75;
 const QLD_UTC_OFFSET_MS = 10 * 60 * 60 * 1000;
@@ -250,21 +249,29 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   // incoming tide. For source-tagged or observation-confirmed tidal sites,
   // suppress this independent rate-only modifier entirely. Original BoM
   // minor/moderate/major classifications still display without restriction.
+  const geographicScreen=gaugeRiseScreeningZone(feature);
+  const screeningThresholdMetresPerHour=geographicScreen.zone==="inland"
+    ? NON_TIDAL_RAPID_RISE_M_PER_H
+    : COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H;
   const rapidlyRising=Boolean(rateMatches && !tidal &&
-    recent.rateMetresPerHour>=NON_TIDAL_RAPID_RISE_M_PER_H);
+    recent.rateMetresPerHour>=screeningThresholdMetresPerHour);
   const tidalBaseline=tidal?tidalRiseBaseline(samples,nowMs):null;
   if(["minor","moderate","major"].includes(level)){
     return {show:true,state:level,source:"bom-classification",
       reason:level+" flood classification (BoM)"+
         (rapidlyRising?"; measured rapid rise — potential flash-flooding behaviour":""),
       rapidRise:rapidlyRising,tidalScreened:tidal,rise:recent,
+      riseScreeningZone:geographicScreen.zone,
+      screeningThresholdMetresPerHour,
       tidalBaselineMetresPerHour:tidalBaseline};
   }
   if(rapidlyRising){
     return {show:true,state:"rapid-rise",rapidRise:true,
       source:"local-rate-screen",
       reason:"Measured rapid rise below minor; potential flash flooding, not a confirmed BoM flash-flood warning",
-      rise:recent,tidalBaselineMetresPerHour:tidalBaseline};
+      rise:recent,riseScreeningZone:geographicScreen.zone,
+      screeningThresholdMetresPerHour,
+      tidalBaselineMetresPerHour:tidalBaseline};
   }
   return {show:false,reason:"Below minor with no verified rapidly rising water"};
 }
@@ -285,6 +292,8 @@ export function filterOperationalFloodGauges(features,history={},nowMs=Date.now(
       STORMTRACKER_TIDAL_SCREENED:Boolean(result.tidalScreened),
       STORMTRACKER_ALERT_REASON:result.reason,
       STORMTRACKER_ALERT_SOURCE:result.source,
+      STORMTRACKER_RATE_SCREENING_ZONE:result.riseScreeningZone??"",
+      STORMTRACKER_RATE_THRESHOLD_M_PER_H:result.screeningThresholdMetresPerHour??null,
       STORMTRACKER_RISE_RATE_M_PER_H:result.rise?.rateMetresPerHour??null,
       STORMTRACKER_RATE_INTERVAL_MINUTES:result.rise?.intervalMinutes??null,
       STORMTRACKER_TIDAL_BASELINE_M_PER_H:result.tidalBaselineMetresPerHour??null,

@@ -29,6 +29,11 @@ assert.deepEqual(since.map(x=>[x.id,x.name,x.mm,x.band]),[
 assert.deepEqual(hour.map(x=>[x.id,x.mm]),[["040908",100.3]]);
 const issued=qldFloodMapCreatedAt(html);
 assert.equal(issued,"2026-10-18T07:06:00.000Z");
+assert.equal(qldFloodMapCreatedAt(html.replace(
+  "This page was created at 07:06",
+  "This page was created at <strong>07:06")),
+  "2026-10-18T07:06:00.000Z",
+  "Live BoM regional flood pages wrap generated UTC in a strong element");
 assert.deepEqual(dedupeSignificantRainfall(since.map(x=>({...x,sourceCreatedAt:issued})),"since9am")
  .map(x=>x.mm),[100,99.9,50]);
 assert.equal(parseBomRainfallMap(html.replace("IDQ65350.html","IDQ65359.html"),"since9am").length,3);

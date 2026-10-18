@@ -645,7 +645,7 @@ export function createRiverGaugeLayer({
             riverGaugeOperationalSummary
           );
 
-        const {major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
+        const {minor,major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
 
         const screening=recentHistoryCoverage(latestSourceFeatures,observedAt);
         diagnostics.historyScreeningIncomplete=screening.incomplete;
@@ -663,13 +663,14 @@ export function createRiverGaugeLayer({
               : "ok",
 
           message:
-            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}${screening.incomplete ? ` · rapid-rise screening incomplete for ${screening.incomplete} rising gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
+            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${minor} minor · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}${screening.incomplete ? ` · rapid-rise screening incomplete for ${screening.incomplete} rising gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
 
           count:
             summaries.length,
 
           major,
           moderate,
+          minor,
           rapidRise,
           tidalAnomaly,
 

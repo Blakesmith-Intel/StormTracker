@@ -10,6 +10,7 @@ const record=(at,height,cls="minor",trend="rising",tidal=false)=>({
       .slice(11,16)+" Thu 08/10/2026",
     STORMTRACKER_HEIGHT_METRES:height,STORMTRACKER_FLOOD_CLASS:cls,
     STORMTRACKER_TENDENCY:trend,
+    forecast_site_classification:"Qualitative",
     location_types:tidal?"water level gauge;tide gauge;":"water level gauge;"
   }
 });
@@ -61,6 +62,13 @@ for(const trend of ["rising","steady","falling"]){
     "BoM minor flooding must not depend on rapid-rise history: "+trend);
   assert.equal(noHistory.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
   assert.equal(noHistory.counts.minor,1);
+}
+for(const cls of ["Quantitative","",null]){
+  const notQualitative=record(T0+75*MIN,1.98,"minor","steady");
+  notQualitative.properties.forecast_site_classification=cls;
+  const other=reconcileFloodEvents([notQualitative],{}, {},T0+80*MIN);
+  assert.equal(other.features.length,0,
+    "Non-qualitative stations must not persist without a verified rapid rise");
 }
 const noLongerFlooding=run(record(T0+75*MIN,1.0,"below-minor","falling"),
                           T0+75*MIN,{});

@@ -1,0 +1,73 @@
+name: Seal StormTracker V10.2.4 normal tide exclusion and matched flood information panel icons
+
+# One-time release workflow. Adding this workflow to main runs the seal
+# exactly once; later unrelated commits do not repoint the immutable tag.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/seal-v10-2-4-tidal-flood-panel.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  seal:
+    name: Verify deployment and seal immutable maintenance references
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout release operator
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Seal deployed V10.2.4 maintenance commit
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="ffa861a3e93927270598b9a8d7447595d66904cb"
+          base_sha="8cddc69d00bc9c6dc12a60a6804e4a16d02d317e"
+          tag="v10.2.4"
+          restore="restore/v10.2.4"
+
+          # Do not confuse this production maintenance patch-set with the
+          # immutable accepted V10.2.3 source kept for rollback.
+          test "$(git ls-remote origin "refs/tags/v10.2.3^{}" | cut -f1)" = "$base_sha"
+          test "$(git ls-remote origin refs/heads/restore/v10.2.3 | cut -f1)" = "$base_sha"
+
+          # The Pages production deployment was validated against the EXACT commit.
+          for run_id in 39096079742; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.head_sha')" = "$release_sha"
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion')" = "success"
+          done
+
+          git fetch --no-tags origin "$release_sha"
+          test "$(git cat-file -t "$release_sha")" = commit
+
+          # A rollback branch is safe only when it points to this exact
+          # deployed and validated maintenance snapshot. Never force-update.
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-list -n 1 "$tag")" = "$release_sha"
+            test "$(git cat-file -t "refs/tags/$tag")" = tag
+            echo "Verified previously-created annotated $tag."
+          else
+            tag_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.4 — verified 18 October 2026 BoM tidal-pattern filtering of spurious rapid-rise markers, matching green/yellow/red map and info panel flood pins, identical blue arrow modifier and preserved source-ID joins and cyclone/radar features" \
+              -f object="$release_sha" -f type=commit --jq '.sha')"
+            test -n "$tag_sha"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$tag_sha" >/dev/null
+            echo "Created annotated $tag -> $release_sha"
+          fi
+
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          echo "SEALED: $tag and $restore -> $release_sha"
+          echo "DELIVERED: production Pages 39096079742 verified; natural tidal rise suppressed, flood info panels match map colours and icons. No relay modifications."

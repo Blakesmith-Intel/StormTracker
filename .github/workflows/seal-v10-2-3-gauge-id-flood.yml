@@ -1,0 +1,73 @@
+name: Seal StormTracker V10.2.3 all-gauge flood severity and strict source-ID river station matching
+
+# One-time release workflow. Adding this workflow to main runs the seal
+# exactly once; later unrelated commits do not repoint the immutable tag.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/seal-v10-2-3-gauge-id-flood.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  seal:
+    name: Verify deployment and seal immutable maintenance references
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout release operator
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Seal deployed V10.2.3 maintenance commit
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="8cddc69d00bc9c6dc12a60a6804e4a16d02d317e"
+          base_sha="79b9a7d5014dfcdbd4e4095dc7e476b4a81549d6"
+          tag="v10.2.3"
+          restore="restore/v10.2.3"
+
+          # Do not confuse this production maintenance patch-set with the
+          # immutable accepted V10.2.2 source kept for rollback.
+          test "$(git ls-remote origin "refs/tags/v10.2.2^{}" | cut -f1)" = "$base_sha"
+          test "$(git ls-remote origin refs/heads/restore/v10.2.2 | cut -f1)" = "$base_sha"
+
+          # The Pages production deployment was validated against the EXACT commit.
+          for run_id in 39094370055 39094370057; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.head_sha')" = "$release_sha"
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion')" = "success"
+          done
+
+          git fetch --no-tags origin "$release_sha"
+          test "$(git cat-file -t "$release_sha")" = commit
+
+          # A rollback branch is safe only when it points to this exact
+          # deployed and validated maintenance snapshot. Never force-update.
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-list -n 1 "$tag")" = "$release_sha"
+            test "$(git cat-file -t "refs/tags/$tag")" = tag
+            echo "Verified previously-created annotated $tag."
+          else
+            tag_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.3 — verified 18 October 2026 source-ID-only BoM gauge matching, green/yellow/red wave markers, blue rising-water modifier, persistent classified flooding, original cyclone QA hygiene and preserved radar/Doppler" \
+              -f object="$release_sha" -f type=commit --jq '.sha')"
+            test -n "$tag_sha"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$tag_sha" >/dev/null
+            echo "Created annotated $tag -> $release_sha"
+          fi
+
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          echo "SEALED: $tag and $restore -> $release_sha"
+          echo "DELIVERED: production Pages run 39084552569 verified; archived cyclone sources retained in QA only."

@@ -38,7 +38,9 @@ let same=run(record(T0+105*MIN,1.96,"minor","falling"),T0+105*MIN,out.events);
 assert.equal(same.events["bom:01234"].recoveryCount,1,"Repeated 15-min poll no extra all-clear evidence");
 history["bom:01234"].push({time:T0+135*MIN,height:1.94});
 out=run(record(T0+135*MIN,1.94,"minor","falling"),T0+135*MIN,same.events);
-assert.equal(out.features.length,0,"Two new measured recovering readings clear inferred screen");
+assert.equal(out.features.length,1,"Rapid-rise screen clears, but confirmed BoM minor flood still displays");
+assert.equal(out.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
+assert.equal(out.counts.minor,1);
 assert.deepEqual(out.events,{}, "Cleared event no longer stored");
 let t=run(record(T0+60*MIN,2),T0+60*MIN,{});
 t=run(record(T0+75*MIN,1.98,"major","falling"),T0+75*MIN,t.events);
@@ -47,7 +49,27 @@ assert.deepEqual(t.events,{},"Authoritative BoM major overrides inferred screen"
 t=run(record(T0+75*MIN,1.98,"moderate","steady"),T0+75*MIN,{});
 assert.equal(t.features[0].properties.STORMTRACKER_DISPLAY_STATE,"moderate");
 t=run(record(T0+75*MIN,1.98,"minor","falling"),T0+75*MIN,{});
-assert.equal(t.features.length,0,"Moderate clears only after BoM class changes");
+assert.equal(t.features.length,1,"Below moderate but still minor flooding must remain visible");
+assert.equal(t.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
+// Bakers Creek / Walkerston regression: an above-minor observation must
+// remain on the map after manual refresh regardless of falling/steady trend
+// and even when its optional BoM station-history page is unavailable.
+for(const trend of ["rising","steady","falling"]){
+  const sample=record(T0+75*MIN,1.98,"minor",trend);
+  const noHistory=reconcileFloodEvents([sample],{}, {},T0+80*MIN);
+  assert.equal(noHistory.features.length,1,
+    "BoM minor flooding must not depend on rapid-rise history: "+trend);
+  assert.equal(noHistory.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
+  assert.equal(noHistory.counts.minor,1);
+}
+const noLongerFlooding=run(record(T0+75*MIN,1.0,"below-minor","falling"),
+                          T0+75*MIN,{});
+assert.equal(noLongerFlooding.features.length,0,
+ "A verified below-minor reading can remove a minor marker");
+const withoutCurrentBulletin=run(record(T0-150*MIN,1.98,"minor","steady"),
+                                 T0+75*MIN,{});
+assert.equal(withoutCurrentBulletin.features.length,0,
+ "Stale BoM classifications cannot create live flooded markers");
 const prior={"bom:01234":{type:"tidal-anomaly",activatedAt:T0,
  lastObservedAt:T0+60*MIN,recoveryCount:0,lastHeight:2,lastRecoveryAt:null}};
 const tide=run(record(T0+75*MIN,1.98,"","falling",true),T0+75*MIN,prior);
@@ -56,4 +78,4 @@ assert.equal(tide.features[0].properties.STORMTRACKER_DISPLAY_STATE,"tidal-anoma
 const stale=cleanFloodEvents(prior,T0+3*3600000);
 assert.deepEqual(stale,{},"Stale inferred events must never remain indefinitely");
 assert.deepEqual(cleanFloodEvents({"other":{type:"rapid-rise"}},T0),{});
-console.log("Flood persistence passed: no instant dismissal, only two valid and distinct recovering readings clear rapid-rise; duplicates, rising rates and stale data cannot false-clear; official major/moderate priority.");
+console.log("Flood persistence passed: no instant dismissal, two recovering readings downgrade rapid-rise to persistent minor flooding; duplicates, rising rates and stale data cannot false-clear; official major/moderate priority.");

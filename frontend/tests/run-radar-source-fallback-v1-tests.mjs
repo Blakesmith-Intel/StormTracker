@@ -27,11 +27,11 @@ const currentTime=Date.parse("2026-10-13T05:20:00Z");
 let attempts=0;
 await assert.rejects(
   discoverBoundedBomReflectivityHistory(currentTime,180,"SEQ",{
-    probe:async()=>{attempts++;throw Error("Image request failed: HTTP 400");}
+    publishedTimes:async()=>{attempts++;return [];}
   }),
   /No verified current BoM reflectivity timestamp/
 );
-assert.equal(attempts,4,"A failed BoM startup must never guess 48 history timestamps");
+assert.equal(attempts,1,"A failed BoM startup reads one capabilities source; no guessed tile requests");
 const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
 assert.match(runtime,/BOUNDED_RADAR_RECOVERY_QA/);
 assert.match(runtime,/discoverBoundedBomReflectivityHistory\(now,5,region\)/,

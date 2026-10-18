@@ -94,8 +94,8 @@ await assert.rejects(cooldown.run("IDR22I.T.first.png",unavailable),
   e=>e.sourceCooldown===true && e.status===502);
 assert.equal(fetchAttempts,1,"Playback and prewarm share a per-frame negative window");
 assert.equal(cooldown.unavailable("IDR22I.T.first.png"),true);
-const recovered=await cooldown.run("IDR22I.T.second.png",async()=>{fetchAttempts++;return "verified PNG"});
-assert.equal(recovered,"verified PNG","Other observed source timestamps still load");
+const otherFrame=await cooldown.run("IDR22I.T.second.png",async()=>{fetchAttempts++;return "verified PNG"});
+assert.equal(otherFrame,"verified PNG","Other observed source timestamps still load");
 clock+=75001;
 assert.equal(await cooldown.run("IDR22I.T.first.png",async()=>{fetchAttempts++;return "recovered PNG"}),"recovered PNG");
 assert.equal(fetchAttempts,3,"Expired negative window retries the genuine BoM image");

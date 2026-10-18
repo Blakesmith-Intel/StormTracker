@@ -55,7 +55,10 @@ const layer=createRiverGaugeLayer({
  onStatus:x=>status.push(x)
 });
 await layer.refresh();
-for(let i=0;i<60 && layer.features.length===0;i++){
+// An official minor gauge now appears before optional station history
+// loads. Wait for the separate async measured-rate screen to UPGRADE it.
+for(let i=0;i<60 &&
+ layer.features[0]?.properties?.STORMTRACKER_DISPLAY_STATE!=="rapid-rise";i++){
  await new Promise(resolve=>setTimeout(resolve,15));
 }
 assert.equal(layer.features.length,1,

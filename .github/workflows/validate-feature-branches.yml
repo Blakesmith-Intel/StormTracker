@@ -42,3 +42,6 @@ jobs:
         run: node scripts/probe-brewarrina-wind-source.mjs
 
 
+
+      - name: One-time WMTS/IDR74 source diagnosis
+        run: node scripts/oneoff-diagnose-wmts-400-idr74-20261018.mjs

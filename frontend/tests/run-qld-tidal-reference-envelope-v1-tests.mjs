@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   evaluateFloodSignal,NON_TIDAL_RAPID_RISE_M_PER_H,
+  COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H,
   QLD_TIDAL_REFERENCE_MEAN_PEAK_M_PER_H,
   QLD_TIDAL_REFERENCE_UPPER_PEAK_M_PER_H
 } from "../src/context-layers/river-flood-signals-v1.js";
@@ -21,7 +22,7 @@ const mean=values.reduce((a,b)=>a+b,0)/values.length;
 const max=Math.max(...values);
 assert.ok(Math.abs(mean-QLD_TIDAL_REFERENCE_MEAN_PEAK_M_PER_H)<.015);
 assert.ok(Math.abs(max-QLD_TIDAL_REFERENCE_UPPER_PEAK_M_PER_H)<.015);
-assert.ok(NON_TIDAL_RAPID_RISE_M_PER_H>max,
+assert.ok(COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H>max,
   "Conservative alert floor must clear estimated spring-tide peaks");
 const now=Date.UTC(2026,9,8,8,30),minute=60000;
 const make=(id,level,tidal=false)=>({
@@ -49,6 +50,8 @@ for(const normal of [.30,.50,.75,1.0,1.23,1.30]){
     assert.equal(result.rapidRise,false,"No spurious blue arrow at "+normal);
   }
 }
+assert.equal(NON_TIDAL_RAPID_RISE_M_PER_H,0.30,
+  "Inland rapid-rise sensitivity must never inherit coastal tide thresholds");
 const unusual=decide("below-minor",1.60);
 assert.equal(unusual.state,"rapid-rise");
 assert.equal(unusual.rapidRise,true);
@@ -57,4 +60,4 @@ assert.equal(decide("below-minor",2.3,true).show,false,
   "Explicitly tidal station requires independent evidence, not just height rate");
 assert.equal(decide("moderate",2.3,true).state,"moderate",
   "Source-issued flood severity survives even an extreme coastal level rise");
-console.log("PASS MSQ statewide reference tidal envelope, no ordinary tide false-blue pins, preserved official flood levels and exceptional unclassified rise.");
+console.log("PASS MSQ coastal-uncertain tidal envelope, inland 0.30 m/h preserved, official flood levels and exceptional coastal rise.");

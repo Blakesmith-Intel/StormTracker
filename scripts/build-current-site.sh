@@ -122,6 +122,12 @@ assert 'STORMTRACKER_RAPID_RISE' in (layers / "river-flood-events-v1.js").read_t
 assert 'FLOOD_MARKER_COLORS' in (layers / "river-gauge-layer-v1.js").read_text()
 assert "observedTidalOscillation(" in (layers / "river-flood-signals-v1.js").read_text()
 assert "rateMatches && !tidal" in (layers / "river-flood-signals-v1.js").read_text()
+panel=(layers / "river-gauges-operational-v1.js").read_text()
+assert "riverGaugePanelAppearance(summary)" in panel
+assert "icon.src=appearance.image" in panel
+assert "summary.tidalScreened" in panel
+assert "#riverGaugeInfo .river-gauge-key img" in style
+assert '#riverGaugeInfo[data-gauge-state="major"] .map-info-kicker' in style
 assert 'blue' not in ""  # No flood classification or colour can override source IDs.
 
 assert '"source_response_too_large"' in (layers / "bom-recent-river-history-v1.js").read_text()
@@ -136,6 +142,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
     record.write("BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN AND BLUE-RISE MODIFIER 2026-10-18\n")
     record.write("BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18 (source-tag and measured oscillation)\\n")
+    record.write("MATCHING FLOOD GAUGE INFORMATION PANEL ICONS AND SEVERITY 2026-10-18\\n")
 PY
 # V10.2.1-current-source production UI hygiene. Never alter the immutable
 # V10.2 base, morning flood/power fixes, or any historical QA preview.
@@ -165,6 +172,9 @@ grep -Fq 'STORMTRACKER_RAPID_RISE' _site/src/context-layers/river-flood-events-v
 grep -Fq 'FLOOD_MARKER_COLORS' _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq 'BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN' _site/BUILD.txt
 grep -Fq 'BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18' _site/BUILD.txt
+grep -Fq 'MATCHING FLOOD GAUGE INFORMATION PANEL ICONS AND SEVERITY 2026-10-18' _site/BUILD.txt
+grep -Fq 'icon.src=appearance.image' _site/src/context-layers/river-gauges-operational-v1.js
+grep -Fq '#riverGaugeInfo .river-gauge-key img' _site/src/single-interface-v1.css
 grep -Fq 'observedTidalOscillation(' _site/src/context-layers/river-flood-signals-v1.js
 grep -Fq 'rateMatches && !tidal' _site/src/context-layers/river-flood-signals-v1.js
 node --check _site/src/context-layers/river-gauge-observations-v1.js

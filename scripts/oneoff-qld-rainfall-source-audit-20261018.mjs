@@ -1,7 +1,7 @@
 // One-shot evidence only, not part of routine CI or production polling.
 import {parseBomRainfallMap,qldFloodMapCreatedAt}
   from "../frontend/src/context-layers/significant-rainfall-source-v1.js";
-const regions=["seast","gulf","tvl2mck","border","north","west","mck2mry"];
+const regions=["seast","gulf","tvl2mck","border","north","west","widebay"];
 await Promise.all(regions.map(async region=>{
   try{
     const r=await fetch("https://www.bom.gov.au/qld/flood/"+region+".shtml",

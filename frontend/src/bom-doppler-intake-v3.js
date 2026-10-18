@@ -7,6 +7,58 @@ const RELAY_ROOT =
 
 export const DOPPLER_PRODUCTS = BORDER_RADAR_DOPPLER_PRODUCTS;
 
+// Only optional, *individual historical PNG* failures are throttled here.
+// A single image that disappears from the BoM rotating archive must not be
+// hammered by both loop playback and background prewarm. Never invent a scan,
+// suppress another filename, or block the ordinary live/history endpoints.
+export function createDopplerFrameFailureCooldown({
+  now = () => Date.now(), cooldownMs = 75000, maxEntries = 64
+} = {}) {
+  const unavailable = new Map();
+  const rejectedAt = now => {
+    for (const [key,record] of unavailable)
+      if (record.until <= now) unavailable.delete(key);
+  };
+  return {
+    async run(key, task) {
+      const current = now();
+      rejectedAt(current);
+      const cached=unavailable.get(key);
+      if (cached && cached.until > current) {
+        const error = new Error(
+          "Doppler history frame temporarily unavailable (HTTP "+
+          cached.status+"); retaining the last verified image"
+        );
+        error.status=cached.status;
+        error.sourceCooldown=true;
+        throw error;
+      }
+      try {
+        const value=await task();
+        unavailable.delete(key);
+        return value;
+      } catch(error) {
+        const status=Number(error?.status) ||
+          Number(/HTTP (\d{3})/.exec(String(error?.message??""))?.[1]) || 0;
+        const timedOut=/timed out|AbortError/i.test(String(error?.message??""));
+        if ([429,502,503,504].includes(status) || timedOut) {
+          unavailable.set(key,{status:status||504,until:now()+cooldownMs});
+          while(unavailable.size>maxEntries)
+            unavailable.delete(unavailable.keys().next().value);
+        }
+        throw error;
+      }
+    },
+    unavailable: key => {
+      const current=now();
+      rejectedAt(current);
+      return (unavailable.get(key)?.until??0)>current;
+    },
+    size: () => {rejectedAt(now());return unavailable.size;}
+  };
+}
+const historicalFrameFailureCooldown=createDopplerFrameFailureCooldown();
+
 function productForRadar(
   radarId
 ) {
@@ -422,10 +474,16 @@ export async function loadDopplerFrame(radarId, frameDescriptor) {
   const filename = frameDescriptor?.filename;
   if (!filename) throw new Error("Doppler history frame filename is required.");
   const url = buildDopplerFrameUrl(radarId, filename);
-  return withFreshDopplerResponse(url, async response => {
-    if (!response.ok) throw new Error(`Doppler history frame relay failed: HTTP ${response.status}`);
-    return loadImageResponse(radarId, response, url);
-  });
+  return historicalFrameFailureCooldown.run(url, () =>
+    withFreshDopplerResponse(url, async response => {
+      if (!response.ok) {
+        const error=new Error(`Doppler history frame relay failed: HTTP ${response.status}`);
+        error.status=response.status;
+        throw error;
+      }
+      return loadImageResponse(radarId, response, url);
+    }, {timeoutMs:12000})
+  );
 }
 
 export async function loadDopplerDiagnostic(radarId) {

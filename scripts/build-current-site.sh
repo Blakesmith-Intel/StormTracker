@@ -43,8 +43,12 @@ source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
 for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
+# Hotfix ONLY the Doppler source transport module, not the sealed playback
+# engine, 3-D renderer, site catalogue, timeline or Doppler science.
+copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),
+         site / "src/bom-doppler-intake-v3.js")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -59,6 +63,8 @@ version_once("live3d-operational-v9.html",
     "single-interface-v1.css?v=jasper-alfred-20261017-qa-v1")
 version_once("src/live3d-operational-v9.js",
     "river-gauges-operational-v1.js?v=9.18.11-gauge-green-yellow-red-v2")
+version_once("src/live3d-operational-v9.js",
+    "bom-doppler-intake-v3.js?v=operational-v9-7")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
@@ -113,6 +119,9 @@ with style_path.open("a",encoding="utf-8") as out:
 assert "bindRiverGaugeManualRefresh(" in (
     layers / "river-gauges-operational-v1.js").read_text()
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
+assert "createDopplerFrameFailureCooldown" in (
+    site / "src/bom-doppler-intake-v3.js").read_text()
+assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(!classified && !inland)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
@@ -149,6 +158,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
+    record.write("DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS 2026-10-18\n")
     record.write("OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18 (skip tagged tides, inland recovery, four serial requests, streamed deadline)\n")
     record.write("BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN AND BLUE-RISE MODIFIER 2026-10-18\n")
     record.write("BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18 (source-tag and measured oscillation)\\n")
@@ -169,6 +179,10 @@ test ! -f _site/src/historical-cyclone-forecast-map-v1.js
 grep -Fq 'PRODUCTION ACTIVE-ONLY CYCLONES 2026-10-18' _site/BUILD.txt
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js
+node --check _site/src/bom-doppler-intake-v3.js
+grep -Fq 'DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS' _site/BUILD.txt
+grep -Fq 'createDopplerFrameFailureCooldown' _site/src/bom-doppler-intake-v3.js
+grep -Fq 'doppler-png-502-cooldown-v1-20261018' _site/src/live3d-operational-v9.js
 grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' _site/BUILD.txt
 grep -Fq 'if(explicitlyTidal)return null' _site/src/context-layers/bom-recent-river-history-v1.js
 grep -Fq 'if(!classified && !inland)return null' _site/src/context-layers/bom-recent-river-history-v1.js

@@ -22,7 +22,8 @@ spec.loader.exec_module(ingest)
 OFFICIAL_TC = "https://www.bom.gov.au/weather-and-climate/specialised-forecasts-and-observations/tropical-cyclone"
 QLD_WARNINGS = "https://www.bom.gov.au/qld/warnings.shtml"
 ADVICE_IDS = frozenset(("IDQ20023", "IDQ20026", "IDQ20029",
-                        "IDQP0004", "IDNP0004", "IDD20150", "IDD20250"))
+                        "IDQP0004", "IDNP0004", "IDD20150", "IDD20250",
+                        "IDQ20064", "IDQ60327", "IDQ60328", "IDQ60329"))
 LIMIT_LIST_BYTES = 1_500_000
 LIMIT_HTML_BYTES = 2_000_000
 NO_WARNINGS = "currently no tropical cyclone warnings in"
@@ -109,10 +110,23 @@ def produce(now, decoder, *, names, html_bytes, downloader, qld_warnings_html=No
         return downloader(product, folder)
     result = ingest.build_manifest(None, now, decoder, downloader=fetch_existing)
     present_advice = advice_present(names)
-    negative_confirmed = (confirms_no_warnings(html_bytes) or
-                          confirms_qld_no_warnings(qld_warnings_html))
+    # Official BoM current FTP directory lists thousands of product issues.
+    # Complete absence of ALL monitored forecast maps AND cyclone-advice
+    # products is source-verified QLD no-warning evidence. A failed source
+    # read is never interpreted as absence. Web summary is checked when able.
+    official_html_negative = (confirms_no_warnings(html_bytes) or
+                              confirms_qld_no_warnings(qld_warnings_html))
+    listing_negative = (
+        len(names) >= 1000 and not in_directory and not present_advice
+    )
+    negative_confirmed = official_html_negative or listing_negative
     result["sourceDirectoryVerified"] = True
     result["warningSummaryConfirmed"] = negative_confirmed
+    result["warningStatusEvidence"] = (
+        "bom-official-web-warning-summary" if official_html_negative else
+        "bom-ftp-directory-no-issued-forecast-or-advice" if listing_negative else
+        "not-confirmed"
+    )
     result["warningAdviceProductNamesPresent"] = present_advice
     result["sourceWarningSummaryUrl"] = OFFICIAL_TC
     if result["status"] == "no-active-products" and (

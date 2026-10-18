@@ -1,5 +1,5 @@
 // Exact BoM flood-map gauge IDs and coordinates; no name approximation.
-export const RAINFALL_REGIONS=Object.freeze(["gulf","north","tvl2mck","mck2mry","seast","west","border"]);
+export const RAINFALL_REGIONS=Object.freeze(["gulf","north","tvl2mck","widebay","seast","west","border"]);
 export const RAINFALL_SOURCE_BASE="https://www.bom.gov.au/qld/flood/";
 export function rainfallBand(mm){return !Number.isFinite(mm)||mm<50?null:mm>=100?"red":"orange";}
 const regexEscape=s=>[...String(s)].map(c=>"\\^$.*+?()[]{}|".includes(c)?"\\"+c:c).join("");
@@ -51,7 +51,7 @@ export function dedupeSignificantRainfall(records,period){
  return [...byId.values()].sort((a,b)=>b.mm-a.mm||String(a.id).localeCompare(String(b.id)));
 }
 export function qldFloodMapCreatedAt(html){
- const m=String(html).match(/This page was created at\s*(\d{1,2}):(\d{2})\s+on\s+\w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s*\(UTC\)/i);
+ const m=String(html).match(/This page was created at\s*(?:<strong[^>]*>)?\s*(\d{1,2}):(\d{2})\s+on\s+\w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s*\(UTC\)/i);
  if(!m)return null;
  const month={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11}[m[4].slice(0,3).toLowerCase()];
  if(month===undefined)return null;

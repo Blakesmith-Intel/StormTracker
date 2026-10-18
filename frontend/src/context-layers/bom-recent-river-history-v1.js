@@ -1,4 +1,5 @@
-import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, tidalRiseBaseline, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
+import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
+import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
 
 // BoM publishes recent tabular readings alongside each public .plt.shtml
 // gauge plot. Parse only the first date/water-level table; never infer data
@@ -85,23 +86,34 @@ export function inspectBomRecentWaterLevelTable(html,options={}) {
 
 // A gap also exists when BoM supplies no valid table link. Do not silently
 // treat an unscreenable rising gauge as a negative rapid-rise result.
+// Only recover OPTIONAL history when it can affect the displayed flash-rise
+// screening. Official BoM flood classes are rendered immediately regardless.
+// Source-identified tide gauges can NEVER produce a rate-only arrow, so
+// downloading their often huge history tables consumes relay capacity for no
+// operational gain. Do recover inland below-minor rivers: a modest rise here
+// is precisely the Adavale-type signal previously missed by the old filter.
 export function recentFloodHistoryGap(feature,history={},nowMs=Date.now()) {
   const p=feature?.properties??{};
-  const tidal=String(p.location_types??"").toLowerCase().includes("tide gauge");
+  const types=String(p.location_types??"").toLowerCase();
+  const explicitlyTidal=/tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types);
+  if(explicitlyTidal)return null;
   const flood=String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase();
+  const inland=gaugeRiseScreeningZone(feature).zone==="inland";
+  const classified=["minor","moderate","major"].includes(flood);
+  if(!classified && !inland)return null;
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
   if(observed===null || nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS ||
-     String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising" ||
-     (!tidal&&flood!=="minor"))return null;
+    observed>nowMs+5*60000 ||
+    String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising")return null;
   const sample=history[String(feature?.id??"")]??[];
   const valid=Array.isArray(sample)?sample.filter(x=>
-    Number.isFinite(x?.time)&&Number.isFinite(x?.height)): [];
+    Number.isFinite(x?.time)&&Number.isFinite(x?.height)):[];
   const rate=latestRiseRate(valid,nowMs);
   const aligned=rate!==null&&Math.abs(rate.observedAt-observed)<=10*60000;
-  if(aligned&&(!tidal||tidalRiseBaseline(valid,nowMs)!==null))return null;
+  if(aligned)return null;
   return {
     id:String(feature?.id??""),
-    tidal,
+    tidal:false,
     target:officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF)
   };
 }

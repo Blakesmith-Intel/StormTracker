@@ -22,6 +22,10 @@ real_html=(b"<main><h2>Tropical cyclone warnings and bulletins</h2>"
            b"Tasmania, Australian Capital Territory and Northern Territory</p>"
            b"<p>Last updated</p></main>")
 assert bridge.confirms_no_warnings(real_html)
+qld_html=(b"<h1>Queensland Warnings Summary</h1><p>No Warnings Current.</p>")
+assert bridge.confirms_qld_no_warnings(qld_html)
+assert not bridge.confirms_qld_no_warnings(b"<h1>Queensland Warnings Summary</h1>"
+                                           b"<p>Tropical Cyclone Warning</p>")
 assert not bridge.confirms_no_warnings(b"<main>Forecast unavailable</main>")
 assert not bridge.confirms_no_warnings(b"<div>Queensland</div>")
 assert not bridge.confirms_no_warnings(b"<script>Currently no tropical cyclone "
@@ -38,6 +42,9 @@ clean=bridge.produce(now,decoder,names=names,html_bytes=real_html,
 assert clean["status"]=="no-active-products"
 assert clean["complete"] and clean["warningSummaryConfirmed"]
 assert clean["sourceDirectoryVerified"] and clean["products"]==[]
+fallback=bridge.produce(now,decoder,names=names,html_bytes=None,
+                        qld_warnings_html=qld_html,downloader=no_fetch)
+assert fallback["status"]=="no-active-products"
 for listing,html in [(None,real_html),(names,None),
                      (names,b"<html>Warnings data unavailable</html>"),
                      (names|{"IDQ20023.TXT"},real_html)]:

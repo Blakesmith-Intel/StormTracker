@@ -36,15 +36,6 @@ def apply(site: Path, current_module: Path) -> None:
                    '"./internal-cyclone-live-qa-v1.js?v=internal-original-gml-qa1";')
     if original_js.count(historical_import) != 1 or original_js.count(live_import) != 1:
         raise RuntimeError("Cyclone JS dependency contract changed; review before modifying production")
-    mount = re.compile(
-        r'if\(window\.location\.pathname\.includes\("/preview/incremental-3d/"\) \|\|\s*'
-        r'\(/\\/live3d-operational-v9\\\.html\$\/\.test\(window\.location\.pathname\) &&\s*'
-        r'!window\.location\.pathname\.includes\("/preview/"\)\)\) \{\s*'
-        r'createHistoricalCycloneForecastQA\(\{Cesium,viewer,documentRef:document,\s*'
-        r'cameraController:mapCamera\}\);\s*'
-        r'createInternalCycloneLiveQA\(\{Cesium,viewer,documentRef:document,\s*'
-        r'cameraController:mapCamera\}\);\s*\}'
-    )
     # Literal exact method is clearer for a pinned, unchanged V10.2.0 source.
     old_mount = '''if(window.location.pathname.includes("/preview/incremental-3d/") ||
    (/\\/live3d-operational-v9\\.html$/.test(window.location.pathname) &&

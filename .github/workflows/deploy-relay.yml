@@ -31,5 +31,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
           command: deploy --config wrangler.jsonc
+      - name: Check public BoM recent-history CORS (optional; warnings only)
+        run: node scripts/probe-live-river-history-cors-v1.mjs
       - name: Check QLD and Brewarrina Doppler paths
         run: node scripts/probe-brewarrina-wind-source.mjs --require-production-route

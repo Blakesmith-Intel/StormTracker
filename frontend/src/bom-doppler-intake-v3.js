@@ -482,7 +482,7 @@ export async function loadDopplerFrame(radarId, frameDescriptor) {
         throw error;
       }
       return loadImageResponse(radarId, response, url);
-    })
+    }, {timeoutMs:12000})
   );
 }
 

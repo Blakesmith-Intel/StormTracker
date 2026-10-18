@@ -1,0 +1,73 @@
+name: Seal StormTracker V10.2.1 maintenance snapshot
+
+# One-time release workflow. Adding this workflow to main runs the seal
+# exactly once; later unrelated commits do not repoint the immutable tag.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/seal-v10-2-1-maintenance.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  seal:
+    name: Verify deployment and seal immutable maintenance references
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout release operator
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Seal deployed V10.2.1 maintenance commit
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="f142018fde8e252b8426591a339d32a13c59d46c"
+          base_sha="047b3bd1c66b0ed5f070d2298202f46d0cd8dae2"
+          tag="v10.2.1"
+          restore="restore/v10.2.1"
+
+          # Do not confuse this production maintenance patch-set with the
+          # immutable accepted V10.2.0 source kept for rollback.
+          test "$(git ls-remote origin "refs/tags/v10.2.0^{}" | cut -f1)" = "$base_sha"
+          test "$(git ls-remote origin refs/heads/restore/v10.2.0 | cut -f1)" = "$base_sha"
+
+          # Both deployed services were validated against the EXACT commit.
+          for run_id in 39082369132 39082369186; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.head_sha')" = "$release_sha"
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion')" = "success"
+          done
+
+          git fetch --no-tags origin "$release_sha"
+          test "$(git cat-file -t "$release_sha")" = commit
+
+          # A rollback branch is safe only when it points to this exact
+          # deployed and validated maintenance snapshot. Never force-update.
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-list -n 1 "$tag")" = "$release_sha"
+            test "$(git cat-file -t "refs/tags/$tag")" = tag
+            echo "Verified previously-created annotated $tag."
+          else
+            tag_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.1 — verified 18 October 2026 river-history, flood-gauge refresh and Cesium terrain maintenance (base V10.2.0)" \
+              -f object="$release_sha" -f type=commit --jq '.sha')"
+            test -n "$tag_sha"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$tag_sha" >/dev/null
+            echo "Created annotated $tag -> $release_sha"
+          fi
+
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          echo "SEALED: $tag and $restore -> $release_sha"
+          echo "DELIVERED: production Pages run 39082369132 and Cloudflare run 39082369186 verified."

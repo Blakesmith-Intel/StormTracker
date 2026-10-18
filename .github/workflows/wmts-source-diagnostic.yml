@@ -30,3 +30,32 @@ jobs:
               else:
                   print('binary/oversized response, length=',len(s))
           PY
+      - name: Inspect BoM WMTS published layer time dimension once
+        run: |
+          set -euo pipefail
+          url='https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0'
+          curl -sS -L --connect-timeout 8 --max-time 25 --max-filesize 4000000 \
+            --output /tmp/stormtracker-wmts-capabilities \
+            --write-out 'BoM GetCapabilities HTTP %{http_code}, bytes %{size_download}\n' "$url" || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          file=Path('/tmp/stormtracker-wmts-capabilities')
+          if not file.exists(): raise SystemExit(0)
+          data=file.read_bytes()
+          try: root=ET.fromstring(data)
+          except ET.ParseError:
+              print('Capabilities not readable XML (transport or access refused):',
+                    data[:250].decode('utf-8','replace'))
+              raise SystemExit(0)
+          for layer in root.iter():
+              if layer.tag.rsplit('}',1)[-1]!='Layer': continue
+              identifier=' '.join((el.text or '') for el in layer
+                  if el.tag.rsplit('}',1)[-1]=='Identifier')
+              if identifier!='atm_surf_air_precip_reflectivity_dbz': continue
+              for dimension in layer:
+                  if dimension.tag.rsplit('}',1)[-1]!='Dimension': continue
+                  values=[(el.tag.rsplit('}',1)[-1],(el.text or '')[:750])
+                      for el in dimension]
+                  print('Published BoM reflectivity dimension:',values[:20])
+          PY

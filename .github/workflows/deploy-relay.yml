@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - "relay/worker.js"
+      - "relay/cyclone-live-v1.js"
+      - "scripts/cyclone-live-kv.mjs"
+      - "relay/wrangler.jsonc"
   workflow_dispatch:
 
 permissions:
@@ -24,12 +27,20 @@ jobs:
         run: |
           npm test
           node --check relay/worker.js
+      - name: Provision source-current cyclone KV binding
+        id: cyclone_kv
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/cyclone-live-kv.mjs ensure
+      - name: Prepare ephemeral configuration for existing Worker
+        run: node scripts/cyclone-live-kv.mjs configure "${{ steps.cyclone_kv.outputs.namespace_id }}"
       - name: Deploy the existing production Worker only
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
-          command: deploy --config wrangler.jsonc
+          command: deploy --config wrangler.cyclone-runtime.json
       - name: Check QLD and Brewarrina Doppler paths
         run: node scripts/probe-brewarrina-wind-source.mjs --require-production-route

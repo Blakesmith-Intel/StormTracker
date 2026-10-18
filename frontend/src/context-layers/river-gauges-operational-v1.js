@@ -128,6 +128,9 @@ function addDetailRow(
 
   valueNode.textContent =
     text;
+  if(label==="Flood class")valueNode.classList.add("river-gauge-classification-value");
+  if(label==="Rapid rise / flash-flood potential")
+    valueNode.classList.add("river-gauge-rise-value");
 
   container.append(
     labelNode,

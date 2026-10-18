@@ -927,36 +927,41 @@ async function extractBoundedRecentHistoryTable(response){
     for(;;){
       const {done,value}=await reader.read();
       if(done)break;
-      received+=value.byteLength;
-      html+=decoder.decode(value,{stream:true});
-      if(!started){
-        const match=RECENT_HISTORY_OPEN_TAG.exec(html);
-        if(match){
-          html=html.slice(match.index);
-          started=true;
-        }else{
-          // Only a short look-behind is needed across normal HTML chunks.
-          // A pathological megabyte-long tag deliberately fails closed.
-          html=html.slice(-512);
+      // Cap each decoded slice so even a single unusually large source
+      // chunk cannot allocate its entire non-observation HTML footer.
+      for(let offset=0;offset<value.byteLength&&!completed;offset+=65536){
+        const part=value.subarray(offset,Math.min(offset+65536,value.byteLength));
+        received+=part.byteLength;
+        html+=decoder.decode(part,{stream:true});
+        if(!started){
+          const match=RECENT_HISTORY_OPEN_TAG.exec(html);
+          if(match){
+            html=html.slice(match.index);
+            started=true;
+          }else{
+            // Only a short look-behind is needed across normal HTML chunks.
+            // A pathological megabyte-long tag deliberately fails closed.
+            html=html.slice(-512);
+          }
         }
-      }
-      if(started){
-        const closing=RECENT_HISTORY_CLOSE_TAG.exec(html);
-        if(closing){
-          html=html.slice(0,closing.index+closing[0].length);
-          completed=true;
-          break;
+        if(started){
+          const closing=RECENT_HISTORY_CLOSE_TAG.exec(html);
+          if(closing){
+            html=html.slice(0,closing.index+closing[0].length);
+            completed=true;
+            break;
+          }
+          if(html.length>RECENT_HISTORY_TABLE_MAX_CHARS){
+            const error=new Error("BoM station history table exceeds safe limit");
+            error.code="source_response_too_large";
+            throw error;
+          }
         }
-        if(html.length>RECENT_HISTORY_TABLE_MAX_CHARS){
-          const error=new Error("BoM station history table exceeds safe limit");
+        if(received>RECENT_HISTORY_SOURCE_MAX_BYTES){
+          const error=new Error("BoM source page exceeds safe read limit");
           error.code="source_response_too_large";
           throw error;
         }
-      }
-      if(received>RECENT_HISTORY_SOURCE_MAX_BYTES){
-        const error=new Error("BoM source page exceeds safe read limit");
-        error.code="source_response_too_large";
-        throw error;
       }
     }
   }finally{

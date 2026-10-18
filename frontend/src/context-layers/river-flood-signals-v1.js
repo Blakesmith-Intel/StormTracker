@@ -239,9 +239,24 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const tidal=isObservedTidalGauge(feature,samples,nowMs);
   const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
   const recent=latestRiseRate(samples,nowMs);
-  const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
-  const timely=observed!==null && nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
+  const parsed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
+  const stored=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
+  const observed=Number.isFinite(stored)&&stored>0&&
+    stored<=nowMs+5*60000?stored:parsed;
+  const timely=observed!==null && Number.isFinite(observed) &&
+    nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
     observed<=nowMs+5*60000;
+  const official=["minor","moderate","major"].includes(level);
+  // A missed/late observation must NOT masquerade as a return below minor.
+  // Continue to map its LAST source-verified official stage, visibly flagged
+  // stale, without a stale rapid-rise or "flash" modifier.
+  if(!timely && official && Number.isFinite(observed) &&
+      observed>0 && observed<=nowMs+5*60000){
+    return {show:true,state:level,source:"last-confirmed-bom-flood-class",
+      reason:"Last confirmed BoM "+level+" classification; observation stale — current level unverified",
+      rapidRise:false,tidalScreened:tidal,rise:null,stale:true,
+      lastObservedAt:observed};
+  }
   if(!timely)return {show:false,reason:"Missing or stale current BoM flood observation"};
   const rateMatches=recent && tendency==="rising" &&
     Math.abs(recent.observedAt-observed)<=10*60000;
@@ -258,6 +273,7 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const tidalBaseline=tidal?tidalRiseBaseline(samples,nowMs):null;
   if(["minor","moderate","major"].includes(level)){
     return {show:true,state:level,source:"bom-classification",
+      stale:false,lastObservedAt:observed,
       reason:level+" flood classification (BoM)"+
         (rapidlyRising?"; measured rapid rise — potential flash-flooding behaviour":""),
       rapidRise:rapidlyRising,tidalScreened:tidal,rise:recent,

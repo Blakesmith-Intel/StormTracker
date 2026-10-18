@@ -151,7 +151,7 @@ export function riverGaugePanelAppearance(summary) {
   return {
     state,
     rapidRise:rise,
-    category,
+    category:category+(summary?.observationStale?" · LAST CONFIRMED, STALE":""),
     image:createRiverGaugeMarkerImage(state,rise)
   };
 }
@@ -277,6 +277,9 @@ function showRiverGaugeInfo(
         ? "Tidal influence · rate-only alerts excluded"
         : "Not indicated by current measured observations");
 
+  if(summary.observationStale)
+    addDetailRow(rows,"Observation freshness",
+      "STALE — last confirmed flood level only. Current river height unverified; await a newer observation.");
   addDetailRow(
     rows,
     "Tidal context",

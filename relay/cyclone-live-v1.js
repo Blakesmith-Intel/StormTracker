@@ -25,7 +25,7 @@ export async function cycloneSnapshotResponse(env, origin, corsHeaders,
   const age=now-Date.parse(data?.generatedUtc);
   if(data?.schema!==SCHEMA || !Number.isFinite(age) ||
      age< -5*60*1000||age>MAX_AGE_MS ||
-     !Array.isArray(data?.products) || data.products.length>5 ||
+     !Array.isArray(data?.products) || data.products.length>6 ||
      data.sourceDirectoryVerified!==true ||
      !["active","no-active-products","source-unavailable"].includes(data.status))
     return fail(503,"BoM cyclone source check is stale or invalid");

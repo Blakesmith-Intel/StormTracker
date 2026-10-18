@@ -10,7 +10,7 @@ async function fetchSummary(label,url,{xml=false,method="GET"}={}){
    let body="";
    if(xml){body=(await r.text()).slice(0,4_000_000);}
    else if(ct.includes("json")||ct.includes("text")){
-      body=(await r.text()).slice(0,800);
+      body=(await r.text()).slice(0,25000);
    }else await r.body?.cancel();
    const out={label,status:r.status,type:ct,bytes:body.length,
       cors:r.headers.get("access-control-allow-origin")};

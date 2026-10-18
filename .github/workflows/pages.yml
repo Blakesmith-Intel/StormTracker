@@ -218,7 +218,12 @@ jobs:
           grep -Fq 'observedTidalOscillation(' <<< "$source_signal"
           grep -Fq 'rateMatches && !tidal' <<< "$source_signal"
           grep -Fq 'recentTidalReversal(' <<< "$source_signal"
-          grep -Fq 'NON_TIDAL_RAPID_RISE_M_PER_H = 1.40' <<< "$source_signal"
+          grep -Fq 'NON_TIDAL_RAPID_RISE_M_PER_H = 0.30' <<< "$source_signal"
+          grep -Fq 'COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H = 1.40' <<< "$source_signal"
+          grep -Fq 'gaugeRiseScreeningZone(' <<< "$source_signal"
+          coastal_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauge-coastal-screen-v1.js")"
+          grep -Fq 'INLAND_COAST_BUFFER_KM = 125' <<< "$coastal_source"
+          grep -Fq 'INLAND RAPID RISE 0.30 M_PER_H COASTAL 1.40 M_PER_H 125 KM' <<< "$root"
           # Public-site acceptance: strict source-ID join, live BoM severity,
           # separate measured rise badge, existing cyclone & radar untouched.
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \

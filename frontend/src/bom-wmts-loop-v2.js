@@ -9,6 +9,26 @@ const REFLECTIVITY_LAYER = "atm_surf_air_precip_reflectivity_dbz";
 const TILE_MATRIX_SET = "GoogleMapsCompatible_BoM";
 const ZOOM = 8;
 const WORLD_EXTENT_M = 40075016.68557849;
+// GetCapabilities is a hint, NOT proof tiles are retrievable. BoM's live
+// endpoint has advertised 80+-minute-old times that subsequently return 400.
+// Older genuine observations can remain in the existing local radar archive.
+export const WMTS_SOURCE_FRESHNESS_MS = 45*60000;
+
+export function createWmtsTimeFailureGuard({
+  now=()=>Date.now(),ttlMs=300000,maxEntries=36
+}={}){
+  const rejected=new Map();
+  const prune=()=>{for(const [time,until] of rejected)
+    if(until<=now())rejected.delete(time);};
+  return {
+    isRejected: time=>{prune();return (rejected.get(time)??0)>now();},
+    reject: time=>{prune();rejected.set(time,now()+ttlMs);
+      while(rejected.size>maxEntries)rejected.delete(rejected.keys().next().value);},
+    clear: time=>rejected.delete(time),
+    size:()=>{prune();return rejected.size;}
+  };
+}
+const unavailableTime=createWmtsTimeFailureGuard();
 
 // Current BOM observed-weather WMTS matrix metadata for native zoom 8.
 const MATRIX = Object.freeze({
@@ -103,7 +123,8 @@ function currentPublishedTimes(times,now=Date.now()){
     .filter(time=>{
       const t=Date.parse(time);
       return Number.isFinite(t)&&Number.isFinite(epoch)&&
-        t>=epoch-180*60000&&t<=epoch+5*60000;
+        t>=epoch-WMTS_SOURCE_FRESHNESS_MS&&t<=epoch+5*60000&&
+        !unavailableTime.isRejected(time);
     }).sort();
 }
 export async function findLatestBomReflectivityTime(
@@ -161,11 +182,32 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
       });
     }
   }
-  // A single bad WMTS request no longer discards a scan without a targeted retry.
-  // We still require every actual BoM tile before publishing a measured frame.
-  const tiles = await loadCompleteRadarTiles(tasks, fetchReadableImage, {
-    retries: 1, stopOnPermanent:true
-  });
+  // Source times remain untrusted until a *real source pixel* loads. Probe
+  // one tile BEFORE requesting the rest of the mosaic; previously each stale
+  // time produced 9-16 simultaneous 400s, repeated per radar and prewarm.
+  if(unavailableTime.isRejected(observedUtc))
+    throw Error("BoM WMTS timestamp unavailable (cached source rejection): "+observedUtc);
+  const first=tasks[0];
+  let firstImage;
+  try{
+    firstImage=await fetchReadableImage(first.url);
+  }catch(error){
+    if(/HTTP\\s+400\\b/.test(String(error?.message??error)))
+      unavailableTime.reject(observedUtc);
+    throw Error("BoM WMTS source time preflight failed at "+
+      observedUtc+": "+String(error?.message??error));
+  }
+  let tiles;
+  try{
+    tiles=await loadCompleteRadarTiles(tasks,
+      url=>url===first.url?Promise.resolve(firstImage):fetchReadableImage(url),{
+      retries:1,stopOnPermanent:true
+    });
+  }catch(error){
+    if(/HTTP\\s+400\\b/.test(String(error?.message??error)))
+      unavailableTime.reject(observedUtc);
+    throw error;
+  }
 
   for (const tile of tiles) {
     ctx.putImageData(tile.image, tile.x, tile.y);

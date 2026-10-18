@@ -19,6 +19,7 @@ const sample=(time,height)=>({time,height});
 const station=(id, cls="", tendency="rising", tidal=false, observedText="6:15 pm Thu 08/10/2026")=>({
   type:"Feature",id,properties:{
     location_types:tidal?"water level gauge;tide gauge;":"water level gauge;",
+    forecast_site_classification:"Qualitative",
     STORMTRACKER_FLOOD_CLASS:cls,
     STORMTRACKER_TENDENCY:tendency,
     STORMTRACKER_HEIGHT_METRES:2.5,
@@ -112,5 +113,18 @@ assert.equal(result.features.length,5);
 assert.equal(result.features.find(f=>f.id===tidalId).properties.STORMTRACKER_DISPLAY_STATE,"tidal-anomaly");
 assert.equal(result.features.find(f=>f.id==="bom:minor").properties.STORMTRACKER_DISPLAY_STATE,"minor");
 assert.equal(result.features.find(f=>f.id===recent.id).properties.STORMTRACKER_ALERT_SOURCE,"local-rate-screen");
+// Non-qualitative / unknown stations must not persist at minor flood without
+// an authentic measured rapid rise; BoM moderate and major alerts stay visible.
+for(const klass of ["Quantitative","","Not Qualitative",null]){
+  const base=station("bom:not-qualitative","minor","steady");
+  base.properties.forecast_site_classification=klass;
+  assert.equal(evaluateFloodSignal(base,{},now).show,false,
+    "Only explicit BoM Qualitative sites persist at minor: "+klass);
+  const highRate={...base,properties:{...base.properties,
+    STORMTRACKER_TENDENCY:"rising"}};
+  assert.equal(evaluateFloodSignal(highRate,
+    {[highRate.id]:[sample(now-hour,1),sample(now-15*60000,2.5)]},now)
+    .state,"rapid-rise","Measured rise still qualifies any eligible station");
+}
 assert.ok(NON_TIDAL_RAPID_RISE_M_PER_H>0);
 console.log("Flood signal tests passed: authentic AEST timestamps, stale/future exclusion, moderate/major flood priority, official minor retention with separate non-tidal rapid rise, tide-baseline anomaly, storage hygiene, no ambiguous/unverified alerts.");

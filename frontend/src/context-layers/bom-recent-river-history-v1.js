@@ -114,13 +114,15 @@ export function recentFloodHistoryGap(feature,history={},nowMs=Date.now()) {
   return {
     id:String(feature?.id??""),
     tidal:false,
+    inland,
     target:officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF)
   };
 }
 
 export function recentFloodHistoryCandidate(feature,history={},nowMs=Date.now()) {
   const gap=recentFloodHistoryGap(feature,history,nowMs);
-  return gap?.target?{id:gap.id,...gap.target,tidal:gap.tidal}:null;
+  return gap?.target?{id:gap.id,...gap.target,tidal:gap.tidal,
+    inland:gap.inland}:null;
 }
 
 // Distinguish an individual unavailable history table from a shared service

@@ -51,8 +51,16 @@ copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),
 # with exact 9 timestamps from BoM's own published GetCapabilities.
 for name in ("bom-wmts-loop-v2.js","bom-wmts-published-times-v1.js"):
     copyfile(Path("frontend/src") / name, site / "src" / name)
+copyfile(Path("frontend/favicon.svg"),site / "favicon.svg")
+for relative in ("index.html","live3d-operational-v9.html"):
+    page=site / relative
+    data=page.read_text(encoding="utf-8")
+    assert data.count("<head>")==1
+    page.write_text(data.replace("<head>",
+        '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
+        encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -71,6 +79,14 @@ version_once("src/live3d-operational-v9.js",
     "bom-doppler-intake-v3.js?v=operational-v9-7")
 version_once("src/live3d-operational-v9.js",
     "bom-wmts-loop-v2.js?v=9.18.6-bounded-published-history")
+# Background warming is optional: a rejected time should end that pass, not
+# iterate nine stale source frames and spam the console. No science changes.
+engine=site / "src/live3d-operational-v9.js"
+data=engine.read_text(encoding="utf-8")
+old='const relayUnavailable=pressureGuardActive &&\n        /HTTP (?:403|429|502|503|504)\\b/'
+new='const relayUnavailable=pressureGuardActive &&\n        /HTTP (?:400|403|429|502|503|504)\\b/'
+assert data.count(old)==1,"Expected one bounded radar prewarm error guard"
+engine.write_text(data.replace(old,new,1),encoding="utf-8")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
@@ -133,6 +149,12 @@ assert "publishedReflectivityTimes()" in (
     "publishedTimes()" in (site / "src/bom-wmts-loop-v2.js").read_text())
 assert "parsePublishedReflectivityTimes" in (
     site / "src/bom-wmts-published-times-v1.js").read_text()
+assert "WMTS_SOURCE_FRESHNESS_MS" in (
+    site / "src/bom-wmts-loop-v2.js").read_text()
+assert "unavailableTime.reject(observedUtc)" in (
+    site / "src/bom-wmts-loop-v2.js").read_text()
+assert "sourceFailures=new Map()" in (
+    site / "src/bom-doppler-intake-v3.js").read_text()
 assert "createDopplerFrameFailureCooldown" in (
     site / "src/bom-doppler-intake-v3.js").read_text()
 assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
@@ -175,6 +197,8 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS 2026-10-18\n")
     record.write("WMTS ALL RADARS SOURCE-PUBLISHED TIME DIMENSION 2026-10-18 (no speculative timestamp probes)\n")
     record.write("WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18\n")
+    record.write("ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN 2026-10-18\n")
+    record.write("FIRST-PARTY SVG FAVICON 2026-10-18\n")
     record.write("OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18 (skip tagged tides, inland recovery, four serial requests, streamed deadline)\n")
     record.write("BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN AND BLUE-RISE MODIFIER 2026-10-18\n")
     record.write("BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18 (source-tag and measured oscillation)\\n")
@@ -204,6 +228,14 @@ node --check _site/src/bom-wmts-loop-v2.js
 node --check _site/src/bom-wmts-published-times-v1.js
 grep -Fq 'WMTS ALL RADARS SOURCE-PUBLISHED TIME DIMENSION 2026-10-18' _site/BUILD.txt
 grep -Fq 'wmts-published-times-v1-20261018' _site/src/live3d-operational-v9.js
+grep -Fq 'ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN' _site/BUILD.txt
+grep -Fq 'FIRST-PARTY SVG FAVICON 2026-10-18' _site/BUILD.txt
+grep -Fq 'WMTS_SOURCE_FRESHNESS_MS' _site/src/bom-wmts-loop-v2.js
+grep -Fq 'sourceFailures=new Map()' _site/src/bom-doppler-intake-v3.js
+grep -Fq 'wmts-stale400-radar74-circuit-favicon-v1-20261018' _site/src/live3d-operational-v9.js
+grep -Fq 'href="./favicon.svg"' _site/index.html
+grep -Fq 'href="./favicon.svg"' _site/live3d-operational-v9.html
+test -s _site/favicon.svg
 grep -Fq 'stopOnPermanent:true' _site/src/bom-wmts-loop-v2.js
 grep -Fq 'DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS' _site/BUILD.txt
 grep -Fq 'createDopplerFrameFailureCooldown' _site/src/bom-doppler-intake-v3.js

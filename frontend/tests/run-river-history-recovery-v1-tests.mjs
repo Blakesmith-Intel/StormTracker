@@ -42,6 +42,9 @@ const fetchImpl=async url=>{
         availability:"no_recent_observations",
         product:"IDQ65388",station:"540385",samples:[]
       })};
+    if(mode==="station-oversize"&&u.includes("540385"))
+      return new Response(JSON.stringify({code:"source_response_too_large"}),{
+        status:502,headers:{"Content-Type":"application/json"}});
     return {ok:true,json:async()=>({
       format:"StormTrackerBomRecentRiverHistoryV1",
       product:"IDQ65388",station:new URL(u).searchParams.get("station"),
@@ -118,4 +121,19 @@ const callsAfterEmpty=historyCalls;
 await layer.refresh({force:true});
 assert.equal(historyCalls,callsAfterEmpty,
   "No repeated no-data station request inside the 15-minute cooldown");
+// A genuinely oversized individual station page must not activate the
+// service-wide 15-minute circuit breaker or skip the remaining stations.
+clock+=61*minute;
+mode="station-oversize";
+features.push(gauge("540387"));
+const beforeOversize=historyCalls;
+await layer.refresh({force:true});
+await waitHistory(()=>layer.recentHistoryRequestCount===4);
+assert.ok(historyCalls>=beforeOversize+2,
+  "Continue checking other gauges after a single oversized station table");
+assert.equal(layer.diagnostics.recentHistory.blockedUntil,0,
+  "Oversized station should not mark all BoM history service unavailable");
+assert.ok(layer.diagnostics.historyScreeningIncomplete>=1,
+  "Genuine oversized station data must stay unscreened rather than safe");
+
 console.log("River history recovery checks passed: source failure cooldown and retry, current map independence, truthful screening gap, restored verified signal, and station-specific no-data.");

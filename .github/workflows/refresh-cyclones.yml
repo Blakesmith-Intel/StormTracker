@@ -1,0 +1,52 @@
+name: Refresh original BoM tropical cyclone forecasts
+
+# Anonymous BoM FTP requires a networked runner: Cloudflare's normal HTTP
+# fetch cannot download FTP. No raw GML is committed to the repository.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/refresh-bom-cyclone-live.py'
+      - 'scripts/internal-cyclone-ftp-ingest.py'
+      - 'scripts/decode-bom-issued-cyclone-gml.py'
+      - 'scripts/cyclone-live-kv.mjs'
+      - '.github/workflows/refresh-cyclones.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: current-bom-cyclone-ftp
+  cancel-in-progress: false
+
+jobs:
+  fetch-decode-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Check original source decoder, no-warning logic and relay validation
+        run: |
+          set -euo pipefail
+          python3 scripts/test-internal-cyclone-ingest.py
+          python3 scripts/test-cyclone-live-ftp-status.py
+          node frontend/tests/run-live-cyclone-worker-v1-tests.mjs
+      - name: Retrieve BoM directory and issued GML products using anonymous FTP
+        run: |
+          set -euo pipefail
+          # Private OS temp; never add GML, JSON or warnings to the public git tree.
+          python3 scripts/refresh-bom-cyclone-live.py --out-dir "$RUNNER_TEMP/stormtracker-cyclone-live"
+          test -s "$RUNNER_TEMP/stormtracker-cyclone-live/cyclones.json"
+      - name: Publish short-lived original-source forecast snapshot to existing Cloudflare KV
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          node scripts/cyclone-live-kv.mjs publish "$RUNNER_TEMP/stormtracker-cyclone-live/cyclones.json"

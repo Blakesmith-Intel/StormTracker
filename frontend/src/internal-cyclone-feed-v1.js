@@ -3,7 +3,7 @@
 // users. The same-origin feed MUST be access-controlled by the internal host.
 export const INTERNAL_CYCLONE_FEED_SCHEMA = "stormtracker-internal-cyclone-source-v1";
 export const INTERNAL_GML_SLOTS = Object.freeze([
-  "IDQ65248", "IDQ65249", "IDQ65250", "IDQ65252", "IDD65409"
+  "IDQ65248", "IDQ65249", "IDQ65250", "IDQ65251", "IDQ65252", "IDD65409"
 ]);
 const SLOTS = new Set(INTERNAL_GML_SLOTS);
 const ROLES = new Set(["forecast_fix", "observed_fix", "forecast_track",

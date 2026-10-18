@@ -140,6 +140,47 @@ body.simple-ui #controlSidebar #refreshRiverGaugesButton[disabled] {
   opacity:.7;
 }
 
+/* Current BoM flood gauge panel: exactly the same severity colours and
+   wave-pin SVG used by the Cesium layer. Never revert to legacy orange/purple
+   risk dots or show an obsolete independent flash-flood icon. */
+#riverGaugeInfo .river-gauge-key {
+  width:37px;
+  height:43px;
+  border:0;
+  border-radius:0;
+  outline:none;
+  background:transparent;
+  box-shadow:none;
+  overflow:visible;
+}
+#riverGaugeInfo .river-gauge-key::before { display:none;content:none; }
+#riverGaugeInfo .river-gauge-key img {
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:contain;
+}
+#riverGaugeInfo[data-gauge-state="rapid-rise"] .map-info-kicker,
+#riverGaugeInfo[data-gauge-state="rapid-rise"] .river-gauge-classification-value {
+  color:#62b1ff;
+}
+#riverGaugeInfo[data-gauge-state="minor"] .map-info-kicker,
+#riverGaugeInfo[data-gauge-state="minor"] .river-gauge-classification-value {
+  color:#2db76f;
+}
+#riverGaugeInfo[data-gauge-state="moderate"] .map-info-kicker,
+#riverGaugeInfo[data-gauge-state="moderate"] .river-gauge-classification-value {
+  color:#ffd43b;
+}
+#riverGaugeInfo[data-gauge-state="major"] .map-info-kicker,
+#riverGaugeInfo[data-gauge-state="major"] .river-gauge-classification-value {
+  color:#e53935;
+}
+#riverGaugeInfo[data-rapid-rise="true"] .river-gauge-rise-value {
+  color:#62b1ff;
+}
+#riverGaugeInfo .river-gauge-info-heading {align-items:center;}
+
 /* Historical cyclone forecast, QA only: a single compact button in Layers.
    Large controls float over the map, never lengthen the operator sidebar. */
 body.simple-ui #controlSidebar .cyclone-forecast-row {

@@ -60,6 +60,7 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
       ...p,
       STORMTRACKER_DISPLAY_STATE:decision.state,
       STORMTRACKER_RAPID_RISE:Boolean(decision.rapidRise),
+      STORMTRACKER_TIDAL_SCREENED:Boolean(decision.tidalScreened),
       STORMTRACKER_ALERT_REASON:decision.reason,
       STORMTRACKER_ALERT_SOURCE:decision.source,
       STORMTRACKER_ALERT_PERSISTED:false,

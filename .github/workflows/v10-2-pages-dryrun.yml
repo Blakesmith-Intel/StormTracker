@@ -52,6 +52,8 @@ jobs:
           grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' _site/BUILD.txt
           grep -Fq 'MANUAL FLOOD GAUGE REFRESH 2026-10-18' _site/BUILD.txt
           grep -Fq 'BOUNDED STREAMING BOM RIVER TABLES 2026-10-18' _site/BUILD.txt
+          grep -Fq 'STATEWIDE TIDAL REFERENCE RAPID-RISE THRESHOLD 1.40 M_PER_H 2026-10-18' _site/BUILD.txt
+          grep -Fq 'NON_TIDAL_RAPID_RISE_M_PER_H = 1.40' _site/src/context-layers/river-flood-signals-v1.js
           grep -Fq 'source_response_too_large' _site/src/context-layers/bom-recent-river-history-v1.js
           grep -Fq 'river-large-table-stream-v1-20261018' _site/index.html
           grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html

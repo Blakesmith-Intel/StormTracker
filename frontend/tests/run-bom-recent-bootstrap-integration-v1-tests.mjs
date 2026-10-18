@@ -7,7 +7,7 @@ const gauge={id:"bom:540384",type:"Feature",geometry:{type:"Point",coordinates:[
  forecast_site_classification:"Qualitative"}};
 let upstreamHistoryCalls=0;
 const historyPoints=[
- {time:Date.UTC(2026,9,8,7,15),height:1.2},
+ {time:Date.UTC(2026,9,8,7,15),height:0.5},
  {time:Date.UTC(2026,9,8,8,15),height:2.25}
 ];
 const fetchImpl=async url=>{
@@ -66,7 +66,7 @@ assert.equal(layer.features.length,1,
  "BoM history should surface measured rapid rise on first page load");
 assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
 assert.equal(layer.features[0].properties.STORMTRACKER_RAPID_RISE,true);
-assert.ok(layer.features[0].properties.STORMTRACKER_RISE_RATE_M_PER_H>0.30);
+assert.ok(layer.features[0].properties.STORMTRACKER_RISE_RATE_M_PER_H>1.40);
 assert.equal(layer.features[0].id,gauge.id);
 assert.equal(upstreamHistoryCalls,1);
 assert.equal(layer.recentHistoryRequestCount,1);

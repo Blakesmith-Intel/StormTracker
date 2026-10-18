@@ -70,4 +70,4 @@ jobs:
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           echo "SEALED: $tag and $restore -> $release_sha"
-          echo "DELIVERED: production Pages run 39084552569 verified; archived cyclone sources retained in QA only."
+          echo "DELIVERED: verified production Pages 39094370055 and Cloudflare relay 39094370057; source-ID matching and flood icon persistence live."

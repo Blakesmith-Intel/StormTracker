@@ -28,7 +28,24 @@ async function fetchSummary(label,url,{xml=false,method="GET"}={}){
 }
 const caps=new URL(root+"/wmts");
 for(const [k,v] of Object.entries({LAYER:layer,SERVICE:"WMTS",REQUEST:"GetCapabilities",VERSION:"1.0.0"}))caps.searchParams.set(k,v);
-await fetchSummary("Existing relay WMTS GetCapabilities",caps,{xml:true});
+const publishedXml=await fetchSummary("Existing relay WMTS GetCapabilities",caps,{xml:true});
+if(publishedXml){
+  const {parsePublishedReflectivityTimes}=await import("../frontend/src/bom-wmts-published-times-v1.js");
+  const {reflectivityWindowForRegion,buildBomReflectivityTileUrl}=
+    await import("../frontend/src/bom-wmts-loop-v2.js");
+  try {
+    const times=parsePublishedReflectivityTimes(publishedXml);
+    const at=times.at(-2)||times.at(-1);
+    console.log(JSON.stringify({publishedTimes:times,verifiedTimeForTiles:at}));
+    for(const region of ["SEQ","08","19","22","50","66","75","93","53","28","56","107"]){
+      const w=reflectivityWindowForRegion(region);
+      const col=Math.floor((w.colStart+w.colEnd)/2),
+        row=Math.floor((w.rowStart+w.rowEnd)/2);
+      await fetchSummary("Published-time WMTS "+region+" "+col+"/"+row,
+        buildBomReflectivityTileUrl(col,row,at));
+    }
+  }catch(error){console.log("PUBLISHED_WMTS_SCAN_FAILED",String(error));}
+}
 await fetchSummary("BoM API WMTS GetCapabilities",api+"?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0",{xml:true});
 for(const product of ["IDR19I","IDR22I","IDR50I","IDR66I","IDR75I","IDR08I","IDR93I"]){
  const payload=await fetchSummary(product+" Doppler loop",root+"/radar-history?product="+product);

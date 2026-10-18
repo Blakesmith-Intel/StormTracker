@@ -44,7 +44,7 @@ layers = site / "src/context-layers"
 for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -121,6 +121,7 @@ assert 'uniqueNameIndex' not in (layers / "river-gauge-observations-v1.js").read
 assert 'STORMTRACKER_RAPID_RISE' in (layers / "river-flood-events-v1.js").read_text()
 assert 'FLOOD_MARKER_COLORS' in (layers / "river-gauge-layer-v1.js").read_text()
 assert "observedTidalOscillation(" in (layers / "river-flood-signals-v1.js").read_text()
+assert "NON_TIDAL_RAPID_RISE_M_PER_H = 1.40" in (layers / "river-flood-signals-v1.js").read_text()
 assert "rateMatches && !tidal" in (layers / "river-flood-signals-v1.js").read_text()
 panel=(layers / "river-gauges-operational-v1.js").read_text()
 assert "riverGaugePanelAppearance(summary)" in panel
@@ -136,6 +137,7 @@ assert "styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)" i
 assert "entity.polygon\n          .outline =\n          true;" not in power
 with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18 (source main)\n")
+    record.write("STATEWIDE TIDAL REFERENCE RAPID-RISE THRESHOLD 1.40 M_PER_H 2026-10-18\n")
     record.write("RIVER-HISTORY NO-DATA V2 2026-10-18 (200 empty, source-format guarded)\n")
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")

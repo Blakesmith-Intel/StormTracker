@@ -607,6 +607,8 @@ export function createRiverGaugeLayer({
           retained.features,history,floodEvents,now()
         );
         render({type:"FeatureCollection",features:alerts.features});
+      }else if(lastLoadedAt && now()-lastLoadedAt>FLOOD_SIGNAL_MAX_AGE_MS){
+        render({type:"FeatureCollection",features:[]});
       }
       onStatus({
         kind:

@@ -20,6 +20,7 @@ spec = importlib.util.spec_from_file_location("source_ftp_ingest", HERE / "inter
 ingest = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ingest)
 OFFICIAL_TC = "https://www.bom.gov.au/weather-and-climate/specialised-forecasts-and-observations/tropical-cyclone"
+QLD_WARNINGS = "https://www.bom.gov.au/qld/warnings.shtml"
 ADVICE_IDS = frozenset(("IDQ20023", "IDQ20026", "IDQ20029",
                         "IDQP0004", "IDNP0004", "IDD20150", "IDD20250"))
 LIMIT_LIST_BYTES = 1_500_000
@@ -52,6 +53,17 @@ def confirms_no_warnings(html_bytes):
     context = content[start : end if end > start else start + 260]
     return "queensland" in context and "northern territory" in context
 
+def confirms_qld_no_warnings(html_bytes):
+    if not html_bytes or len(html_bytes)>LIMIT_HTML_BYTES: return False
+    parser=VisibleText()
+    try: parser.feed(html_bytes.decode("utf-8", "replace"))
+    except (ValueError, UnicodeError): return False
+    value=" ".join(" ".join(parser.words).lower().split())
+    return ("queensland warnings summary" in value and
+            "no warnings current" in value) or (
+            "queensland weather and warnings" in value and
+            "no warnings for queensland" in value)
+
 def curl_bytes(url, *, ftp_list=False, max_size=LIMIT_LIST_BYTES):
     args = ["curl", "--silent", "--show-error", "--fail", "--location",
             "--connect-timeout", "12", "--max-time", "35",
@@ -81,7 +93,7 @@ def advice_present(names):
         x.startswith(code + ".") for code in ADVICE_IDS
     ))
 
-def produce(now, decoder, *, names, html_bytes, downloader):
+def produce(now, decoder, *, names, html_bytes, downloader, qld_warnings_html=None):
     if names is None:
         return {
             "schema":ingest.SCHEMA,"status":"source-unavailable",
@@ -97,7 +109,8 @@ def produce(now, decoder, *, names, html_bytes, downloader):
         return downloader(product, folder)
     result = ingest.build_manifest(None, now, decoder, downloader=fetch_existing)
     present_advice = advice_present(names)
-    negative_confirmed = confirms_no_warnings(html_bytes)
+    negative_confirmed = (confirms_no_warnings(html_bytes) or
+                          confirms_qld_no_warnings(qld_warnings_html))
     result["sourceDirectoryVerified"] = True
     result["warningSummaryConfirmed"] = negative_confirmed
     result["warningAdviceProductNamesPresent"] = present_advice
@@ -121,8 +134,11 @@ def main():
     now=datetime.now(timezone.utc)
     names=parse_listing(curl_bytes(ingest.FTP_BASE,ftp_list=True))
     html=curl_bytes(OFFICIAL_TC,max_size=LIMIT_HTML_BYTES)
+    qld=curl_bytes(QLD_WARNINGS,max_size=LIMIT_HTML_BYTES)
+    print("BoM warning summary sources: cyclone_html_bytes=",len(html or b""),
+          "qld_html_bytes=",len(qld or b""),file=sys.stderr)
     result=produce(now,ingest.load_decoder(),names=names,html_bytes=html,
-                   downloader=ingest.fetch_original_ftp)
+                   qld_warnings_html=qld,downloader=ingest.fetch_original_ftp)
     folder=ingest.safe_destination(args.out_dir)
     ingest.atomic_private_json(folder,result)
     print(json.dumps({"status":result["status"],"complete":result["complete"],

@@ -989,12 +989,17 @@ async function relayRiverRecentHistory(request,incoming,origin){
     response=await fetch(url,{headers:{Accept:"text/html"},signal:abort.signal,
       cf:{cacheEverything:true,cacheTtl:300}});
   }catch(error) {
+    clearTimeout(timeout);
     const timedOut=abort.signal.aborted||error?.name==="AbortError";
     return riverHistoryError(timedOut?504:503,
       timedOut?"source_timeout":"source_transport_failure",
       "BoM recent-history source not reachable",origin);
-  }finally{clearTimeout(timeout);}
+  }
+  // Keep the SAME deadline active while reading the upstream body. The old
+  // finally cleared it as soon as headers arrived, leaving multi-megabyte
+  // tables unbounded and risking Cloudflare-generated 503s without CORS.
   if(!response.ok){
+    clearTimeout(timeout);
     const upstreamStatus=response.status;
     if(upstreamStatus===404||upstreamStatus===410){
       // A missing OPTIONAL table is a valid source-availability outcome,
@@ -1030,11 +1035,16 @@ async function relayRiverRecentHistory(request,incoming,origin){
       return riverHistoryError(502,"source_format_mismatch",
         "BoM station history table format does not match verified readings",origin);
   }catch(error){
+    if(abort.signal.aborted||error?.name==="AbortError")
+      return riverHistoryError(504,"source_timeout",
+        "BoM recent-history body read exceeded the bounded deadline",origin);
     if(error?.code==="source_response_too_large")
       return riverHistoryError(502,"source_response_too_large",
         "BoM history table exceeds bounded source limits",origin);
     return riverHistoryError(502,"source_parse_failure",
       "BoM history response unreadable",origin);
+  }finally{
+    clearTimeout(timeout);
   }
   const samples=inspection.samples;
   const availability=samples.length?"available":"no_recent_observations";

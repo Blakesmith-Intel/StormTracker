@@ -159,11 +159,23 @@ export async function fetchBoMRecentHistory(target,{
       payload.station!==target.station||payload.product!==target.product||
       !Array.isArray(payload.samples)||
       (payload.availability!==undefined &&
-        !["available","no_recent_observations"].includes(payload.availability))||
-      (payload.availability==="no_recent_observations" && payload.samples.length!==0))
+        !["available","no_recent_observations","not_published"].includes(payload.availability))||
+      (["no_recent_observations","not_published"].includes(payload.availability) &&
+        payload.samples.length!==0))
       throw new Error("BoM station history response mismatch");
     return payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
       .slice(-225);
+  }catch(error){
+    if(abort.signal.aborted){
+      // A scheduled optional query timing out is not an unexplained Cesium
+      // or flood bulletin failure. Retain explicit source unavailability
+      // and shared-service backoff rather than the browser's vague AbortError.
+      const timeout=new Error("Optional BoM station-history lookup timed out");
+      timeout.code="source_timeout";
+      timeout.scope="service";
+      throw timeout;
+    }
+    throw error;
   }finally {
     clearTimeout(timer);
   }

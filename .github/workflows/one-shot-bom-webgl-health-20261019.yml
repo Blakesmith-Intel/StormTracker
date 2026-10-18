@@ -23,14 +23,6 @@ jobs:
           head -c 500 /tmp/bom-ftp-listing.txt || true
       - name: One-shot relay and WMTS health verification
         run: node scripts/one-shot-bom-health-20261019.mjs
-      - name: Install isolated browser profiler
-        run: |
-          npm install --no-save --ignore-scripts playwright@1.58.2
-          npx playwright install chromium
-      - name: Profile sealed StormTracker WebGL
-        continue-on-error: true
-        timeout-minutes: 3
-        run: node scripts/one-shot-webgl-browser-profile-20261019.mjs
       - name: Examine real FTP reflectivity images
         timeout-minutes: 2
         run: |

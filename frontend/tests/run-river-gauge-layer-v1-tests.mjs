@@ -133,21 +133,27 @@ for (
   );
 }
 
-// Flood-risk palette is severity-based, not a claim that a steady/falling
-// major-level river is safe. Tidal anomalies remain a separate screening type.
-const decoded=state=>decodeURIComponent(createRiverGaugeMarkerImage(state));
-for(const [state,color]of Object.entries({
-  "rapid-rise":"#2db76f",minor:"#2db76f",
-  moderate:"#ffd43b",major:"#e53935",
-  "tidal-anomaly":"#45c7e8"
+// Approved visual contract: one water-wave map pin in blue/green/yellow/red;
+// ONE blue upward-arrow badge is the only modifier, at every flood class.
+const decoded=(state,rapid=false)=>
+  decodeURIComponent(createRiverGaugeMarkerImage(state,rapid));
+for(const [state,color] of Object.entries({
+ "rapid-rise":"#1269e8",minor:"#1ca958",
+ moderate:"#f4bf17",major:"#dc343e"
 })){
-  assert.ok(decoded(state).includes('fill="'+color+'"'),
-    state+" must render the agreed severity/screening colour");
+ assert.ok(decoded(state).includes('fill="'+color+'"'),state+" must use its severity colour");
+ assert.match(decoded(state),/M20 30 Q25 35 30 30/,
+   "Every flood marker needs waves");
 }
-assert.match(decoded("major"),/stroke="#ffffff"/,
-  "Red major-flood waves must remain high-contrast white");
-assert.match(decoded("moderate"),/stroke="#111111"/,
-  "Yellow moderate-flood waves must be dark enough to read");
-console.log(
-  "River gauge layer checks passed: operational summaries preserve live context and all display states produce self-contained marker images."
-);
+assert.equal((decoded("minor").match(/cx="61"/g)||[]).length,0,
+ "Steady/falling flood markers carry no rapid-rise badge");
+for(const state of ["minor","moderate","major","rapid-rise"]){
+ assert.match(decoded(state,true),/cx="61"/);
+ assert.match(decoded(state,true),/fill="#1269e8"/);
+ assert.match(decoded(state,true),/fill="#fff"/);
+}
+assert.match(decoded("rapid-rise"),/cx="61"/,
+ "Below-minor rapid rise is a blue icon with blue arrow");
+assert.notEqual(createRiverGaugeMarkerImage("moderate",true),
+  createRiverGaugeMarkerImage("moderate",false));
+console.log("River gauge icon contract passed: green/yellow/red persistent status, blue below-minor and single measured-rise arrow.");

@@ -67,50 +67,6 @@ export function normaliseRiverStationName(
     .trim();
 }
 
-function uniqueNameIndex(
-  features
-) {
-  const index =
-    new Map();
-
-  for (
-    const feature
-    of features
-  ) {
-    const summary =
-      riverGaugeSummary(
-        feature
-      );
-
-    const key =
-      normaliseRiverStationName(
-        summary.name
-      );
-
-    if (!key) {
-      continue;
-    }
-
-    if (
-      index.has(
-        key
-      )
-    ) {
-      index.set(
-        key,
-        null
-      );
-    } else {
-      index.set(
-        key,
-        feature
-      );
-    }
-  }
-
-  return index;
-}
-
 function stationIdIndex(
   features
 ) {
@@ -138,17 +94,10 @@ function stationIdIndex(
           value
         );
 
-      if (
-        key
-        && !index.has(
-          key
-        )
-      ) {
-        index.set(
-          key,
-          feature
-        );
-      }
+      if (!key) continue;
+      // Ambiguous station identifiers must never bind arbitrarily.
+      if (index.has(key)) index.set(key, null);
+      else index.set(key, feature);
     }
   }
 
@@ -315,11 +264,6 @@ export function joinRiverGaugeObservations({
       gaugeFeatures
     );
 
-  const byName =
-    uniqueNameIndex(
-      gaugeFeatures
-    );
-
   const matched =
     new Map();
 
@@ -335,26 +279,9 @@ export function joinRiverGaugeObservations({
         observation.stationId
       );
 
-    const nameKey =
-      normaliseRiverStationName(
-        observation.stationName
-      );
-
-    const feature =
-      (
-        idKey
-          ? byId.get(
-              idKey
-            )
-          : null
-      )
-      || (
-        nameKey
-          ? byName.get(
-              nameKey
-            )
-          : null
-      );
+    // Station ID is authoritative; NEVER backfill a missing/mismatched ID
+    // using a similar place name (Mirani Township 533178 vs Mirani 033152).
+    const feature = idKey ? byId.get(idKey) : null;
 
     if (!feature) {
       unmatchedObservations.push(

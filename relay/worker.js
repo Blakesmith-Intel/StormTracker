@@ -996,9 +996,19 @@ async function relayRiverRecentHistory(request,incoming,origin){
   }finally{clearTimeout(timeout);}
   if(!response.ok){
     const upstreamStatus=response.status;
-    if(upstreamStatus===404||upstreamStatus===410)
-      return riverHistoryError(404,"station_history_not_published",
-        "BoM station history not published",origin,upstreamStatus);
+    if(upstreamStatus===404||upstreamStatus===410){
+      // A missing OPTIONAL table is a valid source-availability outcome,
+      // not a failed StormTracker request. Never infer zero river height
+      // or a completed rapid-rise assessment from the empty observations.
+      const headers=corsHeaders(origin);
+      headers.set("Content-Type","application/json; charset=utf-8");
+      headers.set("Cache-Control","public, max-age=1800");
+      return new Response(request.method==="HEAD"?null:JSON.stringify({
+        format:"StormTrackerBomRecentRiverHistoryV1",
+        product,station,availability:"not_published",samples:[],
+        sourceStatus:upstreamStatus
+      }),{status:200,headers});
+    }
     if(upstreamStatus===429)
       return riverHistoryError(429,"source_rate_limited",
         "BoM history service rate limited",origin,upstreamStatus);

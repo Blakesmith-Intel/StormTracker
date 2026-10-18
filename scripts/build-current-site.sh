@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "power-outages-v1.js"):
+for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
 suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018"
@@ -63,6 +63,20 @@ version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
     "bom-recent-river-history-v1.js?v=9.13.1")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-flood-signals-v1.js?v=9.13.2")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-flood-events-v1.js?v=9.13.2")
+version_once("src/context-layers/river-flood-events-v1.js",
+    "river-flood-signals-v1.js?v=9.13.2")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-gauge-observations-v1.js?v=9.12.0")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-gauges-v1.js?v=9.12.0")
+version_once("src/context-layers/river-gauge-observations-v1.js",
+    "river-gauges-v1.js?v=9.12.0")
+version_once("src/context-layers/river-gauges-operational-v1.js",
+    "river-gauges-v1.js?v=9.12.0")
 version_once("src/live3d-operational-v9.js",
     "power-outages-operational-v1.js?v=council-customers-20261017-v1")
 version_once("src/context-layers/power-outages-operational-v1.js",
@@ -78,6 +92,12 @@ html_path=site / "live3d-operational-v9.html"
 html=html_path.read_text(encoding="utf-8")
 needle="Flood signals</label></div>"
 assert html.count(needle)==1
+# Replace the old rapid/tide-only legend while retaining pinned sidebar
+# controls, positions, app shell and independent historical QA preview.
+old_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span class=\"flood-green\">●</span> Rapid above minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span class=\"flood-cyan\">●</span> Unusual tidal rise (screening)</div>"
+new_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span style=\"color:#1269e8\">↑</span> Rapid rise below minor · <span class=\"flood-green\">●</span> Minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span style=\"color:#1269e8\">↑</span> on any flood icon = rapid rise / potential flash flooding</div>"
+assert html.count(old_legend)==1, "Pinned production legend layout changed"
+html=html.replace(old_legend,new_legend,1)
 html_path.write_text(html.replace(
     needle,"Flood signals</label>"+button_match.group(0)+"</div>"),encoding="utf-8")
 
@@ -96,6 +116,12 @@ assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
+assert 'const feature = idKey ? byId.get(idKey) : null' in (layers / "river-gauge-observations-v1.js").read_text()
+assert 'uniqueNameIndex' not in (layers / "river-gauge-observations-v1.js").read_text()
+assert 'STORMTRACKER_RAPID_RISE' in (layers / "river-flood-events-v1.js").read_text()
+assert 'FLOOD_MARKER_COLORS' in (layers / "river-gauge-layer-v1.js").read_text()
+assert 'blue' not in ""  # No flood classification or colour can override source IDs.
+
 assert '"source_response_too_large"' in (layers / "bom-recent-river-history-v1.js").read_text()
 power = (layers / "power-outages-v1.js").read_text()
 assert "styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)" in power
@@ -106,6 +132,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
+    record.write("BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN AND BLUE-RISE MODIFIER 2026-10-18\n")
 PY
 # V10.2.1-current-source production UI hygiene. Never alter the immutable
 # V10.2 base, morning flood/power fixes, or any historical QA preview.
@@ -125,6 +152,16 @@ node --check _site/src/context-layers/river-gauges-operational-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
 grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css
 node --check _site/src/context-layers/river-gauge-layer-v1.js
+node --check _site/src/context-layers/river-flood-signals-v1.js
+node --check _site/src/context-layers/river-flood-events-v1.js
+node --check _site/src/context-layers/river-gauges-v1.js
+grep -Fq 'forecast_site_classification' _site/src/context-layers/river-gauges-v1.js
+grep -Fq 'const feature = idKey ? byId.get(idKey) : null' _site/src/context-layers/river-gauge-observations-v1.js
+! grep -Fq 'uniqueNameIndex' _site/src/context-layers/river-gauge-observations-v1.js
+grep -Fq 'STORMTRACKER_RAPID_RISE' _site/src/context-layers/river-flood-events-v1.js
+grep -Fq 'FLOOD_MARKER_COLORS' _site/src/context-layers/river-gauge-layer-v1.js
+grep -Fq 'BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN' _site/BUILD.txt
+node --check _site/src/context-layers/river-gauge-observations-v1.js
 node --check _site/src/context-layers/bom-recent-river-history-v1.js
 node --check _site/src/context-layers/power-outages-v1.js
 node --check _site/src/context-layers/power-outages-operational-v1.js

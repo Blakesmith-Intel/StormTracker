@@ -121,146 +121,35 @@ export function riverGaugeOperationalSummary(
         ? properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H : null,
 
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
-    recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0)
+    recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0),
+    rapidRise:Boolean(properties.STORMTRACKER_RAPID_RISE)
   };
 }
 
-const STATE_STYLE =
-  Object.freeze({
-    major:
-      Object.freeze({
-        fill:
-          "#e53935",
-        symbol:
-          "flood"
-      }),
-
-    moderate:
-      Object.freeze({
-        fill:
-          "#ffd43b",
-        symbol:
-          "flood"
-      }),
-
-    minor:
-      Object.freeze({
-        fill:
-          "#2db76f",
-        symbol:
-          "flood"
-      }),
-
-    "rapid-rise": Object.freeze({fill:"#2db76f",symbol:"up"}),
-    "tidal-anomaly": Object.freeze({fill:"#45c7e8",symbol:"tidal-up"}),
-
-    rising:
-      Object.freeze({
-        fill:
-          "#2db76f",
-        symbol:
-          "up"
-      }),
-
-    "tidal-rise":
-      Object.freeze({
-        fill:
-          "#45c7e8",
-        symbol:
-          "tidal-up"
-      }),
-
-    falling:
-      Object.freeze({
-        fill:
-          "#56c596",
-        symbol:
-          "down"
-      }),
-
-    steady:
-      Object.freeze({
-        fill:
-          "#4ca6ff",
-        symbol:
-          "steady"
-      }),
-
-    unknown:
-      Object.freeze({
-        fill:
-          "#8d99a6",
-        symbol:
-          "steady"
-      })
-  });
-
-function svgSymbol(
-  symbol,
-  contrast = "#111111"
-) {
-  if (
-    symbol === "up"
-  ) {
-    return `
-      <path d="M32 16 L21 30 H27 V47 H37 V30 H43 Z" fill="#111111"/>
-    `;
-  }
-
-  if (
-    symbol === "down"
-  ) {
-    return `
-      <path d="M32 48 L21 34 H27 V17 H37 V34 H43 Z" fill="#111111"/>
-    `;
-  }
-
-  if (
-    symbol === "tidal-up"
-  ) {
-    return `
-      <path d="M15 38 C20 33 24 43 30 38 C36 33 40 43 49 37" fill="none" stroke="#111111" stroke-width="4" stroke-linecap="round"/>
-      <path d="M32 13 L24 24 H29 V34 H35 V24 H40 Z" fill="#111111"/>
-    `;
-  }
-
-  if (
-    symbol === "flood"
-  ) {
-    return `
-      <path d="M17 37 C22 31 26 43 32 37 C38 31 42 43 48 37" fill="none" stroke="${contrast}" stroke-width="4" stroke-linecap="round"/>
-      <path d="M17 46 C22 40 26 52 32 46 C38 40 42 52 48 46" fill="none" stroke="${contrast}" stroke-width="4" stroke-linecap="round"/>
-    `;
-  }
-
-  return `
-    <path d="M20 32 H44" fill="none" stroke="#111111" stroke-width="6" stroke-linecap="round"/>
-  `;
-}
-
-export function createRiverGaugeMarkerImage(
-  state
-) {
-  const style =
-    STATE_STYLE[
-      state
-    ]
-    ?? STATE_STYLE.unknown;
-
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-      <circle cx="32" cy="32" r="28" fill="#ffffff"/>
-      <circle cx="32" cy="32" r="24" fill="#111111"/>
-      <circle cx="32" cy="32" r="20" fill="${style.fill}"/>
-      ${svgSymbol(style.symbol,state==="major"?"#ffffff":"#111111")}
-    </svg>`;
-
-  return (
-    "data:image/svg+xml;charset=utf-8,"
-    + encodeURIComponent(
-        svg
-      )
-  );
+// Same water marker at every stage; only BoM flood severity changes colour.
+// ONE blue arrow badge is used for measured rapid rise / possible flash flooding.
+// A below-minor candidate is the blue icon with the same blue arrow.
+const FLOOD_MARKER_COLORS=Object.freeze({
+  "rapid-rise":"#1269e8",minor:"#2db76f",
+  moderate:"#ffd43b",major:"#e53935"
+});
+export function createRiverGaugeMarkerImage(state,rapidRise=false){
+  const level=Object.hasOwn(FLOOD_MARKER_COLORS,state)?state:"rapid-rise";
+  const colour=FLOOD_MARKER_COLORS[level];
+  const arrow=rapidRise || level==="rapid-rise";
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 88">
+    <path d="M35 5 C16 5 6 19 6 35 C6 54 19 65 35 80 C51 65 64 54 64 35 C64 19 54 5 35 5Z"
+      fill="${colour}" stroke="#132337" stroke-width="2.6" stroke-linejoin="round"/>
+    <circle cx="35" cy="34" r="21" fill="none" stroke="#fff" stroke-width="3"/>
+    <path d="M20 30 Q25 35 30 30 T40 30 T50 30
+             M20 39 Q25 44 30 39 T40 39 T50 39"
+      fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round"/>
+    ${arrow?`<circle cx="61" cy="16" r="14" fill="#1269e8"
+       stroke="#ffffff" stroke-width="3"/>
+      <path d="M61 6 L52.5 17 H57.5 V25 H64.5 V17 H69.5Z"
+        fill="#fff"/>`:""}
+  </svg>`;
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
 export function createRiverGaugeLayer({
@@ -414,8 +303,10 @@ export function createRiverGaugeLayer({
             // whole optional service; one failure ends this request burst.
             recentRelayBlockedUntil=now()+15*60*1000;
           }
-          if(failures===1)console.warn(
-            "Optional BoM station history unavailable; current flood bulletins retained:",
+          if(failures===1 && scope==="service" &&
+              error?.code!=="source_timeout" &&
+              error?.name!=="AbortError")console.warn(
+            "Optional BoM station history service unavailable; current flood bulletins retained:",
             String(error?.message??error)
           );
           if(scope==="service")break;
@@ -467,25 +358,11 @@ export function createRiverGaugeLayer({
   }
 
 
-  function markerImage(
-    state
-  ) {
-    if (
-      !markerImages.has(
-        state
-      )
-    ) {
-      markerImages.set(
-        state,
-        createRiverGaugeMarkerImage(
-          state
-        )
-      );
-    }
-
-    return markerImages.get(
-      state
-    );
+  function markerImage(state,rapidRise=false){
+    const key=state+":"+(rapidRise?"rising":"normal");
+    if(!markerImages.has(key))
+      markerImages.set(key,createRiverGaugeMarkerImage(state,rapidRise));
+    return markerImages.get(key);
   }
 
   function render(
@@ -541,18 +418,11 @@ export function createRiverGaugeLayer({
             billboard: {
               image:
                 markerImage(
-                  summary.displayState
+                  summary.displayState,summary.rapidRise
                 ),
 
-              width:
-                summary.floodClass
-                  ? 34
-                  : 29,
-
-              height:
-                summary.floodClass
-                  ? 34
-                  : 29,
+              width: 38,
+              height: 42,
 
               verticalOrigin:
                 CesiumRef
@@ -643,7 +513,7 @@ export function createRiverGaugeLayer({
             riverGaugeOperationalSummary
           );
 
-        const {major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
+        const {minor,major,moderate,rapidRise,tidalAnomaly} = alerts.counts;
 
         const screening=recentHistoryCoverage(latestSourceFeatures,observedAt);
         diagnostics.historyScreeningIncomplete=screening.incomplete;
@@ -661,13 +531,14 @@ export function createRiverGaugeLayer({
               : "ok",
 
           message:
-            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}${screening.incomplete ? ` · rapid-rise screening incomplete for ${screening.incomplete} rising gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
+            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${minor} minor · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${partialText}${screening.incomplete ? ` · rapid-rise screening incomplete for ${screening.incomplete} rising gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
 
           count:
             summaries.length,
 
           major,
           moderate,
+          minor,
           rapidRise,
           tidalAnomaly,
 

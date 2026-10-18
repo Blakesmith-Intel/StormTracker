@@ -153,7 +153,10 @@ export function tidalRiseBaseline(samples,nowMs=Date.now()){
   return percentile(rising,0.90);
 }
 
-export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
+// Severity is the fresh, explicitly BoM-reported flood classification.
+// The original measured rate independently controls ONE blue upward-arrow
+// modifier. A rise alone does not prove actual flash flooding.
+export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const p=feature?.properties??{};
   const level=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
   const tidal=String(p.location_types??"").toLowerCase().includes("tide gauge");
@@ -161,62 +164,53 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
   const samples=history[String(feature?.id??"")]??[];
   const recent=latestRiseRate(samples,nowMs);
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
-  // Without a dated/current observation a classification cannot safely be
-  // presented as an active operational condition.
-  const timely=observed!==null && nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS;
-
-  if ((level==="moderate"||level==="major") && timely) return {
-    show:true,state:level,reason:`${level} flood classification (BoM)`,
-    source:"bom-classification",rise:recent
-  };
-  // A historical rise from local storage is not evidence that a newer
-  // bulletin is still rising. Require its timestamp to match the latest data.
-  if(!timely || !recent || tendency!=="rising" ||
-      Math.abs(recent.observedAt-observed)>10*60000)return {
-    show:false,reason:"No verified rapid rise or moderate/major flood classification"
-  };
-  if(!tidal && level==="minor" &&
-    recent.rateMetresPerHour>=NON_TIDAL_RAPID_RISE_M_PER_H)return {
-      show:true,state:"rapid-rise",source:"local-rate-screen",
-      reason:"Rapid rise at non-tidal gauge currently classified minor flood",
-      rise:recent
-    };
-  if(tidal){
-    const baseline=tidalRiseBaseline(samples,nowMs);
-    if(baseline!==null &&
+  const timely=observed!==null && nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
+    observed<=nowMs+5*60000;
+  if(!timely)return {show:false,reason:"Missing or stale current BoM flood observation"};
+  const rateMatches=recent && tendency==="rising" &&
+    Math.abs(recent.observedAt-observed)<=10*60000;
+  const tidalBaseline=rateMatches && tidal?tidalRiseBaseline(samples,nowMs):null;
+  const rapidlyRising=Boolean(rateMatches && (tidal
+    ? tidalBaseline!==null &&
       recent.rateMetresPerHour>=TIDAL_MIN_ANOMALOUS_RISE_M_PER_H &&
-      recent.rateMetresPerHour>=baseline*TIDAL_ANOMALY_FACTOR)return {
-      show:true,state:"tidal-anomaly",source:"local-tide-rate-screen",
-      reason:"Rise exceeds observed tidal rate history; investigate flood or surge influence",
-      rise:recent,tidalBaselineMetresPerHour:baseline
-    };
+      recent.rateMetresPerHour>=tidalBaseline*TIDAL_ANOMALY_FACTOR
+    : recent.rateMetresPerHour>=NON_TIDAL_RAPID_RISE_M_PER_H));
+  if(["minor","moderate","major"].includes(level)){
+    return {show:true,state:level,source:"bom-classification",
+      reason:level+" flood classification (BoM)"+
+        (rapidlyRising?"; measured rapid rise — potential flash-flooding behaviour":""),
+      rapidRise:rapidlyRising,rise:recent,
+      tidalBaselineMetresPerHour:tidalBaseline};
   }
-  return {show:false,reason:tidal?
-    "Normal/uncertain tide or insufficient tidal history":
-    "Below moderate flood level without verified rapid rise above minor"};
+  if(rapidlyRising){
+    return {show:true,state:"rapid-rise",rapidRise:true,
+      source:tidal?"local-tide-rate-screen":"local-rate-screen",
+      reason:"Measured rapid rise below minor; potential flash flooding, not a confirmed BoM flash-flood warning",
+      rise:recent,tidalBaselineMetresPerHour:tidalBaseline};
+  }
+  return {show:false,reason:"Below minor with no verified rapidly rising water"};
 }
 
-export function filterOperationalFloodGauges(features,history={},nowMs=Date.now()) {
+export function filterOperationalFloodGauges(features,history={},nowMs=Date.now()){
   const selected=[];
-  const counts={moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
+  const counts={minor:0,moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
   for(const feature of features??[]){
     const result=evaluateFloodSignal(feature,history,nowMs);
     if(!result.show)continue;
-    const name=result.state;
-    if(name==="moderate")counts.moderate++;
-    else if(name==="major")counts.major++;
-    else if(name==="rapid-rise")counts.rapidRise++;
-    else if(name==="tidal-anomaly")counts.tidalAnomaly++;
+    if(["minor","moderate","major"].includes(result.state))counts[result.state]++;
+    if(result.rapidRise)counts.rapidRise++;
+    if(result.rapidRise && String(feature?.properties?.location_types??"").toLowerCase().includes("tide gauge"))
+      counts.tidalAnomaly++;
     selected.push({...feature,properties:{
-      ...feature.properties,STORMTRACKER_DISPLAY_STATE:name,
+      ...feature.properties,
+      STORMTRACKER_DISPLAY_STATE:result.state,
+      STORMTRACKER_RAPID_RISE:Boolean(result.rapidRise),
       STORMTRACKER_ALERT_REASON:result.reason,
       STORMTRACKER_ALERT_SOURCE:result.source,
       STORMTRACKER_RISE_RATE_M_PER_H:result.rise?.rateMetresPerHour??null,
       STORMTRACKER_RATE_INTERVAL_MINUTES:result.rise?.intervalMinutes??null,
       STORMTRACKER_TIDAL_BASELINE_M_PER_H:result.tidalBaselineMetresPerHour??null,
-      STORMTRACKER_TIDAL_CONTEXT: name==="tidal-anomaly"
-        ? "Tidal station · rise faster than its recent observed tidal pattern; not a confirmed flood"
-        : feature.properties?.STORMTRACKER_TIDAL_CONTEXT??""
+      STORMTRACKER_TIDAL_CONTEXT:feature.properties?.STORMTRACKER_TIDAL_CONTEXT??""
     }});
   }
   return {features:selected,counts,total:features?.length??0};

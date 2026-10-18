@@ -103,5 +103,26 @@ for(const [status,code,scope] of [
   assert.equal(thrown.scope,scope);
   assert.equal(classifyBoMRecentHistoryFailure(thrown),scope);
 }
+// A genuine unpublished optional station table is not an HTTP error, and
+// cannot be used to certify a fall below the moderate flood threshold.
+const missingPublished=await fetchBoMRecentHistory(target,{fetchImpl:async()=>new Response(JSON.stringify({
+  format:"StormTrackerBomRecentRiverHistoryV1",
+  product:target.product,station:target.station,
+  availability:"not_published",sourceStatus:404,samples:[]
+}),{status:200,headers:{"Content-Type":"application/json"}})});
+assert.deepEqual(missingPublished,[]);
+await assert.rejects(fetchBoMRecentHistory(target,{fetchImpl:async()=>new Response(JSON.stringify({
+  format:"StormTrackerBomRecentRiverHistoryV1",
+  product:target.product,station:target.station,
+  availability:"not_published",samples:[{time:1,height:0}]
+}),{status:200})}),/response mismatch/);
+await assert.rejects(
+  fetchBoMRecentHistory(target,{timeoutMs:2,
+    fetchImpl:async(url,options)=>new Promise((resolve,reject)=>{
+      options.signal.addEventListener("abort",()=>reject(
+        new DOMException("signal is aborted without reason","AbortError")),{once:true});
+    })
+  }),error=>error?.code==="source_timeout" &&
+    error?.scope==="service" && /timed out/.test(error.message));
 assert.equal(classifyBoMRecentHistoryFailure(new TypeError("network")),"service");
 console.log("Recent BoM table parser checks passed: strict host/product whitelist, AEST time, timestamp uniqueness, conflicting records rejected, 48h bounds and only relevant rising gauge backfill.");

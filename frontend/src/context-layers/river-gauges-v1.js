@@ -39,6 +39,15 @@ function normalise(
   ).toLowerCase();
 }
 
+// Exact BoM National Flood Gauge Network source classification. Only
+// sites explicitly marked "Qualitative" qualify for persistent display
+// outside the measured rapid-rise screen. A missing, Quantitative or unknown
+// classification is NOT silently promoted to a qualitative forecast site.
+export function isQualitativeForecastSite(featureOrProperties) {
+  const properties=propertiesOf(featureOrProperties);
+  return normalise(properties.forecast_site_classification)==="qualitative";
+}
+
 export function isTidalRiverGauge(
   featureOrProperties
 ) {

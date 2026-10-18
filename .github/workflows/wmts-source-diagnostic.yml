@@ -1,0 +1,84 @@
+name: Inspect exact BoM WMTS upstream rejection
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/wmts-source-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read exact previously rejected WMTS tile (no retry burst)
+        run: |
+          set -euo pipefail
+          path='https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=atm_surf_air_precip_reflectivity_dbz&STYLE=default&FORMAT=image%2Fpng&TILEMATRIXSET=GoogleMapsCompatible_BoM&TILEMATRIX=8&TILEROW=15&TILECOL=34&time=2026-10-18T01%3A20%3A00Z'
+          curl -sS -L --connect-timeout 8 --max-time 20 --output /tmp/stormtracker-wmts-response --write-out 'WMTS relay HTTP %{http_code}; content type %{content_type}; bytes %{size_download}\n' "$path" || true
+          python3 - <<'PY'
+          from pathlib import Path
+          body=Path('/tmp/stormtracker-wmts-response')
+          if body.exists():
+              s=body.read_bytes()
+              print('Upstream WMTS refusal body excerpt (no radar imagery):')
+              if len(s)<20000 and not s.startswith(b'\x89PNG'):
+                  print(s[:1800].decode('utf-8','replace'))
+              else:
+                  print('binary/oversized response, length=',len(s))
+          PY
+      - name: Verify BoM qualitative forecast classification and Bakers Creek metadata
+        run: |
+          set -euo pipefail
+          url='https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-gauge-metadata'
+          curl --fail -sS -L --connect-timeout 8 --max-time 35 --max-filesize 12000000 \
+            --output /tmp/stormtracker-gauge-meta "$url"
+          python3 - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+          data=json.loads(Path('/tmp/stormtracker-gauge-meta').read_text())
+          assert data.get('type')=='FeatureCollection'
+          features=data.get('features') or []
+          types=Counter(str(f.get('properties',{}).get('forecast_site_classification') or '')
+                        for f in features)
+          print('BoM site classes:',dict(types))
+          for f in features:
+              p=f.get('properties') or {}
+              name=str(p.get('name',''))
+              if any(n in name.lower() for n in ('bakers creek','walkerston')):
+                  print('Reported site:',name,'BoM station:',p.get('bom_stn_num'),
+                        'forecast classification:',p.get('forecast_site_classification'))
+          PY
+      - name: Inspect BoM WMTS published layer time dimension once
+        run: |
+          set -euo pipefail
+          url='https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0'
+          curl -sS -L --connect-timeout 8 --max-time 25 --max-filesize 4000000 \
+            --output /tmp/stormtracker-wmts-capabilities \
+            --write-out 'BoM GetCapabilities HTTP %{http_code}, bytes %{size_download}\n' "$url" || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          file=Path('/tmp/stormtracker-wmts-capabilities')
+          if not file.exists(): raise SystemExit(0)
+          data=file.read_bytes()
+          try: root=ET.fromstring(data)
+          except ET.ParseError:
+              print('Capabilities not readable XML (transport or access refused):',
+                    data[:250].decode('utf-8','replace'))
+              raise SystemExit(0)
+          for layer in root.iter():
+              if layer.tag.rsplit('}',1)[-1]!='Layer': continue
+              identifier=' '.join((el.text or '') for el in layer
+                  if el.tag.rsplit('}',1)[-1]=='Identifier')
+              if identifier!='atm_surf_air_precip_reflectivity_dbz': continue
+              for dimension in layer:
+                  if dimension.tag.rsplit('}',1)[-1]!='Dimension': continue
+                  values=[(el.tag.rsplit('}',1)[-1],(el.text or '')[:750])
+                      for el in dimension]
+                  print('Published BoM reflectivity dimension:',values[:20])
+          PY

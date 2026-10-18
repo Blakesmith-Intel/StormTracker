@@ -101,7 +101,8 @@ await waitHistory(()=>layer.diagnostics?.recentHistory?.loaded===1);
 assert.equal(historyCalls,2,"Previously failed station must retry after recovery");
 assert.equal(layer.diagnostics.historyScreeningIncomplete,0);
 assert.equal(layer.features.length,1,"Genuine rise must become visible after measured history recovers");
-assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
+assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
+assert.equal(layer.features[0].properties.STORMTRACKER_RAPID_RISE,true);
 assert.ok(statuses.some(s=>s.screeningIncomplete===0&&s.kind==="ok"),
   "Recovered history should clear the incomplete-screening warning");
 

@@ -322,21 +322,21 @@ assert.equal(
 
 assert.equal(
   joined.matchedCount,
-  3
+  2
 );
 
 assert.equal(
   joined.payload
     .features
     .length,
-  3
+  2
 );
 
 assert.equal(
   joined.unmatchedObservations
     .length,
-  2,
-  "Ambiguous duplicate names and unknown stations must remain unmatched rather than guessed."
+  3,
+  "Name-only bulletin observations must remain unmatched, even if unique."
 );
 
 assert.equal(
@@ -392,20 +392,31 @@ assert.equal(
   "Tidal site · rising may reflect normal tide"
 );
 
-const minor =
-  joined.payload
-    .features
-    .find(
-      feature =>
-        feature.id
-        === "awrc:QLD-3"
-    );
-
-assert.equal(
-  minor.properties
-    .STORMTRACKER_DISPLAY_STATE,
-  "minor"
-);
+// Critically, Mirani Township 533178 and similarly named Mirani 033152
+// must never trade observations even if their names overlap.
+const mirani=joinRiverGaugeObservations({
+  gauges:{type:"FeatureCollection",features:[
+    gauge({id:"bom:533178",bom:"533178",awrc:"",name:"Mirani Township"}),
+    gauge({id:"bom:033152",bom:"033152",awrc:"",name:"Mirani"})
+  ]},
+  bulletins:{products:[{observations:[
+    {stationId:"533178",stationName:"Mirani",heightMetres:12.2,
+     tendency:"steady",floodClass:"minor",observedText:"10:15 am Tue",
+     sourceProduct:"IDQ65393"},
+    {stationId:"033152",stationName:"Mirani Township",heightMetres:9.1,
+     tendency:"rising",floodClass:"below-minor",observedText:"10:15 am Tue",
+     sourceProduct:"IDQ65393"},
+    {stationId:"",stationName:"Mirani Township",heightMetres:99,
+     tendency:"rising",floodClass:"major",observedText:"10:15 am Tue",
+     sourceProduct:"IDQ65393"}
+  ]}]}
+});
+assert.equal(mirani.matchedCount,2);
+assert.equal(mirani.unmatchedObservations.length,1);
+assert.equal(mirani.payload.features.find(x=>x.id==="bom:533178")
+  .properties.STORMTRACKER_HEIGHT_METRES,12.2);
+assert.equal(mirani.payload.features.find(x=>x.id==="bom:033152")
+  .properties.STORMTRACKER_HEIGHT_METRES,9.1);
 
 assert.match(
   DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
@@ -483,7 +494,7 @@ assert.equal(
 
 assert.equal(
   loaded.matchedCount,
-  3
+  2
 );
 
 assert.equal(
@@ -492,5 +503,5 @@ assert.equal(
 );
 
 console.log(
-  "River gauge operational checks passed: ID-first matching, unique-name fallback, ambiguous-name rejection, BoM flood-class precedence and tidal-rise suppression."
+  "River gauge operational checks passed: strict station-ID joins, no guessed names or swapped Mirani observations, BoM flood-class precedence and tidal-rise suppression."
 );

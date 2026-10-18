@@ -1,0 +1,28 @@
+name: Verify existing Cloudflare KV permissions for live cyclone data
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/cyclone-live-kv.mjs'
+      - '.github/workflows/cyclone-kv-permission-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-kv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify existing Cloudflare credentials can provision the cyclone data namespace
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          node scripts/cyclone-live-kv.mjs ensure

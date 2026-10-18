@@ -3,7 +3,7 @@
 // users. The same-origin feed MUST be access-controlled by the internal host.
 export const INTERNAL_CYCLONE_FEED_SCHEMA = "stormtracker-internal-cyclone-source-v1";
 export const INTERNAL_GML_SLOTS = Object.freeze([
-  "IDQ65248", "IDQ65249", "IDQ65250", "IDQ65252", "IDD65409"
+  "IDQ65248", "IDQ65249", "IDQ65250", "IDQ65251", "IDQ65252", "IDD65409"
 ]);
 const SLOTS = new Set(INTERNAL_GML_SLOTS);
 const ROLES = new Set(["forecast_fix", "observed_fix", "forecast_track",
@@ -59,9 +59,13 @@ export function validateInternalCycloneSnapshot(snapshot, {
   if (snapshot.status === "source-unavailable")
     return invalid("Internal cyclone source unavailable; never imply no active cyclones");
   if (snapshot.status === "no-active-products")
-    return snapshot.complete && snapshot.products.length === 0
-      ? {status: "no-active-products", message: "No verified current cyclone GML products", storms: []}
-      : invalid("Incomplete cyclone source check; not a verified all-clear");
+    return snapshot.complete && snapshot.products.length === 0 &&
+      snapshot.sourceDirectoryVerified === true &&
+      snapshot.warningSummaryConfirmed === true &&
+      Array.isArray(snapshot.warningAdviceProductNamesPresent) &&
+      snapshot.warningAdviceProductNamesPresent.length === 0
+      ? {status: "no-active-products", message: "BoM confirmed no current tropical cyclone warnings", storms: []}
+      : invalid("Current BoM warning summary not positively verified; not an all-clear");
   if (!snapshot.products.length) return invalid("Missing active cyclone products");
   const storms = [];
   const systemIds = new Set();

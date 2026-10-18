@@ -34,7 +34,9 @@ const source = {
 };
 const template = {
  schema:INTERNAL_CYCLONE_FEED_SCHEMA,status:"active",
- generatedUtc:NOW,complete:true,products:[source]
+ generatedUtc:NOW,complete:true,products:[source],
+ sourceDirectoryVerified:true,warningSummaryConfirmed:true,
+ warningAdviceProductNamesPresent:[]
 };
 const clone = () => JSON.parse(JSON.stringify(template));
 const check = v => validateInternalCycloneSnapshot(v,{nowUtc:NOW});
@@ -49,6 +51,9 @@ assert.deepEqual(active.storms[0].features[1].geometry.coordinates,
 assert.equal(active.storms[0].features[0].leadHours,9);
 const empty = {...template,status:"no-active-products",products:[]};
 assert.equal(check(empty).status,"no-active-products");
+assert.equal(check({...empty,warningSummaryConfirmed:false}).status,"unavailable");
+assert.equal(check({...empty,sourceDirectoryVerified:false}).status,"unavailable");
+assert.equal(check({...empty,warningAdviceProductNamesPresent:["IDQ20023.TXT"]}).status,"unavailable");
 assert.equal(check({...empty,status:"source-unavailable"}).status,"unavailable");
 assert.equal(check({...empty,complete:false}).status,"unavailable");
 assert.equal(check({...template,complete:false}).status,"active-partial");

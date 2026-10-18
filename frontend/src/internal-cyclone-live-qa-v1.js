@@ -1,5 +1,5 @@
 import {validateInternalCycloneSnapshot}
- from "./internal-cyclone-feed-v1.js";
+ from "./internal-cyclone-feed-v1.js?v=verified-live-ftp-v1";
 import {focusCycloneThroughController}
  from "./cyclone-camera-focus-v1.js";
 
@@ -10,6 +10,7 @@ export function createInternalCycloneLiveQA({
   Cesium, viewer, cameraController, documentRef=document,
   fetchRef=fetch, now=()=>new Date()
 }) {
+  const CYCLONE_FEED="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/cyclones";
   const panel=documentRef.getElementById("cycloneForecastQaPanel");
   const mapPanel=documentRef.getElementById("mapPanel");
   if(!panel || !mapPanel || !Cesium || !viewer) throw new Error("Missing cyclone QA hosts");
@@ -39,7 +40,7 @@ export function createInternalCycloneLiveQA({
   sourceRow.style.cssText="display:flex;gap:6px;flex-wrap:wrap;margin:7px 0";
   const reload=el("button","Refresh source");
   reload.type="button";
-  reload.disabled=true;
+  reload.disabled=false;
   reload.id="internalCycloneRefresh";
   const focus=el("button","Focus cyclone");
   focus.type="button";
@@ -55,7 +56,7 @@ export function createInternalCycloneLiveQA({
   select.style.cssText="width:100%;padding:5px;background:#1b3645;color:#fff";
   selectLabel.appendChild(select);
   container.appendChild(selectLabel);
-  const status=el("p","Live cyclone layer off. Select Show live cyclone forecasts to check the official source.");
+  const status=el("p","Checking current BoM tropical cyclone warnings…");
   status.id="internalCycloneQaStatus";
   status.style.cssText="font-size:11px;white-space:pre-line;color:#cfecf7;overflow-wrap:anywhere;margin-top:7px";
   status.setAttribute("role","status");
@@ -180,19 +181,19 @@ export function createInternalCycloneLiveQA({
     select.value=activeId??"";
     draw();
   }
-  async function refresh(){
-    if(!toggle.checked||destroyed)return;
+  async function refresh({statusOnly=false}={}){
+    if((!toggle.checked&&!statusOnly)||destroyed)return;
     const id=++sequence;
     controller?.abort();
     controller=new AbortController();
     status.textContent="Checking original BoM tropical cyclone forecasts…";
     try{
       // This path needs a real browser-accessible feed; no placeholder data.
-      const response=await fetchRef("/internal/cyclones.json",{
-        method:"GET",credentials:"same-origin",cache:"no-store",
+      const response=await fetchRef(CYCLONE_FEED,{
+        method:"GET",credentials:"omit",cache:"no-store",
         headers:{Accept:"application/json"},signal:controller.signal
       });
-      if(id!==sequence||destroyed||!toggle.checked)return;
+      if(id!==sequence||destroyed||(!toggle.checked&&!statusOnly))return;
       if(!response.ok||response.redirected||
         !String(response.headers.get("content-type")).includes("application/json"))
         throw new Error(response.status===401||response.status===403
@@ -203,12 +204,17 @@ export function createInternalCycloneLiveQA({
       if(raw.length>16000000)throw new Error("Internal feed exceeds safety size");
       const parsed=validateInternalCycloneSnapshot(JSON.parse(raw),{
         nowUtc:now().toISOString()});
-      if(id!==sequence||destroyed||!toggle.checked)return;
+      if(id!==sequence||destroyed||(!toggle.checked&&!statusOnly))return;
       if(!["active","active-partial"].includes(parsed.status)){
         clear();
         status.textContent=parsed.status==="no-active-products"
           ?"Currently no tropical cyclone warnings"
           :"Unable to verify current tropical cyclone warnings. Check BoM directly.";
+        return;
+      }
+      if(!toggle.checked){
+        clear();
+        status.textContent=parsed.storms.length+" current BoM tropical cyclone forecast(s) available. Enable the layer to display original issued tracks.";
         return;
       }
       storms=parsed.storms;
@@ -219,7 +225,7 @@ export function createInternalCycloneLiveQA({
         (currentStorm()?fmt(currentStorm().issueUtc):"")+
         "\nSource: Bureau of Meteorology. Advisory text is a separate product.";
     }catch(error){
-      if(id!==sequence||destroyed||!toggle.checked)return;
+      if(id!==sequence||destroyed||(!toggle.checked&&!statusOnly))return;
       clear();
       status.textContent="Unable to verify current tropical cyclone warnings. Check BoM directly.\n"+
         String(error?.message??error);
@@ -228,22 +234,22 @@ export function createInternalCycloneLiveQA({
   function disable(){
     sequence++;
     controller?.abort();controller=null;
-    if(timer!==null)clearInterval(timer);
-    timer=null;clear();reload.disabled=true;
-    status.textContent="Live cyclone layer off. No live source has been checked.";
+    clear();reload.disabled=false;
+    status.textContent="Cyclone overlays off. Checking current official source…";
   }
   toggle.addEventListener("change",()=>{
-    if(!toggle.checked){disable();return;}
-    reload.disabled=false;
+    if(!toggle.checked){disable();void refresh({statusOnly:true});return;}
     void refresh();
-    timer=setInterval(()=>{
-      if(currentStorm()&&Date.parse(currentStorm().expiresUtc)<=now().getTime()){
-        clear();status.textContent="Original BoM forecast expired. Checking new issue…";
-      }
-      void refresh();
-    },300000);
   });
-  reload.addEventListener("click",()=>void refresh());
+  // Poll source status every 5 minutes, even with map layers OFF by default.
+  timer=setInterval(()=>{
+    if(currentStorm()&&Date.parse(currentStorm().expiresUtc)<=now().getTime()){
+      clear();status.textContent="Original BoM forecast expired. Checking new issue…";
+    }
+    void refresh({statusOnly:!toggle.checked});
+  },300000);
+  void refresh({statusOnly:true});
+  reload.addEventListener("click",()=>void refresh({statusOnly:!toggle.checked}));
   select.addEventListener("change",()=>{activeId=select.value;draw();});
   focus.addEventListener("click",()=>{
     const s=currentStorm();
@@ -259,7 +265,8 @@ export function createInternalCycloneLiveQA({
   return {
     refresh,
     get enabled(){return toggle.checked;},
-    destroy(){destroyed=true;disable();viewer.dataSources.remove(layer,true);
+    destroy(){destroyed=true;if(timer!==null)clearInterval(timer);
+      disable();viewer.dataSources.remove(layer,true);
       mapStamp.remove();container.remove();}
   };
 }

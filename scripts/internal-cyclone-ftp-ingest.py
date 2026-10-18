@@ -25,7 +25,7 @@ import tempfile
 REPO = Path(__file__).resolve().parents[1]
 DECODER = REPO / "scripts" / "decode-bom-issued-cyclone-gml.py"
 # These are documented forecast GML product *slots*, NOT storm/advice IDs.
-PRODUCTS = ("IDQ65248", "IDQ65249", "IDQ65250", "IDQ65252", "IDD65409")
+PRODUCTS = ("IDQ65248", "IDQ65249", "IDQ65250", "IDQ65251", "IDQ65252", "IDD65409")
 FTP_BASE = "ftp://ftp.bom.gov.au/anon/gen/fwo/"
 MAX_BYTES = 3_000_000
 MAX_FUTURE_SECONDS = 300

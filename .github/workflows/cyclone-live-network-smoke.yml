@@ -1,0 +1,38 @@
+name: Verify live BoM cyclone FTP and warning-summary access
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/refresh-bom-cyclone-live.py'
+      - 'scripts/test-cyclone-live-ftp-status.py'
+      - 'scripts/internal-cyclone-ftp-ingest.py'
+      - '.github/workflows/cyclone-live-network-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check current original-source BoM FTP access and independent warning summary
+        run: |
+          set -euo pipefail
+          python3 scripts/test-cyclone-live-ftp-status.py
+          python3 scripts/refresh-bom-cyclone-live.py --out-dir "$RUNNER_TEMP/stormtracker-cyclone-network-test"
+          python3 - "$RUNNER_TEMP/stormtracker-cyclone-network-test/cyclones.json" <<'PY'
+          import json,sys
+          with open(sys.argv[1],encoding="utf-8") as file: status=json.load(file)
+          print("Current BoM anonymous FTP directory reachable:",status["sourceDirectoryVerified"])
+          print("Current official no-warning summary confirmed:",status["warningSummaryConfirmed"])
+          print("Source-current map status:",status["status"])
+          if not status["sourceDirectoryVerified"]:
+              raise SystemExit("BoM directory transport unavailable; cannot prove live path")
+          # Empty map product slots do not prove an all-clear. Either a verified
+          # no-warning statement or an explicit source-unavailable is acceptable.
+          if status["status"]=="no-active-products":
+              assert status["warningSummaryConfirmed"] and status["complete"]
+          PY

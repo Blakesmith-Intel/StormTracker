@@ -111,6 +111,27 @@ PY
 # V10.2 base, morning flood/power fixes, or any historical QA preview.
 python3 scripts/strip-production-cyclone-qa.py --site _site \
   --panel-source frontend/src/operational-cyclone-panel-v1.js
+# Overlay ONLY current-source cyclone modules from the maintenance source.
+# Archived cyclone QA modules remain excluded from the public operational root.
+cp frontend/src/internal-cyclone-live-qa-v1.js _site/src/internal-cyclone-live-qa-v1.js
+cp frontend/src/internal-cyclone-feed-v1.js _site/src/internal-cyclone-feed-v1.js
+python3 - <<'PY'
+from pathlib import Path
+runtime=Path("_site/src/live3d-operational-v9.js")
+original='internal-cyclone-live-qa-v1.js?v=internal-original-gml-qa1'
+source=runtime.read_text(encoding="utf-8")
+assert source.count(original)==1, "Unexpected original cyclone import cache key"
+runtime.write_text(source.replace(original,
+   'internal-cyclone-live-qa-v1.js?v=verified-ftp-kv-20261018',1),
+   encoding="utf-8")
+build=Path("_site/BUILD.txt")
+with build.open("a",encoding="utf-8") as output:
+    output.write("CYCLONE ORIGINAL FTP-KV SOURCE READER 2026-10-18 (fail closed, automatic five-minute source status)\\n")
+PY
+node --check _site/src/internal-cyclone-live-qa-v1.js
+node --check _site/src/internal-cyclone-feed-v1.js
+grep -Fq 'workers.dev/cyclones' _site/src/internal-cyclone-live-qa-v1.js
+grep -Fq 'warningSummaryConfirmed === true' _site/src/internal-cyclone-feed-v1.js
 node --check _site/src/operational-cyclone-panel-v1.js
 grep -Fq 'createOperationalCyclonePanel' _site/src/live3d-operational-v9.js
 ! grep -Fq 'createHistoricalCycloneForecastQA' _site/src/live3d-operational-v9.js

@@ -35,3 +35,5 @@ jobs:
         run: node scripts/probe-live-river-history-cors-v1.mjs
       - name: Check QLD and Brewarrina Doppler paths
         run: node scripts/probe-brewarrina-wind-source.mjs --require-production-route
+      - name: Verify significant rainfall route and original BoM station data
+        run: node scripts/probe-live-qld-significant-rainfall-v1.mjs

@@ -310,7 +310,8 @@ grep -Fq 'IDR93I' "_site/src/border-radar-sites-v1.js"
 # with strictly separate "no cyclone" and "unable to verify" status.
 grep -Fq 'id="openCycloneForecastQa"' "_site/live3d-operational-v9.html"
 grep -Fq 'id="cycloneForecastQaPanel"' "_site/live3d-operational-v9.html"
-grep -Fq 'createHistoricalCycloneForecastQA' "_site/src/live3d-operational-v9.js"
+grep -Fq 'createOperationalCyclonePanel' "_site/src/live3d-operational-v9.js"
+! grep -Fq 'createHistoricalCycloneForecastQA' "_site/src/live3d-operational-v9.js"
 grep -Fq 'createInternalCycloneLiveQA' "_site/src/live3d-operational-v9.js"
 grep -Fq 'Currently no tropical cyclone warnings' "_site/src/internal-cyclone-live-qa-v1.js"
 grep -Fq 'Unable to verify current tropical cyclone warnings' "_site/src/internal-cyclone-live-qa-v1.js"
@@ -318,7 +319,9 @@ grep -Fq 'validateInternalCycloneSnapshot' "_site/src/internal-cyclone-live-qa-v
 grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
 node --check "_site/src/internal-cyclone-live-qa-v1.js"
 node --check "_site/src/internal-cyclone-feed-v1.js"
-node --check "_site/src/historical-cyclone-forecast-map-v1.js"
+node --check "_site/src/operational-cyclone-panel-v1.js"
+test ! -f "_site/src/historical-cyclone-forecast-map-v1.js"
+test ! -d "_site/data/cyclone-history"
 
 # Regression: Hide controls must remove both sidebar grid tracks, not shrink map.
 grep -Fq 'body.simple-ui #app.sidebar-collapsed' "_site/src/single-interface-v1.css"

@@ -94,7 +94,11 @@ assert.ok(calls.requests>=4,"At least two gauge metadata and two bulletin calls;
 now += 2*3600000;
 failFetch=true;
 await assert.rejects(layer.refresh({force:true}),/Simulated BoM relay outage/);
-assert.equal(layer.features.length,0,
-  "Never continue displaying old flood-like markers after feed has been stale over 90 minutes");
-assert.ok(calls.status.some(entry=>String(entry.message).includes("old flood markers cleared")));
+assert.equal(layer.features.length,2,
+  "An upstream outage is not a below-minor reading: preserve last official minor and moderate");
+assert.ok(layer.features.every(f=>f.properties.STORMTRACKER_OBSERVATION_STALE===true),
+  "All retained official flood stations must show observation-stale metadata");
+assert.ok(layer.features.every(f=>f.properties.STORMTRACKER_RAPID_RISE===false),
+  "No stale station can retain a previous blue rapid-rise modifier");
+assert.ok(calls.status.some(entry=>String(entry.message).includes("last confirmed flood stages retained")));
 console.log("Flood layer integration passed: hidden/background observation storage, initial BoM minor/moderate markers, measured rise arrow on later bulletin, tidal suppression, popup IDs and toggle.");

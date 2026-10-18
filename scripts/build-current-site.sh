@@ -92,6 +92,12 @@ html_path=site / "live3d-operational-v9.html"
 html=html_path.read_text(encoding="utf-8")
 needle="Flood signals</label></div>"
 assert html.count(needle)==1
+# Replace the old rapid/tide-only legend while retaining pinned sidebar
+# controls, positions, app shell and independent historical QA preview.
+old_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span class=\"flood-green\">●</span> Rapid above minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span class=\"flood-cyan\">●</span> Unusual tidal rise (screening)</div>"
+new_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span style=\"color:#1269e8\">↑</span> Rapid rise below minor · <span class=\"flood-green\">●</span> Minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span style=\"color:#1269e8\">↑</span> on any flood icon = rapid rise / potential flash flooding</div>"
+assert html.count(old_legend)==1, "Pinned production legend layout changed"
+html=html.replace(old_legend,new_legend,1)
 html_path.write_text(html.replace(
     needle,"Flood signals</label>"+button_match.group(0)+"</div>"),encoding="utf-8")
 

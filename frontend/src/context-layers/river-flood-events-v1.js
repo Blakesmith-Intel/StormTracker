@@ -45,8 +45,7 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   for(const feature of features??[]){
     const id=String(feature?.id??"");
     const p=feature?.properties??{};
-    const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,now);
-    if(!id||!fresh(observed,now))continue;
+    if(!id)continue;
     const decision=evaluateFloodSignal(feature,history,now);
     if(!decision.show)continue;
     if(["minor","moderate","major"].includes(decision.state))
@@ -63,6 +62,9 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
       STORMTRACKER_TIDAL_SCREENED:Boolean(decision.tidalScreened),
       STORMTRACKER_ALERT_REASON:decision.reason,
       STORMTRACKER_ALERT_SOURCE:decision.source,
+      STORMTRACKER_OBSERVATION_STALE:Boolean(decision.stale),
+      STORMTRACKER_OFFICIAL_OBSERVED_AT:decision.lastObservedAt??
+        p.STORMTRACKER_OFFICIAL_OBSERVED_AT??null,
       STORMTRACKER_ALERT_PERSISTED:false,
       STORMTRACKER_RECOVERY_READINGS:0,
       STORMTRACKER_RATE_SCREENING_ZONE:decision.riseScreeningZone??"",

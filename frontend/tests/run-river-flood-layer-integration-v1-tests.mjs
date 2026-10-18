@@ -13,7 +13,7 @@ const features=[
 ];
 const reportedTime=()=>step===0?"6:15 pm Thu 08/10/2026":"7:00 pm Thu 08/10/2026";
 const latest=()=>[
-  {stationName:"Upper river",stationId:"040123",heightMetres:step===0?1.0:1.6,
+  {stationName:"Upper river",stationId:"040123",heightMetres:step===0?1.0:2.2,
    tendency:"rising",floodClass:"minor",observedText:reportedTime()},
   {stationName:"Coastal tide",stationId:"040124",heightMetres:step===0?0.9:1.5,
    tendency:"rising",floodClass:"",observedText:reportedTime()},

@@ -22,6 +22,10 @@ import {
 } from "../frontend/src/context-layers/river-gauges-v1.js";
 
 import {inspectBomRecentWaterLevelTable} from "../frontend/src/context-layers/bom-recent-river-history-v1.js";
+import {
+  RAINFALL_REGIONS,RAINFALL_SOURCE_BASE,parseBomRainfallMap,
+  qldFloodMapCreatedAt,dedupeSignificantRainfall
+} from "../frontend/src/context-layers/significant-rainfall-source-v1.js";
 
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
@@ -1059,6 +1063,56 @@ async function relayRiverRecentHistory(request,incoming,origin){
   }),{status:200,headers});
 }
 
+// One additional read-only route on the existing relay. The source publishes
+// station ID/coordinates and BOTH rainfall periods in original map tooltips.
+async function relayQldSignificantRainfall(request,origin){
+  const samples=[],failures=[],regional=[];
+  // Max three simultaneous 1-MB-ish regional HTML pages. On partial BoM
+  // failure, do not invent or quietly zero the missing catchments.
+  for(let start=0;start<RAINFALL_REGIONS.length;start+=3){
+    const chunk=RAINFALL_REGIONS.slice(start,start+3);
+    const settled=await Promise.allSettled(chunk.map(async region=>{
+      const url=RAINFALL_SOURCE_BASE+region+".shtml";
+      const result=await fetch(url,{headers:{Accept:"text/html"},
+        signal:AbortSignal.timeout(12000),
+        cf:{cacheEverything:true,cacheTtl:300}});
+      if(!result.ok)throw Error("BoM "+region+" HTTP "+result.status);
+      const size=Number(result.headers.get("content-length"))||0;
+      if(size>3_500_000)throw Error("BoM rainfall HTML excessive");
+      const html=await result.text();
+      if(html.length>3_500_000)throw Error("BoM rainfall HTML excessive");
+      const sourceCreatedAt=qldFloodMapCreatedAt(html);
+      if(!sourceCreatedAt)throw Error("BoM rainfall source time unavailable");
+      const since9am=parseBomRainfallMap(html,"since9am",region);
+      const lastHour=parseBomRainfallMap(html,"lastHour",region);
+      return {region,sourceCreatedAt,
+        observations:[...since9am,...lastHour].map(x=>({...x,sourceCreatedAt}))};
+    }));
+    for(let j=0;j<chunk.length;j++){
+      const result=settled[j];
+      if(result.status==="fulfilled"){
+        regional.push({region:result.value.region,
+          sourceCreatedAt:result.value.sourceCreatedAt});
+        samples.push(...result.value.observations);
+      }else failures.push({region:chunk[j],
+        reason:String(result.reason?.message??result.reason).slice(0,120)});
+    }
+  }
+  if(!regional.length)return errorResponse(
+    "BoM Queensland significant rainfall source unavailable",503,origin);
+  const observations={
+    since9am:dedupeSignificantRainfall(samples,"since9am"),
+    lastHour:dedupeSignificantRainfall(samples,"lastHour")
+  };
+  const headers=corsHeaders(origin);
+  headers.set("Content-Type","application/json; charset=utf-8");
+  headers.set("Cache-Control","public, max-age=300");
+  return new Response(request.method==="HEAD"?null:JSON.stringify({
+    format:"StormTrackerSignificantRainfallV1",
+    checkedAt:new Date().toISOString(),regional,failed:failures,
+    observations
+  }),{status:200,headers});
+}
 async function relayWmts(request, incoming, origin) {
   const layer =
     incoming.searchParams.get("LAYER");
@@ -1550,6 +1604,9 @@ export default {
       );
     }
 
+    if (incoming.pathname === "/qld-significant-rainfall") {
+      return relayQldSignificantRainfall(request,origin);
+    }
     if (incoming.pathname === "/river-gauge-metadata") {
       return relayRiverGaugeMetadata(
         request,

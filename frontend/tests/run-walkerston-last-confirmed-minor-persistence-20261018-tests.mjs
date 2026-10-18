@@ -7,8 +7,10 @@ import {reconcileFloodEvents}
   from "../src/context-layers/river-flood-events-v1.js";
 import {evaluateFloodSignal,parseQueenslandObservationTime}
   from "../src/context-layers/river-flood-signals-v1.js";
-import {riverGaugePanelAppearance,riverGaugeOperationalSummary}
+import {riverGaugePanelAppearance}
   from "../src/context-layers/river-gauges-operational-v1.js";
+import {riverGaugeOperationalSummary}
+  from "../src/context-layers/river-gauge-layer-v1.js";
 
 const now=Date.parse("2026-10-18T06:41:00Z");
 const at=Date.parse("2026-10-18T04:18:00Z");

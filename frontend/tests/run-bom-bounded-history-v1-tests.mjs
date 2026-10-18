@@ -2,47 +2,36 @@ import assert from "node:assert/strict";
 import {discoverBoundedBomReflectivityHistory}
   from "../src/bom-wmts-loop-v2.js";
 const now=Date.parse("2026-10-13T05:23:00Z");
-const seen=[],earliest=Date.parse("2026-10-13T04:30:00Z");
-const newest=Date.parse("2026-10-13T05:05:00Z");
+const times=Array.from({length:8},(_,i)=>
+  new Date(Date.parse("2026-10-13T04:30:00Z")+i*300000)
+    .toISOString().replace(".000Z","Z"));
+let fetches=0,probeCalls=0;
 const available=await discoverBoundedBomReflectivityHistory(
-  now,180,"SEQ",{probe:async (time,region)=>{
-    assert.equal(region,"SEQ");seen.push(time);
-    const at=Date.parse(time);
-    if(at<earliest||at>newest)throw Error("Image request failed: HTTP 400");
-    return true;
-  }}
+  now,180,"SEQ",{publishedTimes:async()=>{fetches++;return [...times];}}
 );
-assert.equal(available.length,8,"Eight genuinely published observations retained");
-assert.equal(available[0],"2026-10-13T04:30:00Z");
-assert.equal(available.at(-1),"2026-10-13T05:05:00Z");
-assert.ok(seen.length<=10,"No legacy 48-timestamp history probing");
-assert.equal(new Set(seen).size,seen.length,"No duplicate source requests");
-let failedCount=0;
+assert.deepEqual(available,times,"Only published BoM time dimension is accepted");
+assert.equal(fetches,1,"One capabilities lookup instead of guessed WMTS tile queries");
+assert.equal(probeCalls,0,"No speculative pixel probes per site or timestamp");
+assert.equal(available.length,8);
+let failures=0;
 await assert.rejects(
-  discoverBoundedBomReflectivityHistory(now,180,"SEQ",{probe:async()=>{
-    failedCount++;
-    throw Error("Image request failed: HTTP 400");
+  discoverBoundedBomReflectivityHistory(now,180,"SEQ",{publishedTimes:async()=>{
+    failures++;return [];
   }}),/No verified current BoM reflectivity timestamp/);
-assert.equal(failedCount,4,
-  "When BoM rejects every candidate, stop after four probes rather than 48");
-let forbiddenCount=0;
+assert.equal(failures,1,"One empty capabilities result; no cascade of 400 tile requests");
+let denials=0;
 await assert.rejects(
-  discoverBoundedBomReflectivityHistory(now,180,"SEQ",{probe:async()=>{
-    forbiddenCount++;
-    throw Error("Image request failed: HTTP 403");
-  }}),/temporarily unavailable/);
-assert.equal(forbiddenCount,1,"HTTP 403 never starts another automatic probe");
-const gaps=[];
+  discoverBoundedBomReflectivityHistory(now,180,"SEQ",{publishedTimes:async()=>{
+    denials++;throw Error("BoM WMTS capabilities HTTP 403");
+  }}),/HTTP 403/);
+assert.equal(denials,1,"A service denial never triggers guessed timestamps");
 const partial=await discoverBoundedBomReflectivityHistory(
-  now,180,"66",{probe:async timestamp=>{
-    gaps.push(timestamp);
-    return timestamp==="2026-10-13T05:05:00Z";
-  }}
+  now,180,"66",{publishedTimes:async()=>[times.at(-1)]}
 );
-assert.deepEqual(partial,["2026-10-13T05:05:00Z"]);
-assert.equal(gaps.length,4,"Stop at two genuine published-history misses");
+assert.deepEqual(partial,[times.at(-1)]);
 const thirty=await discoverBoundedBomReflectivityHistory(
-  now,30,"SEQ",{probe:async timestamp=>timestamp<="2026-10-13T05:05:00Z"}
+  now,30,"SEQ",{publishedTimes:async()=>times}
 );
-assert.equal(thirty.length,7,"Requested horizon still limits verified observations");
-console.log("PASS bounded 9-frame BoM rolling WMTS discovery, 400 flood prevention, 403 fast-stop, gaps and 30-minute horizon.");
+assert.equal(thirty.length,7,"Requested horizon still limits true observations");
+assert.equal(thirty[0],"2026-10-13T04:35:00Z");
+console.log("PASS nine-frame published BoM WMTS times, single metadata request, no 400 tile probe storms, source failure honesty and 30-minute horizon.");

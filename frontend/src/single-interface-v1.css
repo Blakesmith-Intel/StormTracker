@@ -263,3 +263,15 @@ body.simple-ui #cycloneForecastQaPanel {
   background:#142d3e;max-width:100%;font-size:11px;
 }
 #cycloneForecastQaPanel #historicalCycloneQaPanel summary {cursor:pointer;}
+
+/* Significant rainfall adds one compact row to the accepted operator sidebar. */
+.significant-rainfall-row{display:flex;align-items:center;gap:5px;min-width:0;}
+.significant-rainfall-row label{flex:1 1 auto;min-width:0;font-size:11px;white-space:nowrap;}
+.significant-rainfall-row select{min-width:0;max-width:100px;flex:0 0 100px;font-size:10px;padding:3px;}
+.significant-rainfall-row button{flex:0 0 27px;min-width:27px;padding:2px;font-size:14px;}
+.significant-rain-icon{color:#e98722;font-size:15px;vertical-align:middle;}
+.significant-rainfall-details{font-size:10px;line-height:1.3;padding:0 3px 0 22px;}
+.significant-rainfall-details summary{cursor:pointer;color:var(--muted,#a2b8bd);list-style:revert;}
+.significant-rainfall-details .note{margin-top:3px;font-size:10px;}
+.significant-orange{color:#ec861c}.significant-red{color:#db3238}
+.significant-rainfall-info .metric{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);}

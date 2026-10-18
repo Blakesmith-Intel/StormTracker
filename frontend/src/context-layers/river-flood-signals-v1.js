@@ -171,10 +171,18 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
   };
   // A historical rise from local storage is not evidence that a newer
   // bulletin is still rising. Require its timestamp to match the latest data.
-  if(!timely || !recent || tendency!=="rising" ||
-      Math.abs(recent.observedAt-observed)>10*60000)return {
-    show:false,reason:"No verified rapid rise or moderate/major flood classification"
+  // The measured rapid-rise screen is distinct from BoM's authoritative
+  // classification. A creek remains in MINOR FLOOD while BoM reports minor,
+  // even if the latest observation is steady/falling or history is missing.
+  // Stale source observations still cannot support a live flood marker.
+  if(!timely)return {
+    show:false,reason:"Missing or stale current BoM flood observation"
   };
+  if(!recent || tendency!=="rising" ||
+      Math.abs(recent.observedAt-observed)>10*60000)return level==="minor"
+    ? {show:true,state:"minor",source:"bom-classification",rise:recent,
+       reason:"Current minor flood classification (BoM); trend does not end flooding"}
+    : {show:false,reason:"No verified rapid rise or current BoM flood classification"};
   if(!tidal && level==="minor" &&
     recent.rateMetresPerHour>=NON_TIDAL_RAPID_RISE_M_PER_H)return {
       show:true,state:"rapid-rise",source:"local-rate-screen",
@@ -191,19 +199,24 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
       rise:recent,tidalBaselineMetresPerHour:baseline
     };
   }
+  if(level==="minor")return {
+    show:true,state:"minor",source:"bom-classification",rise:recent,
+    reason:"Current minor flood classification (BoM); rapid-rise screen not required"
+  };
   return {show:false,reason:tidal?
     "Normal/uncertain tide or insufficient tidal history":
-    "Below moderate flood level without verified rapid rise above minor"};
+    "No verified flood classification or rapid-rise signature"};
 }
 
 export function filterOperationalFloodGauges(features,history={},nowMs=Date.now()) {
   const selected=[];
-  const counts={moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
+  const counts={minor:0,moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
   for(const feature of features??[]){
     const result=evaluateFloodSignal(feature,history,nowMs);
     if(!result.show)continue;
     const name=result.state;
-    if(name==="moderate")counts.moderate++;
+    if(name==="minor")counts.minor++;
+    else if(name==="moderate")counts.moderate++;
     else if(name==="major")counts.major++;
     else if(name==="rapid-rise")counts.rapidRise++;
     else if(name==="tidal-anomaly")counts.tidalAnomaly++;

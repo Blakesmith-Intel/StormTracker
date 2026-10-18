@@ -48,5 +48,17 @@ await assert.rejects(
   /Incomplete BoM reflectivity mosaic.*403/
 );
 assert.equal(deniedAttemptCount,3,"permanent failed tile is not refetched under QA guard");
+let invalidTimeAttempts=0;
+await assert.rejects(loadCompleteRadarTiles(tasks,async url=>{
+  invalidTimeAttempts++;
+  if(url==="tile-b"){
+    const e=Error("Image request failed: HTTP 400");e.status=400;throw e;
+  }
+  return image;
+},{stopOnPermanent:true,wait:async()=>{}}),
+/Incomplete BoM reflectivity mosaic.*400/);
+assert.equal(invalidTimeAttempts,3,
+  "Published-time race with BoM retirement must not retry HTTP 400");
+
 console.log("PASS hard relay 403 fails complete source scan without duplicate attempts or fabricated pixels.");
 console.log("PASS selective WMTS tile retry; existing real tiles retained; no missing-pixel fabrication.");

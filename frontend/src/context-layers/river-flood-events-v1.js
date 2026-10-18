@@ -40,7 +40,7 @@ export function cleanFloodEvents(input,now=Date.now()){
 export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.now()){
   const events={};
   const selected=[];
-  const counts={moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
+  const counts={minor:0,moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
   const previous=cleanFloodEvents(oldEvents,now);
   for(const feature of features??[]){
     const id=String(feature?.id??"");
@@ -110,7 +110,25 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
         reason=`Earlier verified ${prior.type==="tidal-anomaly"?"unusual tidal rise":"rapid river rise"}; ${recoveryCount}/2 fresh stable or falling observations confirmed. Recovery screening only.`;
       }
     }
-    if(!event)continue;
+    if(!event){
+      if(decision.show && decision.state==="minor"){
+        // An inferred rapid-rise event may resolve after two good readings,
+        // but the *BoM minor flood condition* must stay on the map until the
+        // source classification itself falls below minor.
+        counts.minor++;
+        selected.push({...feature,properties:{
+          ...p,STORMTRACKER_DISPLAY_STATE:"minor",
+          STORMTRACKER_ALERT_REASON:decision.reason,
+          STORMTRACKER_ALERT_SOURCE:"bom-classification",
+          STORMTRACKER_ALERT_PERSISTED:false,
+          STORMTRACKER_RECOVERY_READINGS:0,
+          STORMTRACKER_RISE_RATE_M_PER_H:rate?.rateMetresPerHour??null,
+          STORMTRACKER_RATE_INTERVAL_MINUTES:rate?.intervalMinutes??null,
+          STORMTRACKER_TIDAL_BASELINE_M_PER_H:null
+        }});
+      }
+      continue;
+    }
     events[id]=event;
     const state=event.type;
     if(state==="rapid-rise")counts.rapidRise++;

@@ -128,7 +128,8 @@ mode="station-oversize";
 features.push(gauge("540387"));
 const beforeOversize=historyCalls;
 await layer.refresh({force:true});
-await waitHistory(()=>layer.recentHistoryRequestCount===4);
+await waitHistory(()=>layer.recentHistoryRequestCount===4&&
+  layer.diagnostics?.recentHistory?.failed===1);
 assert.ok(historyCalls>=beforeOversize+2,
   "Continue checking other gauges after a single oversized station table");
 assert.equal(layer.diagnostics.recentHistory.blockedUntil,0,

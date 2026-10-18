@@ -23,9 +23,9 @@ export function resolveSourceDiscovery({
   const detail=classifyReflectivityFailure(outcome.error);
   // Diagnostics are available to callers without changing observation decisions.
   if(automatic)
-    return {times:[],keepCurrent:true,cachedOnly:false,diagnostic:detail};
+    return {times:[],keepCurrent:true,cachedOnly:false};
   if(Array.isArray(cachedFrames) && cachedFrames.length)
-    return {times:[],keepCurrent:false,cachedOnly:true,diagnostic:detail};
+    return {times:[],keepCurrent:false,cachedOnly:true};
   throw new Error("BoM published reflectivity unavailable, and there is no prior "+
     "genuine radar observation cached in this browser. "+
     "[source="+detail.category+(detail.status?", HTTP "+detail.status:"")+"] "+

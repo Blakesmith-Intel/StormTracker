@@ -15,7 +15,14 @@ await Promise.all(regions.map(async region=>{
       sourceStationObservations:areaCounts,
       since9am50plus:since9am.length,lastHour50plus:lastHour.length,
       sample:[...since9am,...lastHour].slice(0,2)};
-    if(!result.createdAt||areaCounts<1)throw Error("Source missing timestamp or station IDs");
+    if(!result.createdAt||areaCounts<1) {
+      console.log("SOURCE_TIME_DIAG",region,JSON.stringify({
+        createdAt:result.createdAt,areaCounts,
+        footer:html.slice(-1100),
+        dateHints:html.match(/(?:created|updated|issued|time).*?(?:UTC|AEST|2026)/gi)?.slice(-8)
+      }).slice(0,1700));
+      throw Error("Source missing timestamp or station IDs");
+    }
     console.log("LIVE_BO_M_RAINFALL",JSON.stringify(result));
   }catch(e){console.log("LIVE_BO_M_RAINFALL_ERROR",region,String(e))}
 }));

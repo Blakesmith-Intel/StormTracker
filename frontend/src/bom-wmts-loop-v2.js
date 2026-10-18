@@ -192,7 +192,7 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
   try{
     firstImage=await fetchReadableImage(first.url);
   }catch(error){
-    if(/HTTP\\s+400\\b/.test(String(error?.message??error)))
+    if(/HTTP\s+400\b/.test(String(error?.message??error)))
       unavailableTime.reject(observedUtc);
     throw Error("BoM WMTS source time preflight failed at "+
       observedUtc+": "+String(error?.message??error));
@@ -204,7 +204,7 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
       retries:1,stopOnPermanent:true
     });
   }catch(error){
-    if(/HTTP\\s+400\\b/.test(String(error?.message??error)))
+    if(/HTTP\s+400\b/.test(String(error?.message??error)))
       unavailableTime.reject(observedUtc);
     throw error;
   }

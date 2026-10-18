@@ -1,0 +1,15 @@
+name: FTP geographic and operational safety gates
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/validate-ftp-georeference-gates-20261019.mjs
+      - run: node scripts/test-ftp-reflectivity-validation-20261019.mjs
+      - run: npm test

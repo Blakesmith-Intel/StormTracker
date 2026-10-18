@@ -122,7 +122,8 @@ export function riverGaugeOperationalSummary(
 
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
     recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0),
-    rapidRise:Boolean(properties.STORMTRACKER_RAPID_RISE)
+    rapidRise:Boolean(properties.STORMTRACKER_RAPID_RISE),
+    tidalScreened:Boolean(properties.STORMTRACKER_TIDAL_SCREENED)
   };
 }
 

@@ -246,7 +246,7 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
     return {show:true,state:level,source:"bom-classification",
       reason:level+" flood classification (BoM)"+
         (rapidlyRising?"; measured rapid rise — potential flash-flooding behaviour":""),
-      rapidRise:rapidlyRising,rise:recent,
+      rapidRise:rapidlyRising,tidalScreened:tidal,rise:recent,
       tidalBaselineMetresPerHour:tidalBaseline};
   }
   if(rapidlyRising){
@@ -271,6 +271,7 @@ export function filterOperationalFloodGauges(features,history={},nowMs=Date.now(
       ...feature.properties,
       STORMTRACKER_DISPLAY_STATE:result.state,
       STORMTRACKER_RAPID_RISE:Boolean(result.rapidRise),
+      STORMTRACKER_TIDAL_SCREENED:Boolean(result.tidalScreened),
       STORMTRACKER_ALERT_REASON:result.reason,
       STORMTRACKER_ALERT_SOURCE:result.source,
       STORMTRACKER_RISE_RATE_M_PER_H:result.rise?.rateMetresPerHour??null,

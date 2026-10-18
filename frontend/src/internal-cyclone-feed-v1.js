@@ -59,9 +59,13 @@ export function validateInternalCycloneSnapshot(snapshot, {
   if (snapshot.status === "source-unavailable")
     return invalid("Internal cyclone source unavailable; never imply no active cyclones");
   if (snapshot.status === "no-active-products")
-    return snapshot.complete && snapshot.products.length === 0
-      ? {status: "no-active-products", message: "No verified current cyclone GML products", storms: []}
-      : invalid("Incomplete cyclone source check; not a verified all-clear");
+    return snapshot.complete && snapshot.products.length === 0 &&
+      snapshot.sourceDirectoryVerified === true &&
+      snapshot.warningSummaryConfirmed === true &&
+      Array.isArray(snapshot.warningAdviceProductNamesPresent) &&
+      snapshot.warningAdviceProductNamesPresent.length === 0
+      ? {status: "no-active-products", message: "BoM confirmed no current tropical cyclone warnings", storms: []}
+      : invalid("Current BoM warning summary not positively verified; not an all-clear");
   if (!snapshot.products.length) return invalid("Missing active cyclone products");
   const storms = [];
   const systemIds = new Set();

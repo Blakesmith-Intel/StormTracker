@@ -2,6 +2,7 @@ import { BORDER_RADAR_SITES } from "./border-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";
 import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
 import { loadCompleteRadarTiles } from "./radar-tile-retry-v1.js?v=9.16-radar-recovery";
+import {publishedReflectivityTimes} from "./bom-wmts-published-times-v1.js?v=20261018-source-times-v1";
 
 const BOM_WMTS_BASE = "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts";
 const REFLECTIVITY_LAYER = "atm_surf_air_precip_reflectivity_dbz";
@@ -93,26 +94,30 @@ async function probeTimestamp(observedUtc, region = 'SEQ') {
   return image.width > 0 && image.height > 0;
 }
 
-export async function findLatestBomReflectivityTime(now = Date.now(), region = 'SEQ') {
-  let lastError = null;
-
-  for (const observedUtc of candidateBomReflectivityTimes(now, 10)) {
-    try {
-      if (await probeTimestamp(observedUtc, region)) return observedUtc;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastError) {
-    throw new Error(
-      `RELAY V3 ACTIVE — unable to fetch readable BOM reflectivity via ` +
-      `stormtracker-bom-relay.stormtracker-bom-relay.workers.dev. ` +
-      `${lastError.message}`
-    );
-  }
-
-  throw new Error("No recent BOM reflectivity WMTS frame was available.");
+// WMTS GetCapabilities publishes the nine ACTUAL source times. NEVER probe
+// speculative 5-minute UTC offsets: BoM reports "failed to validate requested
+// value for dimension (time)" and HTTP 400 for unpublished timestamps.
+function currentPublishedTimes(times,now=Date.now()){
+  const epoch=Number(now);
+  return [...new Set(Array.isArray(times)?times:[])]
+    .filter(time=>{
+      const t=Date.parse(time);
+      return Number.isFinite(t)&&Number.isFinite(epoch)&&
+        t>=epoch-180*60000&&t<=epoch+5*60000;
+    }).sort();
+}
+export async function findLatestBomReflectivityTime(
+  now=Date.now(),region='SEQ',{
+    publishedTimes=publishedReflectivityTimes
+  }={}
+){
+  // region selects source tiles only; the BoM timeseries dimension is shared
+  // nationally and is independently usable at every QLD/NSW radar location.
+  const times=currentPublishedTimes(await publishedTimes(),now);
+  if(!times.length)throw Error(
+    "No currently published BoM reflectivity times; retaining genuine cached frames"
+  );
+  return times.at(-1);
 }
 
 function createCanvas(width, height) {
@@ -158,10 +163,8 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
   }
   // A single bad WMTS request no longer discards a scan without a targeted retry.
   // We still require every actual BoM tile before publishing a measured frame.
-  const guarded=["/preview/network-guard/","/preview/label-gpu-guard/","/preview/radar-history-fix/"].some(
-    route=>globalThis.location?.pathname?.includes(route)===true);
   const tiles = await loadCompleteRadarTiles(tasks, fetchReadableImage, {
-    retries: 1, stopOnPermanent:guarded
+    retries: 1, stopOnPermanent:true
   });
 
   for (const tile of tiles) {
@@ -239,180 +242,42 @@ export async function loadLatestBomReflectivityMosaic(now = Date.now(), region =
   return loadBomReflectivityMosaicAtTime(observedUtc, region);
 }
 
-// The public BoM reflectivity WMTS publishes a short rolling set of
-// observations (nine at a five-minute cadence in its observed capabilities).
-// The user's 60/120/180-minute history must come from genuine prior browser
-// cache, not 48 speculative queries against timestamps BoM no longer serves.
-// This bounded discovery is isolated until visually validated.
+// All site choices consume ONE cached verified BoM GetCapabilities dimension.
+// This removes the 4+9 speculative WMTS 400 requests per site/load while
+// retaining the browser's genuine old observations for 60/120/180-min loops.
 export async function discoverBoundedBomReflectivityHistory(
-  now = Date.now(),
-  horizonMinutes = 180,
-  region = 'SEQ',
-  { probe = probeTimestamp, maximumPublishedFrames = 9 } = {}
-) {
-  const frameLimit = Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
-  const horizon = Math.max(5,Math.min(180,Number(horizonMinutes)||180));
-  const recentCandidates=candidateBomReflectivityTimes(now,12);
-  let newest=null;
-  let failedAtHead=0;
-  for (const candidate of recentCandidates) {
-    try {
-      if(await probe(candidate,region)){newest=candidate;break;}
-    } catch(error) {
-      // Do not turn an upstream refusal into twelve more failed requests.
-      if(/HTTP (?:403|429|502|503|504)\b/.test(String(error?.message??error)))
-        throw new Error("BoM reflectivity service is temporarily unavailable");
-    }
-    if(++failedAtHead>=4)break;
-  }
-  if(!newest) throw new Error(
+  now=Date.now(),horizonMinutes=180,region='SEQ',
+  {publishedTimes=publishedReflectivityTimes,maximumPublishedFrames=9}={}
+){
+  const max=Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
+  const horizon=Math.max(5,Math.min(180,Number(horizonMinutes)||180));
+  const times=currentPublishedTimes(await publishedTimes(),now);
+  if(!times.length)throw Error(
     "No verified current BoM reflectivity timestamp; retaining previously cached radar images"
   );
-
-  const available=[newest];
-  const count=Math.min(frameLimit,Math.floor(horizon/5)+1);
-  let consecutiveMisses=0;
-  for(let i=1;i<count;i++){
-    const candidate=new Date(Date.parse(newest)-i*300000)
-      .toISOString().replace(".000Z","Z");
-    try{
-      if(await probe(candidate,region)){
-        available.push(candidate);
-        consecutiveMisses=0;
-      } else if(++consecutiveMisses>=2)break;
-    }catch(error){
-      const message=String(error?.message??error);
-      if(/HTTP (?:403|429|502|503|504)\b/.test(message))break;
-      if(++consecutiveMisses>=2)break;
-    }
-  }
-  return available.reverse();
+  const newest=Date.parse(times.at(-1));
+  return times.filter(x=>Date.parse(x)>=newest-horizon*60000)
+    .slice(-max);
 }
 
 export async function discoverBomReflectivityHistory(
-  now = Date.now(),
-  horizonMinutes = 180,
-  region = 'SEQ'
-) {
-  const horizon = Math.max(
-    30,
-    Math.min(180, Number(horizonMinutes) || 180)
-  );
-
-  // Probe beyond the target horizon to absorb normal publication delay before
-  // the newest readable WMTS image. Unlike V9.8.2, discovery does not stop at
-  // the first history gap: older readable observations can still anchor a
-  // longer display window.
-  const candidates =
-    candidateBomReflectivityTimes(
-      now,
-      Math.ceil((horizon + 60) / 5)
-    );
-
-  const readable = [];
-
-  // Small batches avoid hammering the Bureau/relay while keeping the complete
-  // three-hour scan materially faster than serial probing.
-  for (
-    let offset = 0;
-    offset < candidates.length;
-    offset += 6
-  ) {
-    const batch =
-      candidates.slice(offset, offset + 6);
-
-    const results =
-      await Promise.all(
-        batch.map(
-          async observedUtc => {
-            try {
-              return await probeTimestamp(
-                observedUtc,
-                region
-              )
-                ? observedUtc
-                : null;
-            } catch {
-              return null;
-            }
-          }
-        )
-      );
-
-    readable.push(
-      ...results.filter(Boolean)
-    );
-  }
-
-  if (!readable.length) {
-    throw new Error(
-      "No recent readable BOM reflectivity frames were available."
-    );
-  }
-
-  const ordered =
-    [...new Set(readable)]
-      .sort(
-        (a, b) =>
-          Date.parse(a) - Date.parse(b)
-      );
-
-  const newestEpoch =
-    Date.parse(ordered.at(-1));
-
-  const earliestEpoch =
-    newestEpoch - horizon * 60000;
-
-  return ordered.filter(
-    observedUtc =>
-      Date.parse(observedUtc)
-      >= earliestEpoch
+  now=Date.now(),horizonMinutes=180,region='SEQ',
+  options={}
+){
+  return discoverBoundedBomReflectivityHistory(
+    now,horizonMinutes,region,options
   );
 }
 
 export async function findRecentBomReflectivityTimes(
-  now = Date.now(),
-  count = 6,
-  region = 'SEQ'
-) {
-  const available = [];
-
-  const probeCount =
-    Math.max(
-      14,
-      Number(count) + 8
-    );
-
-  for (
-    const observedUtc
-    of candidateBomReflectivityTimes(
-      now,
-      probeCount
-    )
-  ) {
-    try {
-      if (await probeTimestamp(observedUtc, region)) {
-        available.push(observedUtc);
-      }
-    } catch {
-      // Missing/unreadable candidate timestamps are skipped.
-    }
-
-    if (available.length >= count) {
-      break;
-    }
-  }
-
-  if (!available.length) {
-    throw new Error(
-      "No recent readable BOM reflectivity frames were available."
-    );
-  }
-
-  // Processing must be chronological for persistent storm tracking.
-  return available.sort(
-    (a, b) => Date.parse(a) - Date.parse(b)
-  );
+  now=Date.now(),count=6,region='SEQ',
+  {publishedTimes=publishedReflectivityTimes}={}
+){
+  const times=currentPublishedTimes(await publishedTimes(),now).slice(-Math.max(
+    1,Math.min(9,Math.trunc(Number(count)||6))
+  ));
+  if(!times.length)throw Error("No published BoM reflectivity time available");
+  return times;
 }
 
 export async function loadRecentBomReflectivityMosaics(

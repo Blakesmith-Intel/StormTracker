@@ -31,3 +31,8 @@ jobs:
         continue-on-error: true
         timeout-minutes: 3
         run: node scripts/one-shot-webgl-browser-profile-20261019.mjs
+      - name: Examine real FTP reflectivity images
+        timeout-minutes: 2
+        run: |
+          python -m pip install pillow
+          python scripts/one-shot-ftp-reflectivity-audit-20261019.py

@@ -10,7 +10,7 @@ const datum=(level="minor",trend="steady",at="6:15 pm Thu 08/10/2026")=>({
    forecast_site_classification:"information",location_types:"water level gauge;"}
 });
 const history={"bom:533178":[
- {time:now-75*MIN,height:1},{time:now-15*MIN,height:2.1}]};
+ {time:now-75*MIN,height:0.3},{time:now-15*MIN,height:2.1}]};
 const query=(level,trend,h=history,old={})=>
  reconcileFloodEvents([datum(level,trend)],h,old,now);
 let result=query("minor","rising");

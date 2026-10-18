@@ -35,6 +35,11 @@ assert.equal(guard.isRejected(old[2]),false,"Previously invalid time can be chec
 // Source in user report returned 400 for entire SEQ tile matrix. FIRST tile
 // must stop the remaining 11 before any request-pressure queue fills.
 const originalFetch=globalThis.fetch;
+const originalOffscreen=globalThis.OffscreenCanvas;
+globalThis.OffscreenCanvas=class {
+  constructor(width,height){this.width=width;this.height=height;}
+  getContext(){return {};}
+};
 let requests=0, times=[];
 try{
  globalThis.fetch=async url=>{
@@ -55,7 +60,7 @@ try{
    /HTTP 400/);
  assert.equal(requests,2,"Different source time isn't permanently blocked");
  assert.ok(times[0].includes("TILEMATRIX=8"));
-}finally{globalThis.fetch=originalFetch;}
+}finally{globalThis.fetch=originalFetch;globalThis.OffscreenCanvas=originalOffscreen;}
 
 // Three independent 502s from radar 74 trigger a bounded per-product pause,
 // but must NOT suppress valid observations from other radar sites.

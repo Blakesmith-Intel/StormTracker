@@ -42,3 +42,6 @@ jobs:
         run: node scripts/probe-brewarrina-wind-source.mjs
 
 
+
+      - name: One-shot multi-site BoM source audit (advisory)
+        run: node scripts/probe-multisite-wmts-20261018.mjs

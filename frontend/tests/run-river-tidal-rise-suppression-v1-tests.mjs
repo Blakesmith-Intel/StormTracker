@@ -23,7 +23,7 @@ const fixture=(id,cls,types="water level gauge;")=>({
 // This observation time is 15 minutes ago, and the latest observed
 // tide normally rises at ~0.4 m/hour: it must NOT become a flash-flood pin.
 const tidalHistory=Array.from({length:48},(_,i)=>
-  point(now-(47.25-i)*hour,1.4+0.8*Math.sin(i*Math.PI/6)));
+  point(now-(47.25-i)*hour,1.4+1.0*Math.sin(i*Math.PI/6)));
 const observedTide=tidalHistory.at(-1);
 const earlierTide=tidalHistory.at(-2);
 assert.ok(observedTide.height>earlierTide.height,

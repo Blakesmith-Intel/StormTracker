@@ -1,6 +1,8 @@
 // StormTracker operational flood signals, not BoM-issued flash-flood warnings.
 // Severe classifications are authoritative. Rise-rate flags are deliberately
 // conservative heuristics and require real successive observed timestamps.
+import {isQualitativeForecastSite} from "./river-gauges-v1.js";
+
 export const FLOOD_SIGNAL_STORAGE_KEY = "stormtracker.qld-flood-observations.v1";
 export const FLOOD_SIGNAL_HISTORY_MS = 48 * 60 * 60 * 1000;
 export const FLOOD_SIGNAL_MAX_AGE_MS = 90 * 60 * 1000;
@@ -158,6 +160,7 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
   const level=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
   const tidal=String(p.location_types??"").toLowerCase().includes("tide gauge");
   const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
+  const qualitativeForecastSite=isQualitativeForecastSite(feature);
   const samples=history[String(feature?.id??"")]??[];
   const recent=latestRiseRate(samples,nowMs);
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
@@ -172,14 +175,14 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
   // A historical rise from local storage is not evidence that a newer
   // bulletin is still rising. Require its timestamp to match the latest data.
   // The measured rapid-rise screen is distinct from BoM's authoritative
-  // classification. A creek remains in MINOR FLOOD while BoM reports minor,
-  // even if the latest observation is steady/falling or history is missing.
+  // classification. Only sites BoM explicitly marks QUALITATIVE FORECAST
+  // remain on the map at minor flood after a rise slows or history is absent.
   // Stale source observations still cannot support a live flood marker.
   if(!timely)return {
     show:false,reason:"Missing or stale current BoM flood observation"
   };
   if(!recent || tendency!=="rising" ||
-      Math.abs(recent.observedAt-observed)>10*60000)return level==="minor"
+      Math.abs(recent.observedAt-observed)>10*60000)return level==="minor" && qualitativeForecastSite
     ? {show:true,state:"minor",source:"bom-classification",rise:recent,
        reason:"Current minor flood classification (BoM); trend does not end flooding"}
     : {show:false,reason:"No verified rapid rise or current BoM flood classification"};
@@ -199,7 +202,7 @@ export function evaluateFloodSignal(feature, history={},nowMs=Date.now()){
       rise:recent,tidalBaselineMetresPerHour:baseline
     };
   }
-  if(level==="minor")return {
+  if(level==="minor" && qualitativeForecastSite)return {
     show:true,state:"minor",source:"bom-classification",rise:recent,
     reason:"Current minor flood classification (BoM); rapid-rise screen not required"
   };

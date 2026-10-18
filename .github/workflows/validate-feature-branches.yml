@@ -42,6 +42,3 @@ jobs:
         run: node scripts/probe-brewarrina-wind-source.mjs
 
 
-
-      - name: One-off diagnose missing minor flood gauge
-        run: node scripts/one-off-qld-missing-minor-gauge-audit-20261018.mjs

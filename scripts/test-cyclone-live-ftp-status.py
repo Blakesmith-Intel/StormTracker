@@ -41,6 +41,25 @@ clean=bridge.produce(now,decoder,names=names,html_bytes=real_html,
                      downloader=no_fetch)
 assert clean["status"]=="no-active-products"
 assert clean["complete"] and clean["warningSummaryConfirmed"]
+# A full successful BoM warning-products directory is separate evidence:
+# exact GML AND official advice slots absent, even if BoM web HTML is blocked.
+full_listing={"IDF%06d.TXT"%i for i in range(1600)}
+ftp_verified=bridge.produce(now,decoder,names=full_listing,html_bytes=None,
+                            downloader=no_fetch)
+assert ftp_verified["status"]=="no-active-products"
+assert ftp_verified["warningStatusEvidence"]=="bom-ftp-directory-no-issued-forecast-or-advice"
+with_advice=bridge.produce(now,decoder,
+                           names=full_listing|{"IDQ20023.TXT"},
+                           html_bytes=None,downloader=no_fetch)
+assert with_advice["status"]=="source-unavailable"
+with_map=full_listing|{"IDQ65251.GML"}
+# Missing/failed source GML must NEVER be falsely treated as no cyclone.
+def bad_issued_download(p, folder):
+    return None,"failed"
+missing_payload=bridge.produce(now,decoder,names=with_map,
+                               html_bytes=None,downloader=bad_issued_download)
+assert missing_payload["status"]=="source-unavailable"
+
 assert clean["sourceDirectoryVerified"] and clean["products"]==[]
 fallback=bridge.produce(now,decoder,names=names,html_bytes=None,
                         qld_warnings_html=qld_html,downloader=no_fetch)

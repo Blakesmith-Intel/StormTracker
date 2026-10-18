@@ -3,13 +3,13 @@ const relay="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
 const sources=[
  ["relay gauge metadata",relay+"/river-gauge-metadata"],
  ["relay observations",relay+"/river-height-bulletins"],
- ["DataQuoll public gauge summary","https://dataquoll.io/api/v1/gauges?state=QLD&limit=10000"],
+ 
  ["BoM river height official page","https://www.bom.gov.au/qld/flood/rain_river.shtml"]
 ];
 const results={};
 for(const [name,url]of sources){
  try{
-  const r=await fetch(url,{signal:AbortSignal.timeout(16000),
+  const r=await fetch(url,{signal:AbortSignal.timeout(name==='relay observations'?65000:18000),
     headers:{Accept:name.includes("page")?"text/html":"application/json"}});
   const txt=await r.text();
   console.log("SOURCE",name,r.status,txt.length,r.headers.get("content-type"));

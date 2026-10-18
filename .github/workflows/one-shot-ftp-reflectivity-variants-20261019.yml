@@ -13,3 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: python -m pip install pillow
       - run: python scripts/one-shot-ftp-reflectivity-variants-20261019.py
+      - name: Strict FTP decoder regression
+        run: node scripts/test-ftp-reflectivity-validation-20261019.mjs
+      - name: Full existing frontend regression against untouched scientific pipeline
+        run: npm test

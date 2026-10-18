@@ -3,7 +3,8 @@ import {createRiverGaugeLayer} from "../src/context-layers/river-gauge-layer-v1.
 const now=Date.UTC(2026,9,8,8,30);
 const gauge={id:"bom:540384",type:"Feature",geometry:{type:"Point",coordinates:[153.1,-27.6]},
  properties:{bom_stn_num:"540384",awrc_stateid:"QLD-384",state:"QLD",name:"Upper Example River",
- lat:-27.6,long:153.1,location_types:"water level gauge;"}};
+ lat:-27.6,long:153.1,location_types:"water level gauge;",
+ forecast_site_classification:"Qualitative"}};
 let upstreamHistoryCalls=0;
 const historyPoints=[
  {time:Date.UTC(2026,9,8,7,15),height:1.2},

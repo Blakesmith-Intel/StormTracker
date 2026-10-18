@@ -107,6 +107,19 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
 PY
+# V10.2.1-current-source production UI hygiene. Never alter the immutable
+# V10.2 base, morning flood/power fixes, or any historical QA preview.
+python3 scripts/strip-production-cyclone-qa.py --site _site \
+  --panel-source frontend/src/operational-cyclone-panel-v1.js
+node --check _site/src/operational-cyclone-panel-v1.js
+grep -Fq 'createOperationalCyclonePanel' _site/src/live3d-operational-v9.js
+! grep -Fq 'createHistoricalCycloneForecastQA' _site/src/live3d-operational-v9.js
+! grep -Fq 'cycloneUseJasper' _site/live3d-operational-v9.html
+! grep -Fq 'cycloneUseAlfred' _site/live3d-operational-v9.html
+! grep -Fq 'cycloneGmlFile' _site/live3d-operational-v9.html
+test ! -d _site/data/cyclone-history
+test ! -f _site/src/historical-cyclone-forecast-map-v1.js
+grep -Fq 'PRODUCTION ACTIVE-ONLY CYCLONES 2026-10-18' _site/BUILD.txt
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
@@ -297,7 +310,8 @@ grep -Fq 'IDR93I' "_site/src/border-radar-sites-v1.js"
 # with strictly separate "no cyclone" and "unable to verify" status.
 grep -Fq 'id="openCycloneForecastQa"' "_site/live3d-operational-v9.html"
 grep -Fq 'id="cycloneForecastQaPanel"' "_site/live3d-operational-v9.html"
-grep -Fq 'createHistoricalCycloneForecastQA' "_site/src/live3d-operational-v9.js"
+grep -Fq 'createOperationalCyclonePanel' "_site/src/live3d-operational-v9.js"
+! grep -Fq 'createHistoricalCycloneForecastQA' "_site/src/live3d-operational-v9.js"
 grep -Fq 'createInternalCycloneLiveQA' "_site/src/live3d-operational-v9.js"
 grep -Fq 'Currently no tropical cyclone warnings' "_site/src/internal-cyclone-live-qa-v1.js"
 grep -Fq 'Unable to verify current tropical cyclone warnings' "_site/src/internal-cyclone-live-qa-v1.js"
@@ -305,7 +319,9 @@ grep -Fq 'validateInternalCycloneSnapshot' "_site/src/internal-cyclone-live-qa-v
 grep -Fq 'INCREMENTAL_VOLUME_PREVIEW' "_site/src/live3d-operational-v9.js"
 node --check "_site/src/internal-cyclone-live-qa-v1.js"
 node --check "_site/src/internal-cyclone-feed-v1.js"
-node --check "_site/src/historical-cyclone-forecast-map-v1.js"
+node --check "_site/src/operational-cyclone-panel-v1.js"
+test ! -f "_site/src/historical-cyclone-forecast-map-v1.js"
+test ! -d "_site/data/cyclone-history"
 
 # Regression: Hide controls must remove both sidebar grid tracks, not shrink map.
 grep -Fq 'body.simple-ui #app.sidebar-collapsed' "_site/src/single-interface-v1.css"

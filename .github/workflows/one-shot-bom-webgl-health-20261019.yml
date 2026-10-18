@@ -1,0 +1,24 @@
+name: One-shot BoM source health 2026-10-19
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check diagnostic modules
+        run: |
+          node --check scripts/one-shot-bom-health-20261019.mjs
+          node --check frontend/src/dev-webgl-lifecycle-probe-20261019.js
+      - name: Probe anonymous FTP directly (read only)
+        continue-on-error: true
+        run: |
+          curl --max-time 12 --disable-epsv -v 'ftp://ftp.bom.gov.au/anon/gen/radar/' -o /tmp/bom-ftp-listing.txt 2>&1 | tail -25
+          head -c 500 /tmp/bom-ftp-listing.txt || true
+      - name: One-shot relay and WMTS health verification
+        run: node scripts/one-shot-bom-health-20261019.mjs

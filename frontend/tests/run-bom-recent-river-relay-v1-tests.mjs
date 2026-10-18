@@ -94,6 +94,42 @@ try {
   const changedDates=await worker.fetch(new Request(target),{});
   assert.equal(changedDates.status,502);
   assert.equal((await changedDates.json()).code,"source_format_mismatch");
+  // The actual field report was a valid BoM station page blocked by the
+  // obsolete 1.2-million-character WHOLE-PAGE check. Large real tables
+  // must parse, not be rejected just for their length.
+  const longRow=`<tr><td>${time}</td><td>0.92</td></tr>`;
+  const longTable='<table id="tableStyle1"><tr><th>Date/Time</th><th>Water Level (m)</th></tr>'+
+    longRow.repeat(35000)+'</table>';
+  assert.ok(longTable.length>1200000);
+  globalThis.fetch=async()=>new Response(longTable,{status:200});
+  const largeValid=await worker.fetch(new Request(target),{});
+  assert.equal(largeValid.status,200,"Valid long BoM tables must no longer produce 502");
+  assert.equal((await largeValid.json()).samples.length,1);
+
+  // A massive unrelated page footer must never invalidate a complete,
+  // small and authenticated BoM observations table.
+  globalThis.fetch=async()=>new Response(sample+'X'.repeat(13*1024*1024),{status:200});
+  const oversizedFooter=await worker.fetch(new Request(target),{});
+  assert.equal(oversizedFooter.status,200,
+    "Large non-observation HTML must not be mistaken for a huge station table");
+  assert.equal((await oversizedFooter.json()).samples.length,1);
+
+  // A genuinely oversized table is still rejected with its exact reason.
+  // Never manufacture readings from a truncated/incomplete table.
+  globalThis.fetch=async()=>new Response(
+    '<table id="tableStyle1"><tr><th>Date/Time</th><th>Water Level (m)</th></tr>'+
+    longRow.repeat(220000)+'</table>',{status:200});
+  const oversizedTable=await worker.fetch(new Request(target),{});
+  assert.equal(oversizedTable.status,502);
+  assert.equal((await oversizedTable.json()).code,"source_response_too_large");
+
+  // Missing opening table marker in a huge HTML document also remains
+  // strictly bounded rather than loading arbitrary untrusted HTML.
+  globalThis.fetch=async()=>new Response("Z".repeat(13*1024*1024),{status:200});
+  const absentLargeTable=await worker.fetch(new Request(target),{});
+  assert.equal(absentLargeTable.status,502);
+  assert.equal((await absentLargeTable.json()).code,"source_response_too_large");
+
   globalThis.fetch=async()=>new Response("<html>Unexpected login page</html>",{status:200});
   const changedMarkup=await worker.fetch(new Request(target),{});
   assert.equal(changedMarkup.status,502);

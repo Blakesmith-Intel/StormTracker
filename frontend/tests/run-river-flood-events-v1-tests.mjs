@@ -1,89 +1,47 @@
 import assert from "node:assert/strict";
-import {
-  FLOOD_EVENTS_STORAGE_KEY, cleanFloodEvents,reconcileFloodEvents
-} from "../src/context-layers/river-flood-events-v1.js";
-const MIN=60000,T0=Date.UTC(2026,9,8,7,0);
-const record=(at,height,cls="minor",trend="rising",tidal=false)=>({
-  id:"bom:01234",type:"Feature",geometry:{type:"Point",coordinates:[153,-27]},
-  properties:{
-    STORMTRACKER_OBSERVED_TEXT:new Date(at+10*3600000).toISOString()
-      .slice(11,16)+" Thu 08/10/2026",
-    STORMTRACKER_HEIGHT_METRES:height,STORMTRACKER_FLOOD_CLASS:cls,
-    STORMTRACKER_TENDENCY:trend,
-    forecast_site_classification:"Qualitative",
-    location_types:tidal?"water level gauge;tide gauge;":"water level gauge;"
-  }
+import {reconcileFloodEvents,FLOOD_EVENTS_STORAGE_KEY,cleanFloodEvents}
+ from "../src/context-layers/river-flood-events-v1.js";
+const MIN=60000,now=Date.UTC(2026,9,8,8,30);
+const datum=(level="minor",trend="steady",at="6:15 pm Thu 08/10/2026")=>({
+ id:"bom:533178",type:"Feature",geometry:{type:"Point",coordinates:[148.9,-21.2]},
+ properties:{STORMTRACKER_OBSERVED_TEXT:at,
+   STORMTRACKER_HEIGHT_METRES:2.1,
+   STORMTRACKER_FLOOD_CLASS:level,STORMTRACKER_TENDENCY:trend,
+   forecast_site_classification:"information",location_types:"water level gauge;"}
 });
-const history={"bom:01234":[{time:T0,height:1}]};
-const run=(feat,at,events)=>reconcileFloodEvents([feat],history,events,at+5*MIN);
-history["bom:01234"].push({time:T0+60*MIN,height:2});
-let out=run(record(T0+60*MIN,2),T0+60*MIN,{});
-assert.equal(out.features.length,1);
-assert.equal(out.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
-assert.equal(out.features[0].properties.STORMTRACKER_ALERT_PERSISTED,false);
-assert.equal(out.events["bom:01234"].recoveryCount,0);
-assert.ok(FLOOD_EVENTS_STORAGE_KEY.includes("flood"));
-const persisted=JSON.parse(JSON.stringify(out.events));
-out=run(record(T0+60*MIN,2),T0+60*MIN,persisted);
-assert.equal(out.events["bom:01234"].recoveryCount,0,"Duplicate poll cannot count as recovery");
-history["bom:01234"].push({time:T0+75*MIN,height:1.98});
-out=run(record(T0+75*MIN,1.98,"minor","falling"),T0+75*MIN,out.events);
-assert.equal(out.features.length,1,"One falling observation cannot immediately remove hazard marker");
-assert.equal(out.events["bom:01234"].recoveryCount,0,"Rate still elevated: not proof of recovery");
-history["bom:01234"].push({time:T0+105*MIN,height:1.96});
-out=run(record(T0+105*MIN,1.96,"minor","falling"),T0+105*MIN,out.events);
-assert.equal(out.events["bom:01234"].recoveryCount,1);
-assert.equal(out.features[0].properties.STORMTRACKER_ALERT_PERSISTED,true);
-assert.match(out.features[0].properties.STORMTRACKER_ALERT_REASON,/recovery|monitor/i);
-let same=run(record(T0+105*MIN,1.96,"minor","falling"),T0+105*MIN,out.events);
-assert.equal(same.events["bom:01234"].recoveryCount,1,"Repeated 15-min poll no extra all-clear evidence");
-history["bom:01234"].push({time:T0+135*MIN,height:1.94});
-out=run(record(T0+135*MIN,1.94,"minor","falling"),T0+135*MIN,same.events);
-assert.equal(out.features.length,1,"Rapid-rise screen clears, but confirmed BoM minor flood still displays");
-assert.equal(out.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
-assert.equal(out.counts.minor,1);
-assert.deepEqual(out.events,{}, "Cleared event no longer stored");
-let t=run(record(T0+60*MIN,2),T0+60*MIN,{});
-t=run(record(T0+75*MIN,1.98,"major","falling"),T0+75*MIN,t.events);
-assert.equal(t.features[0].properties.STORMTRACKER_DISPLAY_STATE,"major");
-assert.deepEqual(t.events,{},"Authoritative BoM major overrides inferred screen");
-t=run(record(T0+75*MIN,1.98,"moderate","steady"),T0+75*MIN,{});
-assert.equal(t.features[0].properties.STORMTRACKER_DISPLAY_STATE,"moderate");
-t=run(record(T0+75*MIN,1.98,"minor","falling"),T0+75*MIN,{});
-assert.equal(t.features.length,1,"Below moderate but still minor flooding must remain visible");
-assert.equal(t.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
-// Bakers Creek / Walkerston regression: an above-minor observation must
-// remain on the map after manual refresh regardless of falling/steady trend
-// and even when its optional BoM station-history page is unavailable.
-for(const trend of ["rising","steady","falling"]){
-  const sample=record(T0+75*MIN,1.98,"minor",trend);
-  const noHistory=reconcileFloodEvents([sample],{}, {},T0+80*MIN);
-  assert.equal(noHistory.features.length,1,
-    "BoM minor flooding must not depend on rapid-rise history: "+trend);
-  assert.equal(noHistory.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
-  assert.equal(noHistory.counts.minor,1);
+const history={"bom:533178":[
+ {time:now-75*MIN,height:1},{time:now-15*MIN,height:2.1}]};
+const query=(level,trend,h=history,old={})=>
+ reconcileFloodEvents([datum(level,trend)],h,old,now);
+let result=query("minor","rising");
+assert.equal(result.features.length,1);
+assert.equal(result.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
+assert.equal(result.features[0].properties.STORMTRACKER_RAPID_RISE,true);
+assert.equal(result.counts.minor,1);
+assert.equal(result.counts.rapidRise,1);
+assert.deepEqual(result.events,{},"No stale badges are stored");
+for(const level of ["minor","moderate","major"]){
+ for(const trend of ["steady","falling"]){
+  const x=query(level,trend,{},{"bom:533178":{
+    type:"rapid-rise",lastObservedAt:now-15*MIN,activatedAt:now-75*MIN
+  }});
+  assert.equal(x.features.length,1);
+  assert.equal(x.features[0].properties.STORMTRACKER_DISPLAY_STATE,level);
+  assert.equal(x.features[0].properties.STORMTRACKER_RAPID_RISE,false);
+ }
 }
-for(const cls of ["Quantitative","",null]){
-  const notQualitative=record(T0+75*MIN,1.98,"minor","steady");
-  notQualitative.properties.forecast_site_classification=cls;
-  const other=reconcileFloodEvents([notQualitative],{}, {},T0+80*MIN);
-  assert.equal(other.features.length,0,
-    "Non-qualitative stations must not persist without a verified rapid rise");
-}
-const noLongerFlooding=run(record(T0+75*MIN,1.0,"below-minor","falling"),
-                          T0+75*MIN,{});
-assert.equal(noLongerFlooding.features.length,0,
- "A verified below-minor reading can remove a minor marker");
-const withoutCurrentBulletin=run(record(T0-150*MIN,1.98,"minor","steady"),
-                                 T0+75*MIN,{});
-assert.equal(withoutCurrentBulletin.features.length,0,
- "Stale BoM classifications cannot create live flooded markers");
-const prior={"bom:01234":{type:"tidal-anomaly",activatedAt:T0,
- lastObservedAt:T0+60*MIN,recoveryCount:0,lastHeight:2,lastRecoveryAt:null}};
-const tide=run(record(T0+75*MIN,1.98,"","falling",true),T0+75*MIN,prior);
-assert.equal(tide.features.length,1,"Tidal screen persists through first smaller observation");
-assert.equal(tide.features[0].properties.STORMTRACKER_DISPLAY_STATE,"tidal-anomaly");
-const stale=cleanFloodEvents(prior,T0+3*3600000);
-assert.deepEqual(stale,{},"Stale inferred events must never remain indefinitely");
-assert.deepEqual(cleanFloodEvents({"other":{type:"rapid-rise"}},T0),{});
-console.log("Flood persistence passed: no instant dismissal, two recovering readings downgrade rapid-rise to persistent minor flooding; duplicates, rising rates and stale data cannot false-clear; official major/moderate priority.");
+const cleared=query("below-minor","falling");
+assert.equal(cleared.features.length,0);
+const risingBelow=query("below-minor","rising");
+assert.equal(risingBelow.features.length,1);
+assert.equal(risingBelow.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
+assert.equal(risingBelow.features[0].properties.STORMTRACKER_RAPID_RISE,true);
+assert.equal(query("below-minor","steady").features.length,0);
+assert.equal(query("minor","steady",{}).features.length,1,
+ "Missing optional history cannot remove BoM-classified flooding");
+assert.equal(reconcileFloodEvents([datum("minor","steady",
+ "6:15 pm Mon 05/10/2026")],{}, {},now).features.length,0);
+assert.deepEqual(result.events,{});
+assert.match(FLOOD_EVENTS_STORAGE_KEY,/flood/);
+assert.deepEqual(cleanFloodEvents({"bogus":{type:"rapid-rise"}},now),{});
+console.log("PASS Mirani Township 533178: BoM flood severity persists after refresh, rapid arrow only while measured, below minor removed.");

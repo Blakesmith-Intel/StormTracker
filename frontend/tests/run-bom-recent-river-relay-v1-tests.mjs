@@ -83,6 +83,9 @@ try {
     }),{});
     assert.equal(response.status,expectedStatus);
     assert.equal(response.headers.get("X-StormTracker-Error-Code"),code);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"),
+      "https://blakesmith-intel.github.io",
+      "Worker-generated upstream 503/429/500 must keep browser CORS");
     assert.equal(response.headers.get("Cache-Control"),"no-store");
     const payload=await response.json();
     assert.equal(payload.code,code);
@@ -151,6 +154,43 @@ try {
   const unreachable=await worker.fetch(new Request(target),{});
   assert.equal(unreachable.status,503);
   assert.equal((await unreachable.json()).code,"source_transport_failure");
+
+  // Reproduce the actual resource hazard: upstream sends HTTP headers and a
+  // partial table, then the body never completes. The deadline MUST span the
+  // entire stream, not stop immediately after fetch() resolves its headers.
+  // Accelerate only this test's timeout rather than waiting 12 seconds.
+  const normalTimeout=globalThis.setTimeout;
+  let aborted=false;
+  try{
+    globalThis.setTimeout=(fn,delay,...args)=>
+      normalTimeout(fn,delay===12000?25:delay,...args);
+    globalThis.fetch=async (url,options)=>{
+      const body=new ReadableStream({start(controller){
+        controller.enqueue(new TextEncoder().encode(
+          '<table id="tableStyle1"><tr><th>Date/Time</th><th>Water Level (m)</th></tr>'));
+        options.signal.addEventListener("abort",()=>{
+          aborted=true;
+          controller.error(new DOMException("aborted mid-stream","AbortError"));
+        },{once:true});
+      }});
+      return new Response(body,{status:200});
+    };
+    const slowBody=await Promise.race([
+      worker.fetch(new Request(target,{headers:{
+        Origin:"https://blakesmith-intel.github.io"
+      }}),{}),
+      new Promise((_,reject)=>normalTimeout(()=>reject(
+        Error("Upstream station history body timeout was cleared too early")),350))
+    ]);
+    assert.equal(aborted,true);
+    assert.equal(slowBody.status,504);
+    assert.equal(slowBody.headers.get("Access-Control-Allow-Origin"),
+      "https://blakesmith-intel.github.io");
+    assert.equal(slowBody.headers.get("X-StormTracker-Error-Code"),"source_timeout");
+    assert.equal((await slowBody.json()).code,"source_timeout");
+  }finally{
+    globalThis.setTimeout=normalTimeout;
+  }
 }finally {
   globalThis.fetch=originalFetch;
 }

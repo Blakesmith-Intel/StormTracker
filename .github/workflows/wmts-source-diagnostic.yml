@@ -30,6 +30,29 @@ jobs:
               else:
                   print('binary/oversized response, length=',len(s))
           PY
+      - name: Verify BoM qualitative forecast classification and Bakers Creek metadata
+        run: |
+          set -euo pipefail
+          url='https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-gauge-metadata'
+          curl --fail -sS -L --connect-timeout 8 --max-time 35 --max-filesize 12000000 \
+            --output /tmp/stormtracker-gauge-meta "$url"
+          python3 - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+          data=json.loads(Path('/tmp/stormtracker-gauge-meta').read_text())
+          assert data.get('type')=='FeatureCollection'
+          features=data.get('features') or []
+          types=Counter(str(f.get('properties',{}).get('forecast_site_classification') or '')
+                        for f in features)
+          print('BoM site classes:',dict(types))
+          for f in features:
+              p=f.get('properties') or {}
+              name=str(p.get('name',''))
+              if any(n in name.lower() for n in ('bakers creek','walkerston')):
+                  print('Reported site:',name,'BoM station:',p.get('bom_stn_num'),
+                        'forecast classification:',p.get('forecast_site_classification'))
+          PY
       - name: Inspect BoM WMTS published layer time dimension once
         run: |
           set -euo pipefail

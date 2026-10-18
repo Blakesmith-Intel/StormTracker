@@ -414,8 +414,10 @@ export function createRiverGaugeLayer({
             // whole optional service; one failure ends this request burst.
             recentRelayBlockedUntil=now()+15*60*1000;
           }
-          if(failures===1)console.warn(
-            "Optional BoM station history unavailable; current flood bulletins retained:",
+          if(failures===1 && scope==="service" &&
+              error?.code!=="source_timeout" &&
+              error?.name!=="AbortError")console.warn(
+            "Optional BoM station history service unavailable; current flood bulletins retained:",
             String(error?.message??error)
           );
           if(scope==="service")break;

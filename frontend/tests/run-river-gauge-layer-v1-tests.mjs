@@ -138,8 +138,8 @@ for (
 const decoded=(state,rapid=false)=>
   decodeURIComponent(createRiverGaugeMarkerImage(state,rapid));
 for(const [state,color] of Object.entries({
- "rapid-rise":"#1269e8",minor:"#1ca958",
- moderate:"#f4bf17",major:"#dc343e"
+ "rapid-rise":"#1269e8",minor:"#2db76f",
+ moderate:"#ffd43b",major:"#e53935"
 })){
  assert.ok(decoded(state).includes('fill="'+color+'"'),state+" must use its severity colour");
  assert.match(decoded(state),/M20 30 Q25 35 30 30/,

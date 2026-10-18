@@ -904,6 +904,76 @@ function riverHistoryError(status,code,message,origin,upstreamStatus=null) {
   }),{status,headers});
 }
 
+// BoM station tables can exceed the previous 1.2 MB *whole-page* guard.
+// Stream only the first verified water-level table; surrounding HTML (which
+// can be much larger than the observations) is discarded. Retain hard limits
+// on total source input and on the table itself.
+const RECENT_HISTORY_SOURCE_MAX_BYTES=12*1024*1024;
+const RECENT_HISTORY_TABLE_MAX_CHARS=8*1024*1024;
+const RECENT_HISTORY_OPEN_TAG=/<table\b[^>]*\bid\s*=\s*["']tableStyle1["'][^>]*>/i;
+const RECENT_HISTORY_CLOSE_TAG=/<\/table\s*>/i;
+
+async function extractBoundedRecentHistoryTable(response){
+  const reader=response.body?.getReader?.();
+  if(!reader){
+    // Explicit streaming is required for bounded memory and early termination.
+    const error=new Error("BoM history streaming unsupported");
+    error.code="source_stream_unavailable";
+    throw error;
+  }
+  const decoder=new TextDecoder();
+  let received=0,html="",started=false,completed=false;
+  try{
+    for(;;){
+      const {done,value}=await reader.read();
+      if(done)break;
+      // Cap each decoded slice so even a single unusually large source
+      // chunk cannot allocate its entire non-observation HTML footer.
+      for(let offset=0;offset<value.byteLength&&!completed;offset+=65536){
+        const part=value.subarray(offset,Math.min(offset+65536,value.byteLength));
+        received+=part.byteLength;
+        html+=decoder.decode(part,{stream:true});
+        if(!started){
+          const match=RECENT_HISTORY_OPEN_TAG.exec(html);
+          if(match){
+            html=html.slice(match.index);
+            started=true;
+          }else{
+            // Only a short look-behind is needed across normal HTML chunks.
+            // A pathological megabyte-long tag deliberately fails closed.
+            html=html.slice(-512);
+          }
+        }
+        if(started){
+          const closing=RECENT_HISTORY_CLOSE_TAG.exec(html);
+          if(closing){
+            html=html.slice(0,closing.index+closing[0].length);
+            completed=true;
+            break;
+          }
+          if(html.length>RECENT_HISTORY_TABLE_MAX_CHARS){
+            const error=new Error("BoM station history table exceeds safe limit");
+            error.code="source_response_too_large";
+            throw error;
+          }
+        }
+        if(received>RECENT_HISTORY_SOURCE_MAX_BYTES){
+          const error=new Error("BoM source page exceeds safe read limit");
+          error.code="source_response_too_large";
+          throw error;
+        }
+      }
+    }
+  }finally{
+    // Prevent a giant HTML footer from being downloaded once the target table
+    // is complete; a cancelled stream does not invalidate the extracted table.
+    if(completed)void reader.cancel().catch(()=>{});
+    reader.releaseLock();
+  }
+  if(!completed)return null;
+  return html;
+}
+
 // The existing relay handles CORS. No new server, storage or infrastructure.
 async function relayRiverRecentHistory(request,incoming,origin){
   const product=String(incoming.searchParams.get("product")??"").toUpperCase();
@@ -940,10 +1010,7 @@ async function relayRiverRecentHistory(request,incoming,origin){
   }
   let html,inspection;
   try {
-    html=await response.text();
-    if(html.length>1200000)
-      return riverHistoryError(502,"source_response_too_large",
-        "BoM recent-data response too large",origin);
+    html=await extractBoundedRecentHistoryTable(response);
     // A login/error page or changed BoM HTML is a shared source-format fault,
     // NOT proof an individual station has no recent observations.
     inspection=inspectBomRecentWaterLevelTable(html,{
@@ -952,7 +1019,10 @@ async function relayRiverRecentHistory(request,incoming,origin){
     if(!inspection.formatRecognised)
       return riverHistoryError(502,"source_format_mismatch",
         "BoM station history table format does not match verified readings",origin);
-  }catch{
+  }catch(error){
+    if(error?.code==="source_response_too_large")
+      return riverHistoryError(502,"source_response_too_large",
+        "BoM history table exceeds bounded source limits",origin);
     return riverHistoryError(502,"source_parse_failure",
       "BoM history response unreadable",origin);
   }

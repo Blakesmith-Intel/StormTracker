@@ -117,7 +117,7 @@ export function classifyBoMRecentHistoryFailure(error) {
   const status=Number(error?.status)||0;
   const code=String(error?.code??"");
   if(["no_usable_observations","station_history_not_published",
-      "invalid_station"].includes(code)||
+      "invalid_station","source_response_too_large"].includes(code)||
       [400,404,410,422].includes(status))return "station";
   return "service";
 }

@@ -42,6 +42,9 @@ const fetchImpl=async url=>{
         availability:"no_recent_observations",
         product:"IDQ65388",station:"540385",samples:[]
       })};
+    if(mode==="station-oversize"&&u.includes("540385"))
+      return new Response(JSON.stringify({code:"source_response_too_large"}),{
+        status:502,headers:{"Content-Type":"application/json"}});
     return {ok:true,json:async()=>({
       format:"StormTrackerBomRecentRiverHistoryV1",
       product:"IDQ65388",station:new URL(u).searchParams.get("station"),
@@ -118,4 +121,32 @@ const callsAfterEmpty=historyCalls;
 await layer.refresh({force:true});
 assert.equal(historyCalls,callsAfterEmpty,
   "No repeated no-data station request inside the 15-minute cooldown");
+// A genuinely oversized individual station page must not activate the
+// service-wide 15-minute circuit breaker or skip the remaining stations.
+clock+=16*minute;
+mode="station-oversize";
+features.push(gauge("540387"));
+// Use a fresh session to isolate station-specific retry from history already
+// cached and time-aligned by the earlier service-outage recovery scenarios.
+const isolatedLayer=createRiverGaugeLayer({
+  viewer,fetchImpl,now:()=>clock,visible:false,
+  storage:{getItem:()=>null,setItem:()=>{}},
+  CesiumRef:{CustomDataSource:Source,
+    Cartesian3:{fromDegrees:(...parts)=>parts},
+    VerticalOrigin:{CENTER:0},HeightReference:{CLAMP_TO_GROUND:1}},
+  onStatus:status=>statuses.push(status)
+});
+const beforeOversize=historyCalls;
+await isolatedLayer.refresh();
+await waitHistory(()=>isolatedLayer.diagnostics?.recentHistory?.failed===1);
+assert.equal(isolatedLayer.recentHistoryRequestCount,4,
+  "Every otherwise qualifying station still gets checked");
+assert.equal(historyCalls,beforeOversize+4,
+  "Continue checking all other gauges after one oversized station");
+assert.equal(isolatedLayer.diagnostics.recentHistory.blockedUntil,0,
+  "Oversized station should not mark all BoM history service unavailable");
+assert.equal(isolatedLayer.diagnostics.recentHistory.loaded,3);
+assert.ok(isolatedLayer.diagnostics.historyScreeningIncomplete>=1,
+  "Genuine oversized station data must stay unscreened rather than safe");
+
 console.log("River history recovery checks passed: source failure cooldown and retry, current map independence, truthful screening gap, restored verified signal, and station-specific no-data.");

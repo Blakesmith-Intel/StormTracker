@@ -44,7 +44,7 @@ layers = site / "src/context-layers"
 for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -114,6 +114,9 @@ assert "bindRiverGaugeManualRefresh(" in (
     layers / "river-gauges-operational-v1.js").read_text()
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "if(!classified && !inland)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert ".slice(0,4)" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
 assert 'const feature = idKey ? byId.get(idKey) : null' in (layers / "river-gauge-observations-v1.js").read_text()
@@ -146,6 +149,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
+    record.write("OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18 (skip tagged tides, inland recovery, four serial requests, streamed deadline)\n")
     record.write("BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN AND BLUE-RISE MODIFIER 2026-10-18\n")
     record.write("BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18 (source-tag and measured oscillation)\\n")
     record.write("MATCHING FLOOD GAUGE INFORMATION PANEL ICONS AND SEVERITY 2026-10-18\\n")
@@ -165,6 +169,10 @@ test ! -f _site/src/historical-cyclone-forecast-map-v1.js
 grep -Fq 'PRODUCTION ACTIVE-ONLY CYCLONES 2026-10-18' _site/BUILD.txt
 node --check _site/src/live3d-operational-v9.js
 node --check _site/src/context-layers/river-gauges-operational-v1.js
+grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' _site/BUILD.txt
+grep -Fq 'if(explicitlyTidal)return null' _site/src/context-layers/bom-recent-river-history-v1.js
+grep -Fq 'if(!classified && !inland)return null' _site/src/context-layers/bom-recent-river-history-v1.js
+grep -Fq '.slice(0,4)' _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
 grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css
 node --check _site/src/context-layers/river-gauge-layer-v1.js

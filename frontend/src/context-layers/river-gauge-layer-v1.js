@@ -258,11 +258,11 @@ export function createRiverGaugeLayer({
     const nowMs=now();
     if(nowMs<recentRelayBlockedUntil)return null;
     const list=features.map(f=>recentFloodHistoryCandidate(f,history,nowMs))
-      .filter(Boolean).sort((a,b)=>Number(a.tidal)-Number(b.tidal));
+      .filter(Boolean).sort((a,b)=>Number(b.inland)-Number(a.inland));
     // A previously failed or insufficient station becomes eligible again
     // after its own cooldown. Cap each pass and fetch serially to protect BoM.
     const candidates=list.filter(item=>nowMs >= (recentNextAttemptAt.get(item.id)??0))
-      .slice(0,12);
+      .slice(0,4);
     if(!candidates.length)return null;
     recentLoading=(async()=>{
       let success=0,failures=0,noData=0,lastFailureScope=null;

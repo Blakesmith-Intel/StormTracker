@@ -61,9 +61,25 @@ const feature=(tidal=true,flood="")=>({id:"bom:540384",properties:{
  STORMTRACKER_OBSERVED_TEXT:"6:15 pm Thu 08/10/2026",
  STORMTRACKER_RECENT_DATA_HREF:"/fwo/IDQ65388/IDQ65388.540384.plt.shtml"
 }});
-assert.ok(recentFloodHistoryCandidate(feature(),{},now));
-assert.equal(recentFloodHistoryCandidate(feature(false,"below-minor"),{},now),null);
+assert.equal(recentFloodHistoryCandidate(feature(),{},now),null,
+  "Known tidal gauges must not make pointless massive history requests");
+assert.equal(recentFloodHistoryGap(feature(true,"major"),{},now),null,
+  "A confirmed tide can never generate a rate-only flash rise arrow");
+assert.equal(recentFloodHistoryCandidate(feature(false,"below-minor"),{},now),null,
+  "Unlocated below-minor gauges need conservative source screening");
 assert.ok(recentFloodHistoryCandidate(feature(false,"minor"),{},now));
+const west={...feature(false,"below-minor"),
+  geometry:{type:"Point",coordinates:[144.6005,-25.9108]}};
+assert.ok(recentFloodHistoryCandidate(west,{},now),
+  "Inland below-minor rising gauge must obtain initial genuine history");
+assert.ok(recentFloodHistoryGap(west,{},now),
+  "Missing inland rapid-rise evidence must remain explicitly incomplete");
+assert.equal(recentFloodHistoryCandidate({...west,properties:{...west.properties,
+  STORMTRACKER_TENDENCY:"falling"}},{},now),null,
+  "Only rising gauges may consume optional history capacity");
+const coastal={...west,geometry:{type:"Point",coordinates:[153.432,-27.95]}};
+assert.equal(recentFloodHistoryCandidate(coastal,{},now),null,
+  "Avoid large below-minor history downloads for ordinary coastal rise");
 const existing={"bom:540384":[
  {time:now-60*60000,height:1.0},{time:now-15*60000,height:1.6}
 ]};

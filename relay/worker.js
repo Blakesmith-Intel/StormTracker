@@ -1,4 +1,5 @@
 import { BORDER_RADAR_DOPPLER_PRODUCTS } from "../frontend/src/border-radar-sites-v1.js";
+import {cycloneSnapshotResponse} from "./cyclone-live-v1.js";
 import {
   parseBomReceivedAtUtc
 } from "./doppler-time-v1.js";
@@ -1513,6 +1514,10 @@ export default {
         403,
         origin
       );
+    }
+
+    if (incoming.pathname === "/cyclones") {
+      return cycloneSnapshotResponse(env,origin,corsHeaders);
     }
 
     if (incoming.pathname === "/flood-road-closures") {

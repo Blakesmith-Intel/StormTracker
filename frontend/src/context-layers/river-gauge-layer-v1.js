@@ -130,8 +130,8 @@ export function riverGaugeOperationalSummary(
 // ONE blue arrow badge is used for measured rapid rise / possible flash flooding.
 // A below-minor candidate is the blue icon with the same blue arrow.
 const FLOOD_MARKER_COLORS=Object.freeze({
-  "rapid-rise":"#1269e8",minor:"#1ca958",
-  moderate:"#f4bf17",major:"#dc343e"
+  "rapid-rise":"#1269e8",minor:"#2db76f",
+  moderate:"#ffd43b",major:"#e53935"
 });
 export function createRiverGaugeMarkerImage(state,rapidRise=false){
   const level=Object.hasOwn(FLOOD_MARKER_COLORS,state)?state:"rapid-rise";

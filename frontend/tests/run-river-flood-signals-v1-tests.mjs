@@ -49,16 +49,16 @@ h[recent.id]=[sample(now-hour,1.7),sample(now-15*60000,2.5)];
 assert.ok(latestRiseRate(h[recent.id],now).rateMetresPerHour>0.3);
 assert.equal(evaluateFloodSignal(recent,h,now).state,"rapid-rise");
 assert.equal(evaluateFloodSignal(station("bom:040111","below-minor"),h,now).show,false);
-assert.equal(evaluateFloodSignal(station("bom:040111","minor","steady"),h,now).show,false);
-assert.equal(evaluateFloodSignal(station("bom:040111","minor","falling"),h,now).show,false);
+assert.equal(evaluateFloodSignal(station("bom:040111","minor","steady"),h,now).state,"minor");
+assert.equal(evaluateFloodSignal(station("bom:040111","minor","falling"),h,now).state,"minor");
 assert.equal(evaluateFloodSignal(station("bom:040111","minor","rising",false,"10:15 am Thu 08/10/2026"),h,now).show,false,
   "A stale bulletin cannot support the current rapid rise");
-assert.equal(evaluateFloodSignal(station("bom:other","minor"),{},now).show,false,
-  "A rising tendency alone is not a measured rate");
+assert.equal(evaluateFloodSignal(station("bom:other","minor"),{},now).state,"minor",
+  "BoM minor flooding is still present without optional recent station-history data");
 assert.equal(evaluateFloodSignal(station("bom:major","major","falling"),{},now).state,"major");
 assert.equal(evaluateFloodSignal(station("bom:moderate","moderate","steady"),{},now).state,"moderate");
-assert.equal(evaluateFloodSignal(station("bom:minor","minor","falling"),{},now).show,false,
-  "Minor flooding without rapid rise should not show");
+assert.equal(evaluateFloodSignal(station("bom:minor","minor","falling"),{},now).state,"minor",
+  "BoM minor classification must persist until the water returns below minor");
 assert.equal(evaluateFloodSignal(station("bom:expired","major","steady",false,"6:15 pm Mon 05/10/2026"),{},now).show,false,
   "Stale flood classifications should not produce operational markers");
 assert.equal(evaluateFloodSignal(station("bom:tidal","", "rising", true),{"bom:tidal":h[recent.id]},now).show,false,
@@ -107,9 +107,10 @@ const result=filterOperationalFloodGauges([
   station("bom:minor","minor","falling"),station(tidalId,"","rising",true),
   recent
 ],{...h,[tidalId]:prepared},now);
-assert.deepEqual(result.counts,{moderate:1,major:1,rapidRise:1,tidalAnomaly:1});
-assert.equal(result.features.length,4);
+assert.deepEqual(result.counts,{minor:1,moderate:1,major:1,rapidRise:1,tidalAnomaly:1});
+assert.equal(result.features.length,5);
 assert.equal(result.features.find(f=>f.id===tidalId).properties.STORMTRACKER_DISPLAY_STATE,"tidal-anomaly");
+assert.equal(result.features.find(f=>f.id==="bom:minor").properties.STORMTRACKER_DISPLAY_STATE,"minor");
 assert.equal(result.features.find(f=>f.id===recent.id).properties.STORMTRACKER_ALERT_SOURCE,"local-rate-screen");
 assert.ok(NON_TIDAL_RAPID_RISE_M_PER_H>0);
-console.log("Flood signal tests passed: authentic AEST timestamps, stale/future exclusion, moderate/major flood priority, only above-minor non-tidal rapid rise, tide-baseline anomaly, storage hygiene, no ambiguous/unverified alerts.");
+console.log("Flood signal tests passed: authentic AEST timestamps, stale/future exclusion, moderate/major flood priority, official minor retention with separate non-tidal rapid rise, tide-baseline anomaly, storage hygiene, no ambiguous/unverified alerts.");

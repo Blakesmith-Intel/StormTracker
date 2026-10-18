@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "power-outages-v1.js"):
+for filename in ("bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "power-outages-v1.js"):
     copyfile(source / filename, layers / filename)
 
 suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018"
@@ -63,6 +63,12 @@ version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
     "bom-recent-river-history-v1.js?v=9.13.1")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-flood-signals-v1.js?v=9.13.2")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-flood-events-v1.js?v=9.13.2")
+version_once("src/context-layers/river-flood-events-v1.js",
+    "river-flood-signals-v1.js?v=9.13.2")
 version_once("src/live3d-operational-v9.js",
     "power-outages-operational-v1.js?v=council-customers-20261017-v1")
 version_once("src/context-layers/power-outages-operational-v1.js",
@@ -96,6 +102,10 @@ assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
+assert "isQualitativeForecastSite" in (layers / "river-gauges-v1.js").read_text()
+assert 'qualitativeForecastSite' in (layers / "river-flood-signals-v1.js").read_text()
+assert 'counts.minor++' in (layers / "river-flood-events-v1.js").read_text()
+
 assert '"source_response_too_large"' in (layers / "bom-recent-river-history-v1.js").read_text()
 power = (layers / "power-outages-v1.js").read_text()
 assert "styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour)" in power
@@ -106,6 +116,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18 (Cesium outline disabled)\n")
     record.write("MANUAL FLOOD GAUGE REFRESH 2026-10-18 (compact Layers control)\n")
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
+    record.write("BOM QUALITATIVE FORECAST SITE MINOR FLOOD RETENTION 2026-10-18\n")
 PY
 # V10.2.1-current-source production UI hygiene. Never alter the immutable
 # V10.2 base, morning flood/power fixes, or any historical QA preview.
@@ -125,6 +136,12 @@ node --check _site/src/context-layers/river-gauges-operational-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
 grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css
 node --check _site/src/context-layers/river-gauge-layer-v1.js
+node --check _site/src/context-layers/river-flood-signals-v1.js
+node --check _site/src/context-layers/river-flood-events-v1.js
+node --check _site/src/context-layers/river-gauges-v1.js
+grep -Fq 'forecast_site_classification' _site/src/context-layers/river-gauges-v1.js
+grep -Fq 'qualitativeForecastSite' _site/src/context-layers/river-flood-signals-v1.js
+grep -Fq 'BOM QUALITATIVE FORECAST SITE' _site/BUILD.txt
 node --check _site/src/context-layers/bom-recent-river-history-v1.js
 node --check _site/src/context-layers/power-outages-v1.js
 node --check _site/src/context-layers/power-outages-operational-v1.js

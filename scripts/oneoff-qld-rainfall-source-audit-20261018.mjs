@@ -54,3 +54,20 @@ for(const [name,url] of urls){
   console.log("DEEP_AUDIT",JSON.stringify(inspect).slice(0,17800));
  }catch(e){console.log("DEEP_ERROR",name,String(e))}
 }
+
+for(const region of ["seast","brisbane","tvl2mck","north","west","gulf","albert"]){
+ const url="https://www.bom.gov.au/qld/flood/"+region+".shtml";
+ try{
+  const r=await fetch(url,{signal:AbortSignal.timeout(8500)});
+  const body=await r.text();
+  const mapAreas=[...body.matchAll(/<area\b[^>]*>/gi)].map(x=>x[0]);
+  const popup=mapAreas.filter(a=>/popupRain|ShowRain|station.*mm/i.test(a));
+  const allPopup=[...body.matchAll(/Flood\.popupRain\([^;]{0,300}/gi)]
+    .slice(0,7).map(m=>m[0]);
+  const imageData=[...body.matchAll(/<img\b[^>]*(?:IDQ6|mapimage)[^>]*>/gi)]
+    .slice(0,12).map(m=>m[0].slice(0,300));
+  console.log("REGION_AUDIT",JSON.stringify({region,status:r.status,len:body.length,
+    areas:mapAreas.length,popupAreas:popup.length,sample:popup.slice(0,4),
+    allPopup:allPopup,imageData}).slice(0,14000));
+ }catch(e){console.log("REGION_FAIL",region,String(e))}
+}

@@ -15,6 +15,7 @@ jobs:
         run: |
           node --check scripts/one-shot-bom-health-20261019.mjs
           node --check frontend/src/dev-webgl-lifecycle-probe-20261019.js
+          node scripts/test-bom-diagnostic-fallback-20261019.mjs
       - name: Probe anonymous FTP directly (read only)
         continue-on-error: true
         run: |

@@ -57,12 +57,25 @@ try {
   // Do not collapse no-data, BoM access refusal and genuine upstream faults
   // into indistinguishable 502 errors.
   const scenarios=[
-    [404,404,"station_history_not_published"],
-    [410,404,"station_history_not_published"],
     [403,503,"source_access_denied"],
     [429,429,"source_rate_limited"],
     [500,503,"bom_upstream_http"]
   ];
+  // A source 404/410 means the optional per-station table was never
+  // published. Return a valid typed empty availability (HTTP 200) instead of
+  // generating continuous browser Network errors. NOT a zero river reading.
+  for(const upstreamStatus of [404,410]){
+    globalThis.fetch=async()=>new Response("not found",{status:upstreamStatus});
+    const r=await worker.fetch(new Request(target,{headers:{
+      Origin:"https://blakesmith-intel.github.io"}}),{});
+    assert.equal(r.status,200);
+    assert.equal(r.headers.get("Cache-Control"),"public, max-age=1800");
+    const data=await r.json();
+    assert.equal(data.format,"StormTrackerBomRecentRiverHistoryV1");
+    assert.equal(data.availability,"not_published");
+    assert.equal(data.sourceStatus,upstreamStatus);
+    assert.deepEqual(data.samples,[]);
+  }
   for(const [upstreamStatus,expectedStatus,code] of scenarios){
     globalThis.fetch=async()=>new Response("upstream error",{status:upstreamStatus});
     const response=await worker.fetch(new Request(target,{

@@ -65,6 +65,8 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
       STORMTRACKER_ALERT_SOURCE:decision.source,
       STORMTRACKER_ALERT_PERSISTED:false,
       STORMTRACKER_RECOVERY_READINGS:0,
+      STORMTRACKER_RATE_SCREENING_ZONE:decision.riseScreeningZone??"",
+      STORMTRACKER_RATE_THRESHOLD_M_PER_H:decision.screeningThresholdMetresPerHour??null,
       STORMTRACKER_RISE_RATE_M_PER_H:decision.rise?.rateMetresPerHour??null,
       STORMTRACKER_RATE_INTERVAL_MINUTES:decision.rise?.intervalMinutes??null,
       STORMTRACKER_TIDAL_BASELINE_M_PER_H:decision.tidalBaselineMetresPerHour??null,

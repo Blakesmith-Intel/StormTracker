@@ -1083,6 +1083,10 @@ async function relayQldSignificantRainfall(request,origin){
       if(html.length>3_500_000)throw Error("BoM rainfall HTML excessive");
       const sourceCreatedAt=qldFloodMapCreatedAt(html);
       if(!sourceCreatedAt)throw Error("BoM rainfall source time unavailable");
+      const created=Date.parse(sourceCreatedAt);
+      if(!Number.isFinite(created)||created>Date.now()+5*60000||
+          Date.now()-created>90*60000)
+        throw Error("BoM rainfall regional page is stale: "+sourceCreatedAt);
       const since9am=parseBomRainfallMap(html,"since9am",region);
       const lastHour=parseBomRainfallMap(html,"lastHour",region);
       return {region,sourceCreatedAt,

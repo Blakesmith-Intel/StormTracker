@@ -1,0 +1,87 @@
+import assert from "node:assert/strict";
+import {
+ createWmtsTimeFailureGuard,loadBomReflectivityMosaicAtTime,
+ discoverBoundedBomReflectivityHistory,findLatestBomReflectivityTime,
+ WMTS_SOURCE_FRESHNESS_MS
+} from "../src/bom-wmts-loop-v2.js";
+import {createDopplerFrameFailureCooldown} from "../src/bom-doppler-intake-v3.js";
+
+assert.equal(WMTS_SOURCE_FRESHNESS_MS,45*60000);
+let current=Date.parse("2026-10-18T07:20:00Z");
+const old=["2026-10-18T05:50:00Z","2026-10-18T05:55:00Z","2026-10-18T06:00:00Z"];
+await assert.rejects(
+  discoverBoundedBomReflectivityHistory(current,180,"66",{
+    publishedTimes:async()=>old
+  }),/No verified current BoM reflectivity timestamp/,
+  "Do not fan out hours-old timestamps merely because stale GetCapabilities lists them");
+const currentSamples=["2026-10-18T06:45:00Z","2026-10-18T07:15:00Z"];
+assert.deepEqual(await discoverBoundedBomReflectivityHistory(current,180,"19",{
+  publishedTimes:async()=>[...old,...currentSamples]
+}),currentSamples);
+assert.equal(await findLatestBomReflectivityTime(current,"74",{
+  publishedTimes:async()=>[...old,...currentSamples]
+}),currentSamples.at(-1));
+
+const guard=createWmtsTimeFailureGuard({now:()=>current,ttlMs:300000,maxEntries:2});
+assert.equal(guard.isRejected(old[0]),false);
+guard.reject(old[0]);
+assert.equal(guard.isRejected(old[0]),true);
+guard.reject(old[1]);guard.reject(old[2]);
+assert.equal(guard.isRejected(old[0]),false,"Bound negative cache size");
+assert.equal(guard.size(),2);
+current+=300001;
+assert.equal(guard.isRejected(old[2]),false,"Previously invalid time can be checked again");
+
+// Source in user report returned 400 for entire SEQ tile matrix. FIRST tile
+// must stop the remaining 11 before any request-pressure queue fills.
+const originalFetch=globalThis.fetch;
+const originalOffscreen=globalThis.OffscreenCanvas;
+globalThis.OffscreenCanvas=class {
+  constructor(width,height){this.width=width;this.height=height;}
+  getContext(){return {};}
+};
+let requests=0, times=[];
+try{
+ globalThis.fetch=async url=>{
+   requests++;
+   times.push(String(url));
+   return new Response("failed to validate requested value for dimension (time)",
+     {status:400,headers:{"Content-Type":"text/plain"}});
+ };
+ const invalid="2026-10-18T07:25:00Z";
+ await assert.rejects(loadBomReflectivityMosaicAtTime(invalid,"66"),
+   /time preflight failed.*HTTP 400/);
+ assert.equal(requests,1,"Twelve-tile 400 storm becomes ONE verified failing request");
+ await assert.rejects(loadBomReflectivityMosaicAtTime(invalid,"19"),
+   /cached source rejection/);
+ assert.equal(requests,1,
+   "Negative time status is shared across radar sites, not keyed by tile URL");
+ await assert.rejects(loadBomReflectivityMosaicAtTime("2026-10-18T07:30:00Z","74"),
+   /HTTP 400/);
+ assert.equal(requests,2,"Different source time isn't permanently blocked");
+ assert.ok(times[0].includes("TILEMATRIX=8"));
+}finally{globalThis.fetch=originalFetch;globalThis.OffscreenCanvas=originalOffscreen;}
+
+// Three independent 502s from radar 74 trigger a bounded per-product pause,
+// but must NOT suppress valid observations from other radar sites.
+let t=100000,count=0;
+const productCooldown=createDopplerFrameFailureCooldown({
+  now:()=>t,cooldownMs:75000
+});
+const url=(radar,frame)=>"https://example.invalid/radar-frame?product=IDR"+
+ radar+"I&file=IDR"+radar+"I.T."+frame+".png";
+const fail=async()=>{count++;const e=Error("HTTP 502");e.status=502;throw e;};
+for(const frame of ["202610180553","202610180608","202610180613"])
+  await assert.rejects(productCooldown.run(url(74,frame),fail),/502/);
+assert.equal(count,3);
+await assert.rejects(productCooldown.run(url(74,"202610180618"),fail),
+  e=>e.sourceCooldown===true && e.status===502);
+assert.equal(count,3,"Product-wide failure does not issue fourth 502");
+const unaffected=await productCooldown.run(url(66,"202610180618"),
+  async()=>{count++;return "verified new observation"});
+assert.equal(unaffected,"verified new observation");
+t+=75001;
+assert.equal(await productCooldown.run(url(74,"202610180618"),
+  async()=>{count++;return "source recovered"}),"source recovered");
+assert.equal(count,5,"Source automatically rechecks after 75 seconds");
+console.log("PASS stale GetCapabilities cutoff, WMTS one-request preflight, cross-site invalid-time cache, and isolated IDR74 3-frame cooldown with recovery.");

@@ -15,14 +15,33 @@ export function createDopplerFrameFailureCooldown({
   now = () => Date.now(), cooldownMs = 75000, maxEntries = 64
 } = {}) {
   const unavailable = new Map();
+  // An entire radar product may fail, not just one rotating PNG filename.
+  // Only after THREE different verified HTTP 502/503/504/429 frame failures
+  // in two minutes is that site's optional history paused for 75 seconds.
+  // Never affect another radar product or extrapolate Doppler measurements.
+  const sourceFailures=new Map();
+  const productFromKey=key=>String(key).match(/(?:[?&]product=|^)(IDR\d+I)(?:[&.]|$)/i)?.[1]||"";
   const rejectedAt = now => {
     for (const [key,record] of unavailable)
       if (record.until <= now) unavailable.delete(key);
+    for (const [product,record] of sourceFailures){
+      for(const [key,time] of record.failed)
+        if(time<=now-120000)record.failed.delete(key);
+      if(!record.failed.size && record.until<=now)sourceFailures.delete(product);
+    }
   };
   return {
     async run(key, task) {
       const current = now();
       rejectedAt(current);
+      const product=productFromKey(key);
+      const source=sourceFailures.get(product);
+      if(source && source.until>current){
+        const error=Error("Doppler "+product+" temporarily unavailable (HTTP "+
+          source.status+"); retaining the last verified image");
+        error.status=source.status;error.sourceCooldown=true;
+        throw error;
+      }
       const cached=unavailable.get(key);
       if (cached && cached.until > current) {
         const error = new Error(
@@ -36,6 +55,7 @@ export function createDopplerFrameFailureCooldown({
       try {
         const value=await task();
         unavailable.delete(key);
+        if(product)sourceFailures.delete(product);
         return value;
       } catch(error) {
         const status=Number(error?.status) ||
@@ -45,6 +65,12 @@ export function createDopplerFrameFailureCooldown({
           unavailable.set(key,{status:status||504,until:now()+cooldownMs});
           while(unavailable.size>maxEntries)
             unavailable.delete(unavailable.keys().next().value);
+          if(product && !error?.sourceCooldown && [429,502,503,504].includes(status)){
+            const record=sourceFailures.get(product)??{failed:new Map(),until:0,status};
+            record.failed.set(key,now());
+            if(record.failed.size>=3){record.until=now()+cooldownMs;record.status=status;}
+            sourceFailures.set(product,record);
+          }
         }
         throw error;
       }

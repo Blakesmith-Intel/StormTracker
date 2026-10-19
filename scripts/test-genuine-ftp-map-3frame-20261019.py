@@ -19,7 +19,7 @@ ftp.cwd("/anon/gen/radar_transparencies/coordinates")
 maps={}
 for s in SITES:
  name=f"IDR{s}3.map";raw=get(name).decode("utf-8","replace")
- vals=dict((k.strip(),float(v)) for k,v in re.findall(r"(?m)^\s*([a-z]+[0-3]?)\s*=\s*([-\d.]+)",raw) if k!="projection")
+ vals=dict((k.strip(),float(v)) for k,v in re.findall(r"(?m)^\s*([a-z_]+[0-3]?)\s*=\s*([-\d.]+)",raw) if k!="projection")
  assert "projection = Gnomonic" in raw
  pts=[(vals[f"lon{i}"],vals[f"lat{i}"]) for i in range(4)]
  center=(vals["center_longitude"],vals["center_latitude"])

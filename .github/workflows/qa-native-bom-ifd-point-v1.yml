@@ -1,0 +1,33 @@
+name: QA native BoM IFD native baseline at Gold Coast, Adavale, Brisbane
+on:
+  push:
+    branches: [release/ftp-static-archive-aep-v10-20261019]
+    paths: [scripts/build-native-bom-ifd-point-cells-v1.py, .github/workflows/qa-native-bom-ifd-point-v1.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ifd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/build-native-bom-ifd-point-cells-v1.py --out /tmp/ifd-points.json
+      - name: Verify two known contrasting geographic rainfall climates
+        run: |
+          python - <<'PY'
+          import json
+          j=json.load(open('/tmp/ifd-points.json'))
+          assert len(j['cells'])==3
+          coast=j['cells']['-28.0125,153.4125']['depthsMmByMinutes']['60']
+          adavale=j['cells']['-25.9125,144.6125']['depthsMmByMinutes']['60']
+          assert 58 < coast['20'] < 61,(coast)
+          assert 35 < adavale['20'] < 40,(adavale)
+          assert adavale['10'] < 50 < coast['20'],(coast,adavale)
+          print('TRUE_LOCATION_SPECIFIC_IFD_PASS',coast,adavale)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-2016-bom-ifd-three-points
+          path: /tmp/ifd-points.json
+          retention-days: 2

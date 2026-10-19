@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/probe-qld-flood-thresholds-live.mjs'
+      - 'frontend/src/context-layers/river-flood-thresholds-v1.js'
       - '.github/workflows/verify-qld-flood-thresholds.yml'
 permissions:
   contents: read

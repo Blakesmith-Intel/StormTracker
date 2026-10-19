@@ -3,9 +3,7 @@
 // the approved LAYER allow-list. This is NOT a new data service or polling loop.
 export const REFLECTIVITY_WMTS_LAYER="atm_surf_air_precip_reflectivity_dbz";
 export const REFLECTIVITY_CAPABILITIES_URL=
-  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts"+
-  "?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0"+
-  "&LAYER="+REFLECTIVITY_WMTS_LAYER;
+  "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts-native-capabilities";
 
 const escapeRegex=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 function canonicalUtc(value){

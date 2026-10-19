@@ -17,7 +17,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - name: Retrieve authentic BoM radar directory listing
@@ -47,6 +47,16 @@ jobs:
           git add -f manifest.json frames/
           git diff --cached --quiet && exit 0
           git commit -m "radar: publish BoM-observed FTP frame index"
-          git push origin HEAD:refs/heads/radar-ftp-feed
+          # IFD calibration publishes a different path on this same data branch.
+          # It must never silently prevent today's actual FTP image archive update.
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:refs/heads/radar-ftp-feed; then exit 0; fi
+            echo "Radar feed advanced during FTP stage; rebasing source-only update ($attempt)"
+            git fetch --depth=20 origin radar-ftp-feed
+            git rebase FETCH_HEAD
+            sleep 2
+          done
+          echo "Unable to publish fresh authentic FTP archive" >&2
+          exit 1
       - name: Report data feed
         run: echo "Verified original FTP radar feed at https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json"

@@ -354,10 +354,11 @@ export async function discoverBomReflectivityHistory(
 
 export async function findRecentBomReflectivityTimes(
   now=Date.now(),count=6,region='SEQ',
-  {publishedTimes=publishedReflectivityTimes}={}
+  {publishedTimes=publishedReflectivityTimes,
+   verifyNationalTile=probeTimestamp,ftpHistory=discoverFtpReflectivityHistory}={}
 ){
   return (await discoverBoundedBomReflectivityHistory(now,180,region,{
-   publishedTimes,maximumPublishedFrames:count
+   publishedTimes,maximumPublishedFrames:count,verifyNationalTile,ftpHistory
   })).slice(-Math.max(1,Math.min(9,Math.trunc(Number(count)||6))));
 }
 

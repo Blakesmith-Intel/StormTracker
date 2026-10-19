@@ -22,7 +22,11 @@ export async function publishedFtpManifest({now=Date.now(),fetcher=fetch}={}){
  // 220 banner, so it MUST NOT block loading every radar frame for 22 seconds.
  let staticError=null;
  try{
-  const response=await fetcher(MANIFEST,{cache:"no-store",
+  // GitHub raw CDN may serve an outdated branch HEAD even with cache:no-store.
+  // The five-minute bucket changes the actual CDN cache key without changing
+  // the immutable source-frame URLs or inventing an observation timestamp.
+  const url=MANIFEST+"?refresh="+Math.floor(now/300000);
+  const response=await fetcher(url,{cache:"no-store",
    signal:AbortSignal.timeout(6500)});
   if(!response.ok)throw Error("FTP archive HTTP "+response.status);
   const m=await response.json();

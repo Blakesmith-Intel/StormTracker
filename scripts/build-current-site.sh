@@ -49,7 +49,8 @@ copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),
          site / "src/bom-doppler-intake-v3.js")
 # Replace only the WMTS source-time lookup (not sealed radar renderer/3D)
 # with exact 9 timestamps from BoM's own published GetCapabilities.
-for name in ("bom-wmts-loop-v2.js","bom-wmts-published-times-v1.js"):
+for name in ("bom-wmts-loop-v2.js","bom-wmts-published-times-v1.js",
+             "operational-window-choices-v1.js"):
     copyfile(Path("frontend/src") / name, site / "src" / name)
 copyfile(Path("frontend/favicon.svg"),site / "favicon.svg")
 for relative in ("index.html","live3d-operational-v9.html"):

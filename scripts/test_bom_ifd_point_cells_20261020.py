@@ -14,6 +14,7 @@ page+="<table><tr><th>Duration</th>"+ "".join(
 for i,(label,minutes) in enumerate(pairs):
  page+="<tr><td>"+label+"</td>"+ "".join(
   "<td>"+str(v)+"</td>" for v in (10+i,12+i,20+i,30+i,40+i,50+i,60+i))+"</tr>"
+page+="<tr><td>1 day winter factor</td>"+"<td>-</td>"*7+"</tr>"
 page+="</table>"
 grid=m.parse_bom_ifd_table(page)
 assert len(grid)==10 and grid["60"]["20"]==20 and grid["1440"]["1"]==69

@@ -38,10 +38,15 @@ def parse_bom_ifd_table(markup):
    if len(cells)<8:continue
    minutes=duration_minutes(cells[0])
    if minutes not in WANTED:continue
+   # Official Bureau tables also include rows like "1 day winter factor"
+   # with dash cells. Those are not design-rainfall depths.
+   if "factor" in cells[0].lower():continue
+   if any(not re.match(r"^\d+(?:\.\d+)?\b",c) for c in cells[-5:]):
+    continue
    values={}
    for aep,cell in zip(("20","10","5","2","1"),cells[-5:]):
     match=re.match(r"^(\d+(?:\.\d+)?)\b",cell)
-    if not match:raise ValueError("Official IFD published depth missing; row "+repr(cells[:16])[:490])
+    if not match:raise ValueError("Official IFD published depth missing")
     mm=float(match.group(1))
     if not (0<mm<3000):raise ValueError("Official IFD value out of range")
     values[aep]=mm

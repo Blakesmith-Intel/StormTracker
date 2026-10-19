@@ -136,6 +136,10 @@ export function riverGaugeOperationalSummary(
     classificationUnverified:Boolean(properties.STORMTRACKER_CLASSIFICATION_UNVERIFIED),
     lastConfirmedFloodClass:String(properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??""),
     lastConfirmedFloodAt:Number(properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT)||null,
+    thresholdStatus:String(properties.STORMTRACKER_THRESHOLD_STATUS??""),
+    thresholdSource:String(properties.STORMTRACKER_THRESHOLD_SOURCE??""),
+    thresholdSourceDate:String(properties.STORMTRACKER_THRESHOLD_SOURCE_DATE??""),
+    gaugeIdentityWarning:String(properties.STORMTRACKER_IDENTITY_WARNING??""),
     floodThresholds:{
       minor:properties.STORMTRACKER_MINOR_FLOOD_METRES??null,
       moderate:properties.STORMTRACKER_MODERATE_FLOOD_METRES??null,

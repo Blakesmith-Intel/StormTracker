@@ -41,6 +41,16 @@ assert.deepEqual(VERIFIED_STATEWIDE_FLOOD_LEVELS["bom:540319"],
 assert.deepEqual(stationFloodLevels({id:"bom:540319",properties:{}}),
   {minor:1.7,moderate:2.4,major:3.5},
   "All stations with published stages must show stages without live relay");
+assert.equal(stationFloodLevels({id:"bom:540610",properties:{
+  STORMTRACKER_MINOR_FLOOD_METRES:3.6,
+  STORMTRACKER_MODERATE_FLOOD_METRES:6.2,
+  STORMTRACKER_MAJOR_FLOOD_METRES:7.8
+}}).major,102.3,
+  "Never read an AHD dam-level station against an obsolete gauge-relative stage");
+assert.equal(stationFloodLevels({id:"bom:540097",properties:{name:"OXLEY CREEK"}}).major,6,
+  "New Beith station 540097 cannot inherit Oxley Creek 540646's classification");
+assert.equal(stationFloodLevels({id:"bom:539066",properties:{}}).major,121);
+assert.equal(stationFloodLevels({id:"bom:540057",properties:{}}).major,79.2);
 assert.equal(stationFloodLevels({id:"bom:999999",properties:{}}),null,
   "Never invent a stage where source provides none");
 const row=(id,minor,moderate,major)=>{

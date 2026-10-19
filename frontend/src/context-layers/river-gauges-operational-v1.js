@@ -278,9 +278,19 @@ function showRiverGaugeInfo(
     n.toFixed(2)+" m":"not published";
   addDetailRow(rows,"BoM flood thresholds",
     thresholds.minor===null||thresholds.minor===undefined?
-      "No published flood-classification levels matched to this gauge ID":
+      summary.thresholdStatus==="2026-data-only"
+        ? "BoM 2026 data-only gauge — no defined flood classification"
+        : "2026 station level/datum not verified — flood colour not inferred":
       "Minor "+fmt(thresholds.minor)+" · Moderate "+
         fmt(thresholds.moderate)+" · Major "+fmt(thresholds.major));
+  addDetailRow(rows,"Flood stage reference",
+    summary.thresholdStatus==="2026-station-native"
+      ? "BoM SLS v3.7 · exact station ID · native station reported metres"
+      : summary.thresholdStatus==="historical-exact-id-caution"
+        ? "BoM 2022 exact-ID legacy classification · 2026 classification unavailable"
+        : "No station/datum-verified current threshold");
+  if(summary.gaugeIdentityWarning)
+    addDetailRow(rows,"Station ID conflict",summary.gaugeIdentityWarning);
   addDetailRow(
     rows,
     "Flood class",

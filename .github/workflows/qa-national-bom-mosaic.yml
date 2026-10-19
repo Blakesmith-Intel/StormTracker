@@ -31,5 +31,7 @@ jobs:
           npm install --no-save --ignore-scripts playwright@1.58.2
           npx playwright install chromium
           node scripts/probe-bom-new-radar-page-network.mjs
+      - name: Probe official documented national products from permitted data services
+        run: python scripts/probe-official-national-products.py
       - name: Verify actual BoM national mosaic tiles for Richmond and Brisbane
         run: node scripts/probe-live-national-bom-mosaic-v1.mjs

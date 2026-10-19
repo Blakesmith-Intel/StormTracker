@@ -6,7 +6,7 @@ import argparse, datetime as dt, ftplib, json, re
 from pathlib import Path
 
 SITES=("08","50","66","28","53","93")
-PAT=re.compile(r"^IDR(\\d{2})([1-4])\\.T\\.(\\d{12})\\.png$")
+PAT=re.compile(r"^IDR(\d{2})([1-4])\.T\.(\d{12})\.png$")
 UTC=dt.timezone.utc
 
 def discover(names, now, sites=SITES, max_age_minutes=45):

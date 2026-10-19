@@ -59,11 +59,29 @@ try{
   const e=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall").entities.values[0];
   const p=v.scene.cartesianToCanvasCoordinates(e.position.getValue(C.JulianDate.now()));
   const b=v.scene.canvas.getBoundingClientRect();
-  return p?{x:b.left+p.x,y:b.top+p.y}:null;
+  return p?{x:b.left+p.x,y:b.top+p.y,localX:p.x,localY:p.y,
+   hits:v.scene.drillPick(new C.Cartesian2(p.x,p.y),24,42,42).map(z=>z?.id?.id??z?.id??"").slice(0,9),
+   canvas:{left:b.left,top:b.top,right:b.right,bottom:b.bottom}}:null;
  });
  assert(pos);
+ console.log("AEP_MARKER_PROJECTED_PICK",JSON.stringify(pos));
  await page.mouse.click(pos.x,pos.y);
- await page.waitForFunction(()=>document.querySelector("#significantRainfallInfo")?.hidden===false,null,{timeout:12000});
+ try{
+  await page.waitForFunction(()=>document.querySelector("#significantRainfallInfo")?.hidden===false,null,{timeout:12000});
+ }catch(error){
+  const detail=await page.evaluate(p=>{
+   const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
+   const hit=v.scene.drillPick(new C.Cartesian2(p.localX,p.localY),24,42,42);
+   return {domTarget:document.elementFromPoint(p.x,p.y)?.outerHTML.slice(0,300),
+     picked:hit.map(x=>x?.id?.id??x?.id??"").slice(0,9),
+     rainfallStatus:document.getElementById("significantRainfallStatus")?.textContent,
+     popupHidden:document.getElementById("significantRainfallInfo")?.hidden,
+     cameraCartographic:C.Cartographic.fromCartesian(v.camera.position),
+     viewerCanvas:v.scene.canvas.getBoundingClientRect().toJSON()};
+  },pos);
+  console.log("AEP_MAP_PICK_DIAGNOSTIC",JSON.stringify(detail));
+  throw error;
+ }
  const actual=await page.evaluate(()=>{
   const v=window.__STORMTRACKER_QA_VIEWER;
   return {popup:document.getElementById("significantRainfallInfoRows")?.textContent,

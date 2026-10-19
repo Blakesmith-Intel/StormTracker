@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {labelBudget,townLabelBox,boxesOverlap,greatCircleKm,
   rankQueenslandTowns,layoutTownLabels,townLabelTypography,
-  geographicPlaceNameKey,sameGeographicSettlement}
+  geographicPlaceNameKey,sameGeographicSettlement,sameMappedRuralPlace}
   from "../src/context-layers/qld-town-label-declutter-v1.js";
 
 assert.equal(labelBudget(390,350,4_000_000,"street"),0);
@@ -92,4 +92,29 @@ const duplicates=layoutTownLabels({
 assert.equal(duplicates.filter(p=>geographicPlaceNameKey(p.name)==="pentland").length,1,
   "Two geographic feeds must never produce duplicate Pentland names even when their screen anchors are apart");
 assert.equal(duplicates.length,2);
+// Regression from a photographed Richmond Doppler map: official sources
+// positioned Corfield at a populated place and at an administrative locality
+// centroid tens of kilometres away. Keep ONE town label, not two Corfields.
+const corfieldTown={id:"town:corfield",name:"Corfield",latitude:-21.7101,
+  longitude:143.3699,priority:150,population:158,x:390,y:500};
+const corfieldLocality={id:"gazetteer:corfield",name:"CORFIELD (Winton Shire)",
+  kind:"LOCB",fromGazetteer:true,latitude:-21.30,longitude:143.38,
+  priority:45,population:0,x:410,y:350};
+assert.ok(!sameGeographicSettlement(corfieldTown,corfieldLocality,25));
+assert.ok(sameMappedRuralPlace(corfieldTown,corfieldLocality),
+  "One official locality centroid must not produce a second Corfield label");
+const corfieldDistant={...corfieldLocality,id:"far:corfield",
+  latitude:-24,longitude:146.5,x:720,y:300};
+assert.ok(!sameMappedRuralPlace(corfieldTown,corfieldDistant),
+  "Distinct truly distant same-name places must remain eligible");
+const ruralNames=layoutTownLabels({candidates:[
+    corfieldLocality,corfieldTown,
+    {id:"richmond",name:"Richmond",longitude:143.14,latitude:-20.75,
+      x:210,y:170,priority:100,population:1000}
+  ],width:1000,height:800,cameraHeight:100000,mode:"qld-imagery"});
+assert.equal(ruralNames.filter(p=>geographicPlaceNameKey(p.name)==="corfield").length,1,
+  "One geographic name must survive both official feeds");
+assert.equal(ruralNames.find(p=>geographicPlaceNameKey(p.name)==="corfield").id,
+  "town:corfield","Populated town must outrank remote district-centroid anchor");
+console.log("PASS rural Corfield town versus same-name locality centre deduplication.");
 console.log("PASS adaptive rural Queensland label density, statewide desktop distribution, Street+imagery, collisions and mobile bounds.");

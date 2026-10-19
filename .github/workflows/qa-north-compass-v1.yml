@@ -1,0 +1,47 @@
+name: QA north-up isometric primary radar and compass
+on:
+  push:
+    branches: [feature/north-up-primary-reset-compass-20261019]
+  pull_request:
+    paths:
+      - frontend/src/north-compass-v1.js
+      - scripts/apply-ftp-aep-release-v10.py
+      - scripts/test-north-compass-v1.mjs
+      - .github/workflows/qa-north-compass-v1.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Verify north-up bearing and live heading control
+        run: |
+          node scripts/test-north-compass-v1.mjs
+          node --check frontend/src/north-compass-v1.js
+          python -m py_compile scripts/apply-ftp-aep-release-v10.py
+      - uses: actions/checkout@v4
+        with:
+          ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
+          path: checked/accepted-v9.18
+      - uses: actions/checkout@v4
+        with:
+          ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
+          path: checked/production-v10.2.0
+      - uses: actions/checkout@v4
+        with:
+          ref: f3a07688ca02f5f0234ae6425fc1177722518c53
+          path: checked/wind-hook-v10.3-qa
+      - name: Check complete production-equivalent compass mount
+        run: |
+          bash scripts/build-current-site.sh
+          python scripts/apply-ftp-aep-release-v10.py
+          node --check _site/src/live3d-operational-v9.js
+          node --check _site/src/north-compass-v1.js
+          grep -Fq 'TRUE NORTH DEFAULT ISOMETRIC + PRIMARY RADAR RESET + COMPASS' _site/BUILD.txt
+          grep -Fq 'mountNorthCompass({cameraController:mapCamera' _site/src/live3d-operational-v9.js
+          grep -Fq 'if (site) mapCamera.setView({...CORE_HOME, longitude:site.longitude, latitude:site.latitude, heading:0});' _site/src/live3d-operational-v9.js
+          test "$(grep -Fc 'north-compass-v1.js' _site/src/live3d-operational-v9.js)" -eq 1

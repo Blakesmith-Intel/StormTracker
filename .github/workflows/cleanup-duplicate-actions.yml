@@ -1,0 +1,44 @@
+name: Clean up redundant StormTracker Actions runs (single-use)
+on:
+  push:
+    paths:
+      - '.github/workflows/cleanup-duplicate-actions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+jobs:
+  cancel-obsolete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Cancel superseded runs and retain only final Pages and relay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Cleanup action ID %s, head %s\n' "$GITHUB_RUN_ID" "$GITHUB_SHA"
+          for pass in 1 2 3; do
+            data="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100")"
+            keep_pages="$(jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.status != "completed" and .head_sha==$sha and (.path|endswith("pages.yml"))) | .id] | max // empty' <<< "$data")"
+            keep_relay="$(jq -r '[.workflow_runs[] | select(.status != "completed" and (.path|endswith("deploy-relay.yml"))) | .id] | max // empty' <<< "$data")"
+            echo "Keeping final Pages: ${keep_pages:-none} | final relay: ${keep_relay:-none}"
+            while IFS=$'\t' read -r id status path; do
+              [[ -n "${id:-}" ]] || continue
+              [[ "$id" == "$GITHUB_RUN_ID" ]] && continue
+              [[ -n "$keep_pages" && "$id" == "$keep_pages" ]] && continue
+              [[ -n "$keep_relay" && "$id" == "$keep_relay" ]] && continue
+              # Runs started after this cleanup were not authorized to cancel.
+              (( id < GITHUB_RUN_ID )) || continue
+              echo "Cancelling redundant run $id ($status): $path"
+              if gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/$id/cancel" >/dev/null 2>&1; then
+                echo "Cancellation accepted for $id"
+              elif [[ "$pass" -ge 2 ]]; then
+                gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/$id/force-cancel" >/dev/null 2>&1 || true
+              fi
+            done < <(jq -r '.workflow_runs[] | select(.status != "completed") | [.id,.status,.path] | @tsv' <<< "$data")
+            [[ "$pass" == "3" ]] || sleep 15
+          done
+          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100" \
+            --jq '[.workflow_runs[] | select(.status != "completed") | {id,status,path,sha:.head_sha}]'

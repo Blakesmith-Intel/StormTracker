@@ -1,12 +1,7 @@
 name: Reconcile complete Queensland flood classifications with BoM 2026
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'scripts/reconcile-bom-sls-2026.mjs'
-      - 'scripts/audit-bom-gauge-datum-2026.mjs'
-      - 'frontend/tests/run-bom-sls-2026-catalogue-tests.mjs'
-      - '.github/workflows/reconcile-qld-flood-stages.yml'
+
 permissions:
   contents: write
   actions: write

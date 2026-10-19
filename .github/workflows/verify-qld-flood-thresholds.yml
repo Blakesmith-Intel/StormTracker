@@ -1,11 +1,7 @@
 name: Diagnose official Queensland flood threshold coverage
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'scripts/probe-qld-flood-thresholds-live.mjs'
-      - 'frontend/src/context-layers/river-flood-thresholds-v1.js'
-      - '.github/workflows/verify-qld-flood-thresholds.yml'
+
 permissions:
   contents: read
 jobs:

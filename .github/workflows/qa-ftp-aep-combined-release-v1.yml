@@ -1,7 +1,7 @@
 name: Release gate — V10 native BoM high-res radar + AEP
 on:
   push:
-    branches: [main, fix/hires-only-six-frames-road-toggle-20261019, release/bom-hires-native-reflectivity-v10-20261019, feature/national-bom-mosaic-first-20261019, release/ftp-static-archive-aep-v10-20261019, release/ftp-aep-v10-production-20261019]
+    branches: [main, feature/browser-hires-history-90m-20261019, fix/hires-only-six-frames-road-toggle-20261019, release/bom-hires-native-reflectivity-v10-20261019, feature/national-bom-mosaic-first-20261019, release/ftp-static-archive-aep-v10-20261019, release/ftp-aep-v10-production-20261019]
     paths:
       - scripts/apply-ftp-aep-release-v10.py
       - scripts/test-combined-ftp-aep-operational-browser-v1.mjs
@@ -44,6 +44,7 @@ jobs:
         run: |
           npm test
           node frontend/tests/run-hires-radar-road-toggle-20261019-tests.mjs
+          node frontend/tests/run-browser-hires-archive-90m-v1-tests.mjs
           node frontend/tests/run-all-power-providers-polygon-shading-v1.mjs
           node --check relay/worker.js
           node --check frontend/src/ftp-reflectivity-operational-v1.js
@@ -71,6 +72,8 @@ jobs:
           node --check _site/src/hires-radar-loop-policy-v1.js
           grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' _site/live3d-operational-v9.html
           grep -Fq 'measuredHiResRainWindow(availableRadarHistoryTimes, loopSelection)' _site/src/live3d-operational-v9.js
+          grep -Fq 'availableMeasuredHiResLoopMinutes(availableRadarHistoryTimes)' _site/src/live3d-operational-v9.js
+          grep -Fq '90 min — Rain radar (browser archive)' _site/src/operational-window-choices-v1.js
           grep -Fq 'then(frames=>frames.filter(isVerifiedHiResRadarFrame))' _site/src/live3d-operational-v9.js
           grep -Fq 'highResolutionBomMosaicFrame' _site/src/hires-radar-loop-policy-v1.js || grep -Fq 'isVerifiedHiResRadarFrame' _site/src/hires-radar-loop-policy-v1.js
           grep -Fq 'dataSource.entities.removeAll();' _site/src/context-layers/flood-road-closures-v1.js

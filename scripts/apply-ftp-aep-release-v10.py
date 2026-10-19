@@ -11,7 +11,6 @@ site=Path("_site")
 assert (site/"BUILD.txt").read_text().startswith("SEALED StormTracker V10.2.0")
 for source,target in [
  ("frontend/src/bom-wmts-loop-v2.js","src/bom-wmts-loop-v2.js"),
- ("frontend/src/ftp-reflectivity-operational-v1.js","src/ftp-reflectivity-operational-v1.js"),
  ("frontend/src/context-layers/significant-rainfall-source-v1.js","src/context-layers/significant-rainfall-source-v1.js"),
  ("frontend/src/context-layers/significant-rainfall-operational-v1.js","src/context-layers/significant-rainfall-operational-v1.js"),
  ("frontend/src/context-layers/rainfall-ifd-aep-v1.js","src/context-layers/rainfall-ifd-aep-v1.js"),
@@ -21,6 +20,9 @@ for source,target in [
     assert Path(source).is_file(),source
     copyfile(source,site/target)
 
+# The degraded individual-site FTP raster adapter is not shipped at all.
+# Existing authentic archives remain archived, never playable as live radar.
+(site/"src/ftp-reflectivity-operational-v1.js").unlink(missing_ok=True)
 app=site/"src/live3d-operational-v9.js"
 js=app.read_text()
 needle="bom-wmts-loop-v2.js?v=9.18.6-bounded-published-history"

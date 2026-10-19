@@ -104,6 +104,7 @@ jobs:
           echo '<!doctype html><title>FTP AEP QA</title>' > _site/ftp-aep-smoke.html
           python -m http.server 8137 --bind 127.0.0.1 --directory _site >/tmp/ftp-aep-qa-http.log 2>&1 &
           node scripts/test-combined-ftp-aep-operational-browser-v1.mjs
+          node scripts/test-persisted-hires-browser-archive-90min-v1.mjs
           node scripts/test-ftp-aep-actual-v10-viewer-browser-v1.mjs
 
       - if: always()

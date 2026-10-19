@@ -1,12 +1,13 @@
 // FTP-first reflectivity adapter for StormTracker V10.
 // Source filenames and Gnomonic map control points come from BoM anonymous FTP
-// via the metadata-only GitHub feed. Image bytes remain hosted by BoM and are
-// transported over the existing StormTracker Cloudflare relay. No guessed UTC.
+// via a timestamped public GitHub archive containing the ORIGINAL FTP PNG bytes.
+// It does not depend on BoM HTTPS (which intermittently returns HTTP 403).
+// No guessed UTC or colour interpolation.
 import {BOM_REFLECTIVITY_RGB, REFLECTIVITY_CLASSES} from "./palette.js";
 import {fetchReadableImage} from "./radar-source.js";
 
 const MANIFEST="https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json";
-const FRAME_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/ftp-reflectivity-frame";
+const FRAME_BASE="https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/frames/";
 const COLOURS=new Map(BOM_REFLECTIVITY_RGB.map(x=>[x.rgb.join(","),x.value]));
 const EARTH=6371008.8, MERC=6378137, RAD=Math.PI/180;
 let cached=null,cachedAt=0;
@@ -17,7 +18,7 @@ export async function publishedFtpManifest({now=Date.now(),fetcher=fetch}={}){
  const response=await fetcher(MANIFEST,{cache:"no-store"});
  if(!response.ok)throw Error("FTP manifest transport HTTP "+response.status);
  const m=await response.json();
- if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||!m.siteFrameHistory||!m.siteGeoreference)
+ if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||m.sourceKind!=="ftp-original-png-byte-identical-static-archive"||!m.siteFrameHistory||!m.siteGeoreference)
    throw Error("Unrecognised BoM FTP metadata manifest");
  if(!Number.isFinite(Date.parse(m.generatedUtc))||now-Date.parse(m.generatedUtc)>25*60000)
    throw Error("BoM FTP discovery manifest stale");
@@ -78,7 +79,12 @@ function rgbaCategories(image){
    const category=COLOURS.get(data[i]+","+data[i+1]+","+data[i+2]);
    if(category){cat[y*512+x]=category;valid++}
  }
- if(opaque&&valid/opaque<0.55)throw Error("Incompatible FTP dBZ image palette");
+ // These are SHA-verified original BoM FTP pixels, not an HTML/HTTP image.
+ // Low matching fractions are valid for near-dry panels, because labels,
+ // range rings and coast/land graphics can dominate opaque image pixels.
+ // Classify only exact BoM reflectivity swatches; background and annotation
+ // colours must remain non-radar.
+ if(!Number.isFinite(valid)||valid>opaque)throw Error("Invalid BoM palette decoder");
  return cat;
 }
 export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
@@ -91,7 +97,9 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
    if(!record||!new RegExp("^IDR"+id+"3\\.T\\.[0-9]{12}\\.png$").test(record.filename))
      throw Error("Unverified FTP source filename");
    const geo=sourceGeometry(manifest.siteGeoreference[id]);
-   const image=await fetchReadableImage(FRAME_RELAY+"?file="+encodeURIComponent(record.filename));
+   if(record.imageUrl!==FRAME_BASE+record.filename||!/^([a-f0-9]{64})$/.test(record.sha256||""))
+     throw Error("Unverified source FTP image delivery path/hash");
+   const image=await fetchReadableImage(record.imageUrl);
    return {id,record,geo,categories:rgbaCategories(image)};
  }));
  const minX=Math.min(...inputs.map(i=>xm(i.geo.west))),maxX=Math.max(...inputs.map(i=>xm(i.geo.east)));
@@ -118,7 +126,7 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
  const maxCategory=histogram.findLastIndex((count,i)=>i>0&&count>0);
  return {radarId:"BOM-FTP-MOSAIC",sourceId:"BOM-FTP-MOSAIC",observedUtc,width,height,categories,
    georef:{projection:"EPSG:3857",minX,maxX,minY,maxY},
-   sourceMetadata:{provider:"Australian Bureau of Meteorology",transport:"FTP manifest + BoM HTTPS relay",
+   sourceMetadata:{provider:"Australian Bureau of Meteorology",transport:"Original BoM FTP PNG archived unchanged to HTTPS feed",
      product:"Observed site-specific 128 km Gnomonic PNG",siteIds:ids,
      nativeSourcePixels:512,sourceUrls:inputs.map(i=>i.record.imageUrl),
      colouredPixelCount:categories.length-histogram[0],strongPixelCount:histogram.slice(7).reduce((a,b)=>a+b,0),

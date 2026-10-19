@@ -41,8 +41,12 @@ async function ftpRaw(operation,{connectSocket}={}){
  const connectFn=connectSocket||(await import("cloudflare:sockets")).connect;
  const sockets=[];
  let control,ctrlReader,ctrlWriter,buffer="";
+ let deadlineTimer;
  const deadline=new Promise((_,reject)=>{
-  setTimeout(()=>reject(Error("FTP transport deadline exceeded")),MAX_FTP_SECONDS*1000);
+  deadlineTimer=setTimeout(()=>{
+   for(const sock of sockets){try{sock.close()}catch{}}
+   reject(Error("FTP transport deadline exceeded"));
+  },MAX_FTP_SECONDS*1000);
  });
  async function run(){
   try{
@@ -81,10 +85,17 @@ async function ftpRaw(operation,{connectSocket}={}){
    else if(user.code!==230)throw Error("BoM FTP anonymous login declined");
    if((await command("TYPE I")).code!==200)throw Error("FTP binary type rejected");
    if((await command("CWD "+ROOT)).code!==250)throw Error("BoM radar directory unavailable");
-   let passive=await command("EPSV");
-   const portMatch=/\(\|\|\|(\d+)\|\)/.exec(passive.line);
-   if(passive.code!==229||!portMatch)throw Error("BoM FTP EPSV not supported");
-   const port=+portMatch[1];
+   // BoM's anonymous FTP service can advertise either EPSV or classic PASV.
+   let passive=null,port=0;
+   try{passive=await command("EPSV")}catch{}
+   let portMatch=passive?.code===229?/\(\|\|\|(\d+)\|\)/.exec(passive.line):null;
+   if(portMatch){port=+portMatch[1]}
+   else{
+    passive=await command("PASV");
+    const parts=/\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/.exec(passive.line);
+    if(passive.code!==227||!parts)throw Error("BoM FTP passive mode unavailable");
+    port=Number(parts[5])*256+Number(parts[6]);
+   }
    if(!Number.isInteger(port)||port<1024||port>65535)throw Error("Invalid FTP passive port");
    const data=connectFn({hostname:HOST,port});sockets.push(data);
    await data.opened;
@@ -113,7 +124,8 @@ async function ftpRaw(operation,{connectSocket}={}){
    for(const sock of sockets){try{sock.close()}catch{}}
   }
  }
- return Promise.race([run(),deadline]);
+ try{return await Promise.race([run(),deadline]);}
+ finally{clearTimeout(deadlineTimer)}
 }
 function json(body,status,originHeaders,maxAge=0){
  const headers=new Headers(originHeaders);

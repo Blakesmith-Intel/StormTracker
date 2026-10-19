@@ -34,8 +34,8 @@ assert.match(rainfallCode,/period==="last24Hours"\?"24hrs to 9am":"Last 1 hour"/
  "Station popup must use the same 24-hour-to-9am label");
 assert.match(rainfallCode,/period==="last24Hours"\?"24hrs to 9am":"last hour"/,
  "Map status must use the same 24-hour-to-9am label");
-assert.match(rainfallCode,/image:marker\(record\),width:72,height:27,/,
- "Rainfall map billboard should be approximately two-thirds of previous dimensions");
+assert.match(rainfallCode,/image:marker\(record\),width:98,height:40,/,
+ "Full-height billboard keeps the rarity label at its original rendered size");
 
 function issuedTime(){return "2026-10-18T07:06:00.000Z"}
 for(const [aep,chance,oneIn,label] of [
@@ -58,7 +58,13 @@ assert.equal(unknown.amountBand,"100 mm or more");
 assert.equal(unknown.rarity.short,"Unrated");
 for(const [mm,expectedColour] of [[99.9,"#ed871b"],[100,"#d92d35"]]){
  const svg=rainfallMarkerSvg({mm,aep:{aepDesignThreshold:5}});
- assert.match(svg,/viewBox="0 0 108 40"/,"Compact rain marker geometry");
+ assert.match(svg,/viewBox="0 0 98 40"/,"Reduced droplet with full-size text tag");
+ assert.match(svg,/transform="translate\(0 8\) scale\(0\.666667\)"/,
+  "Only rainfall droplet shrinks to two-thirds");
+ assert.match(svg,/<rect x="23" y="9" width="74" height="26"/,
+  "Rarity label backing remains original 74 by 26 pixels");
+ assert.match(svg,/font-size="10">Rare<\/text>/,
+  "Original rarity text size remains unchanged");
  assert(svg.includes('fill="'+expectedColour+'"'),"Measured rain bands remain orange/red");
  assert(svg.includes('fill="#a45c1a"'),"IFD rarity tag separately coloured");
  assert(!svg.includes(">"+mm+"</text>"),"No number printed inside droplet");

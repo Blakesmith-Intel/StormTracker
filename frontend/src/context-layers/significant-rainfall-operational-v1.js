@@ -34,17 +34,17 @@ export function significantRainfallDisplay(record){
   amountBand:record.mm>=100?"100 mm or more":"50–99.9 mm",
   rarity:rainfallRarityDisplay(record.aep)};
 }
-// Smaller measured-rainfall droplet, with a separately coloured AEP label.
+// Shrink ONLY the droplet to two-thirds; keep the AEP badge and lettering at their original sizes.
 // Station names, precise rainfall totals and references stay in the popup.
 export function rainfallMarkerSvg(record){
  const {amountColor,rarity}=significantRainfallDisplay(record);
  const fontSize=rarity.short.length>9?9:10;
- return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 40">'+
- '<path d="M18 3C13 11 5 20 5 26a13 13 0 0 0 26 0C31 20 23 11 18 3Z" '+
+ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 40">'+
+ '<path transform="translate(0 8) scale(0.666667)" d="M18 3C13 11 5 20 5 26a13 13 0 0 0 26 0C31 20 23 11 18 3Z" '+
  'fill="'+amountColor+'" stroke="#17242d" stroke-width="1.8"/>'+
- '<rect x="33" y="9" width="74" height="26" rx="6" fill="'+rarity.color+'" '+
+ '<rect x="23" y="9" width="74" height="26" rx="6" fill="'+rarity.color+'" '+
  'stroke="#17242d" stroke-width="1.4"/>'+
- '<text x="70" y="26" text-anchor="middle" fill="#fff" '+
+ '<text x="60" y="26" text-anchor="middle" fill="#fff" '+
  'font-family="Arial,sans-serif" font-weight="700" font-size="'+fontSize+'">'+
  rarity.short+'</text></svg>';
 }
@@ -143,7 +143,7 @@ export function initialiseOperationalSignificantRainfall({
       rainfallRarityDisplay(record.aep).description,
     position:CesiumRef.Cartesian3.fromDegrees(record.longitude,record.latitude),
     billboard:{
-      image:marker(record),width:72,height:27,
+      image:marker(record),width:98,height:40,
       verticalOrigin:CesiumRef.VerticalOrigin?.BOTTOM,
       heightReference:CesiumRef.HeightReference?.CLAMP_TO_GROUND,
       disableDepthTestDistance:Number.POSITIVE_INFINITY

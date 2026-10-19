@@ -37,9 +37,9 @@ jobs:
       - name: Download native ARR Data Hub IFD for uncached station locations
         run: |
           if test -s /tmp/current-rainfall-gauges.json; then
-            python scripts/build-native-bom-ifd-point-cells-v1.py --stations /tmp/current-rainfall-gauges.json --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 80
+            python scripts/build-native-bom-ifd-point-cells-v1.py --stations /tmp/current-rainfall-gauges.json --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 200
           else
-            python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 80
+            python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 200
           fi
       - name: Publish authenticated IFD source table to data-only branch
         run: |

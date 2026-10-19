@@ -66,7 +66,7 @@ jobs:
           python scripts/test-ftp-publisher-sha-reuse-v1.py
           grep -Fq 'VERIFIED CURRENT NATIVE BOM WMTS HIGH-RES DIRECT TILES' _site/BUILD.txt
           grep -Fq 'wmts-native-capabilities' _site/src/bom-wmts-published-times-v1.js
-          grep -Fq 'api.bom.gov.au/apikey/v1/mapping/timeseries/wmts' _site/src/bom-wmts-loop-v2.js
+          grep -Fq 'stormtracker-bom-relay.workers.dev/wmts' _site/src/bom-wmts-loop-v2.js
           grep -Fq 'window.addEventListener("pointerdown",pointerDown' _site/src/context-layers/significant-rainfall-operational-v1.js
       - name: Install headless Chromium
         run: |

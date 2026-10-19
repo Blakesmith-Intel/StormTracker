@@ -9,7 +9,7 @@ function attr(tag,key){
  const re=new RegExp("\\b"+key+"\\s*=\\s*([\"'])(.*?)\\1","i");
  return tag.match(re)?.[2]??"";
 }
-export function parseBomRainfallMap(html,period,region=""){
+export function parseBomRainfallMap(html,period,region="",{minimumMm=50}={}){
  if(!["since9am","lastHour"].includes(period))throw RangeError("Unknown BoM rain period");
  const body=String(html||"");
  if(body.length>3_500_000)throw Error("BoM flood page exceeds safe size");
@@ -32,7 +32,7 @@ export function parseBomRainfallMap(html,period,region=""){
    const [,name,id,lat,lon,total]=m;
    if(!/^\d+(?:\.\d+)?$/.test(total))continue;
    const mm=Number(total),latitude=Number(lat),longitude=Number(lon);
-   if(!rainfallBand(mm)||mm>3000||!name.trim()||seen.has(id)||
+   if(mm<minimumMm||mm>3000||!name.trim()||seen.has(id)||
       latitude < -29.8||latitude > -9||longitude<137||longitude>154.6)continue;
    seen.add(id);
    rows.push({id,name:name.trim(),latitude,longitude,mm,
@@ -40,10 +40,10 @@ export function parseBomRainfallMap(html,period,region=""){
  }
  return rows;
 }
-export function dedupeSignificantRainfall(records,period){
+export function dedupeSignificantRainfall(records,period,{minimumMm=50}={}){
  const byId=new Map();
  for(const row of records??[]){
-  if(row?.period!==period||!row.id||!rainfallBand(row.mm))continue;
+  if(row?.period!==period||!row.id||!Number.isFinite(row.mm)||row.mm<minimumMm)continue;
   const old=byId.get(row.id);
   if(!old||Date.parse(row.sourceCreatedAt??"")>Date.parse(old.sourceCreatedAt??""))
     byId.set(row.id,row);
@@ -58,8 +58,8 @@ export function qldFloodMapCreatedAt(html){
  const d=new Date(Date.UTC(+m[5],month,+m[3],+m[1],+m[2]));
  return d.getUTCFullYear()===+m[5]&&d.getUTCMonth()===month?d.toISOString():null;
 }
-export function qualifiesRainfallSnapshot(row,period,now=Date.now(),maxAgeMs=90*60000){
- if(!row||row.period!==period||!rainfallBand(row.mm))return false;
+export function qualifiesRainfallSnapshot(row,period,now=Date.now(),maxAgeMs=90*60000,{minimumMm=50}={}){
+ if(!row||row.period!==period||!Number.isFinite(row.mm)||row.mm<minimumMm)return false;
  const t=Date.parse(row.sourceCreatedAt??"");
  if(!Number.isFinite(t)||t>now+5*60000||t<now-maxAgeMs)return false;
  if(period==="since9am"){
@@ -72,4 +72,9 @@ export function qualifiesRainfallSnapshot(row,period,now=Date.now(),maxAgeMs=90*
    if(created!==(before9?current-86400000:current))return false;
  }
  return true;
+}
+
+// AEP grading needs genuine observations below the old 50 mm threshold.
+export function qualifiesAepRainfallSnapshot(row,period,now=Date.now(),maxAgeMs=90*60000){
+ return qualifiesRainfallSnapshot(row,period,now,maxAgeMs,{minimumMm:1});
 }

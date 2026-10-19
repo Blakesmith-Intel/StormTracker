@@ -132,7 +132,7 @@ function currentPublishedTimes(times,now=Date.now()){
         !unavailableTime.isRejected(time);
     }).sort();
 }
-async function validatedNationalTimes(now,region,publishedTimes){
+async function validatedNationalTimes(now,region,publishedTimes,verifyTile=probeTimestamp){
  const published=currentPublishedTimes(await publishedTimes(),now);
  if(!published.length)
   throw Error("National BoM mosaic has no verified current observation timestamp");
@@ -140,7 +140,7 @@ async function validatedNationalTimes(now,region,publishedTimes){
  // central source PNG before exposing a whole history or prewarming images.
  for(const observedUtc of published.slice(-3).reverse()){
   try{
-   if(await probeTimestamp(observedUtc,region))
+   if(await verifyTile(observedUtc,region))
     return published.filter(t=>t<=observedUtc);
   }catch(error){
    unavailableTime.reject(observedUtc);
@@ -325,19 +325,20 @@ export async function loadLatestBomReflectivityMosaic(now = Date.now(), region =
 // retaining the browser's genuine old observations for 60/120/180-min loops.
 export async function discoverBoundedBomReflectivityHistory(
   now=Date.now(),horizonMinutes=180,region='SEQ',
-  {publishedTimes=publishedReflectivityTimes,maximumPublishedFrames=9}={}
+  {publishedTimes=publishedReflectivityTimes,maximumPublishedFrames=9,
+   verifyNationalTile=probeTimestamp,ftpHistory=discoverFtpReflectivityHistory}={}
 ){
   const max=Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
   const horizon=Math.max(5,Math.min(180,Number(horizonMinutes)||180));
   try{
-   const times=await validatedNationalTimes(now,region,publishedTimes);
+   const times=await validatedNationalTimes(now,region,publishedTimes,verifyNationalTile);
    const newest=Date.parse(times.at(-1));
    return times.filter(x=>Date.parse(x)>=newest-horizon*60000).slice(-max);
   }catch(error){
    console.warn("National mosaic unavailable; using only original source-confirmed FTP frames",
     String(error.message));
   }
-  return (await discoverFtpReflectivityHistory(now,region,horizon)).slice(-max);
+  return (await ftpHistory(now,region,horizon)).slice(-max);
 }
 
 export async function discoverBomReflectivityHistory(

@@ -1,0 +1,16 @@
+name: Real FTP multisite 3D pipeline QA
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install pillow
+      - run: python scripts/prepare-live-ftp-volume-fixtures-20261019.py
+      - run: node scripts/test-real-ftp-multisite-3d-pipeline-20261019.mjs
+      - run: npm test

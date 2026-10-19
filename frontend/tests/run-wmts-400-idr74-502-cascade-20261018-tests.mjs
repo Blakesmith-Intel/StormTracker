@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {
- createWmtsTimeFailureGuard,loadBomReflectivityMosaicAtTime,
+ createWmtsTimeFailureGuard,loadVerifiedNationalMosaicAtTime,
  discoverBoundedBomReflectivityHistory,findLatestBomReflectivityTime,
  WMTS_SOURCE_FRESHNESS_MS
 } from "../src/bom-wmts-loop-v2.js";
@@ -11,15 +11,18 @@ let current=Date.parse("2026-10-18T07:20:00Z");
 const old=["2026-10-18T05:50:00Z","2026-10-18T05:55:00Z","2026-10-18T06:00:00Z"];
 await assert.rejects(
   discoverBoundedBomReflectivityHistory(current,180,"66",{
-    publishedTimes:async()=>old
+    publishedTimes:async()=>old,
+    ftpHistory:async()=>{throw Error("No verified current BoM reflectivity timestamp")}
   }),/No verified current BoM reflectivity timestamp/,
   "Do not fan out hours-old timestamps merely because stale GetCapabilities lists them");
 const currentSamples=["2026-10-18T06:45:00Z","2026-10-18T07:15:00Z"];
 assert.deepEqual(await discoverBoundedBomReflectivityHistory(current,180,"19",{
-  publishedTimes:async()=>[...old,...currentSamples]
+  publishedTimes:async()=>[...old,...currentSamples],
+  verifyNationalTile:async()=>true
 }),currentSamples);
 assert.equal(await findLatestBomReflectivityTime(current,"74",{
-  publishedTimes:async()=>[...old,...currentSamples]
+  publishedTimes:async()=>[...old,...currentSamples],
+  verifyNationalTile:async()=>true
 }),currentSamples.at(-1));
 
 const guard=createWmtsTimeFailureGuard({now:()=>current,ttlMs:300000,maxEntries:2});
@@ -49,14 +52,14 @@ try{
      {status:400,headers:{"Content-Type":"text/plain"}});
  };
  const invalid="2026-10-18T07:25:00Z";
- await assert.rejects(loadBomReflectivityMosaicAtTime(invalid,"66"),
+ await assert.rejects(loadVerifiedNationalMosaicAtTime(invalid,"66"),
    /time preflight failed.*HTTP 400/);
  assert.equal(requests,1,"Twelve-tile 400 storm becomes ONE verified failing request");
- await assert.rejects(loadBomReflectivityMosaicAtTime(invalid,"19"),
+ await assert.rejects(loadVerifiedNationalMosaicAtTime(invalid,"19"),
    /cached source rejection/);
  assert.equal(requests,1,
    "Negative time status is shared across radar sites, not keyed by tile URL");
- await assert.rejects(loadBomReflectivityMosaicAtTime("2026-10-18T07:30:00Z","74"),
+ await assert.rejects(loadVerifiedNationalMosaicAtTime("2026-10-18T07:30:00Z","74"),
    /HTTP 400/);
  assert.equal(requests,2,"Different source time isn't permanently blocked");
  assert.ok(times[0].includes("TILEMATRIX=8"));

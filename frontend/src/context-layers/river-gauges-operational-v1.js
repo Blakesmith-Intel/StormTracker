@@ -277,7 +277,8 @@ function showRiverGaugeInfo(
   const fmt=n=>typeof n==="number"&&Number.isFinite(n)?
     n.toFixed(2)+" m":"not published";
   addDetailRow(rows,"BoM flood thresholds",
-    thresholds.minor===null||thresholds.minor===undefined?
+    thresholds.minor===null&&thresholds.moderate===null&&
+    thresholds.major===null?
       summary.thresholdStatus==="2026-data-only"
         ? "BoM 2026 data-only gauge — no defined flood classification"
         : "2026 station level/datum not verified — flood colour not inferred":

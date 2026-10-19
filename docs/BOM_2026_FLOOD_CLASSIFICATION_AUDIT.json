@@ -2,39 +2,48 @@
   "document": "https://www.bom.gov.au/sites/default/files/2026-05/service-level-specification-flood-forecasting-warning-services-queensland-v3.7.pdf",
   "sourceSha256": "756d62f8b9720ce7c0147fabb22dffc2c120bd72aa1f97338d4f0552e0353bbf",
   "importedAt": "2026-10-19T16:12:44.621Z",
-  "classified": 1065,
+  "classified": 1069,
   "dataOnly": 737,
   "bySchedule": {
-    "forecast": 222,
-    "information": 843,
+    "forecast": 223,
+    "information": 846,
     "data": 742
   },
   "ambiguous": [],
-  "unparsedCount": 4,
-  "unparsed": [
+  "unparsedCount": 0,
+  "unparsed": [],
+  "verifiedNonstandardRows": [
     {
-      "id": "540149",
-      "section": 2,
-      "sample": "Bureau/Seqwater Automatic 8 11 13 TBC TBC TBC TBC TBC GROVE",
-      "page": 20
+      "station": "540149",
+      "page": 20,
+      "minor": 8,
+      "moderate": 11,
+      "major": 13,
+      "note": "BoM forecast-type TBC"
     },
     {
-      "id": "533207",
-      "section": 3,
-      "sample": "Mackay Regional Council Automatic 1.1 1.2 Medium ST)",
-      "page": 46
+      "station": "533207",
+      "page": 46,
+      "minor": null,
+      "moderate": 1.1,
+      "major": 1.2,
+      "note": "Minor cell intentionally blank"
     },
     {
-      "id": "531039",
-      "section": 3,
-      "sample": "FLAGGY CREEK Cairns Regional Council Automatic 4.5 6 Medium",
-      "page": 49
+      "station": "531039",
+      "page": 49,
+      "minor": 4.5,
+      "moderate": null,
+      "major": 6,
+      "note": "Moderate cell intentionally blank"
     },
     {
-      "id": "531027",
-      "section": 3,
-      "sample": "FLAGGY CREEK DLGWV Automatic 4.5 6 Medium",
-      "page": 49
+      "station": "531027",
+      "page": 49,
+      "minor": 4.5,
+      "moderate": null,
+      "major": 6,
+      "note": "Moderate cell intentionally blank"
     }
   ]
 }

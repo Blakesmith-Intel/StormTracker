@@ -51,6 +51,15 @@ assert.equal(stationFloodLevels({id:"bom:540097",properties:{name:"OXLEY CREEK"}
   "New Beith station 540097 cannot inherit Oxley Creek 540646's classification");
 assert.equal(stationFloodLevels({id:"bom:539066",properties:{}}).major,121);
 assert.equal(stationFloodLevels({id:"bom:540057",properties:{}}).major,79.2);
+assert.deepEqual(stationFloodLevels({id:"bom:533207",properties:{}}),
+  {minor:null,moderate:1.1,major:1.2});
+assert.deepEqual(stationFloodLevels({id:"bom:531039",properties:{}}),
+  {minor:4.5,moderate:null,major:6});
+assert.equal(observedFloodClass(1,stationFloodLevels({id:"bom:533207"})),undefined);
+assert.equal(observedFloodClass(1.1,stationFloodLevels({id:"bom:533207"})),"moderate");
+assert.equal(observedFloodClass(1.2,stationFloodLevels({id:"bom:533207"})),"major");
+assert.equal(observedFloodClass(5,stationFloodLevels({id:"bom:531039"})),"minor");
+assert.equal(observedFloodClass(6,stationFloodLevels({id:"bom:531039"})),"major");
 assert.equal(stationFloodLevels({id:"bom:999999",properties:{}}),null,
   "Never invent a stage where source provides none");
 const row=(id,minor,moderate,major)=>{

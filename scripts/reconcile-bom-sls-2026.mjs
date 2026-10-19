@@ -8,7 +8,13 @@ import {writeFileSync,readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
 const PDF="https://www.bom.gov.au/sites/default/files/2026-05/service-level-specification-flood-forecasting-warning-services-queensland-v3.7.pdf";
 const NUM="(?:\\d+(?:\\.\\s*\\d+)?|N/A|N\\.?A\\.?)";
-const rowStages=new RegExp("\\b(?:Automatic|Manual)\\s+("+NUM+")\\s+("+NUM+")\\s+("+NUM+")\\s+(?:Qualitative|Quantitative|High|Medium|Low)\\b","i");
+const rowStages=new RegExp("\\b(?:Automatic|Manual)\\s+("+NUM+")\\s+("+NUM+")\\s+("+NUM+")\\s+(?:Qualitative|Quantitative|High|Medium|Low|TBC)\\b","i");
+// Exact exceptions inspected visually in the official PDF, not inferred.
+const SOURCE_VERIFIED_PARTIAL_2026={
+ "bom:533207":{minor:null,moderate:1.1,major:1.2,nameHint:"SOUTH MACKAY (ELAMANG ST)"},
+ "bom:531039":{minor:4.5,moderate:null,major:6,nameHint:"FLAGGY CREEK"},
+ "bom:531027":{minor:4.5,moderate:null,major:6,nameHint:"FLAGGY CREEK"}
+};
 const toNumber=s=>/^(?:N\.?A\.?|N\/A)$/i.test(s)?null:Number(s.replace(/\s+/g,""));
 const canonicalKey=id=>"bom:"+id;
 const normalise=s=>s.replace(/\s+/g," ").trim();
@@ -36,6 +42,13 @@ export function parseMay2026ServiceLevelSpecification(text){
       if(schedule===4){dataOnly.add(key);perSchedule.data++;continue;}
       const m=raw.match(rowStages);
       if(!m){
+        const partial=schedule===3?SOURCE_VERIFIED_PARTIAL_2026[key]:null;
+        if(partial){
+          byId[key]={...partial,sourceSchedule:3,sourcePage:i+1,
+            heightReference:"BoM native station reading",
+            document:"Queensland SLS v3.7",missingClassificationVerifiedFromTable:true};
+          perSchedule.information++;continue;
+        }
         unparsed.push({id,section:schedule,sample:raw.slice(0,180),page:i+1});
         continue;
       }

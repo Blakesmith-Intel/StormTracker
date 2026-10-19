@@ -23,8 +23,9 @@ const number=v=>v===null||v===undefined||v===""?null:
 export function cleanFloodLevels(value){
   if(!value||typeof value!=="object")return null;
   const minor=number(value.minor),moderate=number(value.moderate),major=number(value.major);
-  if(minor===null||(moderate!==null&&moderate<minor)||
-     (major!==null&&major<(moderate??minor)))return null;
+  if(minor===null&&moderate===null&&major===null)return null;
+  if(minor!==null&&moderate!==null&&moderate<minor)return null;
+  if(major!==null&&(moderate??minor)!==null&&major<(moderate??minor))return null;
   return {minor,moderate,major};
 }
 export function parseQldOfficialFloodLevels(html){
@@ -111,8 +112,9 @@ export function withStationFloodLevels(features,catalog={}){
 export function observedFloodClass(height,levels){
   const t=cleanFloodLevels(levels);
   if(!t||typeof height!=="number"||!Number.isFinite(height))return undefined;
-  if(height<t.minor)return null;
   if(t.major!==null&&height>=t.major)return "major";
   if(t.moderate!==null&&height>=t.moderate)return "moderate";
+  if(t.minor===null)return undefined; // No BoM minor classification published.
+  if(height<t.minor)return null;
   return "minor";
 }

@@ -18,6 +18,12 @@ try:
     lines=ftp.nlst()
     candidates=[x for x in lines if re.search(r"IDR00004|IDR0000|IDR1073\.T\.",x)]
     print("ANONYMOUS_BOM_NATIONAL_PRODUCT_LIST",json.dumps({"matched":candidates[-40:],"nationalCount":sum('IDR00004' in x for x in candidates),"listingCount":len(lines)}))
+    official_maps=[x for x in lines if 'IDR00004.map' in x or 'IDR00004' in x and x.endswith('.map')]
+    print("ANONYMOUS_BOM_NATIONAL_MAP_FILES",json.dumps(official_maps[-12:]))
+    for name in official_maps[-2:]:
+      parts=[]
+      ftp.retrbinary("RETR "+name,parts.append)
+      print("ANONYMOUS_BOM_NATIONAL_MAP_CONTROL",name,b"".join(parts)[:3000].decode('utf-8','replace'))
     national=next((x for x in reversed(candidates) if 'IDR00004' in x),None)
     if national:
       bytecount=[0];first=[b""]

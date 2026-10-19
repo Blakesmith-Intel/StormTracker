@@ -1557,7 +1557,7 @@ async function relayDopplerFrame(
 // mirror. Never accept caller-supplied URLs, Doppler filenames, or stale clocks.
 async function relayTimestampedReflectivityFrame(request,incoming,origin){
   const name=String(incoming.searchParams.get("file")||"");
-  const match=/^IDR(\\d{2,3})([1-4])\\.T\\.(\\d{12})\\.png$/.exec(name);
+  const match=/^IDR(\d{2,3})([1-4])\.T\.(\d{12})\.png$/.exec(name);
   if(!match)return errorResponse("Invalid FTP reflectivity filename",400,origin);
   const utc=radarTimestampToIso(match[3]);
   if(!utc)return errorResponse("Invalid reflectivity observation UTC",400,origin);
@@ -1574,7 +1574,7 @@ async function relayTimestampedReflectivityFrame(request,incoming,origin){
   }
   if(!upstream.ok)return errorResponse("BoM reflectivity HTTP "+upstream.status,502,origin);
   const contentType=upstream.headers.get("content-type")||"";
-  if(!/image\\/png/i.test(contentType))
+  if(!/image\/png/i.test(contentType))
     return errorResponse("BoM source returned a non-PNG content type",502,origin);
   const headers=new Headers();
   for(const [key,value] of corsHeaders(origin).entries())headers.set(key,value);

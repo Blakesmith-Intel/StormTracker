@@ -75,6 +75,11 @@ before='radarFrameCache.has(entry.observedUtc)'+chr(10)+'        ? Promise.resol
 assert js.count(before)==1,"V10 live-frame cache anchor changed"
 js=js.replace(before,
   'radarFrameCache.has(entry.observedUtc) && isVerifiedHiResRadarFrame(radarFrameCache.get(entry.observedUtc))'+chr(10)+'        ? Promise.resolve(radarFrameCache.get(entry.observedUtc))',1)
+# Ensure the deployed operator script resolves the updated five-option menu,
+# not the previously cached pinned four-window JavaScript module.
+menu='operational-window-choices-v1.js?v=9.16-four-windows'
+assert js.count(menu)==1,"V10 radar loop menu import changed"
+js=js.replace(menu,'operational-window-choices-v1.js?v=browser-hires-90min-20261019',1)
 app.write_text(js)
 
 page=site/"live3d-operational-v9.html"

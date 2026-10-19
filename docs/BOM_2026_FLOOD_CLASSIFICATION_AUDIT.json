@@ -1,7 +1,7 @@
 {
   "document": "https://www.bom.gov.au/sites/default/files/2026-05/service-level-specification-flood-forecasting-warning-services-queensland-v3.7.pdf",
   "sourceSha256": "756d62f8b9720ce7c0147fabb22dffc2c120bd72aa1f97338d4f0552e0353bbf",
-  "importedAt": "2026-10-19T16:12:44.621Z",
+  "importedAt": "2026-10-19T16:18:34.455Z",
   "classified": 1069,
   "dataOnly": 737,
   "bySchedule": {
@@ -11,39 +11,5 @@
   },
   "ambiguous": [],
   "unparsedCount": 0,
-  "unparsed": [],
-  "verifiedNonstandardRows": [
-    {
-      "station": "540149",
-      "page": 20,
-      "minor": 8,
-      "moderate": 11,
-      "major": 13,
-      "note": "BoM forecast-type TBC"
-    },
-    {
-      "station": "533207",
-      "page": 46,
-      "minor": null,
-      "moderate": 1.1,
-      "major": 1.2,
-      "note": "Minor cell intentionally blank"
-    },
-    {
-      "station": "531039",
-      "page": 49,
-      "minor": 4.5,
-      "moderate": null,
-      "major": 6,
-      "note": "Moderate cell intentionally blank"
-    },
-    {
-      "station": "531027",
-      "page": 49,
-      "minor": 4.5,
-      "moderate": null,
-      "major": 6,
-      "note": "Moderate cell intentionally blank"
-    }
-  ]
+  "unparsed": []
 }

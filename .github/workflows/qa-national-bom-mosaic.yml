@@ -26,5 +26,10 @@ jobs:
           node --check frontend/src/bom-wmts-published-times-v1.js
           node --check scripts/probe-live-national-bom-mosaic-v1.mjs
           npm test
+      - name: Discover the new Bureau website's actual radar data transport
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.58.2
+          npx playwright install chromium
+          node scripts/probe-bom-new-radar-page-network.mjs
       - name: Verify actual BoM national mosaic tiles for Richmond and Brisbane
         run: node scripts/probe-live-national-bom-mosaic-v1.mjs

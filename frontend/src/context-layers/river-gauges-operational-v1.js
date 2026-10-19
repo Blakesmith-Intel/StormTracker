@@ -14,7 +14,7 @@ const $ = id =>
     id
   );
 
-// The compact Layers button reuses the same snapshot refresh as the 15-minute
+// The compact Layers button reuses the same snapshot refresh as the 20-minute
 // poll. Prevent duplicate taps, retain status/error reporting from the layer,
 // and restore the control even if BoM is temporarily unavailable.
 export function bindRiverGaugeManualRefresh(button, refresh) {
@@ -147,7 +147,10 @@ export function riverGaugePanelAppearance(summary) {
   const rise=Boolean(summary?.rapidRise) || state==="rapid-rise";
   const category=state==="rapid-rise"
     ? "RAPID RISE BELOW MINOR · SCREENING"
-    : "BOM "+state.toUpperCase()+" FLOOD"+(rise?" · RAPID RISE":"");
+    : summary?.classificationUnverified
+      ? "LAST CONFIRMED BOM "+state.toUpperCase()+
+        " · CURRENT FLOOD CLASS UNVERIFIED"
+      : "BOM "+state.toUpperCase()+" FLOOD"+(rise?" · RAPID RISE":"");
   return {
     state,
     rapidRise:rise,
@@ -268,8 +271,19 @@ function showRiverGaugeInfo(
   addDetailRow(
     rows,
     "Flood class",
-    labelFloodClass(summary.floodClass)
+    summary.classificationUnverified
+      ? "Not supplied with latest measured height"
+      : labelFloodClass(summary.floodClass)
   );
+  if(summary.classificationUnverified){
+    const confirmed=summary.lastConfirmedFloodAt
+      ? new Date(summary.lastConfirmedFloodAt).toLocaleString("en-AU",{
+          timeZone:"Australia/Brisbane",day:"2-digit",month:"short",
+          hour:"2-digit",minute:"2-digit",hour12:false})+" AEST" : "time unavailable";
+    addDetailRow(rows,"Last confirmed flood class",
+      summary.lastConfirmedFloodClass.toUpperCase()+" · "+confirmed+
+      " · NOT reconfirmed by current BoM bulletin");
+  }
   addDetailRow(rows,"Rapid rise / flash-flood potential",
     appearance.rapidRise
       ? "Measured rapid rise · screening indicator, not a BoM flash-flood warning"
@@ -279,7 +293,7 @@ function showRiverGaugeInfo(
 
   if(summary.observationStale)
     addDetailRow(rows,"Observation freshness",
-      "STALE — last confirmed flood level only. Current river height unverified; await a newer observation.");
+      "STALE measured height — current water level unverified; await a newer observation.");
   addDetailRow(
     rows,
     "Tidal context",
@@ -341,7 +355,9 @@ function showRiverGaugeInfo(
   addDetailRow(rows,"Interpretation",
     appearance.state==="rapid-rise"
       ? "Measured rapid-rise screening only. Potential flash flooding is not an official BoM warning."
-      : "Current BoM flood classification controls colour. The blue arrow only appears for independent qualifying measured rapid rise; consult BoM warnings.");
+      : summary.classificationUnverified
+        ? "Height and time refer to the newest verified reading. Marker colour is the LAST confirmed flood classification, not a current BoM classification; consult official warnings."
+        : "Current BoM flood classification controls colour. The blue arrow only appears for independent qualifying measured rapid rise; consult BoM warnings.");
 
   panel.hidden =
     false;

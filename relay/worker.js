@@ -1681,6 +1681,17 @@ export default {
       );
     }
 
+    // Direct live BoM FTP via Cloudflare TCP, independent of GitHub cron.
+    // Lazy load avoids any effect on the existing operational source routes.
+    if (incoming.pathname === "/ftp-live-manifest" ||
+        incoming.pathname === "/ftp-live-frame") {
+      const live=await import("./ftp-live-v1.js");
+      const headers=corsHeaders(origin);
+      return incoming.pathname === "/ftp-live-manifest"?
+        live.ftpLiveManifest(request,headers):
+        live.ftpLiveFrame(request,incoming,headers);
+    }
+
     if (incoming.pathname === "/ftp-reflectivity-frame") {
       return relayTimestampedReflectivityFrame(request,incoming,origin);
     }

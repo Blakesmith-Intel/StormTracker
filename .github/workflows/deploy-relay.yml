@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "relay/worker.js"
+      - "relay/ftp-live-v1.js"
   workflow_dispatch:
 
 permissions:
@@ -24,6 +25,8 @@ jobs:
         run: |
           npm test
           node --check relay/worker.js
+      - name: Test direct FTP parser and browser source contract
+        run: node frontend/tests/run-ftp-direct-v1-tests.mjs
       - name: Deploy the existing production Worker only
         uses: cloudflare/wrangler-action@v4
         with:
@@ -31,6 +34,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
           command: deploy --config wrangler.jsonc
+      - name: Verify actual fresh BoM direct-FTP directory and PNG
+        run: node scripts/probe-live-ftp-worker-v1.mjs
       - name: Check public BoM recent-history CORS (optional; warnings only)
         run: node scripts/probe-live-river-history-cors-v1.mjs
       - name: Check QLD and Brewarrina Doppler paths

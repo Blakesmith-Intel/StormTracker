@@ -1,0 +1,34 @@
+name: Verify BoM direct FTP Cloudflare transport
+on:
+  push:
+    branches: [fix/live-ftp-direct-worker-20261019]
+  pull_request:
+    paths:
+      - relay/ftp-live-v1.js
+      - relay/worker.js
+      - frontend/src/ftp-reflectivity-operational-v1.js
+      - frontend/src/bom-wmts-loop-v2.js
+      - frontend/tests/run-ftp-direct-v1-tests.mjs
+      - .github/workflows/qa-live-ftp-direct.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Validate current app plus direct FTP contract
+        run: |
+          npm test
+          node --check relay/worker.js
+          node --check relay/ftp-live-v1.js
+          node --check frontend/src/ftp-reflectivity-operational-v1.js
+          node frontend/tests/run-ftp-direct-v1-tests.mjs
+      - name: Check Cloudflare Worker deployment bundle without publishing
+        run: |
+          npm install --no-save --ignore-scripts wrangler@4
+          npx wrangler deploy --dry-run --config relay/wrangler.jsonc --outdir /tmp/stormtracker-live-ftp-worker
+          test -n "$(find /tmp/stormtracker-live-ftp-worker -name '*.js' -type f -print -quit)"

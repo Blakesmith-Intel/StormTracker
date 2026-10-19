@@ -54,7 +54,10 @@ export function initialiseOperationalSignificantRainfall({
   detailRow(rows,"Rainfall rarity",record.aep?.aepDesignThreshold
     ?"Meets "+record.aep.aepDesignThreshold+"% AEP IFD design depth"
     :record.aep?.classification==="below-20pct-aep"
-      ?"Below 20% AEP design depth":"Not rated — verified local IFD unavailable");
+      ?"Below 20% AEP design depth":"Unclassified (grey) — reliable local AEP unavailable");
+  if(record.band==="unclassified")
+   detailRow(rows,"Why this gauge is grey",record.aep?.reason??
+    "The rainfall total meets the original significant-rain threshold, but no verified IFD assessment is available. Grey does not mean safe or low flood risk.");
   detailRow(rows,"IFD duration",record.aep?.durationMinutes
     ?Number(record.aep.durationMinutes.toFixed(1))+" minutes":"Unverified");
   if(record.aep?.designDepthMm)

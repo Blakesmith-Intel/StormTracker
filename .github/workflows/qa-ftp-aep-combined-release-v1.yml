@@ -1,7 +1,7 @@
-name: Release gate — V10 combined FTP and rainfall AEP
+name: Release gate — V10 native BoM high-res radar + AEP
 on:
   push:
-    branches: [main, feature/national-bom-mosaic-first-20261019, release/ftp-static-archive-aep-v10-20261019, release/ftp-aep-v10-production-20261019]
+    branches: [main, release/bom-hires-native-reflectivity-v10-20261019, feature/national-bom-mosaic-first-20261019, release/ftp-static-archive-aep-v10-20261019, release/ftp-aep-v10-production-20261019]
     paths:
       - scripts/apply-ftp-aep-release-v10.py
       - scripts/test-combined-ftp-aep-operational-browser-v1.mjs
@@ -9,12 +9,14 @@ on:
       - .github/workflows/qa-ftp-aep-combined-release-v1.yml
       - scripts/test-national-source-policy-v1.mjs
       - frontend/src/bom-wmts-loop-v2.js
+      - frontend/src/bom-wmts-published-times-v1.js
       - frontend/src/ftp-reflectivity-operational-v1.js
       - frontend/src/context-layers/rainfall-ifd-aep-v1.js
       - frontend/src/context-layers/significant-rainfall-operational-v1.js
   pull_request:
     paths:
       - frontend/src/bom-wmts-loop-v2.js
+      - frontend/src/bom-wmts-published-times-v1.js
       - frontend/src/ftp-reflectivity-operational-v1.js
       - scripts/apply-ftp-aep-release-v10.py
       - scripts/test-national-source-policy-v1.mjs
@@ -62,13 +64,18 @@ jobs:
           grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
           node scripts/test-national-source-policy-v1.mjs
           python scripts/test-ftp-publisher-sha-reuse-v1.py
+          grep -Fq 'VERIFIED CURRENT NATIVE BOM WMTS HIGH-RES DIRECT TILES' _site/BUILD.txt
+          grep -Fq 'wmts-native-capabilities' _site/src/bom-wmts-published-times-v1.js
+          grep -Fq 'api.bom.gov.au/apikey/v1/mapping/timeseries/wmts' _site/src/bom-wmts-loop-v2.js
           grep -Fq 'window.addEventListener("pointerdown",pointerDown' _site/src/context-layers/significant-rainfall-operational-v1.js
       - name: Install headless Chromium
         run: |
           npm install --no-save --ignore-scripts playwright@1.58.2
           npx playwright install chromium
-      - name: Test true live FTP feed and AEP geography at production origin
+      - name: Test current native high-resolution BoM mosaic plus AEP at production origin
         run: |
+          node scripts/probe-native-australian-bom-wmts-v1.mjs
+          node scripts/probe-native-wmts-capabilities-relay-v1.mjs
           echo '<!doctype html><title>FTP AEP QA</title>' > _site/ftp-aep-smoke.html
           python -m http.server 8137 --bind 127.0.0.1 --directory _site >/tmp/ftp-aep-qa-http.log 2>&1 &
           node scripts/test-combined-ftp-aep-operational-browser-v1.mjs

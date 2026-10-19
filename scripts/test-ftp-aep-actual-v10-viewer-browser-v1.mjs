@@ -17,10 +17,14 @@ await page.route("https://blakesmith-intel.github.io/StormTracker/**",async rout
 });
 await page.route(/\/StormTracker\/src\/live3d-operational-v9\.js/,async route=>{
  const resp=await route.fetch(),text=(await resp.text());
- if(!text.includes("const scene = viewer.scene;"))throw Error("Cesium instrumentation drift");
+ if(!text.includes("const scene = viewer.scene;")||
+    !text.includes("// The verified browser-source QA viewer must never call Cesium.camera.flyTo;"))
+  throw Error("Cesium camera/controller instrumentation drift");
  await route.fulfill({response:resp,
   body:text.replace("const scene = viewer.scene;",
-    "const scene = viewer.scene; globalThis.__STORMTRACKER_QA_VIEWER=viewer;"),
+    "const scene = viewer.scene; globalThis.__STORMTRACKER_QA_VIEWER=viewer;")
+   .replace("// The verified browser-source QA viewer must never call Cesium.camera.flyTo;",
+    "globalThis.__STORMTRACKER_QA_CAMERA=mapCamera;\n// The verified browser-source QA viewer must never call Cesium.camera.flyTo;"),
   contentType:"application/javascript"});
 });
 const at=new Date().toISOString();
@@ -51,13 +55,30 @@ try{
  await page.waitForTimeout(250);
  const atXY=await page.evaluate(()=>{
   const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
+  const controller=window.__STORMTRACKER_QA_CAMERA;
+  if(!controller?.setView||!controller?.getState)
+   throw Error("StormTracker operator-owned camera controller unavailable");
   const e=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall").entities.values[0];
-  v.camera.setView({destination:C.Cartesian3.fromDegrees(144.6,-25.91,120000)});
+  // Native camera.setView is intentionally reverted every 250 ms by
+  // StormTracker's camera guardian. Use the exact operator navigation API.
+  controller.setView({
+   longitude:144.6,latitude:-25.91,targetHeight:0,range:115000,
+   heading:0,pitch:-Math.PI/2+0.01
+  });
   v.scene.requestRender();
   return e.id;
  });
  assert(/QA19501/.test(atXY));
- await page.waitForTimeout(1500);
+ await page.waitForFunction(()=>{
+  const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
+  const marker=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall")?.entities.values[0];
+  if(!marker)return false;
+  const p=v.scene.cartesianToCanvasCoordinates(marker.position.getValue(C.JulianDate.now()));
+  const b=v.scene.canvas.getBoundingClientRect();
+  if(!p||p.x<25||p.y<25||p.x>b.width-25||p.y>b.height-25)return false;
+  return v.scene.drillPick(new C.Cartesian2(p.x,p.y),24,42,42)
+   .some(hit=>hit?.id?.stormTrackerRainGaugeId==="QA19501");
+ },null,{timeout:30000});
  const pos=await page.evaluate(()=>{
   const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
   const e=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall").entities.values[0];
@@ -68,6 +89,9 @@ try{
    canvas:{left:b.left,top:b.top,right:b.right,bottom:b.bottom}}:null;
  });
  assert(pos);
+ assert(pos.x>=pos.canvas.left&&pos.x<pos.canvas.right&&
+  pos.y>=pos.canvas.top&&pos.y<pos.canvas.bottom,
+  "Rain gauge marker must be inside actual Cesium map canvas before user click");
  console.log("AEP_MARKER_PROJECTED_PICK",JSON.stringify(pos));
  await page.mouse.click(pos.x,pos.y);
  try{

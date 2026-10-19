@@ -16,7 +16,9 @@ import {
 import {
   parseRiverHeightBulletin
 } from "../frontend/src/context-layers/river-height-bulletin-v1.js";
-import {FLOOD_LEVEL_SOURCE,parseQldOfficialFloodLevels,VERIFIED_FLOOD_LEVELS}
+import {FLOOD_LEVEL_SOURCE,FLOOD_LEVEL_FETCH_SOURCE,
+  VERIFIED_STATEWIDE_FLOOD_LEVELS,
+  parseQldOfficialFloodLevels,VERIFIED_FLOOD_LEVELS}
   from "../frontend/src/context-layers/river-flood-thresholds-v1.js";
 
 import {
@@ -804,7 +806,7 @@ function riverHeightResponse(
 async function relayQldFloodThresholds(request,origin){
   let levels={};
   try{
-    const upstream=await fetch(FLOOD_LEVEL_SOURCE,{
+    const upstream=await fetch(FLOOD_LEVEL_FETCH_SOURCE,{
       headers:{Accept:"text/html"},
       cf:{cacheEverything:true,cacheTtl:43200}
     });
@@ -824,15 +826,21 @@ async function relayQldFloodThresholds(request,origin){
     levels={};
     console.warn("BoM QLD thresholds unavailable:",String(error?.message??error));
   }
+  // The full BoM classification catalogue is bundled. Never let the
+  // upstream 403 silently reduce 1080 stations to four in production.
+  const full={...VERIFIED_STATEWIDE_FLOOD_LEVELS,...levels};
+  for(const [id,threshold] of Object.entries(VERIFIED_FLOOD_LEVELS))
+    if(!full[id])full[id]=threshold;
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");
   headers.set("Cache-Control","public, max-age=1800");
   return new Response(request.method==="HEAD"?null:JSON.stringify({
     format:"StormTrackerQueenslandFloodThresholdsV1",
     source:FLOOD_LEVEL_SOURCE,sourceDate:"2022-01-05",
-    complete:Object.keys(levels).length>=100,
-    statewideThresholdCount:Object.keys(levels).length,
-    thresholds:{...levels,...VERIFIED_FLOOD_LEVELS}
+    complete:Object.keys(full).length>=1080,
+    liveRefreshSucceeded:Object.keys(levels).length>=100,
+    statewideThresholdCount:Object.keys(full).length,
+    thresholds:full
   }),{status:200,headers});
 }
 

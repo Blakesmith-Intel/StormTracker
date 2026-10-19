@@ -270,14 +270,17 @@ function showRiverGaugeInfo(
     )
   );
 
-  if(summary.floodThresholds?.minor!==null &&
-      summary.floodThresholds?.minor!==undefined){
-    const f=summary.floodThresholds;
-    const fmt=n=>typeof n==="number"?n.toFixed(2)+" m":"not defined";
-    addDetailRow(rows,"BoM flood thresholds",
-      "Minor "+fmt(f.minor)+" · Moderate "+fmt(f.moderate)+
-      " · Major "+fmt(f.major));
-  }
+  // Every gauge information panel gets a sourced threshold row.
+  // Only actual BoM-published station stages can be numbers; missing source
+  // levels are NEVER filled from a similarly named or nearby station.
+  const thresholds=summary.floodThresholds??{};
+  const fmt=n=>typeof n==="number"&&Number.isFinite(n)?
+    n.toFixed(2)+" m":"not published";
+  addDetailRow(rows,"BoM flood thresholds",
+    thresholds.minor===null||thresholds.minor===undefined?
+      "No published flood-classification levels matched to this gauge ID":
+      "Minor "+fmt(thresholds.minor)+" · Moderate "+
+        fmt(thresholds.moderate)+" · Major "+fmt(thresholds.major));
   addDetailRow(
     rows,
     "Flood class",

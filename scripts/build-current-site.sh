@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-thresholds-snapshot-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -70,7 +70,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -140,6 +140,8 @@ version_once("src/context-layers/river-gauge-layer-v1.js",
     "river-gauge-latest-v1.js?v=20261019-fresh-observation-v1")
 version_once("src/context-layers/river-gauge-layer-v1.js",
     "river-flood-thresholds-v1.js?v=20261020-thresholds-v1")
+version_once("src/context-layers/river-flood-thresholds-v1.js",
+    "river-flood-thresholds-snapshot-v1.js?v=20261020-qld-bom-stages-v1")
 version_once("src/context-layers/river-flood-signals-v1.js",
     "river-flood-thresholds-v1.js?v=20261020-thresholds-v1")
 version_once("src/context-layers/river-gauge-observations-v1.js",
@@ -244,6 +246,8 @@ assert '"bom:544058":{minor:3,moderate:4,major:5}' in (
     layers / "river-flood-thresholds-v1.js").read_text()
 assert (layers / "river-gauge-latest-v1.js").exists()
 assert (layers / "river-flood-thresholds-v1.js").exists()
+assert (layers / "river-flood-thresholds-snapshot-v1.js").exists()
+assert '1080' in (layers / "river-flood-thresholds-snapshot-v1.js").read_text()
 assert "STORMTRACKER_CLASSIFICATION_UNVERIFIED" in (layers / "river-flood-events-v1.js").read_text()
 assert "OFFICIAL_FLOOD_STORAGE_KEY" in (layers / "river-official-flood-persistence-v1.js").read_text()
 assert "STORMTRACKER_OBSERVATION_STALE" in (layers / "river-gauges-operational-v1.js").read_text() or "observationStale" in (layers / "river-gauges-operational-v1.js").read_text()
@@ -352,6 +356,7 @@ node --check _site/src/context-layers/river-gauges-operational-v1.js
 node --check _site/src/context-layers/river-official-flood-persistence-v1.js
 node --check _site/src/context-layers/river-gauge-latest-v1.js
 node --check _site/src/context-layers/river-flood-thresholds-v1.js
+node --check _site/src/context-layers/river-flood-thresholds-snapshot-v1.js
 node --check _site/src/context-layers/outage-lga-spatial-v2.js
 node --check _site/src/context-layers/power-outage-suburb-explorer-v1.js
 grep -Fq 'flood-freshness-20261019-10m-v1' _site/index.html

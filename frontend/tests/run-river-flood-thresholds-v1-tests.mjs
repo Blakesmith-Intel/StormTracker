@@ -1,9 +1,22 @@
 import assert from "node:assert/strict";
 import {parseQldOfficialFloodLevels,observedFloodClass,
-  withStationFloodLevels,stationFloodLevels}
+  withStationFloodLevels,stationFloodLevels,VERIFIED_STATEWIDE_FLOOD_LEVELS}
   from "../src/context-layers/river-flood-thresholds-v1.js";
 import {evaluateFloodSignal} from "../src/context-layers/river-flood-signals-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
+assert.equal(Object.keys(VERIFIED_STATEWIDE_FLOOD_LEVELS).length,1080,
+  "Complete source-backed Queensland BoM fixed-width reference must be bundled");
+assert.deepEqual(VERIFIED_STATEWIDE_FLOOD_LEVELS["bom:535142"],
+  {minor:6,moderate:9,major:12});
+assert.deepEqual(VERIFIED_STATEWIDE_FLOOD_LEVELS["bom:544058"],
+  {minor:3,moderate:4,major:5});
+assert.deepEqual(VERIFIED_STATEWIDE_FLOOD_LEVELS["bom:540319"],
+  {minor:1.7,moderate:2.4,major:3.5});
+assert.deepEqual(stationFloodLevels({id:"bom:540319",properties:{}}),
+  {minor:1.7,moderate:2.4,major:3.5},
+  "All stations with published stages must show stages without live relay");
+assert.equal(stationFloodLevels({id:"bom:999999",properties:{}}),null,
+  "Never invent a stage where source provides none");
 const row=(id,minor,moderate,major)=>{
   const x=Array(122).fill(" ");
   const put=(at,value)=>{for(let i=0;i<value.length;i++)x[at+i]=value[i];};

@@ -1,5 +1,10 @@
 // BoM Queensland flood stages, keyed strictly by Bureau station ID.
+import {OFFICIAL_QLD_FLOOD_THRESHOLDS_2022}
+  from "./river-flood-thresholds-snapshot-v1.js?v=20261020-qld-bom-stages-v1";
+export const VERIFIED_STATEWIDE_FLOOD_LEVELS=OFFICIAL_QLD_FLOOD_THRESHOLDS_2022;
 export const FLOOD_LEVEL_SOURCE="https://www.bom.gov.au/qld/flood/networks/section4.shtml";
+export const FLOOD_LEVEL_FETCH_SOURCE="https://reg.bom.gov.au/qld/flood/networks/section4.shtml";
+export const FLOOD_LEVEL_SOURCE_DATE="2022-01-05";
 export const FLOOD_LEVEL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-flood-thresholds";
 // Exact authoritative fallback station IDs, not name-based matches.
 export const VERIFIED_FLOOD_LEVELS={
@@ -54,6 +59,7 @@ export function stationFloodLevels(feature,catalog={}){
     cleanFloodLevels({minor:p.STORMTRACKER_MINOR_FLOOD_METRES,
       moderate:p.STORMTRACKER_MODERATE_FLOOD_METRES,
       major:p.STORMTRACKER_MAJOR_FLOOD_METRES})??
+    cleanFloodLevels(VERIFIED_STATEWIDE_FLOOD_LEVELS[id])??
     VERIFIED_FLOOD_LEVELS[id]??null;
 }
 export function withStationFloodLevels(features,catalog={}){
@@ -63,7 +69,8 @@ export function withStationFloodLevels(features,catalog={}){
       STORMTRACKER_MINOR_FLOOD_METRES:t.minor,
       STORMTRACKER_MODERATE_FLOOD_METRES:t.moderate,
       STORMTRACKER_MAJOR_FLOOD_METRES:t.major,
-      STORMTRACKER_THRESHOLD_SOURCE:FLOOD_LEVEL_SOURCE
+      STORMTRACKER_THRESHOLD_SOURCE:FLOOD_LEVEL_SOURCE,
+      STORMTRACKER_THRESHOLD_SOURCE_DATE:FLOOD_LEVEL_SOURCE_DATE
     }}:f;
   });
 }

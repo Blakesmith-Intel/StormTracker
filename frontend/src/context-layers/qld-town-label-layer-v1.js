@@ -2,7 +2,7 @@ import { fetchQueenslandPopulationCentres } from "./qld-population-centres-v2.js
 import { fetchNswTowns } from "./nsw-town-places-v1.js?v=9.18.0";
 import { fetchNswNearbyLocalities, nswLocalityViewBounds, expandNswLocalityBounds }
   from "./nsw-nearby-localities-v1.js?v=9.18.0";
-import { rankQueenslandTowns, sameGeographicSettlement, layoutTownLabels, townLabelTypography }
+import { rankQueenslandTowns, sameMappedRuralPlace, layoutTownLabels, townLabelTypography }
   from "./qld-town-label-declutter-v1.js?v=9.16.12";
 import { fetchQldNearbyLocalities, expandLocalityBounds, localityBoundsContain,
   qldLocalityViewBounds } from "./qld-nearby-localities-v1.js?v=9.18.5-adaptive-bounds";
@@ -145,12 +145,13 @@ export function createQueenslandTownLabelLayer({
       }
       places=places.filter(p=>!p.fromGazetteer);
       const unique=new Set();
-      for(const item of records){
-        if(places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+      // Prefer the actual populated-place pin over broad rural centroids.
+      for(const item of [...records].sort((a,b)=>b.priority-a.priority)){
+        if(places.some(p=>sameMappedRuralPlace(p,item)))continue;
         const identity=item.name.toLowerCase()+":"+item.latitude.toFixed(3)+":"+
           item.longitude.toFixed(3);
         if(unique.has(identity) ||
-           places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+           places.some(p=>sameMappedRuralPlace(p,item)))continue;
         unique.add(identity);
         places.push({...item,fromGazetteer:true,
           position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude,0)});
@@ -193,7 +194,7 @@ export function createQueenslandTownLabelLayer({
       }
       places=places.filter(x=>!x.fromNswLocality);
       for(const item of records){
-        if(places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+        if(places.some(p=>sameMappedRuralPlace(p,item)))continue;
         places.push({...item,fromNswLocality:true,
           position:CesiumRef.Cartesian3.fromDegrees(item.longitude,item.latitude,0)});
       }
@@ -306,7 +307,7 @@ export function createQueenslandTownLabelLayer({
           const identity=item.name.toLowerCase()+":"+item.latitude.toFixed(2)+":"+
             item.longitude.toFixed(2);
           if(identities.has(identity) ||
-             places.some(p=>sameGeographicSettlement(p,item,25)))continue;
+             places.some(p=>sameMappedRuralPlace(p,item)))continue;
           identities.add(identity);
           places.push({...item,position:CesiumRef.Cartesian3.fromDegrees(
             item.longitude,item.latitude,0)});

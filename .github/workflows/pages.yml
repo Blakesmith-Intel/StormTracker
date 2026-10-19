@@ -178,14 +178,18 @@ jobs:
         run: |
           bash scripts/build-current-site.sh
           python scripts/apply-ftp-aep-release-v10.py
-          node --check _site/src/ftp-reflectivity-operational-v1.js
+          ! test -e _site/src/ftp-reflectivity-operational-v1.js
+          node --check _site/src/hires-radar-loop-policy-v1.js
           node --check _site/src/bom-wmts-loop-v2.js
           node --check _site/src/context-layers/rainfall-ifd-aep-v1.js
           node --check _site/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' _site/live3d-operational-v9.html
-          grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
+          ! grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
+          ! grep -Fq 'loadFtpReflectivityMosaicAtTime' _site/src/bom-wmts-loop-v2.js
+          grep -Fq 'isVerifiedHiResRadarFrame' _site/src/live3d-operational-v9.js
+          grep -Fq 'measuredHiResRainWindow' _site/src/live3d-operational-v9.js
           grep -Fq 'NATIONAL_MOSAIC_PRIMARY=true' _site/src/bom-wmts-loop-v2.js
-          ! grep -Fq 'ftp-live-manifest' _site/src/ftp-reflectivity-operational-v1.js
+          node frontend/tests/run-hires-radar-road-toggle-20261019-tests.mjs
           node scripts/test-national-source-policy-v1.mjs
           grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
 
@@ -235,8 +239,10 @@ jobs:
           grep -Fq 'classifyRainfallAep' <<< "$rainfall_layer"
           rainfall_ifd="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/rainfall-ifd-aep-v1.js")"
           grep -Fq 'AEP_GRADES' <<< "$rainfall_ifd"
-          ftp_adapter="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/ftp-reflectivity-operational-v1.js")"
-          grep -Fq 'ftp-original-png-byte-identical-static-archive' <<< "$ftp_adapter"
+          hires="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/hires-radar-loop-policy-v1.js")"
+          grep -Fq 'isVerifiedHiResRadarFrame' <<< "$hires"
+          grep -Fq 'measuredHiResRainWindow' <<< "$hires"
+          grep -Fq 'HIRES BOM NATIVE SOURCE ONLY; 30 MINUTES = SIX OBSERVED FRAMES' <<< "$root"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 "$base/favicon.svg" | grep -Fq '<svg'
           wmts_fix="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/bom-wmts-loop-v2.js")"
           grep -Fq 'WMTS_SOURCE_FRESHNESS_MS' <<< "$wmts_fix"

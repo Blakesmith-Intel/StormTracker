@@ -1,4 +1,4 @@
-import {discoverFtpReflectivityHistory,loadFtpReflectivityMosaicAtTime} from "./ftp-reflectivity-operational-v1.js?v=github-ftp-static-v1";
+import {discoverFtpReflectivityHistory,loadFtpReflectivityMosaicAtTime} from "./ftp-reflectivity-operational-v1.js?v=live-direct-source-20261019";
 const ftpPreferred=()=>globalThis.__STORMTRACKER_FTP_FIRST===true;
 import { BORDER_RADAR_SITES } from "./border-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";

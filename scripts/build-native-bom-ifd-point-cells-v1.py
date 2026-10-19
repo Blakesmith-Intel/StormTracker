@@ -111,7 +111,7 @@ def main():
   else:stations=fixed+list(raw.get("observations",{}).get("since9am",[]))+list(raw.get("observations",{}).get("lastHour",[]))
  else:
   stations=fixed
- existing=json.loads(Path(args.existing).read_text()) if args.existing and Path(args.existing).exists() else {}
+ existing=json.loads(Path(args.existing).read_text()) if args.existing and Path(args.existing).is_file() and Path(args.existing).stat().st_size>0 else {}
  result=build(stations,existing,max_new=args.max_new)
  if not result["cells"]:raise SystemExit("No verified native BoM IFD site data")
  output=Path(args.out);output.parent.mkdir(parents=True,exist_ok=True)

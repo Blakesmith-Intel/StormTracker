@@ -29,8 +29,12 @@ const manifest={schema:"StormTrackerBoMFtpReflectivityManifestV1",
 const requests=[];
 const fetched=await publishedFtpManifest({now,fetcher:async endpoint=>{
  requests.push(endpoint);
- return {ok:true,json:async()=>manifest};
+ return endpoint===url?
+   {ok:true,json:async()=>manifest}:
+   {ok:true,json:async()=>({...manifest,
+    sourceKind:"ftp-original-png-byte-identical-static-archive"})};
 }});
-assert.equal(fetched.sourceKind,"ftp-live-direct-relay");
-assert.deepEqual(requests,[url],"Never depend on GitHub Actions for a fresh direct FTP source");
+assert.equal(fetched.sourceKind,"ftp-original-png-byte-identical-static-archive");
+assert.equal(requests.length,1);
+assert(requests[0].startsWith("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json?refresh="));
 console.log("DIRECT_LIVE_FTP_PARSER_AND_BROWSER_CONTRACT_PASS",Object.keys(data));

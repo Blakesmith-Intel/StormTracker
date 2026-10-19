@@ -17,12 +17,34 @@ const siteIds=region=>region==="SEQ"?["08","50","66"]:[String(region)];
 const validTime=(s,now=Date.now())=>{const t=Date.parse(s);return Number.isFinite(t)&&t<=now+5*60000&&t>=now-45*60000};
 export async function publishedFtpManifest({now=Date.now(),fetcher=fetch}={}){
  if(cached&&now-cachedAt<45000)return cached;
+ // GitHub's original, byte-identical FTP archive is the verified fast path.
+ // The direct Cloudflare TCP FTP transport opens but fails to receive BoM's
+ // 220 banner, so it MUST NOT block loading every radar frame for 22 seconds.
+ let staticError=null;
+ try{
+  // GitHub raw CDN may serve an outdated branch HEAD even with cache:no-store.
+  // The five-minute bucket changes the actual CDN cache key without changing
+  // the immutable source-frame URLs or inventing an observation timestamp.
+  const url=MANIFEST+"?refresh="+Math.floor(now/300000);
+  const response=await fetcher(url,{cache:"no-store",
+   signal:AbortSignal.timeout(6500)});
+  if(!response.ok)throw Error("FTP archive HTTP "+response.status);
+  const m=await response.json();
+  if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||
+   m.sourceKind!=="ftp-original-png-byte-identical-static-archive"||
+   !m.siteFrameHistory||!m.siteGeoreference)
+    throw Error("Unrecognised BoM FTP static archive");
+  if(!Number.isFinite(Date.parse(m.generatedUtc))||
+    now-Date.parse(m.generatedUtc)>60*60000)
+    throw Error("BoM FTP discovery manifest stale");
+  cached=m;cachedAt=now;return m;
+ }catch(error){staticError=error;}
+ // Last-resort optional direct FTP. Bounded tightly because BoM's FTP
+ // control greeting currently stalls over Cloudflare's outbound TCP path.
  let liveError=null;
  try{
-  // Read the actual anonymous FTP directory through the existing Worker;
-  // GitHub's best-effort cron is no longer a live-data dependency.
-  const response=await fetcher(LIVE_MANIFEST,{
-   cache:"no-store",signal:AbortSignal.timeout(23000)});
+  const response=await fetcher(LIVE_MANIFEST,{cache:"no-store",
+   signal:AbortSignal.timeout(4500)});
   if(!response.ok)throw Error("BoM direct FTP source HTTP "+response.status);
   const m=await response.json();
   if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||
@@ -33,23 +55,9 @@ export async function publishedFtpManifest({now=Date.now(),fetcher=fetch}={}){
     throw Error("Unverified live FTP radar source");
   cached=m;cachedAt=now;return m;
  }catch(error){liveError=error;}
- // Authentic static FTP archive is an optional failover, NEVER considered
- // current once its own published timestamp ages out.
- try{
-  const response=await fetcher(MANIFEST,{cache:"no-store"});
-  if(!response.ok)throw Error("FTP archive HTTP "+response.status);
-  const m=await response.json();
-  if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||
-   m.sourceKind!=="ftp-original-png-byte-identical-static-archive"||
-   !m.siteFrameHistory||!m.siteGeoreference)
-    throw Error("Unrecognised BoM FTP static archive");
-  if(!Number.isFinite(Date.parse(m.generatedUtc))||now-Date.parse(m.generatedUtc)>60*60000)
-    throw Error("BoM FTP discovery manifest stale");
-  cached=m;cachedAt=now;return m;
- }catch(error){
-  throw Error("Live FTP unavailable ("+String(liveError?.message??liveError)+
-   "); static FTP unavailable ("+String(error.message)+")");
- }
+ throw Error("Verified static FTP unavailable ("+
+   String(staticError?.message??staticError)+
+   "); direct FTP unavailable ("+String(liveError?.message??liveError)+")");
 }
 export function matchingFtpTimes(manifest,region="SEQ",now=Date.now()){
  const ids=siteIds(region);

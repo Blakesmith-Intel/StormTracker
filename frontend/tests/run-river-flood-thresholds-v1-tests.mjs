@@ -8,7 +8,7 @@ const row=(id,minor,moderate,major)=>{
   const x=Array(122).fill(" ");
   const put=(at,value)=>{for(let i=0;i<value.length;i++)x[at+i]=value[i];};
   put(27,id);put(34,"TARANA CROSSING ALERT");
-  put(85,minor);put(100,moderate);put(117,major);
+  put(81,minor);put(97,moderate);put(113,major);
   return x.join("");
 };
 const html="<pre>\n"+row("535142","6.0","9.0","12.0")+"\n"+
@@ -22,6 +22,13 @@ for(const [height,stage] of [[2.99,null],[3,"minor"],[3.99,"minor"],
   [4,"moderate"],[4.25,"moderate"],[4.99,"moderate"],[5,"major"]])
   assert.equal(observedFloodClass(height,catalog["bom:544058"]),stage);
 
+// A field with crops/town impact levels must never contaminate
+// the genuine minor/moderate/major flood thresholds.
+const mixed=row("535142","6.0","9.0","12.0").split("");
+mixed.splice(88,4,..."9.0 ");
+mixed.splice(106,4,..."4.0 ");
+const actual=parseQldOfficialFloodLevels("<pre>"+mixed.join("")+"</pre>");
+assert.deepEqual(actual["bom:535142"],{minor:6,moderate:9,major:12});
 const thresholds=catalog["bom:535142"];
 for(const [metres,stage] of [[0.23,null],[5.99,null],[6,"minor"],
  [8.99,"minor"],[9,"moderate"],[12,"major"]])

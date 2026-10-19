@@ -33,7 +33,11 @@ export function parseQldOfficialFloodLevels(html){
       const v=line.slice(a,b).trim();
       return /^\d+(?:\.\d+)?$/.test(v)?number(v):null;
     };
-    const levels=cleanFloodLevels({minor:get(81,90),moderate:get(97,106),major:get(113,121)});
+    // Strict fixed-width FLOOD columns: crops (88..95) and town impacts
+    // (105..111) are different fields and must never become flood levels.
+    const levels=cleanFloodLevels({
+      minor:get(80,87),moderate:get(96,104),major:get(111,120)
+    });
     if(levels){
       const key="bom:"+id;
       if(conflicts.has(key))continue;

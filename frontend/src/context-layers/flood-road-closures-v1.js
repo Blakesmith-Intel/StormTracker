@@ -402,6 +402,8 @@ export function createFloodRoadClosureLayer({
             9,
           clampToGround:
             true,
+          show:true,
+          zIndex:50,
           material:
             lineUnderlay
               .withAlpha(
@@ -427,6 +429,8 @@ export function createFloodRoadClosureLayer({
             5,
           clampToGround:
             true,
+          show:true,
+          zIndex:51,
           material:
             closureColour
               .withAlpha(

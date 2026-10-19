@@ -354,7 +354,8 @@ async function fetchJson(
   fetchImpl,
   url,
   label,
-  timeoutMs = 15000
+  timeoutMs = 15000,
+  force = false
 ) {
   const controller =
     typeof AbortController
@@ -372,9 +373,12 @@ async function fetchJson(
       : null;
 
   try {
+    // Manual refresh bypasses browser and Worker response caches.
+    const target = force && url.includes("/river-height-bulletins")
+      ? url+"?force=1&_ts="+Date.now() : url;
     const response =
       await fetchImpl(
-        url,
+        target,
         {
           method:
             "GET",
@@ -383,6 +387,7 @@ async function fetchJson(
             Accept:
               "application/json,application/geo+json"
           },
+          cache: force ? "no-store" : "default",
 
           signal:
             controller?.signal
@@ -413,7 +418,8 @@ export async function loadRiverGaugeOperationalSnapshot({
     DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL,
 
   relayUrl =
-    DEFAULT_RIVER_HEIGHT_RELAY_URL
+    DEFAULT_RIVER_HEIGHT_RELAY_URL,
+  force = false
 } = {}) {
   if (
     typeof fetchImpl
@@ -438,7 +444,7 @@ export async function loadRiverGaugeOperationalSnapshot({
       fetchJson(
         fetchImpl,
         relayUrl,
-        "BoM river-height relay"
+        "BoM river-height relay",15000,force
       )
     ]);
 

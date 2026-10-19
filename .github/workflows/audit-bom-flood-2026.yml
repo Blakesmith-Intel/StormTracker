@@ -1,0 +1,20 @@
+name: Audit BoM May 2026 flood classification station tables
+on:
+  push:
+    paths:
+      - 'scripts/audit-bom-flood-2026.mjs'
+      - '.github/workflows/audit-bom-flood-2026.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read original 2026 BoM PDF and inspect station data
+        run: node scripts/audit-bom-flood-2026.mjs

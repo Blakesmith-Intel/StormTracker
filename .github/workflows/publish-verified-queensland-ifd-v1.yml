@@ -21,7 +21,8 @@ jobs:
           import urllib.request,json
           url="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall"
           try:
-            with urllib.request.urlopen(url,timeout=20) as r:m=json.load(r)
+            req=urllib.request.Request(url,headers={"Origin":"https://blakesmith-intel.github.io","Accept":"application/json","User-Agent":"Mozilla/5.0"})
+            with urllib.request.urlopen(req,timeout=20) as r:m=json.load(r)
             if m.get("format")=="StormTrackerSignificantRainfallV1":
               json.dump(m,open("/tmp/current-rainfall-gauges.json","w"))
               print("Genuine rainfall gauges", {k:len(v) for k,v in m["observations"].items()})

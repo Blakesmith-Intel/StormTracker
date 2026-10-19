@@ -9,26 +9,26 @@ import {createHash} from "node:crypto";
 const PDF="https://www.bom.gov.au/sites/default/files/2026-05/service-level-specification-flood-forecasting-warning-services-queensland-v3.7.pdf";
 const NUM="(?:\\d+(?:\\.\\s*\\d+)?|N/A|N\\.?A\\.?)";
 const rowStages=new RegExp("\\b(?:Automatic|Manual)\\s+("+NUM+")\\s+("+NUM+")\\s+("+NUM+")\\s+(?:Qualitative|Quantitative|High|Medium|Low)\\b","i");
-const toNumber=s=>/^(?:N\\.?A\\.?|N\/A)$/i.test(s)?null:Number(s.replace(/\\s+/g,""));
+const toNumber=s=>/^(?:N\.?A\.?|N\/A)$/i.test(s)?null:Number(s.replace(/\s+/g,""));
 const canonicalKey=id=>"bom:"+id;
-const normalise=s=>s.replace(/\\s+/g," ").trim();
+const normalise=s=>s.replace(/\s+/g," ").trim();
 export function parseMay2026ServiceLevelSpecification(text){
   const byId={},dataOnly=new Set(),unparsed=[],duplicates=[],perSchedule={forecast:0,information:0,data:0};
-  const pages=String(text).split("\\f");
+  const pages=String(text).split(String.fromCharCode(12));
   for(let i=0;i<pages.length;i++){
     const page=pages[i];
     let schedule=0;
-    if(/Schedule\\s+2:\\s*Forecast locations and levels of service/i.test(page))schedule=2;
-    else if(/Schedule\\s+3:\\s*Information locations with flood class levels defined/i.test(page))schedule=3;
-    else if(/Schedule\\s+4:\\s*River data locations/i.test(page))schedule=4;
+    if(/Schedule\s+2:\s*Forecast locations and levels of service/i.test(page))schedule=2;
+    else if(/Schedule\s+3:\s*Information locations with flood class levels defined/i.test(page))schedule=3;
+    else if(/Schedule\s+4:\s*River data locations/i.test(page))schedule=4;
     if(!schedule)continue;
-    const lines=page.split(/\\r?\\n/);
+    const lines=page.split(String.fromCharCode(10));
     const candidates=[];
     for(let j=0;j<lines.length;j++){
       const line=lines[j];
-      const hit=line.match(/^\\s*(\\d{6})\\s+(.+)$/);
+      const hit=line.match(/^\s*(\d{6})\s+(.+)$/);
       if(hit){candidates.push({id:hit[1],text:hit[2]});continue;}
-      if(candidates.length && line.trim() && !/^(Schedule |Bureau |Flood |Minor |Moderate |Major |Station |Forecast |Priority|Page:|Service Level Specification|\\d{3}\\s*[–-])/i.test(line.trim()))
+      if(candidates.length && line.trim() && !/^(Schedule |Bureau |Flood |Minor |Moderate |Major |Station |Forecast |Priority|Page:|Service Level Specification|\d{3}\s*[–-])/i.test(line.trim()))
         candidates.at(-1).text+=" "+line.trim();
     }
     for(const item of candidates){

@@ -19,16 +19,21 @@ def text_only(value):
  return re.sub(r"\s+"," ",html.unescape(re.sub("<[^>]*>"," ",value))).strip()
 def parse_native_table(markup):
  lower=markup.lower()
- pos=lower.find("default native baseline")
- if pos<0:raise ValueError("Missing ARR Data Hub native BoM IFD baseline")
- section=markup[pos:pos+220000]
- native_header=section.find("min (h)")
- if native_header<0:raise ValueError("No native IFD depth table header")
- # No use of future (2030) or historical-adjusted IFD baselines.
- start=section.rfind("<table",0,native_header)
- end=section.find("</table>",native_header)
- if start<0 or end<0:raise ValueError("No native IFD source table")
- table=section[start:end+8]
+ chosen=None
+ for baseline in ("Default Native Baseline","Default Historical (1961-1990) Baseline"):
+  pos=lower.find(baseline.lower())
+  if pos<0:continue
+  section=markup[pos:pos+190000]
+  header=section.find("min (h)")
+  if header<0:continue
+  start=section.rfind("<table",0,header)
+  end=section.find("</table>",header)
+  if start<0 or end<0:continue
+  table=section[start:end+8]
+  if "20.0" not in table or "10.0" not in table:continue
+  chosen=baseline
+  break
+ if chosen is None:raise ValueError("No genuine ARR native or historical IFD table")
  rows=re.findall(r"<tr\b[^>]*>(.*?)</tr>",table,re.S|re.I)
  if not rows:raise ValueError("No native IFD rows")
  dataset={}
@@ -52,7 +57,7 @@ def parse_native_table(markup):
   dataset[str(duration)]=values
  if "60" not in dataset or "1440" not in dataset or len(dataset)<7:
   raise ValueError("Insufficient published native IFD durations")
- return dataset
+ return dataset,chosen
 def fetch_point(lat,lon):
  url=BASE+"?"+urllib.parse.urlencode({"All":"on","lat_coord":lat,"lon_coord":lon})
  request=urllib.request.Request(url,headers={"User-Agent":"StormTracker-IFD-reference/1.0","Accept":"text/html"})
@@ -61,7 +66,8 @@ def fetch_point(lat,lon):
   markup=response.read(9_000_000).decode("utf8","replace")
  if "Default Native Baseline" not in markup or "Default IFD Depths" not in markup:
   raise ValueError("ARR page missing independently published native IFD depth table")
- return url,parse_native_table(markup)
+ depths,baseline=parse_native_table(markup)
+ return url,depths,baseline
 def build(stations,existing,max_new=80,workers=4):
  cells=dict(existing.get("cells",{}))
  candidates={}
@@ -76,9 +82,9 @@ def build(stations,existing,max_new=80,workers=4):
  def work(item):
   k,(lat,lon)=item
   try:
-   url,table=fetch_point(lat,lon)
+   url,table,baseline=fetch_point(lat,lon)
    return k,{"latitude":ifd_cell(lat),"longitude":ifd_cell(lon),
-     "depthsMmByMinutes":table,"referenceUrl":url,"sourceBaseline":"BoM IFD (2016) native baseline; ARR Data Hub"},None
+     "depthsMmByMinutes":table,"referenceUrl":url,"sourceBaseline":baseline+" (BoM IFD-derived; ARR Data Hub)"},None
   except Exception as e:
    return k,None,type(e).__name__+": "+str(e)[:150]
  with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
@@ -88,7 +94,7 @@ def build(stations,existing,max_new=80,workers=4):
  print("IFD_NATIVE_POINT_RESULT",json.dumps({"stations":len(stations),"previousCells":len(existing.get("cells",{})),
    "newPoints":len(candidates),"success":len(candidates)-len(failed),"failures":failed[:12]}))
  return {"schema":"StormTrackerBoM2016IFDCellsV1",
-   "source":"ARR Data Hub — native BoM IFD (2016) baseline, unadjusted point depth tables",
+   "source":"ARR Data Hub BoM IFD (2016) native where available, otherwise published historical 1961-1990 reference",
    "sourceUrl":BASE,"generatedUtc":dt.datetime.now(dt.timezone.utc).isoformat(),
    "coverage":"Only stations/cells with independently fetched native BoM-derived 2016 depth curves",
    "cells":cells}

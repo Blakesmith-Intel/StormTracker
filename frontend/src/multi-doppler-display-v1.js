@@ -376,6 +376,19 @@ export function createSupplementalDopplerDisplay({
   // Commit the primary source clock immediately. A secondary stage may
   // complete afterwards at THIS SAME clock time; do not discard it merely
   // because it missed a 350ms primary deadline. New clock steps invalidate it.
+  // A real scan needed at the playback wrap/first selection may already be
+  // decoding but outside the prior ±8-minute hold. Give that specific
+  // truthful handover a longer bounded pre-commit wait, rather than blanking
+  // the older site for a fraction of every loop. Ordinary steps stay fast.
+  function needsBoundaryWait(utc){
+    if(!enabled||!selected.length)return false;
+    return selected.some(id=>{
+      const site=states.get(id);
+      if(!site?.history || !matchingSecondaryWindFrame(site.history.frames,utc))
+        return false;
+      return !holdIsValid(site,utc);
+    });
+  }
   function commit(utc){
     if(!enabled||targetUtc!==utc)return [];
     committedUtc=utc;
@@ -421,6 +434,7 @@ export function createSupplementalDopplerDisplay({
     for(const s of states.values())release(s);
     states.clear();selected=[];targetUtc=null;report();
   }
-  return {configure,setEnabled,prepare,commit,showAt,prewarm,refresh,destroy,snapshot:reported,
+  return {configure,setEnabled,prepare,commit,needsBoundaryWait,
+    showAt,prewarm,refresh,destroy,snapshot:reported,
     get visibleSites(){return [...states].filter(([,s])=>s.observedUtc).map(([id])=>id);}};
 }

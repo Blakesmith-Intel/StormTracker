@@ -60,21 +60,7 @@ copyfile(Path("frontend/src/context-layers/rainfall-ifd-aep-v1.js"),
          site / "src/context-layers/rainfall-ifd-aep-v1.js")
 copyfile(Path("frontend/data/ifd-2016-verified-points-v1.json"),
          site / "data/ifd-2016-verified-points-v1.json")
-# The existing 50/100 mm fixed-rain legend must not remain visible
-# after the IFD/AEP rarity calibration is introduced.
-rain_page=site / "live3d-operational-v9.html"
-html=rain_page.read_text(encoding="utf-8")
-before='title="Show BoM rain gauges reporting at least 50 mm"'
-assert html.count(before)==1
-html=html.replace(before,
-  'title="BoM rainfall gauges graded by verified local IFD rainfall rarity"')
-before="●</span> Significant rain</label>"
-assert html.count(before)==1
-html=html.replace(before,"●</span> Rainfall rarity</label>")
-before='<span class="significant-orange">●</span> 50–99.9 mm · <span class="significant-red">●</span> ≥100 mm'
-assert html.count(before)==1
-html=html.replace(before,"20% green · 10% yellow · 5% orange · 2% red · 1% purple AEP")
-rain_page.write_text(html,encoding="utf-8")
+
 
 for relative in ("index.html","live3d-operational-v9.html"):
     page=site / relative
@@ -544,3 +530,24 @@ grep -Fq 'body.simple-ui #app.sidebar-collapsed' "_site/src/single-interface-v1.
 grep -Fq 'grid-template-rows:minmax(0,1fr)' "_site/src/single-interface-v1.css"
 grep -Fq 'full-map-controls-gauge-severity-v4' "_site/live3d-operational-v9.html"
 grep -Fq 'hide-controls-full-map-v1' "_site/index.html"
+
+# Apply AEP legend AFTER the significant rainfall row is injected from current source.
+python - <<'PY'
+from pathlib import Path
+site=Path("_site")
+# The existing 50/100 mm fixed-rain legend must not remain visible
+# after the IFD/AEP rarity calibration is introduced.
+rain_page=site / "live3d-operational-v9.html"
+html=rain_page.read_text(encoding="utf-8")
+before='title="Show BoM rain gauges reporting at least 50 mm"'
+assert html.count(before)==1
+html=html.replace(before,
+  'title="BoM rainfall gauges graded by verified local IFD rainfall rarity"')
+before="●</span> Significant rain</label>"
+assert html.count(before)==1
+html=html.replace(before,"●</span> Rainfall rarity</label>")
+before='<span class="significant-orange">●</span> 50–99.9 mm · <span class="significant-red">●</span> ≥100 mm'
+assert html.count(before)==1
+html=html.replace(before,"20% green · 10% yellow · 5% orange · 2% red · 1% purple AEP")
+rain_page.write_text(html,encoding="utf-8")
+PY

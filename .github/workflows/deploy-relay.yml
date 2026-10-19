@@ -34,8 +34,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
           command: deploy --config wrangler.jsonc
-      - name: Verify actual fresh BoM direct-FTP directory and PNG
-        run: node scripts/probe-live-ftp-worker-v1.mjs
+      - name: Verify official high-resolution BoM WMTS metadata and browser CORS
+        run: node scripts/probe-native-wmts-capabilities-relay-v1.mjs
       - name: Check public BoM recent-history CORS (optional; warnings only)
         run: node scripts/probe-live-river-history-cors-v1.mjs
       - name: Check QLD and Brewarrina Doppler paths

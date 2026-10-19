@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import {rainfallRarityDisplay,significantRainfallDisplay}
+ from "../src/context-layers/significant-rainfall-operational-v1.js";
+import {rainfallWindowMinutes,classifyRainfallAep}
+ from "../src/context-layers/rainfall-ifd-aep-v1.js";
 import {
  rainfallBand,parseBomRainfallMap,dedupeSignificantRainfall,
  qldFloodMapCreatedAt,qualifiesRainfallSnapshot
@@ -18,6 +22,26 @@ const html='<html><img class="mapimage" src="/fwo/IDQ65149.png" id = "since" '+
  '<map name="IDQ65350.html">'+a("040908","Tewantin RSL Park","100.3")+
  a("540523","Rockside Mt","49.9")+'</map>'+
  '<p>This page was created at 07:06 on Sunday 18 October 2026 (UTC)</p></html>';
+assert.equal(rainfallWindowMinutes("last24Hours",issuedTime()),1440);
+function issuedTime(){return "2026-10-18T07:06:00.000Z"}
+for(const [aep,chance,oneIn,label] of [
+ [20,"20%","1 in 5","Notable"],[10,"10%","1 in 10","Unusual"],
+ [5,"5%","1 in 20","Rare"],[2,"2%","1 in 50","Very rare"],
+ [1,"1%","1 in 100","Exceptional"]
+]){
+ const info=rainfallRarityDisplay({aepDesignThreshold:aep});
+ assert.equal(info.chance,chance);
+ assert.equal(info.oneIn,oneIn);
+ assert.equal(info.short,label);
+}
+const normal=significantRainfallDisplay({mm:50,
+ aep:{classification:"below-20pct-aep"}});
+assert.equal(normal.amountBand,"50–99.9 mm");
+assert.equal(normal.rarity.short,"Less rare");
+const unknown=significantRainfallDisplay({mm:100,
+ aep:{classification:"unclassified"}});
+assert.equal(unknown.amountBand,"100 mm or more");
+assert.equal(unknown.rarity.short,"Unrated");
 assert.equal(rainfallBand(49.9),null);
 assert.equal(rainfallBand(50),"orange");
 assert.equal(rainfallBand(99.9),"orange");

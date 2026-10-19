@@ -52,6 +52,18 @@ copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),
 for name in ("bom-wmts-loop-v2.js","bom-wmts-published-times-v1.js"):
     copyfile(Path("frontend/src") / name, site / "src" / name)
 copyfile(Path("frontend/favicon.svg"),site / "favicon.svg")
+# FTP-first can only activate when the validated BoM FTP manifest and live
+# Cloudflare image relay are available. Existing WMTS source remains fallback.
+copyfile(Path("frontend/src/ftp-reflectivity-operational-v1.js"),
+         site / "src/ftp-reflectivity-operational-v1.js")
+for relative in ("index.html","live3d-operational-v9.html"):
+    page=site / relative
+    html=page.read_text(encoding="utf-8")
+    assert html.count("<head>")==1
+    page.write_text(html.replace("<head>",
+       '<head>\\n<script>globalThis.__STORMTRACKER_FTP_FIRST=true;</script>',1),
+       encoding="utf-8")
+
 for relative in ("index.html","live3d-operational-v9.html"):
     page=site / relative
     data=page.read_text(encoding="utf-8")
@@ -60,7 +72,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-ftp-first-v10-20261019"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")

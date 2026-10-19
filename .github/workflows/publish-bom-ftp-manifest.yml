@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - scripts/publish-bom-ftp-manifest-v1.py
+      - scripts/stage-genuine-ftp-png-feed-v1.py
       - .github/workflows/publish-bom-ftp-manifest.yml
 permissions:
   contents: write
@@ -21,7 +22,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Retrieve authentic BoM radar directory listing
         run: python scripts/publish-bom-ftp-manifest-v1.py --out /tmp/bom-ftp-manifest.json
-      - name: Publish metadata-only feed branch
+      - name: Stage actual original PNGs over anonymous FTP
+        run: |
+          python scripts/stage-genuine-ftp-png-feed-v1.py \
+            --manifest /tmp/bom-ftp-manifest.json \
+            --out /tmp/stormtracker-ftp-static
+      - name: Publish genuine radar observation archive branch
         run: |
           set -euo pipefail
           git config user.name "stormtracker-source-bot"
@@ -33,10 +39,14 @@ jobs:
             git checkout --orphan radar-ftp-feed
             git rm -r --cached . >/dev/null
           fi
-          cp /tmp/bom-ftp-manifest.json manifest.json
-          git add -f manifest.json
+          # This branch stores only the radar feed; no application source changes.
+          git rm -r --ignore-unmatch frames >/dev/null || true
+          rm -rf frames
+          cp -a /tmp/stormtracker-ftp-static/frames ./frames
+          cp /tmp/stormtracker-ftp-static/manifest.json manifest.json
+          git add -f manifest.json frames/
           git diff --cached --quiet && exit 0
           git commit -m "radar: publish BoM-observed FTP frame index"
           git push origin HEAD:refs/heads/radar-ftp-feed
       - name: Report data feed
-        run: echo "Metadata-only feed at https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json"
+        run: echo "Verified original FTP radar feed at https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json"

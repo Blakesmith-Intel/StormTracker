@@ -52,7 +52,10 @@ js='import {mountNorthCompass} from "./north-compass-v1.js?v=north-up-20261019";
 # These replacements target ONLY the sealed v10.2.0 delivered operator runtime.
 # A true five-minute, 30-minute loop has six genuine BoM frames. Old low-res
 # 512px FTP sources and interpolated temporal frames are NEVER displayed.
-js='import {isVerifiedHiResRadarFrame,measuredHiResRainWindow} from "./hires-radar-loop-policy-v1.js?v=observed-only-6-per-30-20261019";'+chr(10)+js
+js='import {isVerifiedHiResRadarFrame,measuredHiResRainWindow,availableMeasuredHiResLoopMinutes} from "./hires-radar-loop-policy-v1.js?v=browser-hires-90min-20261019";'+chr(10)+js
+availability='const rainAvailable = availableRadarLoopMinutes(availableRadarHistoryTimes);'
+assert js.count(availability)==1,"V10 rain available selector changed"
+js=js.replace(availability,'const rainAvailable = availableMeasuredHiResLoopMinutes(availableRadarHistoryTimes);',1)
 before='const plan = buildRadarPlaybackPlan(history);'
 assert js.count(before)==1,"V10 radar-summary plan anchor changed"
 js=js.replace(before,'const plan = measuredHiResRainWindow(history,"all").plan;',1)
@@ -89,7 +92,7 @@ assert html.count(old)==1
 html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP · <span style="color:#929da6">●</span> Grey = AEP not assessed (verified local IFD unavailable)')
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
-html=html.replace(needle,needle+"hires-observed-six-20261019-")
+html=html.replace(needle,needle+"hires-observed-archive90-20261019-")
 page.write_text(html)
 entry=site/"index.html"
 html=entry.read_text()
@@ -103,4 +106,5 @@ with (site/"BUILD.txt").open("a") as f:
  f.write("NATIONAL BOM REFLECTIVITY MOSAIC PRIMARY WHEN PROVEN LIVE, AUTHENTIC ORIGINAL FTP BACKUP 2026-10-19\n")
  f.write("VERIFIED CURRENT NATIVE BOM WMTS HIGH-RES DIRECT TILES + XML CORS RELAY 2026-10-19\n")
  f.write("HIRES BOM NATIVE SOURCE ONLY; 30 MINUTES = SIX OBSERVED FRAMES; NO TEMPORAL GAP FILL 2026-10-19\n")
+ f.write("BROWSER INDEXEDDB FOUR-HOUR HIRES HISTORY; 30 60 90 120 180-MIN LOOPS WITH REAL FRAMES ONLY 2026-10-19\n")
 print("FTP_AEP_V10_RELEASE_PACKAGED",len(list(site.rglob("*.js"))))

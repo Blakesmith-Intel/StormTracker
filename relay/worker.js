@@ -811,6 +811,7 @@ function relayQldFloodThresholds(request,origin){
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");
   headers.set("Cache-Control","public, max-age=3600");
+  headers.set("X-StormTracker-Flood-Reference","BoM-Queensland-2026-SLS-v3.7");
   return new Response(request.method==="HEAD"?null:JSON.stringify({
     format:"StormTrackerQueenslandFloodThresholdsV1",
     source:OFFICIAL_MAY_2026_STAGES_URL,sourceDate:"2026-05",

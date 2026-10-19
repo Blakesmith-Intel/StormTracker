@@ -242,7 +242,9 @@ assert "10 * 60 * 1000" in (layers / "river-gauges-v1.js").read_text()
 assert "groupOutagesByVerifiedGeometry(" in (
     layers / "power-outage-suburb-explorer-v1.js").read_text()
 assert "esriGeometryPolygon" in (layers / "outage-lga-spatial-v2.js").read_text()
-assert '"bom:544058":{minor:3,moderate:4,major:5}' in (
+assert "HISTORICAL_EXACT_ID_EXCEPTIONS" in (
+    layers / "river-flood-thresholds-v1.js").read_text()
+assert "BOM_2026_CLASSIFICATIONS" in (
     layers / "river-flood-thresholds-v1.js").read_text()
 assert (layers / "river-gauge-latest-v1.js").exists()
 assert (layers / "river-flood-thresholds-v1.js").exists()

@@ -1,6 +1,6 @@
 {
   "schema": "StormTrackerBoMFtpReflectivityManifestV1",
-  "generatedUtc": "2026-10-19T01:06:48.955878Z",
+  "generatedUtc": "2026-10-19T01:08:02.191401Z",
   "siteFrameHistory": {
     "08": [
       {
@@ -342,5 +342,103 @@
   "missingOrStaleSites": [],
   "source": "ftp.bom.gov.au:/anon/gen/radar",
   "sourceKind": "filename-discovery-only",
-  "maxSourceAgeMinutes": 45
+  "maxSourceAgeMinutes": 45,
+  "siteGeoreference": {
+    "08": {
+      "projection": "Gnomonic",
+      "product": "IDR083.map",
+      "controlPoints": {
+        "center_longitude": 152.58299,
+        "center_latitude": -25.967,
+        "lon0": 151.29564,
+        "lat0": -27.10645,
+        "lon1": 151.32056,
+        "lat1": -24.8072,
+        "lon2": 153.85368,
+        "lat2": -24.80713,
+        "lon3": 153.87877,
+        "lat3": -27.10637
+      }
+    },
+    "50": {
+      "projection": "Gnomonic",
+      "product": "IDR503.map",
+      "controlPoints": {
+        "center_longitude": 152.539,
+        "center_latitude": -27.608,
+        "lon0": 151.23309,
+        "lat0": -28.74816,
+        "lon1": 151.26024,
+        "lat1": -26.44776,
+        "lon2": 153.8297,
+        "lat2": -26.44766,
+        "lon3": 153.85709,
+        "lat3": -28.74804
+      }
+    },
+    "66": {
+      "projection": "Gnomonic",
+      "product": "IDR663.map",
+      "controlPoints": {
+        "center_longitude": 153.24001,
+        "center_latitude": -27.7181,
+        "lon0": 151.93095,
+        "lat0": -28.85765,
+        "lon1": 151.95828,
+        "lat1": -26.5564,
+        "lon2": 154.53113,
+        "lat2": -26.55632,
+        "lon3": 154.55867,
+        "lat3": -28.85755
+      }
+    },
+    "28": {
+      "projection": "Gnomonic",
+      "product": "IDR283.map",
+      "controlPoints": {
+        "center_longitude": 152.951,
+        "center_latitude": -29.622,
+        "lon0": 151.61734,
+        "lat0": -30.76281,
+        "lon1": 151.64746,
+        "lat1": -28.46136,
+        "lon2": 154.2655,
+        "lat2": -28.46126,
+        "lon3": 154.29587,
+        "lat3": -30.76269
+      }
+    },
+    "53": {
+      "projection": "Gnomonic",
+      "product": "IDR533.map",
+      "controlPoints": {
+        "center_longitude": 149.85001,
+        "center_latitude": -29.5,
+        "lon0": 148.51648,
+        "lat0": -30.6403,
+        "lon1": 148.54645,
+        "lat1": -28.33886,
+        "lon2": 151.16147,
+        "lat2": -28.33879,
+        "lon3": 151.19162,
+        "lat3": -30.64022
+      }
+    },
+    "93": {
+      "projection": "Gnomonic",
+      "product": "IDR933.map",
+      "controlPoints": {
+        "center_longitude": 146.8129,
+        "center_latitude": -29.9696,
+        "lon0": 145.47366,
+        "lat0": -31.11035,
+        "lon1": 145.50433,
+        "lat1": -28.80885,
+        "lon2": 148.13113,
+        "lat2": -28.80876,
+        "lon3": 148.16202,
+        "lat3": -31.11024
+      }
+    }
+  }
 }

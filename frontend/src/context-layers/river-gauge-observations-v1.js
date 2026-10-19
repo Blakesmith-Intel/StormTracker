@@ -2,7 +2,7 @@ import {
   filterQueenslandRiverGauges,
   riverGaugeSummary
 } from "./river-gauges-v1.js?v=9.12.0";
-import {FLOOD_LEVEL_RELAY,withStationFloodLevels}
+import {withStationFloodLevels}
   from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
 import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=9.13.2";
 
@@ -425,7 +425,6 @@ export async function loadRiverGaugeOperationalSnapshot({
 
   relayUrl =
     DEFAULT_RIVER_HEIGHT_RELAY_URL,
-  thresholdsUrl=FLOOD_LEVEL_RELAY,
   force = false
 } = {}) {
   if (
@@ -457,16 +456,11 @@ export async function loadRiverGaugeOperationalSnapshot({
 
   const joined =
     joinRiverGaugeObservations({gauges,bulletins});
-  let thresholds={};
-  // Optional reference data failure must not interrupt live heights.
-  try {
-    const result=await fetchJson(fetchImpl,thresholdsUrl,
-      "BoM Queensland station flood levels",12000);
-    if(result?.format==="StormTrackerQueenslandFloodThresholdsV1" &&
-       result.thresholds&&typeof result.thresholds==="object")
-      thresholds=result.thresholds;
-  }catch{/* exact source-verified local fallback remains available */}
-  joined.payload.features=withStationFloodLevels(joined.payload.features,thresholds);
+  // Station thresholds are a single bundled, versioned BoM 2026 catalogue.
+  // No third upstream HTTP request, no competing 2022 relay overrides and
+  // no 12-second stall for each 10-minute height refresh.
+  const thresholds={};
+  joined.payload.features=withStationFloodLevels(joined.payload.features);
   return {
     ...joined,
     thresholds,

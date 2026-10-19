@@ -1,7 +1,7 @@
 {
   "format": "StormTracker2026LiveBoMGaugeAuditV1",
   "source": "Official BoM QLD SLS v3.7, Schedule 2/3/4 and live matched source observations",
-  "auditedAt": "2026-10-19T16:09:42.487Z",
+  "auditedAt": "2026-10-19T16:12:49.765Z",
   "totalLiveLocations": 1808,
   "uniqueBomStations": 1808,
   "byKind": {

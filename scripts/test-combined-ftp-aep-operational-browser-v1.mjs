@@ -28,11 +28,17 @@ try{
   const frameResults=[];
   for(const time of times.slice(-3)){
    const f=await radar.loadBomReflectivityMosaicAtTime(time,"SEQ");
-   if(!["BOM-MOSAIC","BOM-FTP-MOSAIC"].includes(f.sourceId))
-     throw Error("Radar source was neither the national BoM mosaic nor its verified archive fallback");
+   if(f.sourceId!=="BOM-MOSAIC")
+     throw Error("Repaired high-resolution radar regressed to coarse FTP fallback: "+f.sourceId);
    if(f.georef?.projection!=="EPSG:3857")throw Error("Incorrect measured source raster projection");
    if(f.width<512||f.height<512||f.categories.length!==f.width*f.height)
-     throw Error("Invalid measured national-region raster resolution");
+     throw Error("High-resolution native BOM mosaic is not using the real tile grid");
+   if(f.sourceMetadata?.tileMatrixSet!=="GoogleMapsCompatible_BoM")
+     throw Error("Radar is not using official Australian BoM WMTS");
+   if(f.sourceMetadata?.transport?.indexOf("Direct Bureau national WMTS")!==0)
+     throw Error("Unverified source substitution");
+   if(Date.now()-Date.parse(f.observedUtc)>45*60000)
+     throw Error("High-resolution radar timestamp is not current");
    if(f.sourceId==="BOM-FTP-MOSAIC"&&f.sourceMetadata?.siteIds?.length!==3)
      throw Error("Fallback missing verified source radars");
    if(f.sourceMetadata?.categoryHistogram?.reduce((a,b)=>a+b,0)!==f.categories.length)
@@ -42,6 +48,13 @@ try{
     pixelsAtLeast40Dbz:f.sourceMetadata.strongPixelCount,
     bounds:f.georef});
   }
+  // Richmond must use the same genuine current high-resolution national product
+  // and NOT its visually degraded legacy FTP site PNG.
+  const richmond=await radar.discoverBomReflectivityHistory(now,45,"107");
+  if(!richmond.length)throw Error("No genuine national BoM observations for Richmond");
+  const rFrame=await radar.loadBomReflectivityMosaicAtTime(richmond.at(-1),"107");
+  if(rFrame.sourceId!=="BOM-MOSAIC"||rFrame.width<512)
+    throw Error("Richmond degraded or reverted to old individual FTP radar imagery");
   const res=await fetch("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/ifd.json",{cache:"no-store"});
   if(!res.ok)throw Error("Official-derived rainfall IFD source missing");
   const grid=await res.json();
@@ -51,7 +64,7 @@ try{
   const adavale=rain.classifyRainfallAep({...base,latitude:-25.91,longitude:144.6});
   if(gold.classification!=="below-20pct-aep")throw Error("Gold Coast 50mm falsely marked exceptional");
   if(adavale.aepDesignThreshold!==10)throw Error("Adavale 50mm not graded by local native BoM IFD");
-  return {frameResults,ifd:{cells:Object.keys(grid.cells).length,gold,adavale}};
+  return {frameResults,richmond:{time:rFrame.observedUtc,width:rFrame.width,height:rFrame.height,source:rFrame.sourceId},ifd:{cells:Object.keys(grid.cells).length,gold,adavale}};
  });
  assert.equal(result.frameResults.length,3);
  console.log("LIVE_NATIONAL_PRIMARY_AEP_COMBINED_BROWSER_PASS",JSON.stringify(result));

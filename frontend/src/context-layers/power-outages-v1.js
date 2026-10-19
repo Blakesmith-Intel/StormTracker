@@ -1003,6 +1003,9 @@ export function createPowerOutageLayer({
               )
           );
 
+      // All provider polygon fills are reconstructed below from the original
+      // source coordinates; never leave a duplicate unstyled GeoJSON polygon.
+      if(entity.polygon) entity.polygon.show=false;
       if (!feature) {
         continue;
       }

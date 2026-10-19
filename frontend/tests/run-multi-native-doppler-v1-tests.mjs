@@ -347,6 +347,8 @@ const loopCache=createSupplementalDopplerDisplay({
 loopCache.configure("66",["50","08"]);loopCache.setEnabled(true);
 for(const frame of sevenFrames)await loopCache.prewarm(frame.observedUtc);
 assert.equal(sevenLoads.size,14,"Seven genuine BoM images loaded for each selected site");
+assert.equal(loopCache.needsBoundaryWait("2026-10-17T00:00:00Z"),true,
+  "A selected real first scan needs pre-commit staging on initial entry");
 for(let cycle=0;cycle<3;cycle++){
   for(const frame of sevenFrames){
     await loopCache.prepare(frame.observedUtc);
@@ -360,5 +362,9 @@ for(let cycle=0;cycle<3;cycle++){
 assert.ok([...sevenLoads.values()].every(n=>n===1),
   "Repeat loops must reuse cached native frames, not re-fetch/reproject them");
 assert.equal(visibleLayers.length,2);
+assert.equal(loopCache.needsBoundaryWait("2026-10-17T00:30:00Z"),false,
+  "No extra pause when the currently rendered source already matches");
+assert.equal(loopCache.needsBoundaryWait("2026-10-17T00:00:00Z"),true,
+  "At 7-frame loop wrap, hold primary until a real old site scan is staged");
 loopCache.destroy();assert.equal(visibleLayers.length,0);
 console.log("PASS three complete 7-frame multi-site Doppler loops without imagery dropout or repeated decoding.");

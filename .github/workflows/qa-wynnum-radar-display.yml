@@ -1,0 +1,21 @@
+name: Audit Richmond PNG quality and live Wynnum outage geometry
+on:
+  push:
+    branches: [fix/radar-visual-outage-polygon-20261019]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "24"}
+      - name: Audit official current Energex geometry and filtering
+        run: node scripts/diagnose-live-energex-wynnum-20261019.mjs
+      - name: Verify affected JS modules and frontend regression tests
+        run: |
+          node --check frontend/src/context-layers/power-outages-v1.js
+          node --check frontend/src/ftp-reflectivity-operational-v1.js
+          npm test

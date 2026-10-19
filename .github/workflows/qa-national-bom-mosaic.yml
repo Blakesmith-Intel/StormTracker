@@ -1,0 +1,30 @@
+name: Validate live national BoM rain reflectivity mosaic
+on:
+  push:
+    branches: [feature/national-bom-mosaic-first-20261019]
+  pull_request:
+    paths:
+      - frontend/src/bom-wmts-loop-v2.js
+      - frontend/src/bom-wmts-published-times-v1.js
+      - frontend/src/national-mosaic-source-v1.js
+      - scripts/probe-live-national-bom-mosaic-v1.mjs
+      - .github/workflows/qa-national-bom-mosaic.yml
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate pure source-contract modules
+        run: |
+          node --check frontend/src/bom-wmts-loop-v2.js
+          node --check frontend/src/bom-wmts-published-times-v1.js
+          node --check scripts/probe-live-national-bom-mosaic-v1.mjs
+          npm test
+      - name: Verify actual BoM national mosaic tiles for Richmond and Brisbane
+        run: node scripts/probe-live-national-bom-mosaic-v1.mjs

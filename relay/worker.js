@@ -1552,6 +1552,41 @@ async function relayDopplerFrame(
   );
 }
 
+// FTP-derived reflectivity is discovered by GitHub's metadata-only manifest.
+// This endpoint fetches immutable, genuine PNGs from BoM's public HTTPS radar
+// mirror. Never accept caller-supplied URLs, Doppler filenames, or stale clocks.
+async function relayTimestampedReflectivityFrame(request,incoming,origin){
+  const name=String(incoming.searchParams.get("file")||"");
+  const match=/^IDR(\\d{2,3})([1-4])\\.T\\.(\\d{12})\\.png$/.exec(name);
+  if(!match)return errorResponse("Invalid FTP reflectivity filename",400,origin);
+  const utc=radarTimestampToIso(match[3]);
+  if(!utc)return errorResponse("Invalid reflectivity observation UTC",400,origin);
+  const age=Date.now()-Date.parse(utc);
+  if(age < -5*60000 || age > 3*3600000)
+    return errorResponse("Reflectivity file too old or future-dated",410,origin);
+  const target="https://www.bom.gov.au/radar/"+name;
+  let upstream;
+  try{
+    upstream=await fetch(target,{method:request.method,headers:{Accept:"image/png"},
+      cf:{cacheEverything:true,cacheTtl:120}});
+  }catch(error){
+    return errorResponse("BoM reflectivity HTTPS unavailable: "+String(error),502,origin);
+  }
+  if(!upstream.ok)return errorResponse("BoM reflectivity HTTP "+upstream.status,502,origin);
+  const contentType=upstream.headers.get("content-type")||"";
+  if(!/image\\/png/i.test(contentType))
+    return errorResponse("BoM source returned a non-PNG content type",502,origin);
+  const headers=new Headers();
+  for(const [key,value] of corsHeaders(origin).entries())headers.set(key,value);
+  headers.set("Content-Type","image/png");
+  headers.set("Cache-Control","public,max-age=120");
+  headers.set("Cross-Origin-Resource-Policy","cross-origin");
+  headers.set("X-StormTracker-Observed-UTC",utc);
+  headers.set("X-StormTracker-Product","IDR"+match[1]+match[2]);
+  headers.set("X-StormTracker-Time-Source","bom-ftp-observation-filename");
+  return new Response(request.method==="HEAD"?null:upstream.body,{status:200,headers});
+}
+
 export default {
   async fetch(request, env) {
     const incoming =
@@ -1643,6 +1678,10 @@ export default {
         incoming,
         origin
       );
+    }
+
+    if (incoming.pathname === "/ftp-reflectivity-frame") {
+      return relayTimestampedReflectivityFrame(request,incoming,origin);
     }
 
     if (incoming.pathname === "/radar-history") {

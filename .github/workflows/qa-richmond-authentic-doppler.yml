@@ -1,0 +1,48 @@
+name: QA Richmond authentic Doppler southern pixels
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/native-doppler-image-v1.js'
+      - 'frontend/tests/run-native-doppler-image-v1-tests.mjs'
+      - 'scripts/build-current-site.sh'
+      - 'scripts/qa-live-richmond-doppler-source-v1.mjs'
+      - '.github/workflows/qa-richmond-authentic-doppler.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authentic-boM-pixels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "24"}
+      - name: Node regression tests
+        run: npm test
+      - uses: actions/checkout@v4
+        with:
+          ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
+          path: checked/accepted-v9.18
+      - uses: actions/checkout@v4
+        with:
+          ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
+          path: checked/production-v10.2.0
+      - uses: actions/checkout@v4
+        with:
+          ref: f3a07688ca02f5f0234ae6425fc1177722518c53
+          path: checked/wind-hook-v10.3-qa
+      - name: Build the genuine Pages production artefact
+        run: |
+          bash scripts/build-current-site.sh
+          python scripts/apply-ftp-aep-release-v10.py
+          ! grep -Fq 'NATIVE_DOPPLER_STRICT_PALETTE_START_ROW' _site/src/native-doppler-image-v1.js
+          grep -Fq 'RICHMOND REAL PIXEL PALETTE TOLERANCE ALL ROWS' _site/BUILD.txt
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.58.2
+          npx playwright install chromium
+      - name: Decode a genuine Richmond BoM scan and verify southern pixels
+        run: |
+          python -m http.server 8137 --bind 127.0.0.1 --directory _site >/tmp/qa-richmond-http.log 2>&1 &
+          node scripts/qa-live-richmond-doppler-source-v1.mjs

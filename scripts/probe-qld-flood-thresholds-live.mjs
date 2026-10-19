@@ -13,7 +13,7 @@ for(const url of urls){
   const html=await res.text();
   console.log("BoM length",html.length,"header",JSON.stringify(html.slice(0,180)));
   for(const id of ["535142","544058","540319","540054","540640","040846"]){
-   const line=html.split("\\n").find(x=>x.includes(id) && /^\\s*\\S/.test(x) && !x.includes("Date:"));
+   const line=html.split(String.fromCharCode(10)).find(x=>x.includes(id));
    console.log("Raw line",id,JSON.stringify(line?.slice(0,145)??"MISSING"));
    if(line){
      console.log("  Indexed fields",JSON.stringify(line.slice(26,40)),

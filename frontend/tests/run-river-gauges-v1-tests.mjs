@@ -13,7 +13,7 @@ import {
 
 assert.equal(
   DEFAULT_RIVER_GAUGE_REFRESH_MS,
-  15 * 60 * 1000
+  20 * 60 * 1000
 );
 
 assert.match(

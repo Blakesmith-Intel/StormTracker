@@ -41,17 +41,20 @@ async function ftpRaw(operation,{connectSocket}={}){
  const connectFn=connectSocket||(await import("cloudflare:sockets")).connect;
  const sockets=[];
  let control,ctrlReader,ctrlWriter,buffer="";
+ let stage="start";
  let deadlineTimer;
  const deadline=new Promise((_,reject)=>{
   deadlineTimer=setTimeout(()=>{
    for(const sock of sockets){try{sock.close()}catch{}}
-   reject(Error("FTP transport deadline exceeded"));
+   reject(Error("FTP transport deadline exceeded at "+stage));
   },MAX_FTP_SECONDS*1000);
  });
  async function run(){
   try{
+   stage="ftp-control-connect";
    control=connectFn({hostname:HOST,port:21});sockets.push(control);
    await control.opened;
+   stage="ftp-control-banner";
    ctrlReader=control.readable.getReader();ctrlWriter=control.writable.getWriter();
    async function reply(){
     let multiline=null,readBytes=0;
@@ -80,12 +83,16 @@ async function ftpRaw(operation,{connectSocket}={}){
     return out;
    }
    if((await reply()).code!==220)throw Error("BoM FTP did not welcome client");
+   stage="ftp-login";
    const user=await command("USER anonymous");
    if(user.code===331)await command("PASS stormtracker-public@example.com");
    else if(user.code!==230)throw Error("BoM FTP anonymous login declined");
+   stage="ftp-binary";
    if((await command("TYPE I")).code!==200)throw Error("FTP binary type rejected");
+   stage="ftp-directory";
    if((await command("CWD "+ROOT)).code!==250)throw Error("BoM radar directory unavailable");
    // BoM's anonymous FTP service can advertise either EPSV or classic PASV.
+   stage="ftp-passive-command";
    let passive=null,port=0;
    try{passive=await command("EPSV")}catch{}
    let portMatch=passive?.code===229?/\(\|\|\|(\d+)\|\)/.exec(passive.line):null;
@@ -97,14 +104,17 @@ async function ftpRaw(operation,{connectSocket}={}){
     port=Number(parts[5])*256+Number(parts[6]);
    }
    if(!Number.isInteger(port)||port<1024||port>65535)throw Error("Invalid FTP passive port");
+   stage="ftp-passive-data-connect";
    const data=connectFn({hostname:HOST,port});sockets.push(data);
    await data.opened;
    const reader=data.readable.getReader();
+   stage="ftp-transfer-start";
    let preliminary=await command(operation==="list"?"NLST":"RETR "+operation);
    if(preliminary.code!==150&&preliminary.code!==125)
     throw Error("FTP transfer not started: "+preliminary.code);
    const chunks=[];let count=0;
    const limit=operation==="list"?MAX_LIST_BYTES:MAX_PNG_BYTES;
+   stage="ftp-transfer-data";
    for(;;){
     const part=await reader.read();
     if(part.done)break;

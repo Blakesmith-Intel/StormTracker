@@ -15,6 +15,7 @@ on:
       - .github/workflows/publish-bom-ftp-manifest.yml
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: bom-ftp-observation-manifest
   cancel-in-progress: false
@@ -72,3 +73,36 @@ jobs:
           exit 1
       - name: Report data feed
         run: echo "Verified original FTP radar feed at https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json"
+
+  # GitHub Actions' minute-cron has not delivered any schedule events for this
+  # repository. Arm a low-cost workflow_dispatch watchdog after each run.
+  # Dispatch events created by GITHUB_TOKEN ARE allowed to trigger new Actions.
+  # If native scheduling recovers, the watchdog stands down automatically.
+  watchdog:
+    needs: publish
+    if: ${{ always() && vars.STORMTRACKER_STOP_RADAR_WATCHDOG != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    concurrency:
+      group: stormtracker-ftp-refresh-watchdog
+      cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Wait for next normal five-minute source refresh
+        run: sleep 240
+      - name: Arm next refresh only if GitHub's native scheduler has not recovered
+        run: |
+          set -euo pipefail
+          scheduled="$(gh api "repos/$GH_REPO/actions/workflows/publish-bom-ftp-manifest.yml/runs?event=schedule&per_page=1" --jq '.workflow_runs[0].created_at // empty')"
+          if [ -n "$scheduled" ]; then
+            last_schedule="$(date --date="$scheduled" +%s)"
+            now="$(date -u +%s)"
+            if [ "$last_schedule" -le "$now" ] && [ "$((now-last_schedule))" -lt 900 ]; then
+              echo "Native five-minute GitHub schedule recovered at $scheduled; watchdog standing down."
+              exit 0
+            fi
+          fi
+          echo "No recent scheduled refresh. Dispatching next original BoM FTP publication."
+          gh workflow run publish-bom-ftp-manifest.yml --ref main

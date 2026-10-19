@@ -1,8 +1,11 @@
 import {formatIncidentRefreshTime} from "./incident-refreshed-time-v1.js?v=20261017-refresh-v1";
-import {groupOutagesByLga,filterLgaGroups,councilOutageCustomerSummary,localityKey,resolveQueenslandLocalityLgas,UNKNOWN_LGA}
+import {filterLgaGroups,councilOutageCustomerSummary,localityKey,
+  resolveQueenslandLocalityLgas}
  from "./incident-lga-model-v1.js?v=council-customers-20261017-v1";
 import {powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
-import {resolveOutageCouncilNames} from "./outage-lga-geographic-fallback-v1.js?v=outage-spatial-councils-20261017-v1";
+import {groupOutagesByVerifiedGeometry,resolveOutageEventLgas,
+  uniqueOutageEvents,outageGeometrySignature}
+ from "./outage-lga-spatial-v2.js?v=outage-geometry-lga-20261020-v1";
 import {groupOutagesBySuburb,filterOutageSuburbGroups,outageLocation}
   from "./power-outage-suburb-model-v1.js?v=suburb-explorer-20261017-v1";
 
@@ -65,7 +68,9 @@ export function createPowerOutageSuburbExplorer({
       "Browse "+count+" unplanned power outages affecting "+total+" customers by council");
   }
 
-  let groups=[],suburbGroups=[],lgaCache=new Map(),attempted=new Set(),lookupBusy=false;
+  let groups=[],suburbGroups=[],unlocated=[];
+  let localityLgas=new Map(),eventLgas=new Map(),attemptedLocalities=new Set();
+  let lookupBusy=false,sourceChangedDuringLookup=false;
   let status={kind:"loading",message:"Waiting for live outage feed…"};
   let openKeys=new Set(),visibleLimit=60,hasSnapshot=false;
   let loading=false,disposed=false;
@@ -115,13 +120,15 @@ export function createPowerOutageSuburbExplorer({
     results.replaceChildren();
     const matching=filterLgaGroups(groups,search.value);
     const listed=matching.slice(0,visibleLimit);
-    const unique=new Set(matching.flatMap(g=>g.items.map(i=>i.id)));
+    const unique=new Set([...matching.flatMap(g=>g.items.map(i=>i.id)),
+      ...unlocated.map(item=>item.id)]);
     summary.textContent=hasSnapshot
-      ? `${matching.length} council areas · ${unique.size} distinct outages`
+      ? `${matching.length} verified council areas · ${unique.size} distinct outages`+
+        (unlocated.length?` · ${unlocated.length} awaiting location`:"")
       : "Waiting for outage information";
     if(!hasSnapshot){
       results.append(create("p","outage-empty","Outage data hasn't loaded. Press Refresh to retry."));
-    }else if(!matching.length){
+    }else if(!matching.length && !unlocated.length){
       results.append(create("p","outage-empty",search.value
         ? "No matching council areas, suburbs or outage details.":
           "No unplanned outages are currently reported in this feed."));
@@ -149,9 +156,8 @@ export function createPowerOutageSuburbExplorer({
       parentTitle.append(create("span","outage-suburb-name",council.name),badges);
       parent.append(parentTitle);
       const parentInner=create("div","outage-suburb-inner outage-lga-inner");
-      if(council.name===UNKNOWN_LGA)
-        parentInner.append(create("p","outage-suburb-note",
-          "Council could not be verified from the official Queensland locality data."));
+      // All listed councils are verified by intersecting the actual mapped
+      // outage geometry with Queensland Government LGA boundary polygons.
       if(totals.crossCouncilEvents)
         parentInner.append(create("p","outage-suburb-note",
           "* Shared outages can appear under multiple councils. Customer totals represent entire provider events, not customers allocated to each council."));
@@ -219,6 +225,10 @@ export function createPowerOutageSuburbExplorer({
         const attrs=create("dl","outage-event-attributes");
         field(attrs,"Status",info.status);
         field(attrs,"Street(s)",info.streets);
+        if(item.providerLocationConflicts?.length)
+          field(attrs,"Provider location conflicts",
+            item.providerLocationConflicts.join(", ")+
+            " (excluded from council placement; outside the mapped council area)");
         field(attrs,"Reason",info.reason);
         field(attrs,"Started",formatTime(info.start,info.provider));
         field(attrs,"Estimated restoration",formatTime(info.estimatedFix,info.provider));
@@ -255,60 +265,101 @@ export function createPowerOutageSuburbExplorer({
       parent.append(parentInner);
       results.append(parent);
     }
+    // Outages with no verified council are still accessible, but not
+    // incorrectly counted under any LGA. This section is not a council.
+    const awaiting=unlocated.filter(item=>{
+      const q=search.value.trim().toLocaleLowerCase("en-AU");
+      return !q || [item.id,item.summary?.suburbs,item.summary?.streets,
+        item.summary?.provider,item.summary?.eventId].some(v=>
+        String(v??"").toLocaleLowerCase("en-AU").includes(q));
+    });
+    if(awaiting.length && visibleLimit>=matching.length){
+      const section=create("details","outage-suburb outage-unlocated");
+      const heading=create("summary","outage-suburb-title",
+        `Location pending — ${awaiting.length} outage${awaiting.length===1?"":"s"}`);
+      section.append(heading);
+      const content=create("div","outage-suburb-inner");
+      content.append(create("p","outage-suburb-note",
+        "Geographic council verification is unavailable for these events. No council has been guessed or assigned."));
+      for(const item of awaiting){
+        const info=item.summary;
+        const entry=create("div","outage-suburb-note",
+          `${info.provider} · #${info.eventId||item.id} · ${number(info.customersAffected)} customers · ${info.suburbs||"No locality supplied"}`);
+        const coords=outageLocation(item.feature);
+        if(coords){
+          const btn=create("button","outage-row-locate","Show on map ↗");
+          btn.type="button";
+          btn.addEventListener("click",()=>focusPublishedOutages([item]));
+          entry.append(btn);
+        }
+        content.append(entry);
+      }
+      section.append(content);
+      results.append(section);
+    }
     more.hidden=visibleLimit>=matching.length;
     if(!more.hidden)more.textContent=`Show more council areas (${matching.length-visibleLimit} remaining)`;
   }
   let latestFeatures=[];
+  function rebuildSpatialGroups(){
+    const grouped=groupOutagesByVerifiedGeometry(suburbGroups,eventLgas,localityLgas);
+    groups=grouped.groups;unlocated=grouped.unlocated;
+  }
   function updateFeaturesFromLatest(){updateFeatures(latestFeatures);}
   function updateFeatures(features){
     latestFeatures=features;
     suburbGroups=groupOutagesBySuburb(features);
     updateSidebarCounters();
-    groups=groupOutagesByLga(suburbGroups,lgaCache);
-    // A missing or ambiguous locality remains explicitly unverified.
-    // Locality attributes are looked up only for names present in the SAME feed.
-    const unknown=suburbGroups.map(g=>g.name).filter(name=>{
+    rebuildSpatialGroups();
+    // Exact event geometry is the primary LGA evidence. Official locality
+    // attributes ONLY validate labels inside each event's council boundary.
+    const pendingNames=suburbGroups.map(g=>g.name).filter(name=>{
       const key=localityKey(name);
-      return key!=="SUBURB NOT SUPPLIED"&&(!lgaCache.has(key)||lgaCache.get(key)===UNKNOWN_LGA)&&!attempted.has(key);
+      return key!=="SUBURB NOT SUPPLIED"&&!localityLgas.has(key)&&
+        !attemptedLocalities.has(key);
     });
-    if(unknown.length&&!lookupBusy){
-      unknown.forEach(name=>attempted.add(localityKey(name)));
+    const pendingGeometry=[...uniqueOutageEvents(suburbGroups)].some(([id,item])=>{
+      const cached=eventLgas.get(id);
+      return cached?.signature!==outageGeometrySignature(item.feature);
+    });
+    if(lookupBusy){
+      if(pendingNames.length||pendingGeometry)sourceChangedDuringLookup=true;
+    }else if(pendingNames.length||pendingGeometry){
+      for(const name of pendingNames)attemptedLocalities.add(localityKey(name));
       lookupBusy=true;
-      state.textContent=(status.message||"")+" · Verifying council areas…";
-      resolveOutageCouncilNames(unknown,suburbGroups,{existing:lgaCache}).then(result=>{
+      state.textContent=(status.message||"")+" · Verifying mapped council boundaries…";
+      const currentSuburbGroups=suburbGroups;
+      Promise.allSettled([
+        resolveOutageEventLgas(currentSuburbGroups,{existing:eventLgas}),
+        pendingNames.length?resolveQueenslandLocalityLgas(pendingNames):Promise.resolve(new Map())
+      ]).then(([eventResult,localityResult])=>{
         if(disposed)return;
-        for(const [key,value] of result)lgaCache.set(key,value);
-        groups=groupOutagesByLga(suburbGroups,lgaCache);
-        const verified=groups.filter(group=>group.name!==UNKNOWN_LGA).length;
-        const stillUnknown=groups.some(group=>group.name===UNKNOWN_LGA);
-        state.textContent=(status.message||"")+" · "+verified+" LGAs verified"+
-          (stillUnknown?" · Unresolved locations retained":"");
+        if(eventResult.status==="fulfilled")eventLgas=eventResult.value;
+        else console.warn("Outage LGA polygon lookup unavailable:",eventResult.reason);
+        if(localityResult.status==="fulfilled"){
+          for(const [name,value] of localityResult.value)localityLgas.set(name,value);
+        }else console.warn("Outage locality verification unavailable:",localityResult.reason);
+        rebuildSpatialGroups();
+        state.textContent=(status.message||"")+" · "+groups.length+
+          " verified council areas"+
+          (unlocated.length?` · ${unlocated.length} locations pending`:"");
         if(dialog.open)render();
-      }).catch(error=>{
-        console.warn("Official outage LGA lookup unavailable:",error.message);
-        state.textContent=(status.message||"")+" · Council lookup unavailable (unverified shown)";
       }).finally(()=>{
         lookupBusy=false;
-        // A newer outage snapshot may have arrived while the lookup was in
-        // progress. Resolve its additional localities without waiting for
-        // another 15-minute polling cycle.
-        if(!disposed && hasSnapshot){
-          const remaining=suburbGroups.map(g=>g.name).filter(name=>{
-            const key=localityKey(name);
-            return key!=="SUBURB NOT SUPPLIED"&&!lgaCache.has(key)&&!attempted.has(key);
-          });
-          if(remaining.length)updateFeaturesFromLatest();
+        if(!disposed&&sourceChangedDuringLookup){
+          sourceChangedDuringLookup=false;
+          updateFeaturesFromLatest();
         }
       });
     }
-    hasSnapshot=true; // [] from the layer means none, or stale data was removed.
+    hasSnapshot=true;
     if(dialog.open)render();
   }
   function updateStatus(next){
     if(next)status=next;
   const checkedAt=Number(status.loadedAt);
   if(Number.isFinite(checkedAt) && checkedAt>0)lastSuccessfulAt=checkedAt;
-    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||"")){hasSnapshot=false;groups=[];suburbGroups=[];openKeys.clear();}
+    if(status.kind==="error" && /source expired|old outage markers removed/i.test(status.message||"")){hasSnapshot=false;groups=[];suburbGroups=[];unlocated=[];openKeys.clear();}
     const kind=status.kind||"normal";
     state.dataset.kind=kind;
     state.textContent=status.message||"Current unplanned outage data";
@@ -335,7 +386,9 @@ export function createPowerOutageSuburbExplorer({
   const onOpen=()=>{
     // Give a previously failed official lookup another chance whenever the
     // user opens this panel, without a hot-loop of automatic retries.
-    attempted.clear();
+    attemptedLocalities.clear();
+    // Retry failures, not already verified immutable event footprints.
+    eventLgas=new Map([...eventLgas].filter(([,v])=>v?.councils?.length));
     if(hasSnapshot)updateFeaturesFromLatest();
     open();
   };
@@ -344,7 +397,8 @@ export function createPowerOutageSuburbExplorer({
   const onMore=()=>{visibleLimit+=60;render();};
   const onRefresh=()=>{
     if(loading)return;
-    attempted.clear();
+    attemptedLocalities.clear();
+    eventLgas=new Map([...eventLgas].filter(([,v])=>v?.councils?.length));
     loading=true;reload.disabled=true;
     refresh().catch(()=>{
       if(!hasSnapshot)state.textContent="Unable to load outages. Try Refresh.";

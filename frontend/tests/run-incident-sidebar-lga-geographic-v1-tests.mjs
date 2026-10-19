@@ -72,7 +72,8 @@ for(const key of ["sidebarPowerOutageCount","sidebarPowerCustomerCount",
 assert.match(html,/incident-button-name/);
 assert.match(html,/incident-button-numbers/);
 assert.match(css,/grid-template-columns:minmax\(0,1fr\)!important/);
-assert.match(sourcePower,/resolveOutageCouncilNames\(unknown,suburbGroups/);
+assert.match(sourcePower,/groupOutagesByVerifiedGeometry\(suburbGroups,eventLgas,localityLgas\)/);
+assert.doesNotMatch(sourcePower,/LGA not verified/);
 assert.match(sourcePower,/for\(const item of suburb\.items\)if\(!seen\.has\(item\.id\)\)/);
 assert.match(sourcePower,/sidebarCustomers\.textContent/);
 assert.match(sourceRoad,/sidebarCount\.textContent/);

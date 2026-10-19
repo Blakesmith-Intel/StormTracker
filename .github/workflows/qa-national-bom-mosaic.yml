@@ -26,6 +26,7 @@ jobs:
           node --check frontend/src/bom-wmts-published-times-v1.js
           node --check scripts/probe-live-national-bom-mosaic-v1.mjs
           node scripts/test-national-source-policy-v1.mjs
+          python scripts/test-ftp-publisher-sha-reuse-v1.py
           npm test
       - name: Probe official documented national products from permitted data services
         run: python scripts/probe-official-national-products.py

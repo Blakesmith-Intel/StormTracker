@@ -1,0 +1,346 @@
+{
+  "schema": "StormTrackerBoMFtpReflectivityManifestV1",
+  "generatedUtc": "2026-10-19T01:06:48.955878Z",
+  "siteFrameHistory": {
+    "08": [
+      {
+        "observedUtc": "2026-10-19T00:24:00Z",
+        "filename": "IDR083.T.202610190024.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190024.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:29:00Z",
+        "filename": "IDR083.T.202610190029.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190029.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:34:00Z",
+        "filename": "IDR083.T.202610190034.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190034.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:39:00Z",
+        "filename": "IDR083.T.202610190039.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190039.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:44:00Z",
+        "filename": "IDR083.T.202610190044.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190044.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:49:00Z",
+        "filename": "IDR083.T.202610190049.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190049.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:54:00Z",
+        "filename": "IDR083.T.202610190054.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190054.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:59:00Z",
+        "filename": "IDR083.T.202610190059.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190059.png",
+        "mapFile": "IDR083.map"
+      },
+      {
+        "observedUtc": "2026-10-19T01:04:00Z",
+        "filename": "IDR083.T.202610190104.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR083.T.202610190104.png",
+        "mapFile": "IDR083.map"
+      }
+    ],
+    "50": [
+      {
+        "observedUtc": "2026-10-19T00:24:00Z",
+        "filename": "IDR503.T.202610190024.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190024.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:29:00Z",
+        "filename": "IDR503.T.202610190029.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190029.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:34:00Z",
+        "filename": "IDR503.T.202610190034.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190034.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:39:00Z",
+        "filename": "IDR503.T.202610190039.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190039.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:44:00Z",
+        "filename": "IDR503.T.202610190044.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190044.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:49:00Z",
+        "filename": "IDR503.T.202610190049.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190049.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:54:00Z",
+        "filename": "IDR503.T.202610190054.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190054.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:59:00Z",
+        "filename": "IDR503.T.202610190059.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190059.png",
+        "mapFile": "IDR503.map"
+      },
+      {
+        "observedUtc": "2026-10-19T01:04:00Z",
+        "filename": "IDR503.T.202610190104.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR503.T.202610190104.png",
+        "mapFile": "IDR503.map"
+      }
+    ],
+    "66": [
+      {
+        "observedUtc": "2026-10-19T00:24:00Z",
+        "filename": "IDR663.T.202610190024.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190024.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:29:00Z",
+        "filename": "IDR663.T.202610190029.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190029.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:34:00Z",
+        "filename": "IDR663.T.202610190034.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190034.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:39:00Z",
+        "filename": "IDR663.T.202610190039.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190039.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:44:00Z",
+        "filename": "IDR663.T.202610190044.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190044.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:49:00Z",
+        "filename": "IDR663.T.202610190049.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190049.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:54:00Z",
+        "filename": "IDR663.T.202610190054.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190054.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:59:00Z",
+        "filename": "IDR663.T.202610190059.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190059.png",
+        "mapFile": "IDR663.map"
+      },
+      {
+        "observedUtc": "2026-10-19T01:04:00Z",
+        "filename": "IDR663.T.202610190104.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR663.T.202610190104.png",
+        "mapFile": "IDR663.map"
+      }
+    ],
+    "28": [
+      {
+        "observedUtc": "2026-10-19T00:24:00Z",
+        "filename": "IDR283.T.202610190024.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190024.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:29:00Z",
+        "filename": "IDR283.T.202610190029.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190029.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:34:00Z",
+        "filename": "IDR283.T.202610190034.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190034.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:39:00Z",
+        "filename": "IDR283.T.202610190039.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190039.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:44:00Z",
+        "filename": "IDR283.T.202610190044.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190044.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:49:00Z",
+        "filename": "IDR283.T.202610190049.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190049.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:54:00Z",
+        "filename": "IDR283.T.202610190054.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190054.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:59:00Z",
+        "filename": "IDR283.T.202610190059.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190059.png",
+        "mapFile": "IDR283.map"
+      },
+      {
+        "observedUtc": "2026-10-19T01:04:00Z",
+        "filename": "IDR283.T.202610190104.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR283.T.202610190104.png",
+        "mapFile": "IDR283.map"
+      }
+    ],
+    "53": [
+      {
+        "observedUtc": "2026-10-19T00:24:00Z",
+        "filename": "IDR533.T.202610190024.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190024.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:29:00Z",
+        "filename": "IDR533.T.202610190029.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190029.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:34:00Z",
+        "filename": "IDR533.T.202610190034.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190034.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:39:00Z",
+        "filename": "IDR533.T.202610190039.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190039.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:44:00Z",
+        "filename": "IDR533.T.202610190044.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190044.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:49:00Z",
+        "filename": "IDR533.T.202610190049.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190049.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:54:00Z",
+        "filename": "IDR533.T.202610190054.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190054.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:59:00Z",
+        "filename": "IDR533.T.202610190059.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190059.png",
+        "mapFile": "IDR533.map"
+      },
+      {
+        "observedUtc": "2026-10-19T01:04:00Z",
+        "filename": "IDR533.T.202610190104.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR533.T.202610190104.png",
+        "mapFile": "IDR533.map"
+      }
+    ],
+    "93": [
+      {
+        "observedUtc": "2026-10-19T00:24:00Z",
+        "filename": "IDR933.T.202610190024.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190024.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:29:00Z",
+        "filename": "IDR933.T.202610190029.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190029.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:34:00Z",
+        "filename": "IDR933.T.202610190034.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190034.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:39:00Z",
+        "filename": "IDR933.T.202610190039.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190039.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:44:00Z",
+        "filename": "IDR933.T.202610190044.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190044.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:49:00Z",
+        "filename": "IDR933.T.202610190049.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190049.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:54:00Z",
+        "filename": "IDR933.T.202610190054.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190054.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T00:59:00Z",
+        "filename": "IDR933.T.202610190059.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190059.png",
+        "mapFile": "IDR933.map"
+      },
+      {
+        "observedUtc": "2026-10-19T01:04:00Z",
+        "filename": "IDR933.T.202610190104.png",
+        "imageUrl": "https://www.bom.gov.au/radar/IDR933.T.202610190104.png",
+        "mapFile": "IDR933.map"
+      }
+    ]
+  },
+  "missingOrStaleSites": [],
+  "source": "ftp.bom.gov.au:/anon/gen/radar",
+  "sourceKind": "filename-discovery-only",
+  "maxSourceAgeMinutes": 45
+}

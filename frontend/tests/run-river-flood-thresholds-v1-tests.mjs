@@ -3,7 +3,33 @@ import {parseQldOfficialFloodLevels,observedFloodClass,
   withStationFloodLevels,stationFloodLevels,VERIFIED_STATEWIDE_FLOOD_LEVELS}
   from "../src/context-layers/river-flood-thresholds-v1.js";
 import {evaluateFloodSignal} from "../src/context-layers/river-flood-signals-v1.js";
+import {VERIFIED_MAY_2026_STAGES}
+  from "../src/context-layers/river-flood-stages-2026-verified-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
+// Regression against the NEWER May 2026 BoM Service Level Specification.
+// The 2022 catalogue, a persisted feature or a stale relay must never
+// override current explicitly verified flood stage for the same station ID.
+for(const [id,expected] of Object.entries({
+  "bom:540610":{minor:98.1,moderate:100.7,major:102.3},
+  "bom:540057":{minor:76.2,moderate:77.7,major:79.2},
+  "bom:539066":{minor:111.5,moderate:115,major:121},
+  "bom:540646":{minor:41.5,moderate:42,major:42.5}
+})){
+  assert.deepEqual(VERIFIED_MAY_2026_STAGES[id],expected);
+  assert.deepEqual(stationFloodLevels({id,properties:{
+    STORMTRACKER_MINOR_FLOOD_METRES:3,
+    STORMTRACKER_MODERATE_FLOOD_METRES:6,
+    STORMTRACKER_MAJOR_FLOOD_METRES:7.8
+  }},{"bom:540610":{minor:3.6,moderate:6.2,major:7.8}}),expected);
+  const staged=withStationFloodLevels([{id,properties:{}}])[0];
+  assert.deepEqual([staged.properties.STORMTRACKER_MINOR_FLOOD_METRES,
+    staged.properties.STORMTRACKER_MODERATE_FLOOD_METRES,
+    staged.properties.STORMTRACKER_MAJOR_FLOOD_METRES],
+    [expected.minor,expected.moderate,expected.major]);
+  assert.equal(staged.properties.STORMTRACKER_THRESHOLD_SOURCE_DATE,"2026-05");
+  assert.equal(observedFloodClass(expected.major-0.01,expected),"moderate");
+  assert.equal(observedFloodClass(expected.major,expected),"major");
+}
 assert.equal(Object.keys(VERIFIED_STATEWIDE_FLOOD_LEVELS).length,1080,
   "Complete source-backed Queensland BoM fixed-width reference must be bundled");
 assert.deepEqual(VERIFIED_STATEWIDE_FLOOD_LEVELS["bom:535142"],

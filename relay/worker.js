@@ -16,6 +16,8 @@ import {
 import {
   parseRiverHeightBulletin
 } from "../frontend/src/context-layers/river-height-bulletin-v1.js";
+import {VERIFIED_MAY_2026_STAGES}
+  from "../frontend/src/context-layers/river-flood-stages-2026-verified-v1.js";
 import {FLOOD_LEVEL_SOURCE,FLOOD_LEVEL_FETCH_SOURCE,
   VERIFIED_STATEWIDE_FLOOD_LEVELS,
   parseQldOfficialFloodLevels,VERIFIED_FLOOD_LEVELS}
@@ -830,7 +832,8 @@ async function relayQldFloodThresholds(request,origin){
   }
   // The full BoM classification catalogue is bundled. Never let the
   // upstream 403 silently reduce 1080 stations to four in production.
-  const full={...VERIFIED_STATEWIDE_FLOOD_LEVELS,...levels};
+  const full={...VERIFIED_STATEWIDE_FLOOD_LEVELS,...levels,
+    ...VERIFIED_MAY_2026_STAGES};
   for(const [id,threshold] of Object.entries(VERIFIED_FLOOD_LEVELS))
     if(!full[id])full[id]=threshold;
   const headers=corsHeaders(origin);
@@ -842,6 +845,7 @@ async function relayQldFloodThresholds(request,origin){
     complete:Object.keys(full).length>=1080,
     liveRefreshSucceeded:Object.keys(levels).length>=100,
     statewideThresholdCount:Object.keys(full).length,
+    newerMay2026Verified:Object.keys(VERIFIED_MAY_2026_STAGES).length,
     thresholds:full
   }),{status:200,headers});
 }

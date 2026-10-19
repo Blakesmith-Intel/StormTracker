@@ -232,6 +232,8 @@ assert "NATIVE_DOPPLER_ANNOTATION_START_ROW = 480" in (
     site / "src/native-doppler-image-v1.js").read_text()
 assert "for (let col = 0; col < size; col++)" in (
     site / "src/native-doppler-image-v1.js").read_text()
+assert "NATIVE_DOPPLER_STRICT_PALETTE_START_ROW" not in (
+    site / "src/native-doppler-image-v1.js").read_text()
 assert "if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;" not in (
     site / "src/native-doppler-image-v1.js").read_text()
 assert "sameMappedRuralPlace(" in (
@@ -278,6 +280,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS 2026-10-18\n")
     record.write("DOPPLER MULTISITE STABLE HANDOVER AND 112KM SOUTH COVERAGE 2026-10-19\n")
     record.write("DOPPLER FULL 128KM SOUTH FULL-PANEL PALETTE SCREENING + RURAL LABEL DEDUP 2026-10-19\n")
+    record.write("RICHMOND REAL PIXEL PALETTE TOLERANCE ALL ROWS NO ROW 438 EXCLUSION 2026-10-19\n")
     record.write("WMTS ALL RADARS SOURCE-PUBLISHED TIME DIMENSION 2026-10-18 (no speculative timestamp probes)\n")
     record.write("WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18\n")
     record.write("ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN 2026-10-18\n")
@@ -540,6 +543,7 @@ grep -Fq 'SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' "_site/src/multi-doppler-displa
 grep -Fq 'committedUtc=utc' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'holdIsValid(s,utc)' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'NATIVE_DOPPLER_ANNOTATION_START_ROW = 480' "_site/src/native-doppler-image-v1.js"
+! grep -Fq 'NATIVE_DOPPLER_STRICT_PALETTE_START_ROW' "_site/src/native-doppler-image-v1.js"
 ! grep -Fq 'if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;' "_site/src/native-doppler-image-v1.js"
 grep -Fq 'sameMappedRuralPlace(' "_site/src/context-layers/qld-town-label-layer-v1.js"
 grep -Fq 'IDR93I' "_site/src/border-radar-sites-v1.js"

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
+import {lonLatToDopplerMapCoordinate} from "../src/bom-doppler-georef-v1.js";
 import { extractNativeDopplerPanel, reprojectNativeDopplerPanel,
   NATIVE_DOPPLER_DISPLAY_SIZE, NATIVE_DOPPLER_ANNOTATION_START_ROW,
-  NATIVE_DOPPLER_STRICT_PALETTE_START_ROW,
   nativeDopplerDisplayFooterOpacity,
   isNativeDopplerDisplayAnnotationRow } from "../src/native-doppler-image-v1.js";
 const source = {width:524, height:564, data:new Uint8ClampedArray(524*564*4)};
@@ -37,7 +37,6 @@ assert.ok([...seen].every(rgb=>rgb==="0,0,255"||rgb==="255,0,0"),
   "raster contains only unchanged native BoM colours; no hybrid repaint");
 // The source covers a nominal ±128 km: the display must never crop its
 // southern rows even where BoM's embedded caption shares those same rows.
-assert.equal(NATIVE_DOPPLER_STRICT_PALETTE_START_ROW,438);
 assert.equal(NATIVE_DOPPLER_ANNOTATION_START_ROW,480);
 assert.equal(nativeDopplerDisplayFooterOpacity(437),1);
 assert.equal(nativeDopplerDisplayFooterOpacity(438),1);
@@ -56,11 +55,28 @@ dot(6+300,6+479,[0,0,255]); // ~111.5 km, last fully valid source row
 dot(6+300,6+480,[255,0,0]); // first annotation-risk row, STILL native wind
 dot(6+300,6+500,[255,0,0]); // measured wind coexists with caption row
 dot(6+300,6+511,[0,0,255]); // genuine velocity at southmost 128 km edge
+dot(6+302,6+437,[250,4,0]); // non-exact genuine palette source colour
+dot(6+302,6+438,[250,4,0]); // formerly killed by exact-only rule
+dot(6+302,6+479,[250,4,0]); // genuine near-match survives caption zone
+dot(6+302,6+500,[250,4,0]); // real wind south of Corfield
+dot(6+302,6+511,[250,4,0]); // near-colour velocity at extreme southern edge
 dot(6+301,6+500,[0,0,0]); // printed black BoM caption, not velocity
-dot(6+301,6+470,[250,4,0]); // near-colour anti-alias is not verified weather
+dot(6+301,6+470,[250,4,0]); // BoM near-colour velocity in southern quarter
 dot(6+301,6+300,[250,4,0]); // unchanged legacy palette matching above margin
+// Official Richmond radar is near -20.751 S / 143.141 E; Corfield town
+// is near -21.717 S / 143.383 E. Southern data there maps into the OLD
+// exact-only 438–511 strip, precisely where user saw coverage vanish.
+const corfieldOnRichmond=lonLatToDopplerMapCoordinate("107",143.383,-21.717);
+assert.ok(corfieldOnRichmond.row>438&&corfieldOnRichmond.row<512,
+  "Real Corfield lies INSIDE the valid southern 128 km Doppler panel");
+const corfieldRow=Math.floor(corfieldOnRichmond.row);
+const corfieldColumn=Math.floor(corfieldOnRichmond.column);
+dot(6+corfieldColumn,6+corfieldRow,[250,4,0]);
 const originalSource=new Uint8ClampedArray(source.data);
 const cleaned=extractNativeDopplerPanel(source,palette);
+assert.equal(cleaned.data[(corfieldRow*512+corfieldColumn)*4+3],255,
+  "Actual mapped Corfield source pixel must survive non-exact palette matching");
+
 assert.equal(cleaned.data[(437*512+300)*4+3],255);
 assert.equal(cleaned.data[(438*512+300)*4+3],255);
 assert.equal(cleaned.data[(470*512+300)*4+3],255);
@@ -71,8 +87,11 @@ assert.equal(cleaned.data[(511*512+300)*4+3],255,
   "A flat horizontal image cutoff cannot remove the 128 km south edge");
 assert.equal(cleaned.data[(500*512+301)*4+3],0,
   "Black embedded caption ink cannot be interpreted as measured velocity");
-assert.equal(cleaned.data[(470*512+301)*4+3],0,
-  "Antialiased source-text ink is excluded in the annotation-prone margin");
+assert.equal(cleaned.data[(470*512+301)*4+3],255,
+  "Real BoM near-palette colours must NOT vanish at row 438");
+for (const row of [437,438,479,500,511])
+  assert.equal(cleaned.data[(row*512+302)*4+3],255,
+    "A genuine non-exact velocity colour must survive ALL rows, including "+row);
 assert.equal(cleaned.data[(300*512+301)*4+3],255,
   "General genuine imagery keeps its established colour matching");
 for(let i=3;i<cleaned.data.length;i+=4)
@@ -83,4 +102,4 @@ assert.equal(rawSource.data[(480*512+300)*4+3],255,
   "Uncropped source remains independently available for analysis");
 assert.deepEqual(source.data,originalSource,
   "Display masking must never alter source observations");
-console.log("PASS FULL native 128km southern Doppler range, per-pixel caption screening and unchanged source.");
+console.log("PASS 128km Doppler range: genuine near-palette pixels survive rows 438-511; black footer rejected.");

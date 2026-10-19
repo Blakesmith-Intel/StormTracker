@@ -7,11 +7,12 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
-// The complete source panel represents the 128 km radius in every direction.
-// Do NOT remove entire rows to hide the BoM timestamp: rows 480–511 may also
-// contain authentic southern weather. Instead reject non-palette caption ink
-// pixel by pixel. The annotation band is metadata only, NOT a crop boundary.
-export const NATIVE_DOPPLER_STRICT_PALETTE_START_ROW = 438;
+// A full 512×512 BoM panel represents the 128 km radial-velocity product.
+// Every source row uses the SAME velocity-palette tolerance. An old special
+// "exact-only" rule after row 438 silently rejected genuine Doppler colours
+// in the southern quarter, even after the full-width crop was removed.
+// Caption lettering/background remains excluded by the ordinary calibrated
+// velocity-palette match and zero-wind rule. No geographic strip is masked.
 export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 480;
 export function nativeDopplerDisplayFooterOpacity(row) {
   // A physically present, source-matched velocity pixel is fully opaque right
@@ -32,8 +33,8 @@ export function isNativeDopplerDisplayAnnotationRow(row) {
 // This crop accepts both original 524 × 564 GIFs and bare 512 × 512 panels.
 export function extractNativeDopplerPanel(imageData, palette, {
   includeZero = false,
-  // Pixel-screen bottom-of-panel caption ink. Preserve all genuine velocity
-  // swatches, including beneath the text and at the southern 128 km edge.
+  // Kept for call-site compatibility. Screening never deletes any rows:
+  // palette matching removes non-wind annotation pixels at every latitude.
   maskAnnotationRows = true
 } = {}) {
   const layout = historicalPanelLayout(imageData.width, imageData.height);
@@ -50,10 +51,10 @@ export function extractNativeDopplerPanel(imageData, palette, {
       const rgb = [imageData.data[from], imageData.data[from + 1], imageData.data[from + 2]];
       const swatch = nearestPaletteMatch(rgb, palette);
       if (!swatch || (!includeZero && swatch.velocity_kmh === 0)) continue;
-      // In the potentially annotated margin, accept only an EXACT source
-      // Doppler swatch. The black/grey/antialiased BoM caption is not velocity.
-      if(maskAnnotationRows && row >= NATIVE_DOPPLER_STRICT_PALETTE_START_ROW &&
-         swatch.match_mode !== "exact") continue;
+      // Never switch to exact-only matching in southern rows: authentic BoM
+      // PNG pixels can be near palette colours, including south of Corfield.
+      // Caption ink is filtered using the same calibrated colour classifier
+      // as everywhere else, not by deleting any map area.
       const to = (row * size + col) * 4;
       data[to] = rgb[0];
       data[to + 1] = rgb[1];

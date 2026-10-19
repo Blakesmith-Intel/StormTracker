@@ -27,6 +27,11 @@ import {
 } from "./river-official-flood-persistence-v1.js?v=20261018-stage-persistence";
 
 import {
+  LATEST_RIVER_GAUGE_STORAGE_KEY,cleanLatestGaugeObservations,
+  retainLatestGaugeObservations
+} from "./river-gauge-latest-v1.js?v=20261019-fresh-observation-v1";
+
+import {
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
   classifyBoMRecentHistoryFailure,
@@ -215,6 +220,11 @@ export function createRiverGaugeLayer({
   let history = {};
   let floodEvents={};
   let confirmedFloodCache={};
+  let latestHeightCache={};
+  try{
+    latestHeightCache=cleanLatestGaugeObservations(
+      JSON.parse(storage?.getItem(LATEST_RIVER_GAUGE_STORAGE_KEY)??"{}"),now());
+  }catch{latestHeightCache={};}
   try {
     confirmedFloodCache=cleanConfirmedFloodStations(
       JSON.parse(storage?.getItem(OFFICIAL_FLOOD_STORAGE_KEY)??"{}"),now()
@@ -481,6 +491,12 @@ export function createRiverGaugeLayer({
       false
   } = {}) {
     if (loading) {
+      if(force){
+        // A manual click arriving during a scheduled fetch must still make
+        // its OWN uncached source request after the ongoing one completes.
+        try{await loading;}catch{}
+        return refresh({force:true});
+      }
       return loading;
     }
 
@@ -496,8 +512,14 @@ export function createRiverGaugeLayer({
 
         const result =
           await loadRiverGaugeOperationalSnapshot({
-            fetchImpl
+            fetchImpl,force
           });
+        const newest=retainLatestGaugeObservations(
+          result.payload.features,latestHeightCache,now());
+        latestHeightCache=newest.cache;
+        result.payload.features=newest.features;
+        try{storage?.setItem(LATEST_RIVER_GAUGE_STORAGE_KEY,
+          JSON.stringify(latestHeightCache));}catch{}
 
         const observedAt = now();
         history = cleanFloodSignalHistory(history, observedAt);

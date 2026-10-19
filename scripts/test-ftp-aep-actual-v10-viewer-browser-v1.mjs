@@ -135,13 +135,14 @@ try{
   title:document.getElementById("significantRainfallInfoTitle")?.textContent,
   status:document.getElementById("significantRainfallStatus")?.textContent,
   visibleMarkerCount:v.dataSources._dataSources.find(x=>x.name==="significant-rainfall").entities.values.length,
-  ftpFirst:globalThis.__STORMTRACKER_FTP_FIRST===true,cesium:!!window.Cesium}
+  nationalPrimary:globalThis.__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY===true,
+  noFtpFirst:globalThis.__STORMTRACKER_FTP_FIRST!==true,cesium:!!window.Cesium}
  });
  assert(actual.title.includes("Adavale"));
  assert(actual.popup.includes("50.0 mm"));
  assert(actual.popup.includes("10% AEP"),"Observed local 50mm not identified as Adavale's 10% AEP design rainfall");
  assert(actual.popup.includes("QA19501"));
- assert(actual.ftpFirst);
+ assert(actual.nationalPrimary&&actual.noFtpFirst,"Production viewer must use national-first radar policy");
  assert.equal(actual.visibleMarkerCount,1,"50mm Gold Coast must not appear as a ≥20% AEP rainfall event");
  assert.deepEqual(failedModules,[],"Missing source module after staged Pages build");
  assert.deepEqual(errors,[],"Uncaught production app JS errors");

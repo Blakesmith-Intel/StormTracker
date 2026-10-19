@@ -1,37 +1,52 @@
 import assert from "node:assert/strict";
 import {discoverBoundedBomReflectivityHistory}
-  from "../src/bom-wmts-loop-v2.js";
+ from "../src/bom-wmts-loop-v2.js";
 const now=Date.parse("2026-10-13T05:15:00Z");
 const times=Array.from({length:8},(_,i)=>
-  new Date(Date.parse("2026-10-13T04:30:00Z")+i*300000)
-    .toISOString().replace(".000Z","Z"));
-let fetches=0,probeCalls=0;
+ new Date(Date.parse("2026-10-13T04:30:00Z")+i*300000)
+   .toISOString().replace(".000Z","Z"));
+let fetches=0,probeCalls=0,fallBacks=0;
+const verified=async(time,region)=>{
+ probeCalls++;
+ assert(times.includes(time));
+ assert.equal(region,"SEQ");
+ return true;
+};
+const archive=async()=>{fallBacks++;return [times.at(-1)]};
 const available=await discoverBoundedBomReflectivityHistory(
-  now,180,"SEQ",{publishedTimes:async()=>{fetches++;return [...times];}}
+ now,180,"SEQ",{publishedTimes:async()=>{fetches++;return [...times]},
+ verifyNationalTile:verified,ftpHistory:archive}
 );
-assert.deepEqual(available,times,"Only published BoM time dimension is accepted");
-assert.equal(fetches,1,"One capabilities lookup instead of guessed WMTS tile queries");
-assert.equal(probeCalls,0,"No speculative pixel probes per site or timestamp");
-assert.equal(available.length,8);
-let failures=0;
-await assert.rejects(
-  discoverBoundedBomReflectivityHistory(now,180,"SEQ",{publishedTimes:async()=>{
-    failures++;return [];
-  }}),/No verified current BoM reflectivity timestamp/);
-assert.equal(failures,1,"One empty capabilities result; no cascade of 400 tile requests");
-let denials=0;
-await assert.rejects(
-  discoverBoundedBomReflectivityHistory(now,180,"SEQ",{publishedTimes:async()=>{
-    denials++;throw Error("BoM WMTS capabilities HTTP 403");
-  }}),/HTTP 403/);
-assert.equal(denials,1,"A service denial never triggers guessed timestamps");
-const partial=await discoverBoundedBomReflectivityHistory(
-  now,180,"66",{publishedTimes:async()=>[times.at(-1)]}
-);
+assert.deepEqual(available,times,
+ "Only official published national timestamps with a real verified tile are accepted");
+assert.equal(fetches,1,"One official GetCapabilities lookup");
+assert.equal(probeCalls,1,"One source PNG probe rather than speculative tile storms");
+assert.equal(fallBacks,0,"Verified national feed never mixes in old FTP source times");
+const empty=await discoverBoundedBomReflectivityHistory(now,180,"SEQ",{
+ publishedTimes:async()=>[],verifyNationalTile:verified,ftpHistory:archive
+});
+assert.deepEqual(empty,[times.at(-1)],
+ "Empty WMTS capabilities must fall back to actual FTP source frames");
+assert.equal(probeCalls,1,"No guessed WMTS requests when capabilities are empty");
+let denied=0;
+const deniedResult=await discoverBoundedBomReflectivityHistory(now,180,"SEQ",{
+ publishedTimes:async()=>{denied++;throw Error("BoM WMTS capabilities HTTP 403")},
+ verifyNationalTile:verified,ftpHistory:archive
+});
+assert.deepEqual(deniedResult,[times.at(-1)]);
+assert.equal(denied,1);
+assert.equal(fallBacks,2);
+const partial=await discoverBoundedBomReflectivityHistory(now,180,"66",{
+ publishedTimes:async()=>[times.at(-1)],
+ verifyNationalTile:async(time,region)=>{
+  assert.equal(region,"66");assert.equal(time,times.at(-1));return true;
+ },
+ ftpHistory:archive
+});
 assert.deepEqual(partial,[times.at(-1)]);
-const thirty=await discoverBoundedBomReflectivityHistory(
-  now,30,"SEQ",{publishedTimes:async()=>times}
-);
-assert.equal(thirty.length,7,"Requested horizon still limits true observations");
+const thirty=await discoverBoundedBomReflectivityHistory(now,30,"SEQ",{
+ publishedTimes:async()=>times,verifyNationalTile:verified,ftpHistory:archive
+});
+assert.equal(thirty.length,7);
 assert.equal(thirty[0],"2026-10-13T04:35:00Z");
-console.log("PASS nine-frame published BoM WMTS times, single metadata request, no 400 tile probe storms, source failure honesty and 30-minute horizon.");
+console.log("PASS national observed-only WMTS verification, no guessed timestamps, FTP fallback when WMTS is stale, 30-minute window");

@@ -8,8 +8,6 @@ import {fetchReadableImage} from "./radar-source.js";
 
 const MANIFEST="https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json";
 const FRAME_BASE="https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/frames/";
-const LIVE_MANIFEST="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/ftp-live-manifest";
-const LIVE_FRAME_BASE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/ftp-live-frame?file=";
 const COLOURS=new Map(BOM_REFLECTIVITY_RGB.map(x=>[x.rgb.join(","),x.value]));
 const EARTH=6371008.8, MERC=6378137, RAD=Math.PI/180;
 let cached=null,cachedAt=0;
@@ -17,55 +15,35 @@ const siteIds=region=>region==="SEQ"?["08","50","66"]:[String(region)];
 const validTime=(s,now=Date.now())=>{const t=Date.parse(s);return Number.isFinite(t)&&t<=now+5*60000&&t>=now-45*60000};
 export async function publishedFtpManifest({now=Date.now(),fetcher=fetch}={}){
  if(cached&&now-cachedAt<45000)return cached;
- // GitHub's original, byte-identical FTP archive is the verified fast path.
- // The direct Cloudflare TCP FTP transport opens but fails to receive BoM's
- // 220 banner, so it MUST NOT block loading every radar frame for 22 seconds.
- let staticError=null;
- try{
-  // GitHub raw CDN may serve an outdated branch HEAD even with cache:no-store.
-  // The five-minute bucket changes the actual CDN cache key without changing
-  // the immutable source-frame URLs or inventing an observation timestamp.
-  const url=MANIFEST+"?refresh="+Math.floor(now/300000);
-  const response=await fetcher(url,{cache:"no-store",
-   signal:AbortSignal.timeout(6500)});
-  if(!response.ok)throw Error("FTP archive HTTP "+response.status);
-  const m=await response.json();
-  if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||
-   m.sourceKind!=="ftp-original-png-byte-identical-static-archive"||
-   !m.siteFrameHistory||!m.siteGeoreference)
-    throw Error("Unrecognised BoM FTP static archive");
-  if(!Number.isFinite(Date.parse(m.generatedUtc))||
-    now-Date.parse(m.generatedUtc)>60*60000)
-    throw Error("BoM FTP discovery manifest stale");
-  cached=m;cachedAt=now;return m;
- }catch(error){staticError=error;}
- // Last-resort optional direct FTP. Bounded tightly because BoM's FTP
- // control greeting currently stalls over Cloudflare's outbound TCP path.
- let liveError=null;
- try{
-  const response=await fetcher(LIVE_MANIFEST,{cache:"no-store",
-   signal:AbortSignal.timeout(4500)});
-  if(!response.ok)throw Error("BoM direct FTP source HTTP "+response.status);
-  const m=await response.json();
-  if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||
-    m.sourceKind!=="ftp-live-direct-relay"||
-    !m.siteFrameHistory||!m.siteGeoreference||
-    !Number.isFinite(Date.parse(m.generatedUtc))||
-    now-Date.parse(m.generatedUtc)>10*60000)
-    throw Error("Unverified live FTP radar source");
-  cached=m;cachedAt=now;return m;
- }catch(error){liveError=error;}
- throw Error("Verified static FTP unavailable ("+
-   String(staticError?.message??staticError)+
-   "); direct FTP unavailable ("+String(liveError?.message??liveError)+")");
+ // BoM FTP's original PNGs are published through the verified GitHub archive.
+ // Cloudflare's direct FTP connection was proven to stall at the 220 banner,
+ // so it must never delay image loading or generate repeated HTTP 503s.
+ const url=MANIFEST+"?refresh="+Math.floor(now/300000);
+ const response=await fetcher(url,{cache:"no-store",
+  signal:AbortSignal.timeout(6500)});
+ if(!response.ok)throw Error("Verified FTP archive HTTP "+response.status);
+ const m=await response.json();
+ if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||
+  m.sourceKind!=="ftp-original-png-byte-identical-static-archive"||
+  !m.siteFrameHistory||!m.siteGeoreference)
+  throw Error("Unrecognised BoM FTP archive");
+ const generated=Date.parse(m.generatedUtc);
+ if(!Number.isFinite(generated)||generated>now+5*60000||
+    now-generated>60*60000)
+   throw Error("Verified BoM FTP archive stale; no current source available");
+ cached=m;cachedAt=now;return m;
 }
-export function matchingFtpTimes(manifest,region="SEQ",now=Date.now()){
+export function matchingFtpTimes(manifest,region="SEQ",now=Date.now(),{includeHistory=false}={}){
  const ids=siteIds(region);
  if(ids.some(id=>!manifest.siteGeoreference?.[id]?.controlPoints ||
                        !Array.isArray(manifest.siteFrameHistory?.[id])))
    throw Error("No authoritative BoM FTP source georeference/history for selected sites");
  const sets=ids.map(id=>new Set(manifest.siteFrameHistory[id]
-   .filter(f=>validTime(f.observedUtc,now)&&
+   .filter(f=>(includeHistory
+      ? Number.isFinite(Date.parse(f.observedUtc)) &&
+        Date.parse(f.observedUtc)<=now+5*60000 &&
+        Date.parse(f.observedUtc)>=now-210*60000
+      : validTime(f.observedUtc,now))&&
      new RegExp("^IDR"+id+"3\\.T\\.[0-9]{12}\\.png$").test(f.filename))
    .map(f=>f.observedUtc)));
  const matches=[...sets[0]].filter(t=>sets.every(set=>set.has(t))).sort();
@@ -123,7 +101,10 @@ function rgbaCategories(image){
 }
 export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
  const manifest=await publishedFtpManifest();
- if(!matchingFtpTimes(manifest,region).includes(observedUtc))
+ // The archive was verified fresh above. A source frame can be replayed
+ // from that immutable manifest even after passing the 45-minute live cutoff.
+ // Only discovery of NEW live frames has the strict 45-minute check.
+ if(!matchingFtpTimes(manifest,region,Date.now(),{includeHistory:true}).includes(observedUtc))
    throw Error("FTP observation is not current and published for all selected sites");
  const ids=siteIds(region);
  const inputs=await Promise.all(ids.map(async id=>{
@@ -131,10 +112,7 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
    if(!record||!new RegExp("^IDR"+id+"3\\.T\\.[0-9]{12}\\.png$").test(record.filename))
      throw Error("Unverified FTP source filename");
    const geo=sourceGeometry(manifest.siteGeoreference[id]);
-   if(manifest.sourceKind==="ftp-live-direct-relay"){
-     if(record.imageUrl!==LIVE_FRAME_BASE+encodeURIComponent(record.filename))
-       throw Error("Unexpected direct FTP frame URL");
-   }else if(record.imageUrl!==FRAME_BASE+record.filename||
+   if(record.imageUrl!==FRAME_BASE+record.filename||
      !/^([a-f0-9]{64})$/.test(record.sha256||""))
      throw Error("Unverified source FTP image delivery path/hash");
    const image=await fetchReadableImage(record.imageUrl);
@@ -165,9 +143,7 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
  return {radarId:"BOM-FTP-MOSAIC",sourceId:"BOM-FTP-MOSAIC",observedUtc,width,height,categories,
    georef:{projection:"EPSG:3857",minX,maxX,minY,maxY},
    sourceMetadata:{provider:"Australian Bureau of Meteorology",
-     transport:manifest.sourceKind==="ftp-live-direct-relay"?
-       "Live original BoM anonymous FTP PNG via Cloudflare TCP":
-       "Original BoM FTP PNG archived unchanged to HTTPS feed",
+     transport:"Original BoM FTP PNG archived unchanged to HTTPS feed",
      product:"Observed site-specific 128 km Gnomonic PNG",siteIds:ids,
      nativeSourcePixels:512,sourceUrls:inputs.map(i=>i.record.imageUrl),
      colouredPixelCount:categories.length-histogram[0],strongPixelCount:histogram.slice(7).reduce((a,b)=>a+b,0),

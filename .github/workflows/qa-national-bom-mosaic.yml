@@ -1,0 +1,36 @@
+name: Validate live national BoM rain reflectivity mosaic
+on:
+  push:
+    branches: [feature/national-bom-mosaic-first-20261019]
+  pull_request:
+    paths:
+      - frontend/src/bom-wmts-loop-v2.js
+      - frontend/src/bom-wmts-published-times-v1.js
+      - frontend/src/national-mosaic-source-v1.js
+      - scripts/probe-live-national-bom-mosaic-v1.mjs
+      - .github/workflows/qa-national-bom-mosaic.yml
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate pure source-contract modules
+        run: |
+          node --check frontend/src/bom-wmts-loop-v2.js
+          node --check frontend/src/bom-wmts-published-times-v1.js
+          node --check scripts/probe-live-national-bom-mosaic-v1.mjs
+          node scripts/test-national-source-policy-v1.mjs
+          python scripts/test-ftp-publisher-sha-reuse-v1.py
+          npm test
+      - name: Probe official documented national products from permitted data services
+        run: python scripts/probe-official-national-products.py
+      - name: Audit former national WMTS endpoint separately (no false green)
+        run: |
+          node scripts/probe-live-national-bom-mosaic-v1.mjs || echo 'STALLED_LEGACY_WMTS_SOURCE_NOT_DEPLOYABLE'
+

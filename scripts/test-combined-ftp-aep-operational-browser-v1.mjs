@@ -19,21 +19,25 @@ try{
  await page.goto("https://blakesmith-intel.github.io/StormTracker/ftp-aep-smoke.html",
   {waitUntil:"domcontentloaded",timeout:35000});
  const result=await page.evaluate(async()=>{
-  globalThis.__STORMTRACKER_FTP_FIRST=true;
+  globalThis.__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true;
   const radar=await import("./src/bom-wmts-loop-v2.js");
   const rain=await import("./src/context-layers/rainfall-ifd-aep-v1.js");
   const now=Date.now();
   const times=await radar.discoverBomReflectivityHistory(now,45,"SEQ");
-  if(times.length<3)throw Error("Fewer than 3 authentic source-confirmed FTP frames");
+  if(times.length<3)throw Error("Fewer than 3 current authenticated BoM radar frames");
   const frameResults=[];
   for(const time of times.slice(-3)){
    const f=await radar.loadBomReflectivityMosaicAtTime(time,"SEQ");
-   if(f.sourceId!=="BOM-FTP-MOSAIC")throw Error("WMTS used instead of FTP original PNG");
-   if(f.georef?.projection!=="EPSG:3857")throw Error("Invalid FTP raster reprojection");
-   if(f.width!==1024||f.height!==1024||f.categories.length!==1024*1024)throw Error("Wrong native-georeferenced raster size");
-   if(f.sourceMetadata?.siteIds?.length!==3)throw Error("Incomplete supplement radar mosaic");
-   if(f.sourceMetadata.colouredPixelCount<1)throw Error("No known BoM dBZ pixels");
-   frameResults.push({time,source:f.sourceId,sites:f.sourceMetadata.siteIds,
+   if(!["BOM-MOSAIC","BOM-FTP-MOSAIC"].includes(f.sourceId))
+     throw Error("Radar source was neither the national BoM mosaic nor its verified archive fallback");
+   if(f.georef?.projection!=="EPSG:3857")throw Error("Incorrect measured source raster projection");
+   if(f.width<512||f.height<512||f.categories.length!==f.width*f.height)
+     throw Error("Invalid measured national-region raster resolution");
+   if(f.sourceId==="BOM-FTP-MOSAIC"&&f.sourceMetadata?.siteIds?.length!==3)
+     throw Error("Fallback missing verified source radars");
+   if(f.sourceMetadata?.categoryHistogram?.reduce((a,b)=>a+b,0)!==f.categories.length)
+     throw Error("Invalid dBZ category histogram");
+   frameResults.push({time,source:f.sourceId,sites:f.sourceMetadata.siteIds||["BoM official national"],
     dBZPixelCount:f.sourceMetadata.colouredPixelCount,
     pixelsAtLeast40Dbz:f.sourceMetadata.strongPixelCount,
     bounds:f.georef});
@@ -50,9 +54,9 @@ try{
   return {frameResults,ifd:{cells:Object.keys(grid.cells).length,gold,adavale}};
  });
  assert.equal(result.frameResults.length,3);
- console.log("LIVE_FTP_AEP_COMBINED_BROWSER_PASS",JSON.stringify(result));
+ console.log("LIVE_NATIONAL_PRIMARY_AEP_COMBINED_BROWSER_PASS",JSON.stringify(result));
  if(errors.length)console.log("NON_FATAL_BROWSER_DIAGNOSTICS",errors.slice(0,8));
 }catch(error){
- console.log("LIVE_FTP_AEP_COMBINED_BROWSER_FAIL",JSON.stringify({error:String(error),errors:errors.slice(0,10)}));
+ console.log("LIVE_NATIONAL_PRIMARY_AEP_COMBINED_BROWSER_FAIL",JSON.stringify({error:String(error),errors:errors.slice(0,10)}));
  throw error;
 }finally{await browser.close()}

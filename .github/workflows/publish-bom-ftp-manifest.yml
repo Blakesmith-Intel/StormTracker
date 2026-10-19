@@ -24,13 +24,21 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout previously authenticated source frames for SHA-verified reuse
+        uses: actions/checkout@v4
+        with:
+          ref: radar-ftp-feed
+          path: checked/radar-ftp-feed
+          persist-credentials: false
       - name: Retrieve authentic BoM radar directory listing
         run: python scripts/publish-bom-ftp-manifest-v1.py --out /tmp/bom-ftp-manifest.json
       - name: Stage actual original PNGs over anonymous FTP
         run: |
           python scripts/stage-genuine-ftp-png-feed-v1.py \
             --manifest /tmp/bom-ftp-manifest.json \
-            --out /tmp/stormtracker-ftp-static
+            --out /tmp/stormtracker-ftp-static \
+            --reuse-dir checked/radar-ftp-feed/frames \
+            --prior-manifest checked/radar-ftp-feed/manifest.json
       - name: Publish genuine radar observation archive branch
         run: |
           set -euo pipefail

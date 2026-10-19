@@ -30,7 +30,18 @@ def inspect(blob, filename):
         raise ValueError("Unexpected radar image dimensions: "+filename)
     return hashlib.sha256(blob).hexdigest()
 
-def stage(manifest, out, now, ftp):
+def stage(manifest, out, now, ftp, reuse_dir=None, prior_manifest=None):
+    # Immutable authentic source frames already byte-verified in our archive
+    # are reused instead of re-downloading all seven observations per radar.
+    # Their saved digest is independently rechecked before being trusted.
+    prior_manifest=prior_manifest or {}
+    prior_hashes={
+        rec["filename"]:rec["sha256"]
+        for group in prior_manifest.get("siteFrameHistory",{}).values()
+        for rec in group if rec.get("sha256") and rec.get("filename")
+    }
+    reused=0
+    downloaded=0
     site_frames={}
     missing=set(manifest.get("missingOrStaleSites",[]))
     for site,records in manifest["siteFrameHistory"].items():
@@ -45,9 +56,19 @@ def stage(manifest, out, now, ftp):
             age=(now-at).total_seconds()/60
             if not -5<=age<=45:continue
             try:
-                fragments=[]
-                ftp.retrbinary("RETR "+name,fragments.append,blocksize=65536)
-                blob=b"".join(fragments)
+                blob=None
+                if reuse_dir and name in prior_hashes:
+                    archived=Path(reuse_dir)/name
+                    if archived.is_file():
+                        candidate=archived.read_bytes()
+                        if inspect(candidate,name)==prior_hashes[name]:
+                            blob=candidate
+                            reused+=1
+                if blob is None:
+                    fragments=[]
+                    ftp.retrbinary("RETR "+name,fragments.append,blocksize=65536)
+                    blob=b"".join(fragments)
+                    downloaded+=1
                 sha=inspect(blob,name)
             except (ftplib.all_errors,ValueError,TimeoutError,EOFError) as err:
                 print("FTP_IMAGE_UNAVAILABLE",site,name,type(err).__name__,str(err)[:180])
@@ -74,13 +95,16 @@ def stage(manifest, out, now, ftp):
     print("FTP_PNG_STAGE_PASS",json.dumps({"sites":{site:len(frames) for site,frames in site_frames.items()},
       "files":sum(map(len,site_frames.values())),
       "totalBytes":sum(p.stat().st_size for p in (out/"frames").glob("*.png")),
-      "missing":sorted(missing)}))
+      "missing":sorted(missing),"reusedByteVerified":reused,
+      "newFtpDownloads":downloaded}))
     return manifest
 
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--manifest",required=True)
     p.add_argument("--out",required=True)
+    p.add_argument("--reuse-dir")
+    p.add_argument("--prior-manifest")
     a=p.parse_args()
     out=Path(a.out)
     if out.exists():shutil.rmtree(out)
@@ -91,6 +115,9 @@ def main():
     with ftplib.FTP("ftp.bom.gov.au",timeout=25) as ftp:
         ftp.login("anonymous","stormtracker-feed@example.com")
         ftp.cwd("/anon/gen/radar")
-        stage(manifest,out,dt.datetime.now(UTC),ftp)
+        prior=json.loads(Path(a.prior_manifest).read_text()) if a.prior_manifest else {}
+        stage(manifest,out,dt.datetime.now(UTC),ftp,
+              reuse_dir=Path(a.reuse_dir) if a.reuse_dir else None,
+              prior_manifest=prior)
 
 if __name__=="__main__":main()

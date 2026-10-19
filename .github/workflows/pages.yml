@@ -182,8 +182,11 @@ jobs:
           node --check _site/src/bom-wmts-loop-v2.js
           node --check _site/src/context-layers/rainfall-ifd-aep-v1.js
           node --check _site/src/context-layers/significant-rainfall-operational-v1.js
-          grep -Fq '__STORMTRACKER_FTP_FIRST=true' _site/live3d-operational-v9.html
+          grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' _site/live3d-operational-v9.html
           grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
+          grep -Fq 'NATIONAL_MOSAIC_PRIMARY=true' _site/src/bom-wmts-loop-v2.js
+          ! grep -Fq 'ftp-live-manifest' _site/src/ftp-reflectivity-operational-v1.js
+          node scripts/test-national-source-policy-v1.mjs
           grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
 
       - name: Configure GitHub Pages
@@ -221,7 +224,7 @@ jobs:
           rainfall_html="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/live3d-operational-v9.html")"
           grep -Fq 'showSignificantRainfall' <<< "$rainfall_html"
           grep -Fq 'significantRainfallPeriod' <<< "$rainfall_html"
-          grep -Fq '__STORMTRACKER_FTP_FIRST=true' <<< "$rainfall_html"
+          grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' <<< "$rainfall_html"
           grep -Fq 'Rainfall AEP</label>' <<< "$rainfall_html"
           rainfall_engine="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/live3d-operational-v9.js")"
           grep -Fq 'initialiseOperationalSignificantRainfall({viewer})' <<< "$rainfall_engine"

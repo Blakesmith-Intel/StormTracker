@@ -50,7 +50,7 @@ app.write_text(js)
 page=site/"live3d-operational-v9.html"
 html=page.read_text()
 assert html.count("<head>")==1
-html=html.replace("<head>",'<head>\n<script>globalThis.__STORMTRACKER_FTP_FIRST=true;</script>',1)
+html=html.replace("<head>",'<head>\n<script>globalThis.__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true;</script>',1)
 start='title="Show BoM rain gauges reporting at least 50 mm"'
 assert html.count(start)==1
 html=html.replace(start,'title="Show observed BoM rainfall gauges graded against local IFD/AEP"')
@@ -62,15 +62,16 @@ assert html.count(old)==1
 html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP · <span style="color:#929da6">●</span> Grey = AEP not assessed (verified local IFD unavailable)')
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
-html=html.replace(needle,needle+"ftp-live-direct-north-up-ifd-aep-20261019-")
+html=html.replace(needle,needle+"national-boM-mosaic-first-20261019-")
 page.write_text(html)
 entry=site/"index.html"
 html=entry.read_text()
 needle="live3d-operational-v9.html?v="
 assert html.count(needle)==1
-entry.write_text(html.replace(needle,needle+"ftp-live-direct-north-up-ifd-aep-20261019-"))
+entry.write_text(html.replace(needle,needle+"national-boM-mosaic-first-20261019-"))
 with (site/"BUILD.txt").open("a") as f:
  f.write("RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP\n")
  f.write("LIVE DIRECT BOM FTP TCP RADAR FALLBACK INDEPENDENT OF GITHUB CRON 2026-10-19\n")
  f.write("TRUE NORTH DEFAULT ISOMETRIC + PRIMARY RADAR RESET + COMPASS 2026-10-19\n")
+ f.write("NATIONAL BOM REFLECTIVITY MOSAIC PRIMARY WHEN PROVEN LIVE, AUTHENTIC ORIGINAL FTP BACKUP 2026-10-19\n")
 print("FTP_AEP_V10_RELEASE_PACKAGED",len(list(site.rglob("*.js"))))

@@ -16,13 +16,10 @@ import {
 import {
   parseRiverHeightBulletin
 } from "../frontend/src/context-layers/river-height-bulletin-v1.js";
-import {VERIFIED_MAY_2026_STAGES,OFFICIAL_MAY_2026_STAGES_URL}
-  from "../frontend/src/context-layers/river-flood-stages-2026-verified-v1.js";
+
 import {BOM_2026_CLASSIFICATIONS}
   from "../frontend/src/context-layers/river-flood-stages-2026-full-v1.js";
-import {FLOOD_LEVEL_SOURCE,FLOOD_LEVEL_FETCH_SOURCE,
-  VERIFIED_STATEWIDE_FLOOD_LEVELS,
-  parseQldOfficialFloodLevels,VERIFIED_FLOOD_LEVELS}
+import {OFFICIAL_MAY_2026_STAGES_URL,HISTORICAL_EXACT_ID_EXCEPTIONS}
   from "../frontend/src/context-layers/river-flood-thresholds-v1.js";
 
 import {
@@ -807,51 +804,21 @@ function riverHeightResponse(
   );
 }
 
-// Full source-authentic 1080-station 2022 BoM baseline remains available when
-// either BoM hostname rejects automated HTTPS access (403).
-async function relayQldFloodThresholds(request,origin){
-  let levels={};
-  try{
-    const upstream=await fetch(FLOOD_LEVEL_FETCH_SOURCE,{
-      headers:{Accept:"text/html"},
-      cf:{cacheEverything:true,cacheTtl:43200}
-    });
-    if(!upstream.ok)throw Error("BoM threshold HTTP "+upstream.status);
-    const html=await upstream.text();
-    if(html.length>1500000)throw Error("BoM threshold page oversized");
-    levels=parseQldOfficialFloodLevels(html);
-    if(Object.keys(levels).length<100 ||
-        levels["bom:535142"]?.minor!==6 ||
-        levels["bom:544058"]?.minor!==3 ||
-        levels["bom:544058"]?.moderate!==4 ||
-        levels["bom:544058"]?.major!==5 ||
-        levels["bom:044208"]?.moderate!==4)
-      throw Error("Unrecognised BoM threshold table");
-  }catch(error){
-    // Graceful, honest fallback to exact source-verified stations only.
-    levels={};
-    console.warn("BoM QLD thresholds unavailable:",String(error?.message??error));
-  }
-  // The full BoM classification catalogue is bundled. Never let the
-  // upstream 403 silently reduce 1080 stations to four in production.
-  // Only 2026 SLS exact-ID levels are exposed as classification thresholds.
-  // Upstream 2022 values remain historical QA; never mix gauge-zero and AHD.
-  const full={...BOM_2026_CLASSIFICATIONS,...VERIFIED_MAY_2026_STAGES,
-    "bom:544058":{minor:3,moderate:4,major:5}};
-  for(const [id,threshold] of Object.entries(VERIFIED_FLOOD_LEVELS))
-    if(!full[id])full[id]=threshold;
+// One bundled BoM 2026 catalogue; no blocked 2022 HTML fetch.
+// Historic Warilda source values are explicitly labelled in the frontend.
+function relayQldFloodThresholds(request,origin){
+  const stages={...BOM_2026_CLASSIFICATIONS,...HISTORICAL_EXACT_ID_EXCEPTIONS};
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");
-  headers.set("Cache-Control","public, max-age=1800");
+  headers.set("Cache-Control","public, max-age=3600");
   return new Response(request.method==="HEAD"?null:JSON.stringify({
     format:"StormTrackerQueenslandFloodThresholdsV1",
     source:OFFICIAL_MAY_2026_STAGES_URL,sourceDate:"2026-05",
-    complete:Object.keys(full).length>=450,
-    datumMatchedByStationId:true,
-    liveRefreshSucceeded:Object.keys(levels).length>=100,
-    statewideThresholdCount:Object.keys(full).length,
-    newerMay2026Verified:Object.keys(VERIFIED_MAY_2026_STAGES).length,
-    thresholds:full
+    complete:Object.keys(BOM_2026_CLASSIFICATIONS).length>=1069,
+    sourceMatchedByStationId:true,
+    statewideThresholdCount:Object.keys(BOM_2026_CLASSIFICATIONS).length,
+    historicalExceptions:Object.keys(HISTORICAL_EXACT_ID_EXCEPTIONS),
+    thresholds:stages
   }),{status:200,headers});
 }
 

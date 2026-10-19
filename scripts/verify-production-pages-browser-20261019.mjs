@@ -15,16 +15,16 @@ page.on("pageerror",e=>pageErrors.push(String(e)));
 try{
  await page.goto("https://blakesmith-intel.github.io/StormTracker/live3d-operational-v9.html?rollback=13004a",
   {waitUntil:"domcontentloaded",timeout:35000});
- await page.waitForSelector("#cesiumContainer canvas.cesium-widget-canvas",{state:"attached",timeout:35000});
+ await page.waitForSelector("#cesiumContainer .cesium-widget canvas",{state:"attached",timeout:35000});
  await page.waitForTimeout(3500);
  const state=await page.evaluate(()=>({
-  canvasCount:document.querySelectorAll("#cesiumContainer canvas.cesium-widget-canvas").length,
+  canvasCount:document.querySelectorAll("#cesiumContainer .cesium-widget canvas").length,
   brand:document.querySelector("#controlSidebar .simple-brand strong")?.textContent??"",
   playbackVisible:!!document.getElementById("radarPlaybackDetails"),
   mapDimensions:document.getElementById("cesiumContainer")?.getBoundingClientRect().toJSON(),
   status:document.getElementById("status")?.textContent?.slice(0,220)
  }));
- assert.equal(state.canvasCount,1);
+ assert.equal(state.canvasCount,1,"Cesium map canvas did not initialise");
  assert.equal(state.brand,"StormTracker");
  assert(state.playbackVisible);
  assert.deepEqual(moduleFailures,[],"Some published JS dependencies still return 4xx");

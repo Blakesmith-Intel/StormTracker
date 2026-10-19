@@ -24,14 +24,16 @@ assert.throws(
   "Cold start with unavailable BoM source must report that accurately");
 assert.throws(()=>resolveSourceDiscovery({}),TypeError);
 const currentTime=Date.parse("2026-10-13T05:20:00Z");
-let attempts=0;
+let attempts=0,archiveAttempts=0;
 await assert.rejects(
   discoverBoundedBomReflectivityHistory(currentTime,180,"SEQ",{
-    publishedTimes:async()=>{attempts++;return [];}
+    publishedTimes:async()=>{attempts++;return []},
+    ftpHistory:async()=>{archiveAttempts++;throw Error("No verified source frames available")}
   }),
-  /No verified current BoM reflectivity timestamp/
+  /No verified source frames available/
 );
-assert.equal(attempts,1,"A failed BoM startup reads one capabilities source; no guessed tile requests");
+assert.equal(attempts,1,"A failed national mosaic startup checks one capabilities source");
+assert.equal(archiveAttempts,1,"Then check one independent verified FTP source, never speculate WMTS timestamps");
 const runtime=readFileSync(new URL("../src/live3d-operational-v9.js",import.meta.url),"utf8");
 assert.match(runtime,/BOUNDED_RADAR_RECOVERY_QA/);
 assert.match(runtime,/discoverBoundedBomReflectivityHistory\(now,5,region\)/,

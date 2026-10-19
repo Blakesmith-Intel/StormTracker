@@ -73,7 +73,7 @@ jobs:
           grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' _site/live3d-operational-v9.html
           grep -Fq 'measuredHiResRainWindow(availableRadarHistoryTimes, loopSelection)' _site/src/live3d-operational-v9.js
           grep -Fq 'availableMeasuredHiResLoopMinutes(availableRadarHistoryTimes)' _site/src/live3d-operational-v9.js
-          grep -Fq '90 min — Rain radar (browser archive)' _site/src/operational-window-choices-v1.js
+          grep -Fq 'RAIN_ONLY_LOOP_MINUTES = Object.freeze([30,60,90,120,180])' _site/src/operational-window-choices-v1.js
           grep -Fq 'then(frames=>frames.filter(isVerifiedHiResRadarFrame))' _site/src/live3d-operational-v9.js
           grep -Fq 'highResolutionBomMosaicFrame' _site/src/hires-radar-loop-policy-v1.js || grep -Fq 'isVerifiedHiResRadarFrame' _site/src/hires-radar-loop-policy-v1.js
           grep -Fq 'dataSource.entities.removeAll();' _site/src/context-layers/flood-road-closures-v1.js

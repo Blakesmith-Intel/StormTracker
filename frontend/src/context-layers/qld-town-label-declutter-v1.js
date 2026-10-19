@@ -65,6 +65,25 @@ export function sameGeographicSettlement(a,b,maximumDistanceKm=25) {
     greatCircleKm(a,b)<=maximumDistanceKm;
 }
 
+// Named town and official bounded/unbounded locality centroids can be
+// separated by several tens of kilometres even though they represent the
+// SAME named rural settlement (e.g. Corfield near Richmond). Keep the town's
+// populated-place anchor rather than a second district-centroid label.
+// Do not widen the tolerance between ordinary settlements: genuine distant
+// homonyms still show separately.
+export function sameMappedRuralPlace(a,b) {
+  if(sameGeographicSettlement(a,b,25))return true;
+  const administrativeKind=item=>["LOCB","LOCU"].includes(
+    String(item?.kind??"").toUpperCase());
+  if(!administrativeKind(a)&&!administrativeKind(b))return false;
+  const populated=item=>item && !administrativeKind(item) &&
+    (item.fromGazetteer!==true ||
+     String(item.kind??"").toUpperCase()==="POPL");
+  if(!((administrativeKind(a)&&populated(b)) ||
+       (administrativeKind(b)&&populated(a))))return false;
+  return sameGeographicSettlement(a,b,75);
+}
+
 export function greatCircleKm(a, b) {
   const lat1 = a.latitude * Math.PI / 180;
   const lat2 = b.latitude * Math.PI / 180;
@@ -149,7 +168,7 @@ export function layoutTownLabels({
     // are one town, not two text objects. Do not remove genuinely distinct
     // same-name towns on opposite sides of Queensland.
     if(nameKey && (pickedNames.get(nameKey)??[]).some(previous=>
-      sameGeographicSettlement(previous,place,25)))continue;
+      sameMappedRuralPlace(previous,place)))continue;
     if(nameKey){
       if(!pickedNames.has(nameKey))pickedNames.set(nameKey,[]);
       pickedNames.get(nameKey).push(place);

@@ -39,15 +39,17 @@ assert.doesNotMatch(html,/id="dopplerOpacity"/);
 assert.match(html,/id="volumeOpacity"/);
 assert.match(html,/id="radarOpacity"/);
 
-// Hard scan cut - source rows are either fully opaque or excluded; NEVER fade.
+// Full native range: real south-edge swatches remain opaque; embedded caption
+// is removed using palette matching rather than an entire-row crop.
 assert.match(native,/NATIVE_DOPPLER_ANNOTATION_START_ROW = 480/);
 assert.match(native,/NATIVE_DOPPLER_STRICT_PALETTE_START_ROW = 438/);
 assert.doesNotMatch(native,/NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW/);
-assert.match(native,/if\(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow\(row\)\)continue/);
+assert.doesNotMatch(native,/if\(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow\(row\)\)continue/);
+assert.match(native,/row >= NATIVE_DOPPLER_STRICT_PALETTE_START_ROW/);
 assert.match(native,/data\[to \+ 3\] = alpha;/);
 assert.match(runtime,/native-doppler-image-v1\.js\?v=9\.16\.14-hard-footer/);
 
 // Permanent place-name stacking contract stays in the same tested release.
 assert.match(css,/--stormtracker-geo-label-z:2000;/);
 assert.match(css,/\.qld-place-foreground\s*\{[^}]*z-index:var\(--stormtracker-geo-label-z\)/);
-console.log("PASS V9.16.14 sidebar consolidation, hidden Doppler auto-follow, independent clocks, hard crop and foreground labels.");
+console.log("PASS Doppler controls, native full-range pixel screening and foreground labels.");

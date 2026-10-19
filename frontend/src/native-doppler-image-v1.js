@@ -7,18 +7,20 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
-// The native 512px panel spans about 128 km either side of a 128km BoM
-// Doppler radar. A legacy row-438 full-width mask discarded genuine weather
-// south of about 91 km. Do not hide that measured southern coverage.
-// Screen the lower strip for *exact* Doppler palette swatches (not nearby
-// antialiased text ink); reserve the hard cutoff for the true caption zone
-// at about 112 km south. Scientific/source image data is never modified.
+// The complete source panel represents the 128 km radius in every direction.
+// Do NOT remove entire rows to hide the BoM timestamp: rows 480–511 may also
+// contain authentic southern weather. Instead reject non-palette caption ink
+// pixel by pixel. The annotation band is metadata only, NOT a crop boundary.
 export const NATIVE_DOPPLER_STRICT_PALETTE_START_ROW = 438;
 export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 480;
 export function nativeDopplerDisplayFooterOpacity(row) {
-  return row < NATIVE_DOPPLER_ANNOTATION_START_ROW ? 1 : 0;
+  // A physically present, source-matched velocity pixel is fully opaque right
+  // through the last panel row. Outside the original 512px panel is empty.
+  return Number.isInteger(row) && row >= 0 &&
+    row < NATIVE_DOPPLER_PANEL_SIZE ? 1 : 0;
 }
 export function isNativeDopplerDisplayAnnotationRow(row) {
+  // For annotation screening only; never used to discard entire image rows.
   return Number.isInteger(row) &&
     row >= NATIVE_DOPPLER_ANNOTATION_START_ROW &&
     row < NATIVE_DOPPLER_PANEL_SIZE;
@@ -30,8 +32,8 @@ export function isNativeDopplerDisplayAnnotationRow(row) {
 // This crop accepts both original 524 × 564 GIFs and bare 512 × 512 panels.
 export function extractNativeDopplerPanel(imageData, palette, {
   includeZero = false,
-  // Historical weather PNGs and latest GIF both carry source scan metadata
-  // in the bottom panel. Mask it in DISPLAY copies only.
+  // Pixel-screen bottom-of-panel caption ink. Preserve all genuine velocity
+  // swatches, including beneath the text and at the southern 128 km edge.
   maskAnnotationRows = true
 } = {}) {
   const layout = historicalPanelLayout(imageData.width, imageData.height);
@@ -39,8 +41,8 @@ export function extractNativeDopplerPanel(imageData, palette, {
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
-    // Strip the bottom caption, not the preceding 20+ km of weather.
-    if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;
+    // Never crop whole rows: annotation ink and genuine southern Doppler
+    // may coexist on the SAME scan line.
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
       const alpha = imageData.data[from + 3];
@@ -48,8 +50,8 @@ export function extractNativeDopplerPanel(imageData, palette, {
       const rgb = [imageData.data[from], imageData.data[from + 1], imageData.data[from + 2]];
       const swatch = nearestPaletteMatch(rgb, palette);
       if (!swatch || (!includeZero && swatch.velocity_kmh === 0)) continue;
-      // In the potentially annotated margin, accept only a native palette
-      // swatch. Antialiased caption lettering must not resemble radial wind.
+      // In the potentially annotated margin, accept only an EXACT source
+      // Doppler swatch. The black/grey/antialiased BoM caption is not velocity.
       if(maskAnnotationRows && row >= NATIVE_DOPPLER_STRICT_PALETTE_START_ROW &&
          swatch.match_mode !== "exact") continue;
       const to = (row * size + col) * 4;

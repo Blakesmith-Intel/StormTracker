@@ -35,15 +35,16 @@ for(let i=0;i<projected.data.length;i+=4){
 assert.ok(seen.has("0,0,255")||seen.has("255,0,0"));
 assert.ok([...seen].every(rgb=>rgb==="0,0,255"||rgb==="255,0,0"),
   "raster contains only unchanged native BoM colours; no hybrid repaint");
-// Source pixel coverage is 512px across nominal ±128 km. Preserve the
-// authentic southern velocity swatches through about 112 km, NOT 91 km.
+// The source covers a nominal ±128 km: the display must never crop its
+// southern rows even where BoM's embedded caption shares those same rows.
 assert.equal(NATIVE_DOPPLER_STRICT_PALETTE_START_ROW,438);
 assert.equal(NATIVE_DOPPLER_ANNOTATION_START_ROW,480);
 assert.equal(nativeDopplerDisplayFooterOpacity(437),1);
 assert.equal(nativeDopplerDisplayFooterOpacity(438),1);
 assert.equal(nativeDopplerDisplayFooterOpacity(479),1);
-assert.equal(nativeDopplerDisplayFooterOpacity(480),0);
-assert.equal(nativeDopplerDisplayFooterOpacity(511),0);
+assert.equal(nativeDopplerDisplayFooterOpacity(480),1);
+assert.equal(nativeDopplerDisplayFooterOpacity(511),1);
+assert.equal(nativeDopplerDisplayFooterOpacity(512),0);
 assert.equal(isNativeDopplerDisplayAnnotationRow(479),false);
 assert.equal(isNativeDopplerDisplayAnnotationRow(480),true);
 assert.equal(isNativeDopplerDisplayAnnotationRow(511),true);
@@ -52,8 +53,10 @@ dot(6+300,6+437,[0,0,255]); // retained weather
 dot(6+300,6+438,[255,0,0]); // formerly cropped; real southern wind
 dot(6+300,6+470,[255,0,0]); // 107 km south, should now survive
 dot(6+300,6+479,[0,0,255]); // ~111.5 km, last fully valid source row
-dot(6+300,6+480,[255,0,0]); // caption zone boundary
-dot(6+300,6+500,[255,0,0]); // caption zone remains masked
+dot(6+300,6+480,[255,0,0]); // first annotation-risk row, STILL native wind
+dot(6+300,6+500,[255,0,0]); // measured wind coexists with caption row
+dot(6+300,6+511,[0,0,255]); // genuine velocity at southmost 128 km edge
+dot(6+301,6+500,[0,0,0]); // printed black BoM caption, not velocity
 dot(6+301,6+470,[250,4,0]); // near-colour anti-alias is not verified weather
 dot(6+301,6+300,[250,4,0]); // unchanged legacy palette matching above margin
 const originalSource=new Uint8ClampedArray(source.data);
@@ -62,8 +65,12 @@ assert.equal(cleaned.data[(437*512+300)*4+3],255);
 assert.equal(cleaned.data[(438*512+300)*4+3],255);
 assert.equal(cleaned.data[(470*512+300)*4+3],255);
 assert.equal(cleaned.data[(479*512+300)*4+3],255);
-assert.equal(cleaned.data[(480*512+300)*4+3],0);
-assert.equal(cleaned.data[(500*512+300)*4+3],0);
+assert.equal(cleaned.data[(480*512+300)*4+3],255);
+assert.equal(cleaned.data[(500*512+300)*4+3],255);
+assert.equal(cleaned.data[(511*512+300)*4+3],255,
+  "A flat horizontal image cutoff cannot remove the 128 km south edge");
+assert.equal(cleaned.data[(500*512+301)*4+3],0,
+  "Black embedded caption ink cannot be interpreted as measured velocity");
 assert.equal(cleaned.data[(470*512+301)*4+3],0,
   "Antialiased source-text ink is excluded in the annotation-prone margin");
 assert.equal(cleaned.data[(300*512+301)*4+3],255,
@@ -76,4 +83,4 @@ assert.equal(rawSource.data[(480*512+300)*4+3],255,
   "Uncropped source remains independently available for analysis");
 assert.deepEqual(source.data,originalSource,
   "Display masking must never alter source observations");
-console.log("PASS southern Doppler coverage to ~112km, caption screening and untouched BoM source pixels.");
+console.log("PASS FULL native 128km southern Doppler range, per-pixel caption screening and unchanged source.");

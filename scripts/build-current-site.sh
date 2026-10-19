@@ -53,6 +53,10 @@ copyfile(Path("frontend/src/multi-doppler-display-v1.js"),
          site / "src/multi-doppler-display-v1.js")
 copyfile(Path("frontend/src/native-doppler-image-v1.js"),
          site / "src/native-doppler-image-v1.js")
+# Single deduplicated QLD settlement layer in production: two official
+# place feeds sometimes label one remote town at its town and LGA centroid.
+for name in ("qld-town-label-layer-v1.js","qld-town-label-declutter-v1.js"):
+    copyfile(source / name, layers / name)
 # Replace only the WMTS source-time lookup (not sealed radar renderer/3D)
 # with exact 9 timestamps from BoM's own published GetCapabilities.
 for name in ("bom-wmts-loop-v2.js","bom-wmts-published-times-v1.js"):
@@ -87,6 +91,10 @@ version_once("src/live3d-operational-v9.js",
     "multi-doppler-display-v1.js?v=v10-wind-sites-20261017-sync-qa-v1")
 version_once("src/live3d-operational-v9.js",
     "native-doppler-image-v1.js?v=9.16.14-hard-footer")
+version_once("src/live3d-operational-v9.js",
+    "qld-town-label-layer-v1.js?v=9.18.5-gazetteer-settle")
+version_once("src/context-layers/qld-town-label-layer-v1.js",
+    "qld-town-label-declutter-v1.js?v=9.16.12")
 version_once("src/live3d-operational-v9.js",
     "bom-wmts-loop-v2.js?v=9.18.6-bounded-published-history")
 # Background warming is optional: a rejected time should end that pass, not
@@ -222,6 +230,14 @@ assert "holdIsValid(s,utc)" in (
     site / "src/multi-doppler-display-v1.js").read_text()
 assert "NATIVE_DOPPLER_ANNOTATION_START_ROW = 480" in (
     site / "src/native-doppler-image-v1.js").read_text()
+assert "for (let col = 0; col < size; col++)" in (
+    site / "src/native-doppler-image-v1.js").read_text()
+assert "if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;" not in (
+    site / "src/native-doppler-image-v1.js").read_text()
+assert "sameMappedRuralPlace(" in (
+    site / "src/context-layers/qld-town-label-layer-v1.js").read_text()
+assert "sameMappedRuralPlace(" in (
+    site / "src/context-layers/qld-town-label-declutter-v1.js").read_text()
 assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
@@ -261,6 +277,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("BOUNDED STREAMING BOM RIVER TABLES 2026-10-18 (source main)\n")
     record.write("DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS 2026-10-18\n")
     record.write("DOPPLER MULTISITE STABLE HANDOVER AND 112KM SOUTH COVERAGE 2026-10-19\n")
+    record.write("DOPPLER FULL 128KM SOUTH FULL-PANEL PALETTE SCREENING + RURAL LABEL DEDUP 2026-10-19\n")
     record.write("WMTS ALL RADARS SOURCE-PUBLISHED TIME DIMENSION 2026-10-18 (no speculative timestamp probes)\n")
     record.write("WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18\n")
     record.write("ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN 2026-10-18\n")
@@ -298,6 +315,8 @@ grep -Fq 'initialiseOperationalSignificantRainfall({viewer})' _site/src/live3d-o
 node --check _site/src/bom-doppler-intake-v3.js
 node --check _site/src/multi-doppler-display-v1.js
 node --check _site/src/native-doppler-image-v1.js
+node --check _site/src/context-layers/qld-town-label-layer-v1.js
+node --check _site/src/context-layers/qld-town-label-declutter-v1.js
 node --check _site/src/bom-wmts-loop-v2.js
 node --check _site/src/bom-wmts-published-times-v1.js
 grep -Fq 'WMTS ALL RADARS SOURCE-PUBLISHED TIME DIMENSION 2026-10-18' _site/BUILD.txt
@@ -521,6 +540,8 @@ grep -Fq 'SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' "_site/src/multi-doppler-displa
 grep -Fq 'committedUtc=utc' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'holdIsValid(s,utc)' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'NATIVE_DOPPLER_ANNOTATION_START_ROW = 480' "_site/src/native-doppler-image-v1.js"
+! grep -Fq 'if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;' "_site/src/native-doppler-image-v1.js"
+grep -Fq 'sameMappedRuralPlace(' "_site/src/context-layers/qld-town-label-layer-v1.js"
 grep -Fq 'IDR93I' "_site/src/border-radar-sites-v1.js"
 
 # V10.2.0 original source-issued cyclone forecast panel is deployed opt-in,

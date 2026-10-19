@@ -18,6 +18,10 @@ for name,(lat,lon) in SITES.items():
   links=Links();links.feed(body)
   loc=body.find("Default Historical")
   after=body[loc:loc+80000]
+  pos=after.find("60 (1.0)")
+  excerpt=re.sub(r"<[^>]*>"," ",after[pos:pos+1800]) if pos>=0 else ""
+  print("ARR_60MIN_TABLE",json.dumps({"name":name,"text":excerpt[:900],"defaultAt":loc}))
+  print("ARR_HEADINGS",json.dumps({"name":name,"heads":[re.sub(r"<[^>]*>"," ",x) for x in re.findall(r"<h[2-6][^>]*>.*?</h[2-6]>",body,re.I|re.S)[:25]]}))
   print("ARR_DATA_AEP",json.dumps({"name":name,"url":url,"bytes":len(body),
    "contentType":ctype,"hasTable":"20.0" in after,
    "historical":re.sub("<[^>]*>"," ",after[:2800])[:850],

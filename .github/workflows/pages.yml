@@ -174,8 +174,17 @@ jobs:
           test "$(git ls-remote origin 'refs/tags/v9.20.1^{}' | cut -f1)" = "efaceb59427f0b71859b15a61a6758a80d08547e"
           test "$(git ls-remote origin refs/heads/restore/v9.20.1 | cut -f1)" = "efaceb59427f0b71859b15a61a6758a80d08547e"
 
-      - name: Build pinned V10.2.0 production and preserved diagnostic QA
-        run: bash scripts/build-current-site.sh
+      - name: Build pinned V10.2.0 plus QA-approved FTP/AEP production overlay
+        run: |
+          bash scripts/build-current-site.sh
+          python scripts/apply-ftp-aep-release-v10.py
+          node --check _site/src/ftp-reflectivity-operational-v1.js
+          node --check _site/src/bom-wmts-loop-v2.js
+          node --check _site/src/context-layers/rainfall-ifd-aep-v1.js
+          node --check _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq '__STORMTRACKER_FTP_FIRST=true' _site/live3d-operational-v9.html
+          grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
+          grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -199,6 +208,7 @@ jobs:
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' <<< "$root"
+          grep -Fq 'RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP' <<< "$root"
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
           grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' <<< "$root"
@@ -211,12 +221,19 @@ jobs:
           rainfall_html="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/live3d-operational-v9.html")"
           grep -Fq 'showSignificantRainfall' <<< "$rainfall_html"
           grep -Fq 'significantRainfallPeriod' <<< "$rainfall_html"
+          grep -Fq '__STORMTRACKER_FTP_FIRST=true' <<< "$rainfall_html"
+          grep -Fq 'Rainfall AEP</label>' <<< "$rainfall_html"
           rainfall_engine="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/live3d-operational-v9.js")"
           grep -Fq 'initialiseOperationalSignificantRainfall({viewer})' <<< "$rainfall_engine"
           rainfall_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/significant-rainfall-source-v1.js")"
           grep -Fq 'parseBomRainfallMap' <<< "$rainfall_source"
           rainfall_layer="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/significant-rainfall-operational-v1.js")"
           grep -Fq 'SIGNIFICANT_RAINFALL_RELAY' <<< "$rainfall_layer"
+          grep -Fq 'classifyRainfallAep' <<< "$rainfall_layer"
+          rainfall_ifd="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/rainfall-ifd-aep-v1.js")"
+          grep -Fq 'AEP_GRADES' <<< "$rainfall_ifd"
+          ftp_adapter="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/ftp-reflectivity-operational-v1.js")"
+          grep -Fq 'ftp-original-png-byte-identical-static-archive' <<< "$ftp_adapter"
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 "$base/favicon.svg" | grep -Fq '<svg'
           wmts_fix="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/bom-wmts-loop-v2.js")"
           grep -Fq 'WMTS_SOURCE_FRESHNESS_MS' <<< "$wmts_fix"

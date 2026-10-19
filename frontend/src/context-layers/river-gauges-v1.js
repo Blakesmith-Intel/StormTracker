@@ -10,7 +10,7 @@ export const BOM_RIVER_TIDE_GAUGE_QUERY_URL =
   + "&f=geojson";
 
 export const DEFAULT_RIVER_GAUGE_REFRESH_MS =
-  5 * 60 * 1000;
+  20 * 60 * 1000;
 
 function text(
   value

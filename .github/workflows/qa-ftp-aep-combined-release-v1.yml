@@ -66,7 +66,8 @@ jobs:
           python scripts/apply-ftp-aep-release-v10.py
           node --check _site/src/live3d-operational-v9.js
           node --check _site/src/bom-wmts-loop-v2.js
-          node --check _site/src/ftp-reflectivity-operational-v1.js
+          ! test -e _site/src/ftp-reflectivity-operational-v1.js
+          node --check _site/src/hires-radar-loop-policy-v1.js
           grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' _site/live3d-operational-v9.html
           grep -Fq 'measuredHiResRainWindow(availableRadarHistoryTimes, loopSelection)' _site/src/live3d-operational-v9.js
           grep -Fq 'then(frames=>frames.filter(isVerifiedHiResRadarFrame))' _site/src/live3d-operational-v9.js

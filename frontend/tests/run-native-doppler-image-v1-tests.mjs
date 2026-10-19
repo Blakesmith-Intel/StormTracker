@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {lonLatToDopplerMapCoordinate} from "../src/bom-doppler-georef-v1.js";
 import { extractNativeDopplerPanel, reprojectNativeDopplerPanel,
   NATIVE_DOPPLER_DISPLAY_SIZE, NATIVE_DOPPLER_ANNOTATION_START_ROW,
   nativeDopplerDisplayFooterOpacity,
@@ -62,8 +63,20 @@ dot(6+302,6+511,[250,4,0]); // near-colour velocity at extreme southern edge
 dot(6+301,6+500,[0,0,0]); // printed black BoM caption, not velocity
 dot(6+301,6+470,[250,4,0]); // BoM near-colour velocity in southern quarter
 dot(6+301,6+300,[250,4,0]); // unchanged legacy palette matching above margin
+// Official Richmond radar is near -20.751 S / 143.141 E; Corfield town
+// is near -21.717 S / 143.383 E. Southern data there maps into the OLD
+// exact-only 438–511 strip, precisely where user saw coverage vanish.
+const corfieldOnRichmond=lonLatToDopplerMapCoordinate("107",143.383,-21.717);
+assert.ok(corfieldOnRichmond.row>438&&corfieldOnRichmond.row<512,
+  "Real Corfield lies INSIDE the valid southern 128 km Doppler panel");
+const corfieldRow=Math.floor(corfieldOnRichmond.row);
+const corfieldColumn=Math.floor(corfieldOnRichmond.column);
+dot(6+corfieldColumn,6+corfieldRow,[250,4,0]);
 const originalSource=new Uint8ClampedArray(source.data);
 const cleaned=extractNativeDopplerPanel(source,palette);
+assert.equal(cleaned.data[(corfieldRow*512+corfieldColumn)*4+3],255,
+  "Actual mapped Corfield source pixel must survive non-exact palette matching");
+
 assert.equal(cleaned.data[(437*512+300)*4+3],255);
 assert.equal(cleaned.data[(438*512+300)*4+3],255);
 assert.equal(cleaned.data[(470*512+300)*4+3],255);

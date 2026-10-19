@@ -24,6 +24,8 @@ const html='<html><img class="mapimage" src="/fwo/IDQ65149.png" id = "since" '+
  a("540523","Rockside Mt","49.9")+'</map>'+
  '<p>This page was created at 07:06 on Sunday 18 October 2026 (UTC)</p></html>';
 assert.equal(rainfallWindowMinutes("last24Hours",issuedTime()),1440);
+assert.equal(rainfallWindowMinutes("since9am","2026-10-19T18:00:00Z"),1140,
+ "At 04:00 AEST the BoM since-9am accumulation is 19 hours old");
 const rainfallCode=readFileSync(new URL("../src/context-layers/significant-rainfall-operational-v1.js",import.meta.url),"utf8");
 assert.match(rainfallCode,/image:marker\(record\),width:72,height:27,/,
  "Rainfall map billboard should be approximately two-thirds of previous dimensions");
@@ -90,6 +92,30 @@ const now=Date.parse("2026-10-18T07:50:00Z");
 assert.equal(qualifiesRainfallSnapshot(observed,"since9am",now),true);
 assert.equal(qualifiesRainfallSnapshot(observed,"since9am",now+100*60000),false);
 assert.equal(qualifiesRainfallSnapshot(observed,"since9am",Date.parse("2026-10-19T00:00:00Z")),false);
+// Regression: Mountain Creek (BoM 540220) still belongs to yesterday's
+// 09:00 reporting DAY after AEST midnight, even when the actual BoM
+// map was published on today's calendar date.
+const mountainCreek={id:"540220",name:"Mountain Creek Alert",
+ mm:101,period:"since9am",sourceCreatedAt:"2026-10-19T18:00:00Z"};
+assert.equal(qualifiesRainfallSnapshot(mountainCreek,"since9am",
+ Date.parse("2026-10-19T18:02:00Z")),true,
+ "04:02 AEST must retain 101 mm for 19-hour since-9am rainfall");
+assert.equal(qualifiesRainfallSnapshot(mountainCreek,"since9am",
+ Date.parse("2026-10-19T22:58:00Z")),false,
+ "A station publication more than 90 minutes old must still be rejected");
+const pre9={...mountainCreek,sourceCreatedAt:"2026-10-19T22:50:00Z"};
+assert.equal(qualifiesRainfallSnapshot(pre9,"since9am",
+ Date.parse("2026-10-19T22:55:00Z")),true,
+ "08:55 AEST retains accumulation started at 9am previous day");
+assert.equal(qualifiesRainfallSnapshot(pre9,"since9am",
+ Date.parse("2026-10-19T23:05:00Z")),false,
+ "09:05 AEST must not carry yesterday's total into today's 9am period");
+assert.equal(qualifiesRainfallSnapshot({...pre9,sourceCreatedAt:"2026-10-19T23:03:00Z"},
+ "since9am",Date.parse("2026-10-19T23:05:00Z")),true,
+ "BoM source issued after 9am must be eligible for the new reporting day");
+assert.equal(qualifiesRainfallSnapshot({...mountainCreek,sourceCreatedAt:"2026-10-19T16:55:00Z"},
+ "since9am",Date.parse("2026-10-19T17:00:00Z")),true,
+ "AEST day rollover at 3am preserves pre-9am BoM report");
 assert.equal(qualifiesRainfallSnapshot({...hour[0],sourceCreatedAt:issued},"lastHour",now),true);
 assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"last24Hours",now),true);
 assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"last24Hours",now+100*60000),false);

@@ -31,7 +31,7 @@ assert js.count(needle)==1, "V10 radar source import contract changed"
 js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1-observed-only")
 needle="significant-rainfall-operational-v1.js"
 assert js.count(needle)==1
-js=js.replace(needle,needle+"?v=rainfall-two-thirds-icons-20261020")
+js=js.replace(needle,needle+"?v=rainfall-two-thirds-icons-aest-reporting-20261020")
 # The sealed V10 camera guardian owns orientation. Never call Cesium.camera.setView.
 # Amend only the built production artefact; the pinned V10 source is immutable.
 core_heading="heading:" + chr(10) + "      Cesium.Math.toRadians(" + chr(10) + "        345" + chr(10) + "      )"

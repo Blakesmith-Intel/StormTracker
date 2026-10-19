@@ -1,4 +1,4 @@
-import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js";
+import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
 import {classifyRainfallAep} from "./rainfall-ifd-aep-v1.js";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
 export const SIGNIFICANT_RAINFALL_REFRESH_MS=300000;

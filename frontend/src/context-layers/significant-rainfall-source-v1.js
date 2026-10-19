@@ -73,11 +73,15 @@ export function qualifiesRainfallSnapshot(row,period,now=Date.now(),maxAgeMs=90*
  if(period==="since9am"){
    // AEST has no daylight-saving switch. Never carry yesterday's 9am total
    // into a new reporting day.
-   const local=ms=>new Date(ms+10*3600000);
-   const day=d=>Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());
-   const created=day(local(t)),current=day(local(now));
-   const before9=local(now).getUTCHours()<9;
-   if(created!==(before9?current-86400000:current))return false;
+   // The REPORT publication date can be today before 09:00 AEST even
+   // though its measured accumulation started at 09:00 yesterday.
+   // Compare reporting-day starts rather than publication calendar dates.
+   const reportingStart=ms=>{
+     const local=new Date(ms+10*3600000); // Queensland AEST, no DST
+     const midnight=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate());
+     return local.getUTCHours()<9?midnight-86400000:midnight;
+   };
+   if(reportingStart(t)!==reportingStart(now))return false;
  }
  return true;
 }

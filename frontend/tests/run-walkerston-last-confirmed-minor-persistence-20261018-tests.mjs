@@ -72,7 +72,8 @@ assert.equal(retainConfirmedFloodStations([],cache,newNow).features.length,0);
 
 // A separate station with a similar name is never matched by locality.
 const other={...walkerston,id:"bom:533063",
-  properties:{...walkerston.properties,bom_stn_num:533063,name:"Bakers Creek"}};
+  properties:{...walkerston.properties,bom_stn_num:533063,name:"Bakers Creek",
+    STORMTRACKER_HEIGHT_METRES:6.4}};
 const isolated=retainConfirmedFloodStations([walkerston,other],{},now);
 assert.deepEqual(Object.keys(isolated.cache).sort(),["bom:533063","bom:533142"]);
 assert.equal(retainConfirmedFloodStations([below],isolated.cache,newNow)

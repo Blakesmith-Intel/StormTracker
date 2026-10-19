@@ -2,9 +2,9 @@ name: Publish verified Queensland rainfall IFD point cells
 on:
   push:
     branches: [main]
-    paths: [scripts/build-native-bom-ifd-point-cells-v1.py, .github/workflows/publish-verified-queensland-ifd.yml]
+    paths: [scripts/build-native-bom-ifd-point-cells-v1.py, scripts/test_bom_ifd_point_cells_20261020.py, .github/workflows/publish-verified-queensland-ifd.yml]
   schedule:
-    - cron: '5,20,35,50 * * * *'
+    - cron: '10 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 14
     steps:
       - uses: actions/checkout@v4
+      - name: Test first-party Bureau 2016 IFD parser
+        run: python scripts/test_bom_ifd_point_cells_20261020.py
       - name: Retrieve current station IDs and coordinates (optional)
         run: |
           python - <<'PY'
@@ -34,12 +36,12 @@ jobs:
         run: |
           git fetch --depth=1 origin radar-ftp-feed
           git show FETCH_HEAD:ifd.json > /tmp/previous-ifd.json || true
-      - name: Download native ARR Data Hub IFD for uncached station locations
+      - name: Download official 2016 BoM IFD for unrated station locations
         run: |
           if test -s /tmp/current-rainfall-gauges.json; then
-            python scripts/build-native-bom-ifd-point-cells-v1.py --stations /tmp/current-rainfall-gauges.json --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 12
+            python scripts/build-native-bom-ifd-point-cells-v1.py --stations /tmp/current-rainfall-gauges.json --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 30
           else
-            python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 12
+            python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 30
           fi
       - name: Publish authenticated IFD source table to data-only branch
         run: |
@@ -50,7 +52,7 @@ jobs:
           cp /tmp/stormtracker-ifd.json ifd.json
           git add -f ifd.json
           git diff --cached --quiet && exit 0
-          git commit -m "rain: publish source-attributed Australian native/historical IFD station calibration"
+          git commit -m "rain: publish source-attributed official BoM 2016 IFD station calibration"
           # A simultaneous FTP publication changes a disjoint set of paths.
           # Preserve both independently verified sources if that branch advances.
           for attempt in 1 2 3 4 5; do

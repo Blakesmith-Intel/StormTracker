@@ -1,0 +1,15 @@
+name: Inspect BoM IFD at ARR Data Hub — site calibration
+on:
+  push:
+    branches: [release/ftp-static-archive-aep-v10-20261019]
+    paths: [scripts/inspect-arr-data-hub-aep-v1.py, .github/workflows/inspect-arr-ifd-point-v1.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/inspect-arr-data-hub-aep-v1.py

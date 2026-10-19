@@ -94,14 +94,12 @@ export function floodRoadClosureMarkerCoordinate(
 
   for (const geometry of parts) {
     if (geometry.type === "Point") {
-      const coordinate =
-        validCoordinate(
-          geometry.coordinates
-        );
-
-      if (coordinate) {
-        return coordinate;
-      }
+      const coordinate = validCoordinate(geometry.coordinates);
+      if (coordinate) return coordinate;
+    }
+    if (geometry.type === "MultiPoint") {
+      const coordinate = (geometry.coordinates ?? []).map(validCoordinate).find(Boolean);
+      if (coordinate) return coordinate;
     }
   }
 
@@ -507,11 +505,21 @@ export function createFloodRoadClosureLayer({
           }
         }
 
-        addEntityMarker(
+        // MultiPoint is the authoritative source format for 34 of the 52
+        // current closure events; each published location gets a real marker.
+        // A point-only event cannot be given an invented closed-road alignment.
+        let multiPointIndex = 0;
+        for (const geometry of parts) {
+          if (geometry.type !== "MultiPoint") continue;
+          for (const coordinate of geometry.coordinates ?? []) {
+            const valid = validCoordinate(coordinate);
+            if (valid) addEntityMarker(summary,valid,
+              `${featureIndex}-multipoint-${multiPointIndex++}`);
+          }
+        }
+        if (!multiPointIndex) addEntityMarker(
           summary,
-          floodRoadClosureMarkerCoordinate(
-            feature
-          ),
+          floodRoadClosureMarkerCoordinate(feature),
           featureIndex
         );
       }

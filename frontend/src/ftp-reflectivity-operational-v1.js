@@ -78,7 +78,7 @@ function rgbaCategories(image){
    const category=COLOURS.get(data[i]+","+data[i+1]+","+data[i+2]);
    if(category){cat[y*512+x]=category;valid++}
  }
- if(opaque&&valid/opaque<0.55)throw Error("Incompatible FTP dBZ image palette");
+ if(opaque&&valid/opaque<0.55)throw Error("Incompatible FTP dBZ image palette: "+valid+"/"+opaque+" valid ("+(100*valid/opaque).toFixed(1)+"%)");
  return cat;
 }
 export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){

@@ -13,7 +13,7 @@ export const AEP_GRADES=Object.freeze([
 const CELL=0.025;
 export function ifdCellCoordinate(value){
  if(!Number.isFinite(value))throw RangeError("IFD grid coordinate invalid");
- return Number((Math.floor(value/CELL)*CELL+CELL/2).toFixed(4));
+ return Number((Math.floor(Number((value/CELL).toFixed(8)))*CELL+CELL/2).toFixed(4));
 }
 export const ifdCellKey=(lat,lon)=>
  ifdCellCoordinate(lat).toFixed(4)+","+ifdCellCoordinate(lon).toFixed(4);

@@ -9,6 +9,9 @@ on:
     paths:
       - scripts/publish-bom-ftp-manifest-v1.py
       - scripts/stage-genuine-ftp-png-feed-v1.py
+      # Any operational radar source change also refreshes the verified archive.
+      - frontend/src/bom-wmts-loop-v2.js
+      - frontend/src/ftp-reflectivity-operational-v1.js
       - .github/workflows/publish-bom-ftp-manifest.yml
 permissions:
   contents: write

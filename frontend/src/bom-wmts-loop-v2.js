@@ -152,13 +152,15 @@ async function validatedNationalTimes(now,region,publishedTimes,verifyTile=probe
 }
 export async function findLatestBomReflectivityTime(
  now=Date.now(),region='SEQ',{
- publishedTimes=publishedReflectivityTimes
+ publishedTimes=publishedReflectivityTimes,
+ verifyNationalTile=probeTimestamp,
+ ftpHistory=discoverFtpReflectivityHistory
  }={}
 ){
- try{return (await validatedNationalTimes(now,region,publishedTimes)).at(-1)}
+ try{return (await validatedNationalTimes(now,region,publishedTimes,verifyNationalTile)).at(-1)}
  catch(error){console.warn("National reflectivity unavailable; using verified FTP archive",
   String(error.message));}
- return (await discoverFtpReflectivityHistory(now,region,45)).at(-1);
+ return (await ftpHistory(now,region,45)).at(-1);
 }
 
 function createCanvas(width, height) {
@@ -176,7 +178,7 @@ function createCanvas(width, height) {
   throw new Error("No browser canvas implementation is available.");
 }
 
-async function loadVerifiedNationalMosaicAtTime(observedUtc, region = 'SEQ') {
+export async function loadVerifiedNationalMosaicAtTime(observedUtc, region = 'SEQ') {
   if (!observedUtc) throw new Error("observedUtc is required.");
   const window = reflectivityWindowForRegion(region);
   const columns = window.colEnd - window.colStart + 1;

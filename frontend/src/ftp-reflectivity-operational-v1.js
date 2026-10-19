@@ -20,7 +20,7 @@ export async function publishedFtpManifest({now=Date.now(),fetcher=fetch}={}){
  const m=await response.json();
  if(m.schema!=="StormTrackerBoMFtpReflectivityManifestV1"||m.sourceKind!=="ftp-original-png-byte-identical-static-archive"||!m.siteFrameHistory||!m.siteGeoreference)
    throw Error("Unrecognised BoM FTP metadata manifest");
- if(!Number.isFinite(Date.parse(m.generatedUtc))||now-Date.parse(m.generatedUtc)>25*60000)
+ if(!Number.isFinite(Date.parse(m.generatedUtc))||now-Date.parse(m.generatedUtc)>60*60000)
    throw Error("BoM FTP discovery manifest stale");
  cached=m;cachedAt=now;
  return m;

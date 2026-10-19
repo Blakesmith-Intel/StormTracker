@@ -15,6 +15,21 @@ On **18 October 2026 at 08:16 UTC**, seven live BoM regional map pages were audi
 ## Statewide coverage
 Seven broad Queensland source regions: `gulf`, `north`, `tvl2mck`, `widebay`, `seast`, `west`, `border` (actual BoM `.shtml` regional pages). Some regions overlap; the exact station ID prevents duplicates. If a regional report is stale, missing or denied, that region is marked incomplete, not labelled 0mm. BoM observation pages can contain automated data with limited quality control.
 
+## 20 October 2026: Operator-friendly measured rainfall and local rarity
+
+The map now shows all ≥50 mm gauges, even where the total is not rare locally or the official location-specific IFD reference is unavailable. The rain droplet is orange for 50–99.9 mm and red for ≥100 mm, always with a numbered mm total. A separate label ranks rarity for that location and duration.
+
+The legend explains all grades without requiring AEP knowledge:
+- Notable: 20% (1 in 5 annual chance)
+- Unusual: 10% (1 in 10 annual chance)
+- Rare: 5% (1 in 20 annual chance)
+- Very rare: 2% (1 in 50 annual chance)
+- Exceptional: 1% (1 in 100 annual chance)
+
+The % describes the annual probability of meeting or exceeding the design rainfall depth *for the same duration and location*, not a fixed recurrence schedule, flood warning, or flood severity. Less rare = below 20% benchmark, and Unrated = no verified local IFD comparison.
+
+A third view, “Last 24 hrs”, uses the independently published official 24-hour BoM source-map product. It is never computed by adding individual hours or since-9am totals. Duration uses 1440 minutes for IFD. Existing 5-minute refresh and off-by-default behaviour are unchanged.
+
 ## Integration and performance
 - The existing StormTracker Cloudflare Worker adds only one read-only consolidated endpoint: `/qld-significant-rainfall`. It fetches three BoM regional HTML files at a time with 12-second deadlines and 5-minute upstream caching, extracts *only ≥50mm qualifying observations*, and returns a small JSON response with source age and unavailable-region context. Never add another relay, back end or subscription.
 - Browser issues **no requests while layer is off**. Once enabled, one consolidation fetch every **five minutes** (not Cesium frame-by-frame) and on manual refresh. Selecting 9am versus last hour **does not refetch** the source.

@@ -218,9 +218,12 @@ export function initialiseOperationalSignificantRainfall({
  }
  function pointerUp(event){
   if(pointerTap.id!==event.pointerId)return;
+  // Never reject a stationary map tap by elapsed wall time. Cesium terrain,
+  // radar decoding and WebGL can delay pointerup by seconds on slower devices;
+  // the old 800 ms cutoff made otherwise valid gauge clicks disappear.
+  // Movement, pointer identity and canvas bounds remain the touch/drag guards.
   const isTap=!pointerTap.moved&&
-    Math.hypot(event.clientX-pointerTap.x,event.clientY-pointerTap.y)<12&&
-    Date.now()-pointerTap.started<800;
+    Math.hypot(event.clientX-pointerTap.x,event.clientY-pointerTap.y)<12;
   clearTap();
   if(!isTap||!collection.show)return;
   const rect=canvas.getBoundingClientRect();

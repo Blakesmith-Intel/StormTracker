@@ -1,0 +1,40 @@
+{
+  "document": "https://www.bom.gov.au/sites/default/files/2026-05/service-level-specification-flood-forecasting-warning-services-queensland-v3.7.pdf",
+  "sourceSha256": "756d62f8b9720ce7c0147fabb22dffc2c120bd72aa1f97338d4f0552e0353bbf",
+  "importedAt": "2026-10-19T16:09:39.796Z",
+  "classified": 1065,
+  "dataOnly": 737,
+  "bySchedule": {
+    "forecast": 222,
+    "information": 843,
+    "data": 742
+  },
+  "ambiguous": [],
+  "unparsedCount": 4,
+  "unparsed": [
+    {
+      "id": "540149",
+      "section": 2,
+      "sample": "Bureau/Seqwater Automatic 8 11 13 TBC TBC TBC TBC TBC GROVE",
+      "page": 20
+    },
+    {
+      "id": "533207",
+      "section": 3,
+      "sample": "Mackay Regional Council Automatic 1.1 1.2 Medium ST)",
+      "page": 46
+    },
+    {
+      "id": "531039",
+      "section": 3,
+      "sample": "FLAGGY CREEK Cairns Regional Council Automatic 4.5 6 Medium",
+      "page": 49
+    },
+    {
+      "id": "531027",
+      "section": 3,
+      "sample": "FLAGGY CREEK DLGWV Automatic 4.5 6 Medium",
+      "page": 49
+    }
+  ]
+}

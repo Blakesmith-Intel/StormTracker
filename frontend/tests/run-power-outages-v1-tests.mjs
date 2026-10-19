@@ -28,7 +28,10 @@ const currentPolygon={outline:true,outlineColor:"legacy"};
 const simulatedUnplannedColour={withAlpha:alpha=>({name:"unplanned",alpha})};
 assert.equal(styleTerrainClampedPowerOutagePolygon(currentPolygon,simulatedUnplannedColour),true);
 assert.equal(currentPolygon.outline,false);
-assert.deepEqual(currentPolygon.material,{name:"unplanned",alpha:0.34});
+assert.deepEqual(currentPolygon.material,{name:"unplanned",alpha:0.46});
+assert.equal(currentPolygon.show,true);
+assert.equal(currentPolygon.fill,true);
+assert.equal(currentPolygon.zIndex,25);
 assert.equal(currentPolygon.outlineColor,"legacy",
   "Unneeded polygon outline colour can remain without enabling outline geometry");
 assert.equal(styleTerrainClampedPowerOutagePolygon(null,simulatedUnplannedColour),false);

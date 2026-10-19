@@ -821,9 +821,30 @@ export async function loadPowerOutages({
 // outage refresh. PointGraphics outlines remain valid and untouched.
 export function styleTerrainClampedPowerOutagePolygon(polygon,colour) {
   if(!polygon)return false;
-  polygon.material=colour.withAlpha(0.34);
+  // Explicitly draw both ground/3-D classification with visible fill.
+  // The previous default GeoJSON style could be effectively invisible over
+  // satellite/terrain imagery and its unsupported entity outline was ignored.
+  polygon.show=true;
+  polygon.fill=true;
+  polygon.material=colour.withAlpha(0.46);
   polygon.outline=false;
+  polygon.zIndex=25;
   return true;
+}
+
+// Use only the exact Energex/Ergon affected-area boundary supplied by
+// the provider. Never infer an outage region from a point, suburb or count.
+export function officialPowerOutageBoundaryRings(feature){
+ const g=feature?.geometry;
+ if(!g)return [];
+ const polys=g.type==="Polygon"?[g.coordinates]:
+  g.type==="MultiPolygon"?g.coordinates:[];
+ return polys.flatMap(poly=>(poly??[]).map(ring=>{
+  const valid=(ring??[]).filter(c=>Array.isArray(c)&&c.length>=2&&
+    Number.isFinite(Number(c[0]))&&Number.isFinite(Number(c[1]))&&
+    Number(c[0])>=110&&Number(c[0])<=160&&Number(c[1])>=-45&&Number(c[1])<=-8);
+  return valid.length>=4?valid.map(c=>[Number(c[0]),Number(c[1])]):[];
+ }).filter(r=>r.length>=4));
 }
 
 export function createPowerOutageLayer({
@@ -1001,13 +1022,32 @@ export function createPowerOutageLayer({
       styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour);
     }
 
-    viewer.scene
-      .requestRender();
-
-    onUpdate(
-      currentFeatures
-        .slice()
-    );
+    // The official outage boundaries are separately visualised with an
+    // elevated render order. Cesium terrain classification can otherwise
+    // display an almost invisible translucent fill without its outer edge.
+    // These coordinates are always taken from the actual provider polygons.
+    for (const feature of currentFeatures) {
+      const summary=powerOutageSummary(feature);
+      for (const [index,ring] of officialPowerOutageBoundaryRings(feature).entries()) {
+        const flat=ring.flatMap(c=>c);
+        const edge=dataSource.entities.add({
+          id:"stormtracker-outage-boundary-"+summary.id+"-"+index,
+          name:summary.suburbs||"Power outage affected area",
+          polyline:{
+            show:true,
+            positions:CesiumRef.Cartesian3.fromDegreesArray(flat),
+            width:4,
+            clampToGround:true,
+            zIndex:35,
+            material:unplannedColour.withAlpha(0.96)
+          }
+        });
+        edge.stormTrackerPowerOutageId=String(summary.id);
+        edge.stormTrackerPowerOutageProvider=summary.provider;
+      }
+    }
+    viewer.scene.requestRender();
+    onUpdate(currentFeatures.slice());
   }
 
   async function refresh({

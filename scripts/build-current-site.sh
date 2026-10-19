@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -124,6 +124,19 @@ version_once("src/live3d-operational-v9.js",
     "power-outages-operational-v1.js?v=council-customers-20261017-v1")
 version_once("src/context-layers/power-outages-operational-v1.js",
     "power-outages-v1.js?v=background-incident-refresh-20261017-v1")
+# Ensure the V10 pinned HTML uses the patched operational geometry modules.
+# Both genuine closure lines and Energex outage polygons otherwise resolve to
+# the obsolete, cached modules even after changes reach GitHub main.
+version_once("src/live3d-operational-v9.js",
+    "flood-road-closures-operational-v1.js?v=sidebar-refresh-track-20261017-v1")
+version_once("src/context-layers/flood-road-closures-operational-v1.js",
+    "flood-road-closures-v1.js?v=background-incident-refresh-20261017-v1")
+version_once("src/context-layers/flood-road-closures-operational-v1.js",
+    "flood-road-closures-v1.js?v=9.15.0-unplanned")
+version_once("src/context-layers/flood-road-closures-operational-v1.js",
+    "flood-road-closure-filter-v1.js?v=9.15.0-unplanned")
+version_once("src/context-layers/flood-road-closures-v1.js",
+    "flood-road-closure-filter-v1.js?v=9.15.0-unplanned")
 
 # Overlay ONLY the missing manual refresh control, without replacing the
 # pinned V10.2 HTML/CSS or altering its accepted operator layout.

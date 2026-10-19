@@ -5,8 +5,8 @@ No imagery is copied/redistributed. Fail closed on stale/missing observations.
 import argparse, datetime as dt, ftplib, json, re
 from pathlib import Path
 
-SITES=("08","50","66","28","53","93")
-PAT=re.compile(r"^IDR(\d{2})([1-4])\.T\.(\d{12})\.png$")
+SITES=("24","50","66","19","72","23","74","08","56","22","36","75","107","98","108","106","67","78","41","93","53","28")
+PAT=re.compile(r"^IDR(\d{2,3})([1-4])\.T\.(\d{12})\.png$")
 UTC=dt.timezone.utc
 
 def discover(names, now, sites=SITES, max_age_minutes=45):

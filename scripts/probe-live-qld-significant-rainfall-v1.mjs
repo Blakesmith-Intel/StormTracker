@@ -17,9 +17,8 @@ if(payload.format!=="StormTrackerSignificantRainfallV1"||
 for(const period of ["since9am","lastHour"]){
  for(const item of payload.observations[period]){
   if(item.period!==period||!item.id||!Number.isFinite(item.latitude)||
-      !Number.isFinite(item.longitude)||item.mm<50||
-      !["orange","red"].includes(item.band)||
-      (item.band==="red")!==(item.mm>=100)||
+      !Number.isFinite(item.longitude)||!Number.isFinite(item.mm)||item.mm<0||item.mm>3000||
+      item.band!==(item.mm>=100?"red":item.mm>=50?"orange":null)||
       !Number.isFinite(Date.parse(item.sourceCreatedAt)))
    throw Error("Unverified BoM rainfall observation");
  }

@@ -49,18 +49,18 @@ resolves.shift()();
 for(const times of await Promise.all(requests))assert.deepEqual(times,samples);
 for(const site of ["SEQ","08","19","22","50","66","75","93"]){
   const times=await discoverBoundedBomReflectivityHistory(clock,180,site,{
-    publishedTimes:source});
+    publishedTimes:source,verifyNationalTile:async()=>true});
   assert.deepEqual(times,samples,"Every radar uses the same published source times: "+site);
   assert.ok(reflectivityWindowForRegion(site),"Radar still uses actual regional tile location");
 }
-assert.equal(fetches,1,"No repeated 400 timestamp probes per station");
-assert.equal(await findLatestBomReflectivityTime(clock,"19",{publishedTimes:source}),stamp(55));
+assert.equal(fetches,1,"Only one shared capabilities read; source-tile checks have separate verification");
+assert.equal(await findLatestBomReflectivityTime(clock,"19",{publishedTimes:source,verifyNationalTile:async()=>true}),stamp(55));
 assert.deepEqual(await discoverBoundedBomReflectivityHistory(clock,5,"SEQ",{
-  publishedTimes:source}),[stamp(50),stamp(55)]);
+  publishedTimes:source,verifyNationalTile:async()=>true}),[stamp(50),stamp(55)]);
 assert.deepEqual(await findRecentBomReflectivityTimes(clock,3,"50",{
-  publishedTimes:source}),[stamp(45),stamp(50),stamp(55)]);
+  publishedTimes:source,verifyNationalTile:async()=>true}),[stamp(45),stamp(50),stamp(55)]);
 assert.deepEqual(await discoverBomReflectivityHistory(clock,180,"93",{
-  publishedTimes:source}),samples);
+  publishedTimes:source,verifyNationalTile:async()=>true}),samples);
 clock+=119999;
 assert.deepEqual(await source(),samples);
 assert.equal(fetches,1);
@@ -69,9 +69,11 @@ const second=source();await Promise.resolve();
 assert.equal(fetches,2,"Source refreshes after bounded TTL, not every map frame");
 resolves.shift()();assert.deepEqual(await second,samples);
 await assert.rejects(discoverBoundedBomReflectivityHistory(clock,180,"SEQ",{
-  publishedTimes:async()=>{throw Error("HTTP 503");}
+  publishedTimes:async()=>{throw Error("HTTP 503");},
+  ftpHistory:async()=>{throw Error("HTTP 503");}
 }),/503/);
 assert.deepEqual(await discoverBoundedBomReflectivityHistory(clock,180,"19",{
-  publishedTimes:async()=>[stamp(45),stamp(50),stamp(55)]}),
+  publishedTimes:async()=>[stamp(45),stamp(50),stamp(55)],
+  verifyNationalTile:async()=>true}),
   [stamp(45),stamp(50),stamp(55)]);
 console.log("PASS real BoM GetCapabilities timestamps used at every radar, XML layer isolation, 9 genuine frames, one shared 120-sec cache, no speculative WMTS 400 site-load probes.");

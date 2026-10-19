@@ -9,6 +9,7 @@ on:
       - '.github/workflows/reconcile-qld-flood-stages.yml'
 permissions:
   contents: write
+  actions: write
 jobs:
   import-official-sls:
     runs-on: ubuntu-latest
@@ -36,4 +37,8 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Import verified statewide 2026 BoM station flood classifications and full audit"
             git push origin HEAD:main
+            # GITHUB_TOKEN-originated commits deliberately do not trigger
+            # ordinary push workflows: explicitly deploy the audited revision.
+            gh workflow run deploy-relay.yml --ref main
+            gh workflow run pages.yml --ref main
           fi

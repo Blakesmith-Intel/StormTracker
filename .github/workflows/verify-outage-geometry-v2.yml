@@ -1,0 +1,23 @@
+name: Verify outage geography against live Queensland LGA boundaries
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/probe-power-outage-lga-live-v2.mjs"
+      - ".github/workflows/verify-outage-geometry-v2.yml"
+      - "frontend/src/context-layers/outage-lga-spatial-v2.js"
+permissions:
+  contents: read
+jobs:
+  verify-live-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Check out StormTracker
+        uses: actions/checkout@v4
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify official polygon intersections and browser CORS
+        run: node scripts/probe-power-outage-lga-live-v2.mjs

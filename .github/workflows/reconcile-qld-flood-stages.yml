@@ -36,6 +36,11 @@ jobs:
           git add frontend/src/context-layers/river-flood-stages-2026-full-v1.js docs/BOM_2026_FLOOD_CLASSIFICATION_AUDIT.json docs/BOM_2026_GAUGE_COVERAGE_AUDIT.json
           if ! git diff --cached --quiet; then
             git commit -m "Import verified statewide 2026 BoM station flood classifications and full audit"
+            # Older queued audits may be based on earlier main revisions.
+            # Replay only the verified generated catalogue on top of CURRENT
+            # main so stale runs cannot force-push or overwrite current work.
+            git fetch origin main
+            git rebase origin/main
             git push origin HEAD:main
             # GITHUB_TOKEN-originated commits deliberately do not trigger
             # ordinary push workflows: explicitly deploy the audited revision.

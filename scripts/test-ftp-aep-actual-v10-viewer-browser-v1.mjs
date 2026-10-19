@@ -105,7 +105,12 @@ try{
    },{capture:true,once:false});
   }
  });
- await page.mouse.click(pos.x,pos.y);
+ // Deliberately hold down longer than the historical 800 ms cutoff;
+ // genuine events are sometimes queued this long when WebGL is saturated.
+ await page.mouse.move(pos.x,pos.y);
+ await page.mouse.down();
+ await page.waitForTimeout(1650);
+ await page.mouse.up();
  const pointerTrace=await page.evaluate(()=>window.__STORMTRACKER_QA_POINTER_TRACE||[]);
  console.log("AEP_ACTUAL_USER_POINTER_TRACE",JSON.stringify(pointerTrace));
  try{

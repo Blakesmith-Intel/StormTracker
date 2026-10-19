@@ -31,7 +31,7 @@ assert js.count(needle)==1, "V10 radar source import contract changed"
 js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1-observed-only")
 needle="significant-rainfall-operational-v1.js"
 assert js.count(needle)==1
-js=js.replace(needle,needle+"?v=ifd-aep-native-20261019")
+js=js.replace(needle,needle+"?v=rainfall-mm-rarity-24hr-20261020")
 # The sealed V10 camera guardian owns orientation. Never call Cesium.camera.setView.
 # Amend only the built production artefact; the pinned V10 source is immutable.
 core_heading="heading:" + chr(10) + "      Cesium.Math.toRadians(" + chr(10) + "        345" + chr(10) + "      )"
@@ -94,13 +94,15 @@ assert html.count("<head>")==1
 html=html.replace("<head>",'<head>\n<script>globalThis.__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true;</script>',1)
 start='title="Show BoM rain gauges reporting at least 50 mm"'
 assert html.count(start)==1
-html=html.replace(start,'title="Show observed BoM rainfall gauges graded against local IFD/AEP"')
-old='●</span> Significant rain</label>'
-assert html.count(old)==1
-html=html.replace(old,'●</span> Rainfall AEP</label>')
-old='<span class="significant-orange">●</span> 50–99.9 mm · <span class="significant-red">●</span> ≥100 mm'
-assert html.count(old)==1
-html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP · <span style="color:#929da6">●</span> Grey = AEP not assessed (verified local IFD unavailable)')
+html=html.replace(start,'title="Show 50+ mm observed rainfall and its local rarity explained"')
+# The accepted simple sidebar now includes the complete plain-language
+# legend, distinct 50/100mm amounts, annual probabilities and 24-hour view.
+assert '●</span> Significant rain</label>' in html
+assert 'value="last24Hours"' in html
+for item in ('Notable','Unusual','Rare','Very rare','Exceptional',
+             '20%','10%','5%','2%','1%',
+             '1 in 5','1 in 10','1 in 20','1 in 50','1 in 100'):
+    assert item in html, "Rainfall legend missing "+item
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
 html=html.replace(needle,needle+"hires-observed-90-20261019-")

@@ -1,3 +1,5 @@
+import {discoverFtpReflectivityHistory,loadFtpReflectivityMosaicAtTime} from "./ftp-reflectivity-operational-v1.js?v=github-ftp-static-v1";
+const ftpPreferred=()=>globalThis.__STORMTRACKER_FTP_FIRST===true;
 import { BORDER_RADAR_SITES } from "./border-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";
 import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
@@ -132,6 +134,10 @@ export async function findLatestBomReflectivityTime(
     publishedTimes=publishedReflectivityTimes
   }={}
 ){
+  if(ftpPreferred()){
+    try{return (await discoverFtpReflectivityHistory(now,region,45)).at(-1)}
+    catch(error){console.warn("FTP static archive unavailable; checking WMTS",error.message)}
+  }
   // region selects source tiles only; the BoM timeseries dimension is shared
   // nationally and is independently usable at every QLD/NSW radar location.
   const times=currentPublishedTimes(await publishedTimes(),now);
@@ -158,6 +164,17 @@ function createCanvas(width, height) {
 
 export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ') {
   if (!observedUtc) throw new Error("observedUtc is required.");
+  if(ftpPreferred()){
+    try{return await loadFtpReflectivityMosaicAtTime(observedUtc,region)}
+    catch(error){
+      // Fail closed. FTP scan times are NOT necessarily valid WMTS times.
+      // WMTS is only attempted when its separate published dimension
+      // independently includes this exact time.
+      const times=await publishedReflectivityTimes().then(t=>currentPublishedTimes(t),()=>[]);
+      if(!times.includes(observedUtc))throw new Error("FTP image rejected; last verified frame retained: "+error.message);
+      console.warn("FTP unavailable; exact published WMTS time used",error.message);
+    }
+  }
 
   const window = reflectivityWindowForRegion(region);
   const columns = window.colEnd - window.colStart + 1;
@@ -291,6 +308,10 @@ export async function discoverBoundedBomReflectivityHistory(
   now=Date.now(),horizonMinutes=180,region='SEQ',
   {publishedTimes=publishedReflectivityTimes,maximumPublishedFrames=9}={}
 ){
+  if(ftpPreferred()){
+    try{return (await discoverFtpReflectivityHistory(now,region,horizonMinutes)).slice(-Math.min(9,maximumPublishedFrames))}
+    catch(error){console.warn("FTP history unavailable; checking WMTS",error.message)}
+  }
   const max=Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
   const horizon=Math.max(5,Math.min(180,Number(horizonMinutes)||180));
   const times=currentPublishedTimes(await publishedTimes(),now);
@@ -315,6 +336,10 @@ export async function findRecentBomReflectivityTimes(
   now=Date.now(),count=6,region='SEQ',
   {publishedTimes=publishedReflectivityTimes}={}
 ){
+  if(ftpPreferred()){
+    try{return (await discoverFtpReflectivityHistory(now,region,180)).slice(-Math.max(1,Math.min(9,count)))}
+    catch(error){console.warn("FTP history unavailable; checking WMTS",error.message)}
+  }
   const times=currentPublishedTimes(await publishedTimes(),now).slice(-Math.max(
     1,Math.min(9,Math.trunc(Number(count)||6))
   ));

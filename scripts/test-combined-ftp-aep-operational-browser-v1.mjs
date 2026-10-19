@@ -41,7 +41,7 @@ try{
      throw Error("High-resolution radar timestamp is not current");
    if(f.sourceId==="BOM-FTP-MOSAIC"&&f.sourceMetadata?.siteIds?.length!==3)
      throw Error("Fallback missing verified source radars");
-   if(f.sourceMetadata?.categoryHistogram?.reduce((a,b)=>a+b,0)!==f.categories.length)
+   if(f.sourceMetadata?.categoryHistogram?.reduce((a,b)=>a+b,0)!==f.sourceMetadata.colouredPixelCount)
      throw Error("Invalid dBZ category histogram");
    frameResults.push({time,source:f.sourceId,sites:f.sourceMetadata.siteIds||["BoM official national"],
     dBZPixelCount:f.sourceMetadata.colouredPixelCount,

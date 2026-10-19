@@ -3,7 +3,7 @@
 // conservative heuristics and require real successive observed timestamps.
 import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
 import {stationFloodLevels,observedFloodClass}
-  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
+  from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
 export const FLOOD_SIGNAL_STORAGE_KEY = "stormtracker.qld-flood-observations.v1";
 export const FLOOD_SIGNAL_HISTORY_MS = 48 * 60 * 60 * 1000;
@@ -259,7 +259,8 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const reported=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
   const calculated=measured===null?"below-minor":measured;
   if(measured!==undefined &&
-      p.STORMTRACKER_THRESHOLD_STATUS==="2026-station-native" &&
+      ["2026-station-native","2026-ahd-converted"].includes(
+        p.STORMTRACKER_THRESHOLD_STATUS) &&
       ["below-minor","minor","moderate","major"].includes(reported) &&
       calculated!==reported){
     return {show:true,state:"unverified",source:"bom-datum-conflict",

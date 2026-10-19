@@ -8,7 +8,7 @@ import {
   loadRiverGaugeOperationalSnapshot
 } from "./river-gauge-observations-v1.js?v=9.12.0";
 import {withStationFloodLevels}
-  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
+  from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
 import {
   FLOOD_SIGNAL_STORAGE_KEY,
@@ -139,6 +139,7 @@ export function riverGaugeOperationalSummary(
     thresholdStatus:String(properties.STORMTRACKER_THRESHOLD_STATUS??""),
     thresholdSource:String(properties.STORMTRACKER_THRESHOLD_SOURCE??""),
     thresholdSourceDate:String(properties.STORMTRACKER_THRESHOLD_SOURCE_DATE??""),
+    thresholdReference:String(properties.STORMTRACKER_THRESHOLD_REFERENCE??""),
     gaugeIdentityWarning:String(properties.STORMTRACKER_IDENTITY_WARNING??""),
     floodThresholds:{
       minor:properties.STORMTRACKER_MINOR_FLOOD_METRES??null,

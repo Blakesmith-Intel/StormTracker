@@ -19,7 +19,8 @@ import {
 
 import {BOM_2026_CLASSIFICATIONS}
   from "../frontend/src/context-layers/river-flood-stages-2026-full-v1.js";
-import {OFFICIAL_MAY_2026_STAGES_URL,HISTORICAL_EXACT_ID_EXCEPTIONS}
+import {OFFICIAL_MAY_2026_STAGES_URL,HISTORICAL_EXACT_ID_EXCEPTIONS,
+  stationFloodLevels}
   from "../frontend/src/context-layers/river-flood-thresholds-v1.js";
 
 import {
@@ -808,6 +809,11 @@ function riverHeightResponse(
 // Historic Warilda source values are explicitly labelled in the frontend.
 function relayQldFloodThresholds(request,origin){
   const stages={...BOM_2026_CLASSIFICATIONS,...HISTORICAL_EXACT_ID_EXCEPTIONS};
+  // Frontend and external relay consumers must receive comparable AHD
+  // values for the same station rather than conflicting 4/5/6m thresholds.
+  stages["bom:540097"]=stationFloodLevels({
+    id:"bom:540097",properties:{bom_stn_num:"540097"}
+  });
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");
   headers.set("Cache-Control","public, max-age=3600");
@@ -819,6 +825,11 @@ function relayQldFloodThresholds(request,origin){
     sourceMatchedByStationId:true,
     statewideThresholdCount:Object.keys(BOM_2026_CLASSIFICATIONS).length,
     historicalExceptions:Object.keys(HISTORICAL_EXACT_ID_EXCEPTIONS),
+    stationDatumCorrections:{"bom:540097":{
+      publishedLocalStages:{minor:4,moderate:5,major:6},
+      surveyedOffsetAhdMetres:48.85,
+      comparisonDatum:"AHD"
+    }},
     thresholds:stages
   }),{status:200,headers});
 }

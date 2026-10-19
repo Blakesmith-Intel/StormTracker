@@ -3,7 +3,7 @@ import {
   riverGaugeSummary
 } from "./river-gauges-v1.js?v=9.12.0";
 import {withStationFloodLevels}
-  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
+  from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=9.13.2";
 
 export const DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL =

@@ -285,7 +285,9 @@ function showRiverGaugeInfo(
       "Minor "+fmt(thresholds.minor)+" · Moderate "+
         fmt(thresholds.moderate)+" · Major "+fmt(thresholds.major));
   addDetailRow(rows,"Flood stage reference",
-    summary.thresholdStatus==="2026-station-native"
+    summary.thresholdStatus==="2026-ahd-converted"
+      ? "AHD · station 540097 · BoM 4/5/6 m stages adjusted by documented 48.85 m datum offset"
+      : summary.thresholdStatus==="2026-station-native"
       ? "BoM SLS v3.7 · exact station ID · native station reported metres"
       : summary.thresholdStatus==="historical-exact-id-caution"
         ? "BoM 2022 exact-ID legacy classification · 2026 classification unavailable"

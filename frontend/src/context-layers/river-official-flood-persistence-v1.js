@@ -3,7 +3,7 @@
 // own exact station ID. A stale missing observation is NOT proof of recovery.
 import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=20261018-inland-rise";
 import {stationFloodLevels,observedFloodClass}
-  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
+  from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
 export const OFFICIAL_FLOOD_STORAGE_KEY="stormtracker.qld-confirmed-flood-stations.v1";
 const officialLevels=new Set(["minor","moderate","major"]);

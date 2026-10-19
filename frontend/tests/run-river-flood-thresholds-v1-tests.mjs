@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {BOM_2026_CLASSIFICATIONS,BOM_2026_DATA_ONLY_STATIONS}
   from "../src/context-layers/river-flood-stages-2026-full-v1.js";
 import {BOM_2026_VERIFIED_CLASSIFICATION_COUNT,cleanFloodLevels,
+ VERIFIED_GAUGE_DATUM_TRANSFORMS,
  stationFloodLevels,withStationFloodLevels,observedFloodClass}
  from "../src/context-layers/river-flood-thresholds-v1.js";
 import {evaluateFloodSignal} from "../src/context-layers/river-flood-signals-v1.js";
@@ -14,7 +15,7 @@ const stages={
  "bom:540057":[76.2,77.7,79.2],
  "bom:539066":[111.5,115,121],
  "bom:540646":[41.5,42,42.5],
- "bom:540097":[4,5,6],
+ "bom:540097":[52.85,53.85,54.85],
  "bom:535142":[6,9,12],
  "bom:540319":[1.7,2.4,3.5]
 };
@@ -63,9 +64,28 @@ const mismatch=withStationFloodLevels([{id:"bom:540610",properties:{
   bom_stn_num:"540057",STORMTRACKER_MAJOR_FLOOD_METRES:7.8}}])[0];
 assert.equal(mismatch.properties.STORMTRACKER_MAJOR_FLOOD_METRES,undefined);
 assert.match(mismatch.properties.STORMTRACKER_IDENTITY_WARNING,/disagrees/);
+assert.equal(VERIFIED_GAUGE_DATUM_TRANSFORMS["bom:540097"].ahdOffsetMetres,48.85);
 assert.equal(stationFloodLevels({id:"bom:540097",properties:{
-  bom_stn_num:"540097",name:"Oxley Creek"}}).major,6,
-  "New Beith can never inherit the Oxley Creek 540646 stage");
+  bom_stn_num:"540097",name:"Oxley Creek at New Beith"}}).major,54.85,
+  "New Beith AHD stage must never borrow 540646 or use raw 6 m");
+const newBeith=withStationFloodLevels([{id:"bom:540097",properties:{
+  bom_stn_num:"540097",name:"New Beith Road (Greenbank) (Oxley Creek)",
+  STORMTRACKER_HEIGHT_METRES:49.55,
+  STORMTRACKER_OBSERVED_TEXT:"11.15PM Mon",
+  STORMTRACKER_TENDENCY:"steady"}}])[0];
+assert.equal(newBeith.properties.STORMTRACKER_IDENTITY_WARNING,undefined,
+  "Oxley Creek at New Beith is the CORRECT gauge identity");
+assert.equal(newBeith.properties.STORMTRACKER_THRESHOLD_STATUS,"2026-ahd-converted");
+assert.match(newBeith.properties.STORMTRACKER_THRESHOLD_REFERENCE,/AHD/);
+assert.equal(observedFloodClass(49.55,stationFloodLevels(newBeith)),null,
+  "19 Oct source 49.55m AHD is BELOW minor, not major flood");
+for(const [height,state] of [[52.84,null],[52.85,"minor"],[53.84,"minor"],
+  [53.85,"moderate"],[54.84,"moderate"],[54.85,"major"]])
+  assert.equal(observedFloodClass(height,stationFloodLevels(newBeith)),state,
+    "New Beith AHD threshold boundary at "+height);
+assert.equal(stationFloodLevels({id:"bom:540646"}).minor,41.5,
+  "Distinct downstream Oxley Creek station 540646 remains unchanged");
+
 const caution=withStationFloodLevels([{id:"bom:544058",properties:{
   bom_stn_num:"544058"}}])[0];
 assert.equal(caution.properties.STORMTRACKER_THRESHOLD_STATUS,"historical-exact-id-caution");

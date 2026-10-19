@@ -20,4 +20,5 @@ jobs:
         run: |
           node --check frontend/src/context-layers/power-outages-v1.js
           node --check frontend/src/ftp-reflectivity-operational-v1.js
+          node scripts/test-map-geometry-integrity-20261019.mjs
           npm test

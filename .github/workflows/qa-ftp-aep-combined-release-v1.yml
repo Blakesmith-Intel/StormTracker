@@ -72,7 +72,8 @@ jobs:
           grep -Fq 'then(frames=>frames.filter(isVerifiedHiResRadarFrame))' _site/src/live3d-operational-v9.js
           grep -Fq 'highResolutionBomMosaicFrame' _site/src/hires-radar-loop-policy-v1.js || grep -Fq 'isVerifiedHiResRadarFrame' _site/src/hires-radar-loop-policy-v1.js
           grep -Fq 'dataSource.entities.removeAll();' _site/src/context-layers/flood-road-closures-v1.js
-          grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
+          ! grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
+          ! grep -Fq 'loadFtpReflectivityMosaicAtTime' _site/src/bom-wmts-loop-v2.js
           node scripts/test-hires-only-source-policy-v1.mjs
           python scripts/test-ftp-publisher-sha-reuse-v1.py
           grep -Fq 'VERIFIED CURRENT NATIVE BOM WMTS HIGH-RES DIRECT TILES' _site/BUILD.txt

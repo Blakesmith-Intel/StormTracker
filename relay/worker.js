@@ -1087,8 +1087,8 @@ async function relayQldSignificantRainfall(request,origin){
       if(!Number.isFinite(created)||created>Date.now()+5*60000||
           Date.now()-created>90*60000)
         throw Error("BoM rainfall regional page is stale: "+sourceCreatedAt);
-      const since9am=parseBomRainfallMap(html,"since9am",region);
-      const lastHour=parseBomRainfallMap(html,"lastHour",region);
+      const since9am=parseBomRainfallMap(html,"since9am",region,{minimumMm:1});
+      const lastHour=parseBomRainfallMap(html,"lastHour",region,{minimumMm:1});
       return {region,sourceCreatedAt,
         observations:[...since9am,...lastHour].map(x=>({...x,sourceCreatedAt}))};
     }));
@@ -1105,8 +1105,8 @@ async function relayQldSignificantRainfall(request,origin){
   if(!regional.length)return errorResponse(
     "BoM Queensland significant rainfall source unavailable",503,origin);
   const observations={
-    since9am:dedupeSignificantRainfall(samples,"since9am"),
-    lastHour:dedupeSignificantRainfall(samples,"lastHour")
+    since9am:dedupeSignificantRainfall(samples,"since9am",{minimumMm:1}),
+    lastHour:dedupeSignificantRainfall(samples,"lastHour",{minimumMm:1})
   };
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");

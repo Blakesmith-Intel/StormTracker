@@ -1,8 +1,8 @@
 name: Publish BoM FTP observation manifest
 on:
   schedule:
-    # Offset from minute zero, where GitHub schedules are often delayed.
-    - cron: '2-59/5 * * * *'
+    # Reactivate the default-branch schedule; the preceding offset cron never ran.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
   push:
     branches: [main]

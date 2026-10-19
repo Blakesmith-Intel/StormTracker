@@ -268,9 +268,19 @@ function showRiverGaugeInfo(
     )
   );
 
+  if(summary.floodThresholds?.minor!==null &&
+      summary.floodThresholds?.minor!==undefined){
+    const f=summary.floodThresholds;
+    const fmt=n=>typeof n==="number"?n.toFixed(2)+" m":"not defined";
+    addDetailRow(rows,"BoM flood thresholds",
+      "Minor "+fmt(f.minor)+" · Moderate "+fmt(f.moderate)+
+      " · Major "+fmt(f.major));
+  }
   addDetailRow(
     rows,
     "Flood class",
+    summary.alertSource==="bom-station-threshold"?
+      labelFloodClass(summary.displayState)+" (measured height)":
     summary.classificationUnverified
       ? "Not supplied with latest measured height"
       : labelFloodClass(summary.floodClass)

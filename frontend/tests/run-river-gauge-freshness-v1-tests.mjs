@@ -9,6 +9,7 @@ import {
 } from "../src/context-layers/river-official-flood-persistence-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
 import {DEFAULT_RIVER_GAUGE_REFRESH_MS} from "../src/context-layers/river-gauges-v1.js";
+import {withStationFloodLevels} from "../src/context-layers/river-flood-thresholds-v1.js";
 
 const now=Date.UTC(2026,9,19,13,36); // Monday 23:36 AEST
 const station=(id,name,height,time,flood="",tendency="falling")=>({
@@ -49,14 +50,10 @@ assert.ok(tarana.properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT <
   tarana.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT);
 assert.equal(panorama.properties.STORMTRACKER_HEIGHT_METRES,2.55);
 assert.equal(panorama.properties.STORMTRACKER_OBSERVED_TEXT,"11.14PM Mon");
-const mapped=reconcileFloodEvents(classState.features,{}, {},now);
-const taranaMarker=mapped.features.find(x=>x.id==="bom:535142");
-assert.ok(taranaMarker);
-assert.equal(taranaMarker.properties.STORMTRACKER_HEIGHT_METRES,0.23);
-assert.equal(taranaMarker.properties.STORMTRACKER_DISPLAY_STATE,"major");
-assert.equal(taranaMarker.properties.STORMTRACKER_OBSERVATION_STALE,false);
-assert.equal(taranaMarker.properties.STORMTRACKER_CLASSIFICATION_UNVERIFIED,true);
-assert.equal(taranaMarker.properties.STORMTRACKER_RAPID_RISE,false);
+const mapped=reconcileFloodEvents(
+  withStationFloodLevels(classState.features),{}, {},now);
+assert.equal(mapped.features.some(x=>x.id==="bom:535142"),false,
+  "0.23m is below the 6.0m official minor flood stage; no flood marker");
 
 // A stale CDN reply must not reverse any newer source-verified gauge height.
 const replay=retainLatestGaugeObservations(

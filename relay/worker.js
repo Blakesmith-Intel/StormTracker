@@ -16,6 +16,8 @@ import {
 import {
   parseRiverHeightBulletin
 } from "../frontend/src/context-layers/river-height-bulletin-v1.js";
+import {FLOOD_LEVEL_SOURCE,parseQldOfficialFloodLevels,VERIFIED_FLOOD_LEVELS}
+  from "../frontend/src/context-layers/river-flood-thresholds-v1.js";
 
 import {
   BOM_RIVER_TIDE_GAUGE_QUERY_URL
@@ -797,6 +799,36 @@ function riverHeightResponse(
       headers
     }
   );
+}
+
+async function relayQldFloodThresholds(request,origin){
+  let levels={};
+  try{
+    const upstream=await fetch(FLOOD_LEVEL_SOURCE,{
+      headers:{Accept:"text/html"},
+      cf:{cacheEverything:true,cacheTtl:43200}
+    });
+    if(!upstream.ok)throw Error("BoM threshold HTTP "+upstream.status);
+    const html=await upstream.text();
+    if(html.length>1500000)throw Error("BoM threshold page oversized");
+    levels=parseQldOfficialFloodLevels(html);
+    if(Object.keys(levels).length<100 ||
+        levels["bom:535142"]?.minor!==6)
+      throw Error("Unrecognised BoM threshold table");
+  }catch(error){
+    // Graceful, honest fallback to exact source-verified stations only.
+    levels={};
+    console.warn("BoM QLD thresholds unavailable:",String(error?.message??error));
+  }
+  const headers=corsHeaders(origin);
+  headers.set("Content-Type","application/json; charset=utf-8");
+  headers.set("Cache-Control","public, max-age=1800");
+  return new Response(request.method==="HEAD"?null:JSON.stringify({
+    format:"StormTrackerQueenslandFloodThresholdsV1",
+    source:FLOOD_LEVEL_SOURCE,sourceDate:"2022-01-05",
+    complete:Object.keys(levels).length>=100,
+    thresholds:{...levels,...VERIFIED_FLOOD_LEVELS}
+  }),{status:200,headers});
 }
 
 async function relayRiverHeightBulletins(
@@ -1683,6 +1715,10 @@ export default {
         request,
         origin
       );
+    }
+
+    if (incoming.pathname === "/river-flood-thresholds") {
+      return relayQldFloodThresholds(request,origin);
     }
 
     if (incoming.pathname === "/river-height-bulletins") {

@@ -7,6 +7,8 @@ import {
 import {
   loadRiverGaugeOperationalSnapshot
 } from "./river-gauge-observations-v1.js?v=9.12.0";
+import {withStationFloodLevels}
+  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
 
 import {
   FLOOD_SIGNAL_STORAGE_KEY,
@@ -134,6 +136,11 @@ export function riverGaugeOperationalSummary(
     classificationUnverified:Boolean(properties.STORMTRACKER_CLASSIFICATION_UNVERIFIED),
     lastConfirmedFloodClass:String(properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??""),
     lastConfirmedFloodAt:Number(properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT)||null,
+    floodThresholds:{
+      minor:properties.STORMTRACKER_MINOR_FLOOD_METRES??null,
+      moderate:properties.STORMTRACKER_MODERATE_FLOOD_METRES??null,
+      major:properties.STORMTRACKER_MAJOR_FLOOD_METRES??null},
+    alertSource:String(properties.STORMTRACKER_ALERT_SOURCE??""),
     officialObservedAt:Number(properties.STORMTRACKER_OFFICIAL_OBSERVED_AT)||null,
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
     recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0),
@@ -520,7 +527,7 @@ export function createRiverGaugeLayer({
         const newest=retainLatestGaugeObservations(
           result.payload.features,latestHeightCache,now());
         latestHeightCache=newest.cache;
-        result.payload.features=newest.features;
+        result.payload.features=withStationFloodLevels(newest.features,result.thresholds);
         try{storage?.setItem(LATEST_RIVER_GAUGE_STORAGE_KEY,
           JSON.stringify(latestHeightCache));}catch{}
 

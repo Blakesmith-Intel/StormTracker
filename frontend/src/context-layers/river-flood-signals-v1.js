@@ -2,6 +2,8 @@
 // Severe classifications are authoritative. Rise-rate flags are deliberately
 // conservative heuristics and require real successive observed timestamps.
 import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
+import {stationFloodLevels,observedFloodClass}
+  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
 
 export const FLOOD_SIGNAL_STORAGE_KEY = "stormtracker.qld-flood-observations.v1";
 export const FLOOD_SIGNAL_HISTORY_MS = 48 * 60 * 60 * 1000;
@@ -234,7 +236,7 @@ export function tidalRiseBaseline(samples,nowMs=Date.now()){
 // modifier. A rise alone does not prove actual flash flooding.
 export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const p=feature?.properties??{};
-  const level=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
+  let level=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
   const samples=history[String(feature?.id??"")]??[];
   const tidal=isObservedTidalGauge(feature,samples,nowMs);
   const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
@@ -246,13 +248,21 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const timely=observed!==null && Number.isFinite(observed) &&
     nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
     observed<=nowMs+5*60000;
+  const classAt=Number(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT)||0;
+  // Only a genuine timestamped observation can supersede an older flood
+  // bulletin. Missing thresholds keep the last-confirmed caution intact.
+  const measured=Number.isFinite(observed)&&observed>0&&observed>=classAt
+    ?observedFloodClass(p.STORMTRACKER_HEIGHT_METRES,
+      stationFloodLevels(feature)):undefined;
+  if(measured!==undefined)level=measured??"below-minor";
   const official=["minor","moderate","major"].includes(level);
   // Do not mistake an omitted flood class for an official below-minor reading.
   // Last-confirmed classification remains a clearly labelled precautionary
   // marker, while the CURRENT independent source water height is not replaced.
   const lastClass=String(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??"")
     .trim().toLowerCase();
-  if(!official && ["minor","moderate","major"].includes(lastClass)){
+  if(measured===undefined && !official &&
+      ["minor","moderate","major"].includes(lastClass)){
     return {show:true,state:lastClass,
       source:"last-confirmed-bom-flood-class",
       reason:(timely?"Latest measured height available":"Measured height stale")+
@@ -286,9 +296,12 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
     recent.rateMetresPerHour>=screeningThresholdMetresPerHour);
   const tidalBaseline=tidal?tidalRiseBaseline(samples,nowMs):null;
   if(["minor","moderate","major"].includes(level)){
-    return {show:true,state:level,source:"bom-classification",
+    return {show:true,state:level,
+      source:measured!==undefined?"bom-station-threshold":"bom-classification",
       stale:false,lastObservedAt:observed,
-      reason:level+" flood classification (BoM)"+
+      reason:(measured!==undefined?
+        level+" flooding from latest measured height versus BoM station thresholds":
+        level+" flood classification (BoM)")+
         (rapidlyRising?"; measured rapid rise — potential flash-flooding behaviour":""),
       rapidRise:rapidlyRising,tidalScreened:tidal,rise:recent,
       riseScreeningZone:geographicScreen.zone,

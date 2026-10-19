@@ -1124,10 +1124,20 @@ async function relayQldSignificantRainfall(request,origin){
       if(!Number.isFinite(created)||created>Date.now()+5*60000||
           Date.now()-created>90*60000)
         throw Error("BoM rainfall regional page is stale: "+sourceCreatedAt);
-      const since9am=parseBomRainfallMap(html,"since9am",region,{minimumMm:0});
-      const lastHour=parseBomRainfallMap(html,"lastHour",region,{minimumMm:0});
-      return {region,sourceCreatedAt,
-        observations:[...since9am,...lastHour].map(x=>({...x,sourceCreatedAt}))};
+      const observations=[],periodFailures=[];
+      for(const period of ["since9am","lastHour","last24Hours"]){
+        try{
+          observations.push(...parseBomRainfallMap(html,period,region,{
+            minimumMm:0
+          }).map(x=>({...x,sourceCreatedAt})));
+        }catch(error){
+          periodFailures.push({region,period,
+            reason:String(error?.message??error).slice(0,120)});
+        }
+      }
+      if(periodFailures.length===3)
+        throw Error("BoM source has no readable rainfall periods");
+      return {region,sourceCreatedAt,observations,periodFailures};
     }));
     for(let j=0;j<chunk.length;j++){
       const result=settled[j];
@@ -1135,6 +1145,7 @@ async function relayQldSignificantRainfall(request,origin){
         regional.push({region:result.value.region,
           sourceCreatedAt:result.value.sourceCreatedAt});
         samples.push(...result.value.observations);
+        failures.push(...result.value.periodFailures);
       }else failures.push({region:chunk[j],
         reason:String(result.reason?.message??result.reason).slice(0,120)});
     }
@@ -1143,7 +1154,8 @@ async function relayQldSignificantRainfall(request,origin){
     "BoM Queensland significant rainfall source unavailable",503,origin);
   const observations={
     since9am:dedupeSignificantRainfall(samples,"since9am",{minimumMm:0}),
-    lastHour:dedupeSignificantRainfall(samples,"lastHour",{minimumMm:0})
+    lastHour:dedupeSignificantRainfall(samples,"lastHour",{minimumMm:0}),
+    last24Hours:dedupeSignificantRainfall(samples,"last24Hours",{minimumMm:0})
   };
   const headers=corsHeaders(origin);
   headers.set("Content-Type","application/json; charset=utf-8");

@@ -1,0 +1,13 @@
+name: Audit authoritative FTP map control points
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/audit-official-ftp-map-controls-20261019.py

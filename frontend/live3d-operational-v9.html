@@ -90,11 +90,22 @@
       <div class="layer-row significant-rainfall-row">
         <label title="Show BoM rain gauges reporting at least 50 mm"><input id="showSignificantRainfall" type="checkbox"> <span class="significant-rain-icon" aria-hidden="true">●</span> Significant rain</label>
         <select id="significantRainfallPeriod" aria-label="Rainfall observation period">
-          <option value="since9am">Since 9 am</option><option value="lastHour">Last hour</option>
+          <option value="since9am">Since 9 am</option><option value="lastHour">Last hour</option><option value="last24Hours">Last 24 hrs</option>
         </select>
         <button id="refreshSignificantRainfallButton" type="button" title="Refresh significant rainfall observations" aria-label="Refresh rainfall">↻</button>
       </div>
-      <details class="significant-rainfall-details"><summary><span class="significant-orange">●</span> 50–99.9 mm · <span class="significant-red">●</span> ≥100 mm</summary>
+      <details class="significant-rainfall-details"><summary>Rainfall colours and local rarity <span class="significant-orange">●</span> 50+ <span class="significant-red">●</span> 100+ mm</summary>
+        <div class="rainfall-amount-key"><strong>Measured rainfall</strong><span><b class="significant-orange">●</b> 50–99.9 mm</span><span><b class="significant-red">●</b> 100+ mm</span></div>
+        <div class="rainfall-rarity-key" aria-label="Local rainfall rarity and annual chance">
+          <strong>How unusual is it here?</strong>
+          <div><i style="background:#39734e"></i><span>Notable</span><b>20%</b><span>1 in 5</span></div>
+          <div><i style="background:#93751b"></i><span>Unusual</span><b>10%</b><span>1 in 10</span></div>
+          <div><i style="background:#a45c1a"></i><span>Rare</span><b>5%</b><span>1 in 20</span></div>
+          <div><i style="background:#ad3540"></i><span>Very rare</span><b>2%</b><span>1 in 50</span></div>
+          <div><i style="background:#7e399c"></i><span>Exceptional</span><b>1%</b><span>1 in 100</span></div>
+          <p>Chance in any given year of at least this much rain over the selected time period. <b>Not flood severity.</b></p>
+          <p>Less rare = below the 20% benchmark. Unrated = local comparison unavailable.</p>
+        </div>
         <div id="significantRainfallStatus" class="note" role="status" aria-live="off">Off by default · official BoM station totals</div>
       </details>
       <!-- SIG_RAIN_ROW_END -->

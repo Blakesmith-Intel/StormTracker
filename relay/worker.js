@@ -816,7 +816,8 @@ async function relayQldFloodThresholds(request,origin){
         levels["bom:535142"]?.minor!==6 ||
         levels["bom:544058"]?.minor!==3 ||
         levels["bom:544058"]?.moderate!==4 ||
-        levels["bom:544058"]?.major!==5)
+        levels["bom:544058"]?.major!==5 ||
+        levels["bom:044208"]?.moderate!==4)
       throw Error("Unrecognised BoM threshold table");
   }catch(error){
     // Graceful, honest fallback to exact source-verified stations only.
@@ -830,6 +831,7 @@ async function relayQldFloodThresholds(request,origin){
     format:"StormTrackerQueenslandFloodThresholdsV1",
     source:FLOOD_LEVEL_SOURCE,sourceDate:"2022-01-05",
     complete:Object.keys(levels).length>=100,
+    statewideThresholdCount:Object.keys(levels).length,
     thresholds:{...levels,...VERIFIED_FLOOD_LEVELS}
   }),{status:200,headers});
 }

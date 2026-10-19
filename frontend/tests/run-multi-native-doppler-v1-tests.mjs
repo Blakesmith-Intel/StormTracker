@@ -197,3 +197,73 @@ assert.ok(windFrameBlock.indexOf("commitWindObservation(prepared")<
 assert.doesNotMatch(windFrameBlock,/supplementalDopplerDisplay\.showAt\(/,
   "Per-radar asynchronous reveal must not control Doppler playback");
 console.log("PASS bounded multi-site Doppler sync preparation and honest source UTC offsets.");
+
+// Regression: the primary is permitted to commit before a slow extra BoM site.
+// Authentic late frames may appear at that SAME selected UTC, never later at
+// a different cursor position; in-window old pixels remain visible meantime.
+const stableHits=[],stableStatus=[];
+let unblock08=null;
+let block08=false;
+const stable=createSupplementalDopplerDisplay({
+  sites,imageryLayers,scene,createTransition:makeTransition,
+  createLayer:provider=>({provider}),
+  loadSiteHistory:async()=>({frames,palette:{valid:true}}),
+  loadSiteFrame:async(id,frame)=>{
+    stableHits.push(id+":"+frame.filename);
+    if(id==="08" && block08 && frame.filename==="f15"){
+      await new Promise(resolve=>{unblock08=resolve;});
+    }
+    return {provider:id+"@"+frame.filename,observedUtc:frame.observedUtc};
+  },
+  onStatus:s=>stableStatus.push(s)
+});
+stable.configure("66",["50","08"]);stable.setEnabled(true);
+const initial=stable.prepare("2026-10-17T00:10:00Z");
+assert.deepEqual(stable.commit("2026-10-17T00:10:00Z"),[],
+  "Primary can commit without discarding background secondary decoding");
+await initial;
+await until(()=>stable.visibleSites.length===2,"two slower authentic sites appear at current UTC");
+assert.deepEqual(stable.visibleSites.sort(),["08","50"]);
+assert.equal(visibleLayers.length,2);
+block08=true;
+const following=stable.prepare("2026-10-17T00:15:00Z");
+assert.deepEqual(stable.commit("2026-10-17T00:15:00Z").sort(),["08","50"],
+  "Previously measured 5-minute-old wind stays visible while next scan loads");
+assert.equal(stable.snapshot().sources.find(s=>s.id==="08").offsetMinutes,-5);
+await until(()=>unblock08!==null,"blocked secondary request launched");
+assert.equal(stable.visibleSites.length,2,"No blank imagery between genuine frames");
+unblock08();await following;
+await until(()=>stable.snapshot().sources.every(s=>s.observedUtc==="2026-10-17T00:15:00Z"),
+  "late second-site image completes at still-selected clock");
+assert.equal(visibleLayers.length,2,"One native tile per selected site, no duplicates");
+const expired=stable.prepare("2026-10-17T00:30:00Z");
+stable.commit("2026-10-17T00:30:00Z");
+await expired;
+assert.equal(stable.visibleSites.length,0,
+  "Out-of-window Doppler is removed rather than relabelled as current");
+assert.equal(visibleLayers.length,0);
+stable.destroy();
+
+let resolveOld;
+const seek=createSupplementalDopplerDisplay({
+  sites,imageryLayers,scene,createTransition:makeTransition,
+  createLayer:provider=>({provider}),
+  loadSiteHistory:async()=>({frames,palette:{}}),
+  loadSiteFrame:async(id,frame)=>{
+    if(frame.filename==="f10")await new Promise(resolve=>{resolveOld=resolve;});
+    return {provider:frame.filename,observedUtc:frame.observedUtc};
+  }
+});
+seek.configure("66",["50"]);seek.setEnabled(true);
+const slowOld=seek.prepare("2026-10-17T00:10:00Z");
+seek.commit("2026-10-17T00:10:00Z");
+await until(()=>typeof resolveOld==="function","slow frame started after primary commit");
+const newer=seek.prepare("2026-10-17T00:15:00Z");
+seek.commit("2026-10-17T00:15:00Z");
+resolveOld();
+await Promise.all([slowOld,newer]);
+assert.equal(seek.snapshot().sources[0].observedUtc,"2026-10-17T00:15:00Z",
+  "Late older UTC must never overwrite a newer selected playback frame");
+seek.destroy();
+assert.equal(visibleLayers.length,0);
+console.log("PASS no secondary Doppler flicker, source-accurate hold, late same-UTC recovery and stale-seek rejection.");

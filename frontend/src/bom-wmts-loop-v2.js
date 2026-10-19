@@ -166,7 +166,18 @@ export async function loadBomReflectivityMosaicAtTime(observedUtc, region = 'SEQ
   if (!observedUtc) throw new Error("observedUtc is required.");
   if(preferFtpReflectivity()){
     try{return await loadFtpReflectivityMosaicAtTime(observedUtc,region)}
-    catch(e){console.warn("FTP frame unavailable; validating WMTS fallback",e.message)}
+    catch(e){
+      // An FTP timestamp must NEVER be passed straight to WMTS. Only a
+      // separately published WMTS timestamp can be queried; otherwise retain
+      // the last genuinely observed radar frame from StormTracker's cache.
+      const published=await publishedReflectivityTimes().then(
+        times=>currentPublishedTimes(times,Date.now()),()=>[]);
+      if(!published.includes(observedUtc))
+        throw Error("FTP observation invalid and no separately verified WMTS frame "+
+          "exists for "+observedUtc+"; preserve previous radar frame: "+
+          String(e?.message??e));
+      console.warn("FTP frame failed; using the same independently published WMTS UTC",e.message);
+    }
   }
 
   const window = reflectivityWindowForRegion(region);

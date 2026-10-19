@@ -14,7 +14,7 @@ String.fromCharCode(12),
 "Schedule 2: Forecast locations and levels of service",
 "040846 CLEARVIEW Bureau/Gold Coast City",
 " Council Automatic 6 8 9 Quantitative 6 hours > 6.0 +/- 0.3m High",
-"\\f",
+String.fromCharCode(12),
 "Schedule 4: River data locations",
 "540000 SOME DATA-ONLY STATION Bureau Automatic River High"
 ].join(String.fromCharCode(10));

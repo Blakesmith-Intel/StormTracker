@@ -30,9 +30,11 @@ const htmlFor =
 `;
 
 const calls = [];
+const upstreamOptions=[];
 
 globalThis.fetch =
-  async url => {
+  async (url,options={}) => {
+    upstreamOptions.push(options);
     const target =
       String(url);
 
@@ -99,7 +101,7 @@ try {
       .get(
         "Cache-Control"
       ),
-    "public, max-age=300"
+    "public, max-age=60"
   );
 
   const payload =
@@ -204,11 +206,25 @@ try {
     await head.text(),
     ""
   );
+  const beforeForce=calls.length;
+  const optionsBefore=upstreamOptions.length;
+  const force=await worker.fetch(new Request(
+    "https://relay.invalid/river-height-bulletins?force=1&_ts=1234"),{});
+  assert.equal(force.status,200);
+  assert.equal(force.headers.get("Cache-Control"),"no-store",
+    "Operator-requested snapshot must never be held by intermediate caches");
+  assert.equal(calls.length-beforeForce,13,
+    "Force refresh must fetch all 12 regional products (including fallback)");
+  assert.equal(upstreamOptions.length-optionsBefore,13);
+  assert.ok(upstreamOptions.slice(optionsBefore).every(
+    options=>options.cf?.cacheEverything===false && options.cf?.cacheTtl===0),
+    "Every forced regional fetch bypasses Cloudflare's previous 5-minute cache");
+
 } finally {
   globalThis.fetch =
     originalFetch;
 }
 
 console.log(
-  "River-height relay checks passed: fixed 12-product allow-list, official BoM URL fallback, server-side parsing, partial-feed survival and five-minute cache headers."
+  "River-height relay checks passed: fixed 12-product allow-list, official BoM URL fallback, server-side parsing, partial-feed survival and one-minute cache headers."
 );

@@ -501,6 +501,26 @@ assert.equal(
   loaded.transport,
   "BoM ArcGIS metadata + StormTracker river-height relay"
 );
+let forcedCount=0;
+const forced=await loadRiverGaugeOperationalSnapshot({
+  force:true,
+  fetchImpl:async (url,options)=>{
+    const target=String(url);
+    if(target.includes("river-height-bulletins")){
+      forcedCount++;
+      assert.match(target,/\?force=1&_ts=\d+/,
+        "Manual refresh must explicitly request a fresh relay snapshot");
+      assert.equal(options.cache,"no-store");
+      return {ok:true,json:async()=>bulletins};
+    }
+    if(target.includes("river-gauge-metadata"))
+      return {ok:true,json:async()=>gauges};
+    throw Error("Unexpected force fetch "+target);
+  }
+});
+assert.equal(forcedCount,1);
+assert.equal(forced.matchedCount,2);
+
 
 console.log(
   "River gauge operational checks passed: strict station-ID joins, no guessed names or swapped Mirani observations, BoM flood-class precedence and tidal-rise suppression."

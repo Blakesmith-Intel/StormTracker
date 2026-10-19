@@ -247,6 +247,20 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
     nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
     observed<=nowMs+5*60000;
   const official=["minor","moderate","major"].includes(level);
+  // Do not mistake an omitted flood class for an official below-minor reading.
+  // Last-confirmed classification remains a clearly labelled precautionary
+  // marker, while the CURRENT independent source water height is not replaced.
+  const lastClass=String(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??"")
+    .trim().toLowerCase();
+  if(!official && ["minor","moderate","major"].includes(lastClass)){
+    return {show:true,state:lastClass,
+      source:"last-confirmed-bom-flood-class",
+      reason:(timely?"Latest measured height available":"Measured height stale")+
+        "; last confirmed BoM "+lastClass+
+        " classification is not verified by the newest bulletin",
+      rapidRise:false,tidalScreened:tidal,rise:null,
+      stale:!timely,classificationUnverified:true,lastObservedAt:observed};
+  }
   // A missed/late observation must NOT masquerade as a return below minor.
   // Continue to map its LAST source-verified official stage, visibly flagged
   // stale, without a stale rapid-rise or "flash" modifier.

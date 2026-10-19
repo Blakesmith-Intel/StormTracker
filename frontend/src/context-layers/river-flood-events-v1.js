@@ -63,6 +63,8 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
       STORMTRACKER_ALERT_REASON:decision.reason,
       STORMTRACKER_ALERT_SOURCE:decision.source,
       STORMTRACKER_OBSERVATION_STALE:Boolean(decision.stale),
+      STORMTRACKER_CLASSIFICATION_UNVERIFIED:
+        Boolean(decision.classificationUnverified),
       STORMTRACKER_OFFICIAL_OBSERVED_AT:decision.lastObservedAt??
         p.STORMTRACKER_OFFICIAL_OBSERVED_AT??null,
       STORMTRACKER_ALERT_PERSISTED:false,

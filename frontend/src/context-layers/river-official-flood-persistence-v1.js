@@ -27,10 +27,15 @@ function safeRecord(id,record,now){
       !officialLevels.has(normalised(f?.properties?.STORMTRACKER_FLOOD_CLASS))||
       !Number.isFinite(observedAt)||observedAt<=0||
       observedAt>now+5*60000)return null;
+  const latest=record?.latestFeature;
+  const latestAt=Number(record?.latestObservedAt);
+  const verifiedLatest=latest && String(latest.id)===id && validPoint(latest) &&
+    Number.isFinite(latestAt)&&latestAt>=observedAt&&latestAt<=now+5*60000 &&
+    Number.isFinite(Number(latest.properties?.STORMTRACKER_HEIGHT_METRES));
   return {observedAt,feature:{
     ...f,properties:{...f.properties,
       STORMTRACKER_OFFICIAL_OBSERVED_AT:observedAt}
-  }};
+  },...(verifiedLatest?{latestObservedAt:latestAt,latestFeature:latest}:{})};
 }
 export function cleanConfirmedFloodStations(input,now=Date.now()){
   const cache={};
@@ -42,44 +47,74 @@ export function cleanConfirmedFloodStations(input,now=Date.now()){
   return cache;
 }
 
-// Reuse the last *observed* official classification when a source stops
-// reporting. A station must report an explicitly newer below-minor reading to
-// be removed. On a new higher/lower official classification, replace the
-// record; do not infer recovery from an empty list or an upstream failure.
+// A current observation and a previously CONFIRMED flood classification are
+// independent facts. The latter must never replace the former's height or
+// timestamp merely because a new bulletin omits its class. Only the exact
+// station ID participates; do not confuse a "below-minor" report with a blank.
 export function retainConfirmedFloodStations(features,previous={},now=Date.now()){
   const cache=cleanConfirmedFloodStations(previous,now);
   const current=new Map();
-  for(const feature of features??[]){
-    const id=String(feature?.id??"");
-    if(!stationId(id)||!validPoint(feature))continue;
-    const p=feature.properties??{};
-    const observedAt=confirmedObservationAt(feature,now);
-    const previousAt=cache[id]?.observedAt??-Infinity;
-    const flood=normalised(p.STORMTRACKER_FLOOD_CLASS);
-    if(Number.isFinite(observedAt) && observedAt>=previousAt){
+  for(const incoming of features??[]){
+    const id=String(incoming?.id??"");
+    if(!stationId(id)||!validPoint(incoming))continue;
+    const at=confirmedObservationAt(incoming,now);
+    const prior=cache[id];
+    const priorAt=prior?.observedAt??-Infinity;
+    const flood=normalised(incoming.properties?.STORMTRACKER_FLOOD_CLASS);
+    // A stale cached bulletin must never reverse a more recent, known,
+    // source-verified station reading. Cache the latest source fact beside the
+    // confirmed flood classification, not INSTEAD of it.
+    const latestAt=prior?.latestObservedAt??priorAt;
+    const latest=prior?.latestFeature??prior?.feature;
+    const validAt=Number.isFinite(at)&&at>0&&at<=now+5*60000;
+    const isEarlier=validAt&&at<latestAt;
+    const observation=isEarlier && latest ? latest:incoming;
+    const observationAt=isEarlier?latestAt:at;
+    const currentClass=normalised(observation.properties?.STORMTRACKER_FLOOD_CLASS);
+    if(validAt&&!isEarlier&&at>=priorAt){
       if(officialLevels.has(flood)){
-        cache[id]=safeRecord(id,{observedAt,feature},now);
+        const newRecord=safeRecord(id,{observedAt:at,feature:incoming},now);
+        if(newRecord)cache[id]={...newRecord,
+          latestObservedAt:at,latestFeature:incoming};
       }else if(flood==="below-minor"){
+        // A BoM report explicitly stating below minor is an official recovery.
         delete cache[id];
+      }else if(prior){
+        // The old flood classification stays as last-confirmed context, but
+        // only the NEW observation owns the displayed height and timestamp.
+        cache[id]={...prior,latestObservedAt:at,latestFeature:incoming};
       }
     }
-    current.set(id,feature);
-  }
-  for(const [id,record] of Object.entries(cache)){
-    // If the latest source observation is not newer than the saved official
-    // flood reading, restore only that previously source-backed record.
-    const f=current.get(id);
-    const t=f?confirmedObservationAt(f,now):null;
-    const level=normalised(f?.properties?.STORMTRACKER_FLOOD_CLASS);
-    if(!f || !Number.isFinite(t) || t<record.observedAt ||
-       (!officialLevels.has(level)&&level!=="below-minor")){
-      current.set(id,record.feature);
-    }else if(officialLevels.has(level) && t>=record.observedAt){
-      current.set(id,{...f,properties:{...f.properties,
-        STORMTRACKER_OFFICIAL_OBSERVED_AT:t}});
+    const confirmed=cache[id];
+    if(confirmed && !officialLevels.has(currentClass) &&
+       currentClass!=="below-minor"){
+      const props={...(observation.properties??{}),
+        STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS:
+          normalised(confirmed.feature.properties?.STORMTRACKER_FLOOD_CLASS),
+        STORMTRACKER_LAST_CONFIRMED_FLOOD_AT:confirmed.observedAt};
+      // This timestamp describes the current water HEIGHT, not the older
+      // classification. The two facts remain visible separately in the UI.
+      if(Number.isFinite(observationAt)&&observationAt>0)
+        props.STORMTRACKER_OFFICIAL_OBSERVED_AT=observationAt;
+      current.set(id,{...observation,properties:props});
+    }else{
+      current.set(id,observation);
     }
   }
-  // Browser snapshot contains ONLY the stations that have either a current
-  // source observation or previously authenticated official flood status.
+  for(const [id,record] of Object.entries(cache)){
+    if(current.has(id))continue;
+    const last=record.latestFeature??record.feature;
+    const observedAt=record.latestObservedAt??record.observedAt;
+    const lastClass=normalised(last.properties?.STORMTRACKER_FLOOD_CLASS);
+    current.set(id,{...last,properties:{
+      ...last.properties,
+      ...(officialLevels.has(lastClass)?{}:{
+        STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS:
+          normalised(record.feature.properties?.STORMTRACKER_FLOOD_CLASS),
+        STORMTRACKER_LAST_CONFIRMED_FLOOD_AT:record.observedAt
+      }),
+      STORMTRACKER_OFFICIAL_OBSERVED_AT:observedAt
+    }});
+  }
   return {features:[...current.values()],cache};
 }

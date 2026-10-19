@@ -525,3 +525,25 @@ assert.equal(forced.matchedCount,2);
 console.log(
   "River gauge operational checks passed: strict station-ID joins, no guessed names or swapped Mirani observations, BoM flood-class precedence and tidal-rise suppression."
 );
+
+ 
+// Multiple BoM products with the same Warilda station must not revert
+// the most recent moderate height back to an older minor classification.
+const warildaGeo={type:"FeatureCollection",features:[
+  gauge({id:"bom:544058",bom:"544058",awrc:"",name:"Warilda ALERT"})
+]};
+const reading=(height,time,flood)=>({
+  stationId:"544058",stationName:"Warilda ALERT",heightMetres:height,
+  tendency:"rising",floodClass:flood,observedText:time,sourceProduct:"IDQ60289"
+});
+for(const products of [
+  [{observations:[reading(3.5,"09.25PM Mon","minor")]},
+   {observations:[reading(4.25,"10.25PM Mon","moderate")]}],
+  [{observations:[reading(4.25,"10.25PM Mon","moderate")]},
+   {observations:[reading(3.5,"09.25PM Mon","minor")]}]
+]){
+  const x=joinRiverGaugeObservations({
+    gauges:warildaGeo,bulletins:{products},nowMs:Date.UTC(2026,9,19,13,36)});
+  assert.equal(x.payload.features[0].properties.STORMTRACKER_HEIGHT_METRES,4.25);
+  assert.equal(x.payload.features[0].properties.STORMTRACKER_FLOOD_CLASS,"moderate");
+}

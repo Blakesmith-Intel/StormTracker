@@ -4,6 +4,7 @@ import {
 } from "./river-gauges-v1.js?v=9.12.0";
 import {FLOOD_LEVEL_RELAY,withStationFloodLevels}
   from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
+import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=9.13.2";
 
 export const DEFAULT_RIVER_GAUGE_METADATA_RELAY_URL =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-gauge-metadata";
@@ -246,7 +247,8 @@ function featureWithObservation(
 
 export function joinRiverGaugeObservations({
   gauges,
-  bulletins
+  bulletins,
+  nowMs=Date.now()
 } = {}) {
   const gaugePayload =
     filterQueenslandRiverGauges(
@@ -268,6 +270,7 @@ export function joinRiverGaugeObservations({
 
   const matched =
     new Map();
+  const matchedObservedTimes=new Map();
 
   const unmatchedObservations =
     [];
@@ -298,13 +301,14 @@ export function joinRiverGaugeObservations({
         feature.id
       );
 
-    if (
-      matched.has(
-        featureId
-      )
-    ) {
-      continue;
+    // Duplicate stations in overlapping BoM products: choose newest
+    // SOURCE observation time, not the first bulletin in response order.
+    const latestAt=parseQueenslandObservationTime(observation.observedText,nowMs);
+    if(matched.has(featureId)){
+      const prior=matchedObservedTimes.get(featureId);
+      if(latestAt===null || (prior!==null && latestAt<=prior))continue;
     }
+    matchedObservedTimes.set(featureId,latestAt);
 
     matched.set(
       featureId,

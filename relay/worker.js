@@ -813,7 +813,10 @@ async function relayQldFloodThresholds(request,origin){
     if(html.length>1500000)throw Error("BoM threshold page oversized");
     levels=parseQldOfficialFloodLevels(html);
     if(Object.keys(levels).length<100 ||
-        levels["bom:535142"]?.minor!==6)
+        levels["bom:535142"]?.minor!==6 ||
+        levels["bom:544058"]?.minor!==3 ||
+        levels["bom:544058"]?.moderate!==4 ||
+        levels["bom:544058"]?.major!==5)
       throw Error("Unrecognised BoM threshold table");
   }catch(error){
     // Graceful, honest fallback to exact source-verified stations only.

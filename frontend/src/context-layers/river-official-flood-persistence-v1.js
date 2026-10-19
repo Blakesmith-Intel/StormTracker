@@ -2,6 +2,8 @@
 // Never match by site name. Any newer BoM below-minor observation clears its
 // own exact station ID. A stale missing observation is NOT proof of recovery.
 import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=20261018-inland-rise";
+import {stationFloodLevels,observedFloodClass}
+  from "./river-flood-thresholds-v1.js?v=20261020-thresholds-v1";
 
 export const OFFICIAL_FLOOD_STORAGE_KEY="stormtracker.qld-confirmed-flood-stations.v1";
 const officialLevels=new Set(["minor","moderate","major"]);
@@ -72,7 +74,13 @@ export function retainConfirmedFloodStations(features,previous={},now=Date.now()
     const observationAt=isEarlier?latestAt:at;
     const currentClass=normalised(observation.properties?.STORMTRACKER_FLOOD_CLASS);
     if(validAt&&!isEarlier&&at>=priorAt){
-      if(officialLevels.has(flood)){
+      const measured=observedFloodClass(
+        incoming.properties?.STORMTRACKER_HEIGHT_METRES,stationFloodLevels(incoming));
+      // A current station-specific BoM height below minor clears a previously
+      // held flood-class marker; an empty/failed bulletin does not.
+      if(measured===null){
+        delete cache[id];
+      }else if(officialLevels.has(flood)){
         const newRecord=safeRecord(id,{observedAt:at,feature:incoming},now);
         if(newRecord)cache[id]={...newRecord,
           latestObservedAt:at,latestFeature:incoming};

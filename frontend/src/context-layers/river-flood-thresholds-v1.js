@@ -4,7 +4,9 @@ export const FLOOD_LEVEL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-
 // Exact authoritative fallback station IDs, not name-based matches.
 export const VERIFIED_FLOOD_LEVELS={
   "bom:535142":{minor:6,moderate:9,major:12},
-  "bom:035271":{minor:6,moderate:9,major:12}
+  "bom:035271":{minor:6,moderate:9,major:12},
+  "bom:544058":{minor:3,moderate:4,major:5},
+  "bom:044208":{minor:3,moderate:4,major:5}
 };
 const number=v=>v===null||v===undefined||v===""?null:
   Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=1000?Number(v):null;
@@ -23,6 +25,7 @@ export function parseQldOfficialFloodLevels(html){
   const lines=pre.replace(/<br\s*\/?\s*>/gi,"\n")
     .replace(/<[^>]*>/g,"").replace(/&nbsp;|&#160;/gi," ").split(/\r?\n/);
   const out={};
+  const conflicts=new Set();
   for(const line of lines){
     const id=line.slice(31,37);
     if(!/^\d{6}$/.test(id)||line[37]!==" ")continue;
@@ -31,7 +34,13 @@ export function parseQldOfficialFloodLevels(html){
       return /^\d+(?:\.\d+)?$/.test(v)?number(v):null;
     };
     const levels=cleanFloodLevels({minor:get(81,90),moderate:get(97,106),major:get(113,121)});
-    if(levels)out["bom:"+id]=levels;
+    if(levels){
+      const key="bom:"+id;
+      if(conflicts.has(key))continue;
+      if(out[key]&&JSON.stringify(out[key])!==JSON.stringify(levels)){
+        delete out[key];conflicts.add(key);
+      }else out[key]=levels;
+    }
   }
   return out;
 }

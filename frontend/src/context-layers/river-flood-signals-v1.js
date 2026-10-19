@@ -263,11 +263,13 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
     .trim().toLowerCase();
   if(measured===undefined && !official &&
       ["minor","moderate","major"].includes(lastClass)){
-    return {show:true,state:lastClass,
+    const newerUnknown=timely&&observed>classAt;
+    return {show:true,state:newerUnknown?"unverified":lastClass,
       source:"last-confirmed-bom-flood-class",
       reason:(timely?"Latest measured height available":"Measured height stale")+
         "; last confirmed BoM "+lastClass+
-        " classification is not verified by the newest bulletin",
+        " classification is not verified by the newest bulletin"+
+        (newerUnknown?"; official stage threshold unavailable for this station":""),
       rapidRise:false,tidalScreened:tidal,rise:null,
       stale:!timely,classificationUnverified:true,lastObservedAt:observed};
   }

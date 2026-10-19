@@ -142,11 +142,13 @@ function addDetailRow(
 // flood category from the map. Its blue arrow is never a separate warning
 // colour; rate-only tidal change does not qualify for that modifier.
 export function riverGaugePanelAppearance(summary) {
-  const state=["minor","moderate","major"].includes(summary?.displayState)
+  const state=["minor","moderate","major","unverified"].includes(summary?.displayState)
     ? summary.displayState:"rapid-rise";
   const rise=Boolean(summary?.rapidRise) || state==="rapid-rise";
   const category=state==="rapid-rise"
     ? "RAPID RISE BELOW MINOR · SCREENING"
+    : state==="unverified"
+      ? "LATEST HEIGHT · FLOOD CLASS UNVERIFIED"
     : summary?.classificationUnverified
       ? "LAST CONFIRMED BOM "+state.toUpperCase()+
         " · CURRENT FLOOD CLASS UNVERIFIED"

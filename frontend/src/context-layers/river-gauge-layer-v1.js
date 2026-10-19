@@ -154,7 +154,7 @@ export function riverGaugeOperationalSummary(
 // A below-minor candidate is the blue icon with the same blue arrow.
 const FLOOD_MARKER_COLORS=Object.freeze({
   "rapid-rise":"#1269e8",minor:"#2db76f",
-  moderate:"#ffd43b",major:"#e53935"
+  moderate:"#ffd43b",major:"#e53935",unverified:"#8292a2"
 });
 export function createRiverGaugeMarkerImage(state,rapidRise=false){
   const level=Object.hasOwn(FLOOD_MARKER_COLORS,state)?state:"rapid-rise";

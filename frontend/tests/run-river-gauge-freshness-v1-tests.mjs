@@ -44,10 +44,10 @@ assert.equal(tarana.properties.STORMTRACKER_HEIGHT_METRES,0.23,
   "New verified Tarana reading must replace the prior 6.64m in the popup");
 assert.equal(tarana.properties.STORMTRACKER_OBSERVED_TEXT,"10.57PM Mon",
   "Displayed observation time must be the 22:57 SOURCE time, not 21:37");
-assert.equal(tarana.properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS,"major",
-  "An omitted flood class must not silently cancel an official earlier status");
-assert.ok(tarana.properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT <
-  tarana.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT);
+assert.equal(tarana.properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS,undefined,
+  "A newer 0.23m station reading below the verified 6m minor level clears obsolete major");
+assert.equal(classState.cache["bom:535142"],undefined,
+  "A verified below-minor height must also retire persistent obsolete stage history");
 assert.equal(panorama.properties.STORMTRACKER_HEIGHT_METRES,2.55);
 assert.equal(panorama.properties.STORMTRACKER_OBSERVED_TEXT,"11.14PM Mon");
 const mapped=reconcileFloodEvents(
@@ -65,7 +65,8 @@ const persisted=cleanLatestGaugeObservations(
 assert.equal(persisted["bom:535142"].feature.properties.STORMTRACKER_HEIGHT_METRES,0.23);
 const classRoundtrip=cleanConfirmedFloodStations(
   JSON.parse(JSON.stringify(classState.cache)),now);
-assert.equal(classRoundtrip["bom:535142"].latestFeature.properties.STORMTRACKER_HEIGHT_METRES,0.23);
+assert.equal(classRoundtrip["bom:535142"],undefined,
+  "Do not resurrect flood state on the next browser session after below-minor recovery");
 
 // The similarly named gauge 035271 must never be merged with ALERT 535142.
 const regular=station("035271","Tarana Crossing",2.70,"11.14PM Mon","");
@@ -74,8 +75,8 @@ assert.equal(split.features[0].properties.STORMTRACKER_HEIGHT_METRES,2.70);
 assert.equal(split.cache["bom:535142"].feature.properties.STORMTRACKER_HEIGHT_METRES,0.23);
 assert.equal(split.cache["bom:035271"].feature.properties.STORMTRACKER_HEIGHT_METRES,2.70);
 
-// Explicit newer official below-minor confirms recovery and clears the
-// precautionary persisted category. A blank class never does so.
+// Explicit newer BoM below-minor classification also confirms recovery.
+ // A blank class alone does not clear unclassified stations without thresholds.
 const recovered=station("535142","Tarana Crossing ALERT",0.20,"11.20PM Mon",
   "below-minor");
 const cleared=retainConfirmedFloodStations([recovered],classState.cache,now);

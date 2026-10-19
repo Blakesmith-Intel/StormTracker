@@ -41,7 +41,7 @@ def parse_bom_ifd_table(markup):
    values={}
    for aep,cell in zip(("20","10","5","2","1"),cells[-5:]):
     match=re.match(r"^(\d+(?:\.\d+)?)\b",cell)
-    if not match:raise ValueError("Official IFD published depth missing")
+    if not match:raise ValueError("Official IFD published depth missing; row "+repr(cells[:16])[:490])
     mm=float(match.group(1))
     if not (0<mm<3000):raise ValueError("Official IFD value out of range")
     values[aep]=mm

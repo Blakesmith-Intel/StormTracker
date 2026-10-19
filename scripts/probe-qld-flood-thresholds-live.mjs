@@ -13,9 +13,15 @@ for(const url of urls){
   const html=await res.text();
   console.log("BoM length",html.length,"header",JSON.stringify(html.slice(0,180)));
   for(const id of ["535142","544058","540319","540054","540640","040846"]){
-   const line=html.split(/\\r?\\n/).find(x=>x.includes(id));
+   const line=html.split("\\n").find(x=>x.includes(id) && /^\\s*\\S/.test(x) && !x.includes("Date:"));
    console.log("Raw line",id,JSON.stringify(line?.slice(0,145)??"MISSING"));
-   if(line)console.log("  Indexed fields",line.slice(31,38),line.slice(81,90),line.slice(97,106),line.slice(113,121));
+   if(line){
+     console.log("  Indexed fields",JSON.stringify(line.slice(26,40)),
+       JSON.stringify(line.slice(73,95)),JSON.stringify(line.slice(95,112)),
+       JSON.stringify(line.slice(112,132)));
+     console.log("  ID index",line.indexOf(id),"char37",JSON.stringify(line[37]),
+       "cols",line.length);
+   }
   }
   const levels=parseQldOfficialFloodLevels(html);
   console.log("BoM parser matched",Object.keys(levels).length,

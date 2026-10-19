@@ -59,8 +59,8 @@ def fetch_point(lat,lon):
  with urllib.request.urlopen(request,timeout=25) as response:
   if response.status!=200:raise ValueError("IFD HTTP "+str(response.status))
   markup=response.read(9_000_000).decode("utf8","replace")
- if "BoM IFD (2016)" not in markup:
-  raise ValueError("ARR page did not identify native BoM 2016 IFD")
+ if "Default Native Baseline" not in markup or "Default IFD Depths" not in markup:
+  raise ValueError("ARR page missing independently published native IFD depth table")
  return url,parse_native_table(markup)
 def build(stations,existing,max_new=80,workers=4):
  cells=dict(existing.get("cells",{}))

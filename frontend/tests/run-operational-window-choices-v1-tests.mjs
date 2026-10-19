@@ -6,16 +6,17 @@ import {
 } from "../src/operational-window-choices-v1.js";
 import { DOPPLER_AVAILABLE_LOOP_VALUE } from "../src/doppler-available-window-v1.js";
 
-assert.deepEqual(RAIN_ONLY_LOOP_MINUTES,[30,60,120,180]);
+assert.deepEqual(RAIN_ONLY_LOOP_MINUTES,[30,60,90,120,180]);
 const choices=buildOperationalWindowChoices({
   combinedAvailable:true,rainHasFrames:true,rainAvailableMinutes:[30,60,90,120,180]
 });
-assert.equal(choices.length,5,"one combined window, four BoM-aligned rain windows");
-assert.deepEqual(choices.map(x=>x.value),[DOPPLER_AVAILABLE_LOOP_VALUE,"30","60","120","180"]);
+assert.equal(choices.length,6,"one Doppler window plus five measured rain windows");
+assert.deepEqual(choices.map(x=>x.value),[DOPPLER_AVAILABLE_LOOP_VALUE,"30","60","90","120","180"]);
 assert.deepEqual(choices.map(x=>x.label),[
   "Doppler — All available",
   "30 min — Rain radar (BoM standard)",
   "60 min — Rain radar (browser archive)",
+  "90 min — Rain radar (browser archive)",
   "120 min — Rain radar (browser archive)",
   "180 min — Rain radar (browser archive)"
 ]);
@@ -23,8 +24,8 @@ assert.ok(choices.every(x=>!x.disabled));
 const sparse=buildOperationalWindowChoices({
   combinedAvailable:false,rainHasFrames:true,rainAvailableMinutes:[30]
 });
-assert.deepEqual(sparse.map(x=>x.disabled),[true,false,true,true,true]);
-assert.deepEqual(buildOperationalWindowChoices().map(x=>x.disabled),[true,true,true,true,true]);
+assert.deepEqual(sparse.map(x=>x.disabled),[true,false,true,true,true,true]);
+assert.deepEqual(buildOperationalWindowChoices().map(x=>x.disabled),[true,true,true,true,true,true]);
 
 const runtime=readFileSync(fileURLToPath(new URL("../src/live3d-operational-v9.js",import.meta.url)),"utf8");
 const markup=readFileSync(fileURLToPath(new URL("../live3d-operational-v9.html",import.meta.url)),"utf8");
@@ -43,4 +44,4 @@ assert.match(runtime,/independentDopplerRefresh = createLiveLoopRefresh\(/);
 assert.match(runtime,/hybridCombinedSchedule = isCombined \? combinedSchedule : \[\]/);
 assert.doesNotMatch(markup,/id="showDopplerOverlay"|id="dopplerPlayButton"/);
 assert.match(markup,/id="radarOpacity"|id="dopplerOpacity"|id="volumeOpacity"/);
-console.log("PASS BoM-standard 30-minute rain default, source-backed archive windows and unmodified Doppler loop.");
+console.log("PASS BoM-standard 30-minute rain default, extended 60/90/120/180-minute authentic browser archives and unmodified Doppler loop.");

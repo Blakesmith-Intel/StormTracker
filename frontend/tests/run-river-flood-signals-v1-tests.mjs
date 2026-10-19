@@ -19,7 +19,7 @@ const screen=(f,h={})=>evaluateFloodSignal(f,h,now);
 for(const klass of ["data","information","official","",null]){
   for(const level of ["minor","moderate","major"]){
     for(const trend of ["rising","steady","falling"]){
-      const x=screen(make("bom:533178",level,trend,klass));
+      const x=screen(make("bom:999997",level,trend,klass));
       assert.equal(x.show,true,"Every current classified gauge stays visible");
       assert.equal(x.state,level);
       assert.equal(x.rapidRise,false,"No original rate means no rapid arrow");
@@ -28,14 +28,14 @@ for(const klass of ["data","information","official","",null]){
   }
 }
 for(const level of ["","below-minor"]){
-  assert.equal(screen(make("bom:533178",level)).show,false,
+  assert.equal(screen(make("bom:999997",level)).show,false,
     "Below minor has no persistent marker without genuine rate");
 }
-assert.equal(screen(make("bom:533178","minor","steady","information",
+assert.equal(screen(make("bom:999997","minor","steady","information",
   "6:15 pm Mon 05/10/2026")).show,false,
   "Stale classification cannot be passed off as current flooding");
-const recent=make("bom:533178","minor","rising");
-const below=make("bom:533179","below-minor","rising");
+const recent=make("bom:999997","minor","rising");
+const below=make("bom:999998","below-minor","rising");
 const measured={
  [recent.id]:[{time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.5}],
  [below.id]:[{time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.5}]
@@ -61,7 +61,7 @@ assert.deepEqual(filtered.counts,{minor:2,moderate:1,major:1,rapidRise:2,tidalAn
 assert.equal(parseQueenslandObservationTime(observed,now),now-15*MIN);
 assert.ok(FLOOD_SIGNAL_MAX_AGE_MS<2*3600000);
 const selected=reconcileFloodEvents(input,measured,{
- "bom:533178":{type:"rapid-rise",lastObservedAt:now-15*MIN,activatedAt:now-60*MIN}
+ "bom:999997":{type:"rapid-rise",lastObservedAt:now-15*MIN,activatedAt:now-60*MIN}
 },now);
 assert.equal(selected.features.length,5);
 assert.deepEqual(selected.events,{},"Old rate-based markers must not persist after source changes");
@@ -77,4 +77,4 @@ assert.equal(recovered.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor"
 assert.equal(recovered.features[0].properties.STORMTRACKER_RAPID_RISE,false);
 assert.ok(FLOOD_EVENTS_STORAGE_KEY.includes("flood"));
 assert.deepEqual(cleanFloodEvents({"garbage":{type:"rapid-rise"}},now),{});
-console.log("PASS classified minor/moderate/major persistence; measured rise badge; blue below minor; strict stale/recovery clearing; all forecast-site classes.");
+console.log("PASS missing-threshold BoM class fallback: classified minor/moderate/major persistence; measured rise badge; blue below minor; strict stale/recovery clearing; all forecast-site classes.");

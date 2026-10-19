@@ -41,6 +41,19 @@ assert.deepEqual(VERIFIED_STATEWIDE_FLOOD_LEVELS["bom:540319"],
 assert.deepEqual(stationFloodLevels({id:"bom:540319",properties:{}}),
   {minor:1.7,moderate:2.4,major:3.5},
   "All stations with published stages must show stages without live relay");
+// When latest BoM says below minor but a mismatched height datum crosses
+// a published stage, show a neutral caution instead of inventing red.
+const hinzeConflict=withStationFloodLevels([{id:"bom:540610",type:"Feature",
+  geometry:{type:"Point",coordinates:[153.28,-28.07]},
+  properties:{STORMTRACKER_OBSERVED_TEXT:"11.15PM Mon",
+    STORMTRACKER_HEIGHT_METRES:104,
+    STORMTRACKER_FLOOD_CLASS:"below-minor",
+    STORMTRACKER_TENDENCY:"steady",location_types:"water level gauge;"}
+}])[0];
+const conflict=evaluateFloodSignal(hinzeConflict,{},Date.UTC(2026,9,19,13,36));
+assert.equal(conflict.state,"unverified");
+assert.equal(conflict.source,"bom-datum-conflict");
+assert.equal(conflict.classificationUnverified,true);
 assert.equal(stationFloodLevels({id:"bom:540610",properties:{
   STORMTRACKER_MINOR_FLOOD_METRES:3.6,
   STORMTRACKER_MODERATE_FLOOD_METRES:6.2,

@@ -257,10 +257,11 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   // Same-source datum guard: current explicitly reported flood class and
   // current 2026 station-ID threshold must agree before colour is asserted.
   const reported=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
+  const calculated=measured===null?"below-minor":measured;
   if(measured!==undefined &&
       p.STORMTRACKER_THRESHOLD_STATUS==="2026-station-native" &&
-      ["minor","moderate","major"].includes(reported) &&
-      measured!==reported){
+      ["below-minor","minor","moderate","major"].includes(reported) &&
+      calculated!==reported){
     return {show:true,state:"unverified",source:"bom-datum-conflict",
       reason:"2026 threshold and current BoM bulletin conflict: reported "+
         reported+", computed "+(measured??"below minor")+

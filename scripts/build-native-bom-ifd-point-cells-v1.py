@@ -8,7 +8,7 @@ import argparse, concurrent.futures, datetime as dt, html, json, math, re
 import urllib.parse, urllib.request
 from pathlib import Path
 
-COLS={"20":3,"10":5,"5":6,"2":7,"1":8}
+COLS={"20":4,"10":6,"5":7,"2":8,"1":9}
 WANTED=(60,90,120,180,270,360,540,720,1080,1440)
 BASE="https://data.arr-software.org/"
 def ifd_cell(value):
@@ -39,7 +39,7 @@ def parse_native_table(markup):
  dataset={}
  for row in rows:
   cells=[text_only(c) for c in re.findall(r"<t[dh]\b[^>]*>(.*?)</t[dh]>",row,re.S|re.I)]
-  if len(cells)<9:continue
+  if len(cells)<10:continue
   dm=re.match(r"^(\d{1,4})\s*\(",cells[0])
   if not dm:continue
   duration=int(dm.group(1))

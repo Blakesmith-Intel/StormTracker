@@ -1118,6 +1118,36 @@ async function relayQldSignificantRainfall(request,origin){
     observations
   }),{status:200,headers});
 }
+// The legacy KVP GetCapabilities request differs from the actual native
+// WMTS capabilities published for BoM's current processed national mosaic.
+// Browser PNG tiles already have Access-Control-Allow-Origin: *, but this
+// XML document does not. Proxy ONLY the fixed official URL, for one shared
+// 60-second source metadata cache (no user input, no timestamp invention).
+async function relayNativeBomWmtsCapabilities(request,incoming,origin){
+ if(request.method!=="GET"||incoming.search)
+  return errorResponse("Native radar metadata accepts GET without parameters",400,origin);
+ const headers=corsHeaders(origin);
+ try{
+  const upstream=await fetch(BOM_WMTS+"/1.0.0/WMTSCapabilities.xml",{
+   headers:{Accept:"application/xml,text/xml;q=0.9,*/*;q=0.1"},
+   signal:AbortSignal.timeout(12000),
+   cf:{cacheEverything:true,cacheTtl:60}
+  });
+  if(!upstream.ok)return errorResponse(
+   "Official BoM native capabilities HTTP "+upstream.status,503,origin);
+  const content=await upstream.text();
+  if(content.length>500000||!/<Capabilities\b/.test(content)||
+   !content.includes("atm_surf_air_precip_reflectivity_dbz"))
+   return errorResponse("Invalid BoM reflectivity capabilities",503,origin);
+  headers.set("Content-Type","application/xml;charset=utf-8");
+  headers.set("Cache-Control","public,max-age=60");
+  headers.set("X-StormTracker-Time-Source","bom-native-official-wmts-capabilities");
+  return new Response(content,{status:200,headers});
+ }catch(error){
+  return errorResponse("BoM native WMTS metadata unavailable: "+String(error?.message??error),503,origin);
+ }
+}
+
 async function relayWmts(request, incoming, origin) {
   const layer =
     incoming.searchParams.get("LAYER");
@@ -1663,6 +1693,10 @@ export default {
 
     if (incoming.pathname === "/river-recent-history") {
       return relayRiverRecentHistory(request,incoming,origin);
+    }
+
+    if (incoming.pathname === "/wmts-native-capabilities") {
+      return relayNativeBomWmtsCapabilities(request,incoming,origin);
     }
 
     if (incoming.pathname === "/wmts") {

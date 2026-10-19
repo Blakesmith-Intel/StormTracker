@@ -44,6 +44,7 @@ jobs:
         run: |
           npm test
           node frontend/tests/run-hires-radar-road-toggle-20261019-tests.mjs
+          node frontend/tests/run-all-power-providers-polygon-shading-v1.mjs
           node --check relay/worker.js
           node --check frontend/src/ftp-reflectivity-operational-v1.js
           node --check frontend/src/bom-wmts-loop-v2.js
@@ -73,6 +74,7 @@ jobs:
           grep -Fq 'then(frames=>frames.filter(isVerifiedHiResRadarFrame))' _site/src/live3d-operational-v9.js
           grep -Fq 'highResolutionBomMosaicFrame' _site/src/hires-radar-loop-policy-v1.js || grep -Fq 'isVerifiedHiResRadarFrame' _site/src/hires-radar-loop-policy-v1.js
           grep -Fq 'dataSource.entities.removeAll();' _site/src/context-layers/flood-road-closures-v1.js
+          grep -Fq 'officialPowerOutagePolygonParts(feature).entries()' _site/src/context-layers/power-outages-v1.js
           ! grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
           ! grep -Fq 'loadFtpReflectivityMosaicAtTime' _site/src/bom-wmts-loop-v2.js
           node scripts/test-hires-only-source-policy-v1.mjs

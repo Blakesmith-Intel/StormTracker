@@ -91,7 +91,14 @@ jobs:
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Wait for next normal five-minute source refresh
-        run: sleep 240
+        run: |
+          # First run after this watchdog is installed verifies dispatch promptly.
+          # All later self-dispatched runs remain approximately five minutes apart.
+          if [ "${{ github.event_name }}" = "push" ]; then
+            sleep 45
+          else
+            sleep 240
+          fi
       - name: Arm next refresh only if GitHub's native scheduler has not recovered
         run: |
           set -euo pipefail

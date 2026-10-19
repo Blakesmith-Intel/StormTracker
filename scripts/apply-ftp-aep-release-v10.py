@@ -30,8 +30,7 @@ assert js.count(needle)==1
 js=js.replace(needle,needle+"?v=ifd-aep-native-20261019")
 # The sealed V10 camera guardian owns orientation. Never call Cesium.camera.setView.
 # Amend only the built production artefact; the pinned V10 source is immutable.
-core_heading="heading:\\n      Cesium.Math.toRadians(\\n        345\\n      )"
-core_heading=core_heading.replace("\\\\n","\\n")
+core_heading="heading:" + chr(10) + "      Cesium.Math.toRadians(" + chr(10) + "        345" + chr(10) + "      )"
 assert js.count(core_heading)==1,"V10 isometric camera baseline changed"
 js=js.replace(core_heading,core_heading.replace("345","0"),1)
 selected_reset="if (site) mapCamera.setView({...CORE_HOME, longitude:site.longitude, latitude:site.latitude});"
@@ -44,8 +43,8 @@ js=js.replace(regional_reset,"else mapCamera.setView({...REGIONAL_HOME,heading:0
 mount="// The verified browser-source QA viewer must never call Cesium.camera.flyTo;"
 assert js.count(mount)==1
 js=js.replace(mount,
- "mountNorthCompass({cameraController:mapCamera,mapPanel:document.getElementById('mapPanel')});\\n"+mount,1)
-js='import {mountNorthCompass} from "./north-compass-v1.js?v=north-up-20261019";\\n'+js
+ "mountNorthCompass({cameraController:mapCamera,mapPanel:document.getElementById('mapPanel')});"+chr(10)+mount,1)
+js='import {mountNorthCompass} from "./north-compass-v1.js?v=north-up-20261019";'+chr(10)+js
 app.write_text(js)
 
 page=site/"live3d-operational-v9.html"

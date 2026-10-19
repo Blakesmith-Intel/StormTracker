@@ -42,7 +42,23 @@ def main():
             ftp.login("anonymous","stormtracker-data@example.com")
             ftp.cwd("/anon/gen/radar")
             names=ftp.nlst()
+            ftp.cwd("/anon/gen/radar_transparencies/coordinates")
+            maps={}
+            for site in SITES:
+                name="IDR"+site+"3.map"
+                chunks=[]
+                try:
+                    ftp.retrbinary("RETR "+name,chunks.append)
+                    raw=b"".join(chunks).decode("utf-8","replace")
+                    if "projection = Gnomonic" not in raw:continue
+                    pairs=re.findall(r"(?m)^\s*([a-z_]+[0-3]?)\s*=\s*([-\d.]+)",raw)
+                    values={key:float(v) for key,v in pairs}
+                    required={"center_longitude","center_latitude"}|{"lon"+str(i) for i in range(4)}|{"lat"+str(i) for i in range(4)}
+                    if required.issubset(values):
+                        maps[site]={"projection":"Gnomonic","product":name,"controlPoints":values}
+                except ftplib.error_perm:continue
     manifest=discover(names,dt.datetime.now(UTC))
+    manifest["siteGeoreference"]=maps if not args.listing else {}
     if not manifest["siteFrameHistory"]:
         raise SystemExit("No fresh source frames: refusing to publish empty radar manifest")
     dest=Path(args.out);dest.parent.mkdir(parents=True,exist_ok=True)

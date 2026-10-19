@@ -25,7 +25,7 @@ jobs:
           for site,frames in f['siteFrameHistory'].items():
             prev=''
             for frame in frames:
-              assert re.fullmatch('IDR'+site+r'3\\.T\\.\\d{12}\\.png',frame['filename'])
+              assert re.fullmatch('IDR'+site+r'3\.T\.\d{12}\.png',frame['filename'])
               assert frame['observedUtc']>prev
               prev=frame['observedUtc']
               assert frame['imageUrl']=='https://www.bom.gov.au/radar/'+frame['filename']

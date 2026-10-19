@@ -99,7 +99,7 @@ try {
       .get(
         "Cache-Control"
       ),
-    "public, max-age=300"
+    "public, max-age=60"
   );
 
   const payload =
@@ -204,11 +204,20 @@ try {
     await head.text(),
     ""
   );
+  const beforeForce=calls.length;
+  const force=await worker.fetch(new Request(
+    "https://relay.invalid/river-height-bulletins?force=1&_ts=1234"),{});
+  assert.equal(force.status,200);
+  assert.equal(force.headers.get("Cache-Control"),"no-store",
+    "Operator-requested snapshot must never be held by intermediate caches");
+  assert.equal(calls.length-beforeForce,13,
+    "Force refresh must fetch all 12 regional products (including fallback)");
+
 } finally {
   globalThis.fetch =
     originalFetch;
 }
 
 console.log(
-  "River-height relay checks passed: fixed 12-product allow-list, official BoM URL fallback, server-side parsing, partial-feed survival and five-minute cache headers."
+  "River-height relay checks passed: fixed 12-product allow-list, official BoM URL fallback, server-side parsing, partial-feed survival and one-minute cache headers."
 );

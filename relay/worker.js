@@ -803,6 +803,8 @@ function riverHeightResponse(
   );
 }
 
+// Full source-authentic 1080-station 2022 BoM baseline remains available when
+// either BoM hostname rejects automated HTTPS access (403).
 async function relayQldFloodThresholds(request,origin){
   let levels={};
   try{

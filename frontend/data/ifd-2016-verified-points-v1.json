@@ -1,0 +1,86 @@
+{
+  "schema": "StormTrackerBoM2016IFDCellsV1",
+  "source": "Australian Bureau of Meteorology 2016 IFD point extracts",
+  "sourceUrl": "https://www.bom.gov.au/water/designRainfalls/revised-ifd/?coordinate_type=dd&design=ifds&latitude=-28.002&longitude=153.424&sdday=true&sdhr=true&sdmin=true&user_label=Gold+Coast",
+  "issuedDate": "2026-10-15",
+  "coverage": "ONE authoritative 0.025-degree grid cell only; NOT Queensland statewide; missing cells must remain unclassified",
+  "cells": {
+    "-28.0125,153.4125": {
+      "label": "Gold Coast reference, official nearest IFD cell",
+      "latitude": -28.0125,
+      "longitude": 153.4125,
+      "depthsMmByMinutes": {
+        "60": {
+          "1": 109,
+          "2": 96.8,
+          "5": 81.4,
+          "10": 70.3,
+          "20": 59.3
+        },
+        "90": {
+          "1": 133,
+          "2": 117,
+          "5": 97.3,
+          "10": 83.4,
+          "20": 69.7
+        },
+        "120": {
+          "1": 153,
+          "2": 134,
+          "5": 111,
+          "10": 94.1,
+          "20": 78.2
+        },
+        "180": {
+          "1": 187,
+          "2": 163,
+          "5": 133,
+          "10": 112,
+          "20": 92.3
+        },
+        "270": {
+          "1": 228,
+          "2": 197,
+          "5": 160,
+          "10": 134,
+          "20": 109
+        },
+        "360": {
+          "1": 262,
+          "2": 226,
+          "5": 183,
+          "10": 153,
+          "20": 124
+        },
+        "540": {
+          "1": 315,
+          "2": 273,
+          "5": 221,
+          "10": 183,
+          "20": 148
+        },
+        "720": {
+          "1": 357,
+          "2": 309,
+          "5": 251,
+          "10": 208,
+          "20": 168
+        },
+        "1080": {
+          "1": 419,
+          "2": 365,
+          "5": 298,
+          "10": 248,
+          "20": 200
+        },
+        "1440": {
+          "1": 465,
+          "2": 406,
+          "5": 333,
+          "10": 278,
+          "20": 226
+        }
+      }
+    }
+  }
+}

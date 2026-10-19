@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {rainfallRarityDisplay,significantRainfallDisplay}
+import {rainfallRarityDisplay,significantRainfallDisplay,rainfallMarkerSvg}
  from "../src/context-layers/significant-rainfall-operational-v1.js";
 import {rainfallWindowMinutes,classifyRainfallAep}
  from "../src/context-layers/rainfall-ifd-aep-v1.js";
@@ -42,6 +42,17 @@ const unknown=significantRainfallDisplay({mm:100,
  aep:{classification:"unclassified"}});
 assert.equal(unknown.amountBand,"100 mm or more");
 assert.equal(unknown.rarity.short,"Unrated");
+for(const [mm,expectedColour] of [[99.9,"#ed871b"],[100,"#d92d35"]]){
+ const svg=rainfallMarkerSvg({mm,aep:{aepDesignThreshold:5}});
+ assert.match(svg,/viewBox="0 0 108 40"/,"Compact rain marker geometry");
+ assert(svg.includes('fill="'+expectedColour+'"'),"Measured rain bands remain orange/red");
+ assert(svg.includes('fill="#a45c1a"'),"IFD rarity tag separately coloured");
+ assert(!svg.includes(">"+mm+"</text>"),"No number printed inside droplet");
+ assert(svg.includes(">Rare</text>"),"Plain-language rarity remains visible");
+}
+assert(rainfallMarkerSvg({mm:100,aep:{classification:"unclassified"}}).includes('fill="#66717b"'),
+ "Only missing IFD references should use neutral grey rarity");
+
 assert.equal(rainfallBand(49.9),null);
 assert.equal(rainfallBand(50),"orange");
 assert.equal(rainfallBand(99.9),"orange");

@@ -44,3 +44,6 @@ A third view, “Last 24 hrs”, uses the independently published official 24-ho
 - Both production dry-run and published-site deployment validate the actual emitted source/HTML rather than merely checking the branch.
 
 **Interpretation caution:** A 50mm+ gauge reading describes rainfall *at that station* in the selected period; it does not directly establish flood depth, catchment-wide totals, observed flood severity or a BoM warning. Last-hour map values follow BoM's published period, not a fabricated per-minute rolling accumulation.
+
+## 20 October 2026 — smaller rainfall icons
+Measured-rainfall icons now use 108×40 rather than 124×54 SVGs. Droplets retain orange for 50–99.9 mm and red for 100+ mm, without text in the droplets. Their distinct rarity labels remain individually colour-coded for notable, unusual, rare, very rare and exceptional; neutral grey remains for missing local IFD references. Station details retain the exact millimetre total.

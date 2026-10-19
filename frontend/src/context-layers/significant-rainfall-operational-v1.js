@@ -34,23 +34,22 @@ export function significantRainfallDisplay(record){
   amountBand:record.mm>=100?"100 mm or more":"50–99.9 mm",
   rarity:rainfallRarityDisplay(record.aep)};
 }
-const marker=record=>{
+// Smaller measured-rainfall droplet, with a separately coloured AEP label.
+// Station names, precise rainfall totals and references stay in the popup.
+export function rainfallMarkerSvg(record){
  const {amountColor,rarity}=significantRainfallDisplay(record);
- // Do not round 99.9 mm into an apparent 100 mm red threshold.
- const mm=Number(record.mm.toFixed(1)).toString();
- const size=mm.length>3?9:mm.length>2?12:14;
- const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 54">'+
- '<path d="M24 2C14 15 7 23 7 33a17 17 0 0 0 34 0C41 23 34 15 24 2Z" '+
- 'fill="'+amountColor+'" stroke="#17242d" stroke-width="2.5"/>'+
- '<text x="24" y="38" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" '+
- 'font-weight="700" font-size="'+size+'">'+mm+'</text>'+
- '<rect x="45" y="20" width="78" height="23" rx="6" fill="'+rarity.color+'" '+
- 'stroke="#17242d" stroke-width="1.8"/>'+
- '<text x="84" y="35.5" fill="#fff" font-family="Arial,sans-serif" '+
- 'font-size="'+(rarity.short.length>9?9:10)+'" font-weight="700" '+
- 'text-anchor="middle">'+rarity.short+'</text></svg>';
- return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
-};
+ const fontSize=rarity.short.length>9?9:10;
+ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 40">'+
+ '<path d="M18 3C13 11 5 20 5 26a13 13 0 0 0 26 0C31 20 23 11 18 3Z" '+
+ 'fill="'+amountColor+'" stroke="#17242d" stroke-width="1.8"/>'+
+ '<rect x="33" y="9" width="74" height="26" rx="6" fill="'+rarity.color+'" '+
+ 'stroke="#17242d" stroke-width="1.4"/>'+
+ '<text x="70" y="26" text-anchor="middle" fill="#fff" '+
+ 'font-family="Arial,sans-serif" font-weight="700" font-size="'+fontSize+'">'+
+ rarity.short+'</text></svg>';
+}
+const marker=record=>"data:image/svg+xml;charset=utf-8,"+
+ encodeURIComponent(rainfallMarkerSvg(record));
 
 function formatted(iso){
  if(!iso||!Number.isFinite(Date.parse(iso)))return "Unverified";
@@ -144,7 +143,7 @@ export function initialiseOperationalSignificantRainfall({
       rainfallRarityDisplay(record.aep).description,
     position:CesiumRef.Cartesian3.fromDegrees(record.longitude,record.latitude),
     billboard:{
-      image:marker(record),width:124,height:54,
+      image:marker(record),width:108,height:40,
       verticalOrigin:CesiumRef.VerticalOrigin?.BOTTOM,
       heightReference:CesiumRef.HeightReference?.CLAMP_TO_GROUND,
       disableDepthTestDistance:Number.POSITIVE_INFINITY

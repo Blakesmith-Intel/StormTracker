@@ -1,0 +1,20 @@
+name: Diagnostic — current BoM flood readings for two stations
+on:
+  push:
+    branches: [diagnostic/flood-two-sites-live-20261019]
+    paths:
+      - scripts/qa-two-flood-gauges-source-v1.mjs
+      - .github/workflows/qa-two-flood-gauges-source-v1.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-telemetry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "24"}
+      - name: Inspect independent station IDs, bulletin timestamps and history
+        run: node scripts/qa-two-flood-gauges-source-v1.mjs

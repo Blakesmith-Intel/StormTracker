@@ -265,6 +265,7 @@ export function floodRoadGeometryParts(feature) {
       item
       && (
         item.type === "Point"
+        || item.type === "MultiPoint"
         || item.type === "LineString"
         || item.type === "MultiLineString"
       )
@@ -282,6 +283,14 @@ function firstPositionFromGeometry(geometry) {
     && geometry.coordinates.length >= 2
   ) {
     return geometry.coordinates;
+  }
+
+  if (
+    geometry.type === "MultiPoint"
+    && Array.isArray(geometry.coordinates)
+    && geometry.coordinates[0]?.length >= 2
+  ) {
+    return geometry.coordinates[0];
   }
 
   if (

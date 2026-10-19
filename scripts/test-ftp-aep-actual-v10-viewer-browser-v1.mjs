@@ -31,7 +31,7 @@ const at=new Date().toISOString();
 const station=(id,name,latitude,longitude,period)=>({
  id,name,latitude,longitude,region:"seast",period,mm:50,band:"orange",sourceCreatedAt:at});
 const source={format:"StormTrackerSignificantRainfallV1",checkedAt:at,regional:[],failed:[],
- observations:{since9am:[],lastHour:[
+ observations:{since9am:[],last24Hours:[],lastHour:[
  station("QA19501","QA Adavale rainfall station",-25.91,144.6,"lastHour"),
  station("QA19502","QA Gold Coast rainfall station",-28.002,153.424,"lastHour")]}};
 await page.route("**/qld-significant-rainfall",route=>route.fulfill({status:200,
@@ -46,7 +46,7 @@ try{
  await page.waitForFunction(()=>{
   const viewer=window.__STORMTRACKER_QA_VIEWER;
   const ds=viewer?.dataSources?._dataSources?.find(x=>x.name==="significant-rainfall");
-  return ds?.entities.values.length===1 &&
+  return ds?.entities.values.length===2 &&
     ds.entities.values[0].stormTrackerRainGaugeId==="QA19501";
  },null,{timeout:40000});
  // A real map gesture cancels StormTracker camera handover/navigation before
@@ -140,10 +140,11 @@ try{
  });
  assert(actual.title.includes("Adavale"));
  assert(actual.popup.includes("50.0 mm"));
- assert(actual.popup.includes("10% AEP"),"Observed local 50mm not identified as Adavale's 10% AEP design rainfall");
+ assert(actual.popup.includes("Unusual for this area"),"Plain-English local rarity must appear");
+ assert(actual.popup.includes("1 in 10"),"Explain 10% AEP using 1 in 10 annual chance");
  assert(actual.popup.includes("QA19501"));
  assert(actual.nationalPrimary&&actual.noFtpFirst,"Production viewer must use national-first radar policy");
- assert.equal(actual.visibleMarkerCount,1,"50mm Gold Coast must not appear as a ≥20% AEP rainfall event");
+ assert.equal(actual.visibleMarkerCount,2,"Both genuine 50mm gauge amounts must display, even when one is less rare locally");
  assert.deepEqual(failedModules,[],"Missing source module after staged Pages build");
  assert.deepEqual(errors,[],"Uncaught production app JS errors");
  console.log("FTP_AEP_ACTUAL_V10_CESIUM_MAP_PASS",JSON.stringify({actual,position:pos}));

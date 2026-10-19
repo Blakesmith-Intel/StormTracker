@@ -12,6 +12,15 @@ on:
       - frontend/src/ftp-reflectivity-operational-v1.js
       - frontend/src/context-layers/rainfall-ifd-aep-v1.js
       - frontend/src/context-layers/significant-rainfall-operational-v1.js
+  pull_request:
+    paths:
+      - frontend/src/bom-wmts-loop-v2.js
+      - frontend/src/ftp-reflectivity-operational-v1.js
+      - scripts/apply-ftp-aep-release-v10.py
+      - scripts/test-national-source-policy-v1.mjs
+      - scripts/test-combined-ftp-aep-operational-browser-v1.mjs
+      - scripts/test-ftp-aep-actual-v10-viewer-browser-v1.mjs
+      - .github/workflows/qa-ftp-aep-combined-release-v1.yml
   workflow_dispatch:
 permissions:
   contents: read

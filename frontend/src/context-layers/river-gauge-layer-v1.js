@@ -131,6 +131,9 @@ export function riverGaugeOperationalSummary(
         ? properties.STORMTRACKER_TIDAL_BASELINE_M_PER_H : null,
 
     observationStale:Boolean(properties.STORMTRACKER_OBSERVATION_STALE),
+    classificationUnverified:Boolean(properties.STORMTRACKER_CLASSIFICATION_UNVERIFIED),
+    lastConfirmedFloodClass:String(properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??""),
+    lastConfirmedFloodAt:Number(properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT)||null,
     officialObservedAt:Number(properties.STORMTRACKER_OFFICIAL_OBSERVED_AT)||null,
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
     recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0),

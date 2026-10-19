@@ -11,7 +11,7 @@ import {observedFloodClass}
 const base="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
 const id=value=>{
   const v=String(value??"").trim();
-  return /^\\d{1,6}$/.test(v)?"bom:"+v.padStart(6,"0"):null;
+  return /^\d{1,6}$/.test(v)?"bom:"+v.padStart(6,"0"):null;
 };
 async function load(path){
   const res=await fetch(base+path,{
@@ -72,7 +72,7 @@ const audit={format:"StormTracker2026LiveBoMGaugeAuditV1",
   stations:allStations,datumConflicts:warnings,
   unmatchedCount:byKind.unmatched};
 if(process.argv.includes("--write"))
-  writeFileSync("docs/BOM_2026_GAUGE_COVERAGE_AUDIT.json",JSON.stringify(audit,null,2)+"\\n");
+  writeFileSync("docs/BOM_2026_GAUGE_COVERAGE_AUDIT.json",JSON.stringify(audit,null,2)+"\n");
 console.log("LIVE_2026_COVERAGE "+JSON.stringify({totalLiveLocations:features.length,
   uniqueBomStations:all.size,byKind,datumConflictCount:warnings.length,
   unmatchedExamples:allStations.filter(s=>s.kind==="unmatched").slice(0,16).map(s=>s.station),

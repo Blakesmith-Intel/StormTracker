@@ -254,6 +254,20 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const measured=Number.isFinite(observed)&&observed>0&&observed>=classAt
     ?observedFloodClass(p.STORMTRACKER_HEIGHT_METRES,
       stationFloodLevels(feature)):undefined;
+  // Same-source datum guard: current explicitly reported flood class and
+  // current 2026 station-ID threshold must agree before colour is asserted.
+  const reported=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
+  if(measured!==undefined &&
+      p.STORMTRACKER_THRESHOLD_STATUS==="2026-station-native" &&
+      ["minor","moderate","major"].includes(reported) &&
+      measured!==reported){
+    return {show:true,state:"unverified",source:"bom-datum-conflict",
+      reason:"2026 threshold and current BoM bulletin conflict: reported "+
+        reported+", computed "+(measured??"below minor")+
+        ". Datum classification unverified; no severity colour assigned.",
+      rapidRise:false,tidalScreened:tidal,rise:null,stale:!timely,
+      classificationUnverified:true,lastObservedAt:observed};
+  }
   if(measured!==undefined)level=measured??"below-minor";
   const official=["minor","moderate","major"].includes(level);
   // Do not mistake an omitted flood class for an official below-minor reading.

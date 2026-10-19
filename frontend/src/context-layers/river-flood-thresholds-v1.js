@@ -27,8 +27,8 @@ export function parseQldOfficialFloodLevels(html){
   const out={};
   const conflicts=new Set();
   for(const line of lines){
-    const id=line.slice(31,37);
-    if(!/^\d{6}$/.test(id)||line[37]!==" ")continue;
+    const id=line.slice(27,33);
+    if(!/^\d{6}$/.test(id)||line[33]!==" ")continue;
     const get=(a,b)=>{
       const v=line.slice(a,b).trim();
       return /^\d+(?:\.\d+)?$/.test(v)?number(v):null;

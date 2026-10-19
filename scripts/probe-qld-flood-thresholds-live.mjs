@@ -27,6 +27,8 @@ for(const url of urls){
   console.log("BoM parser matched",Object.keys(levels).length,
     "stations, samples",JSON.stringify(Object.fromEntries(
       ["bom:535142","bom:544058","bom:540319","bom:540054","bom:540640","bom:040846"].map(k=>[k,levels[k]]))));
+  if(url.includes("reg.bom.gov.au")&&Object.keys(levels).length>100)
+    console.log("STORMTRACKER_OFFICIAL_THRESHOLD_CATALOG="+JSON.stringify(levels));
  }else{
   const j=await res.json();
   console.log("Relay official count",j.statewideThresholdCount,

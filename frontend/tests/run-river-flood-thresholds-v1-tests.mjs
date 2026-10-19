@@ -7,7 +7,7 @@ import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.
 const row=(id,minor,moderate,major)=>{
   const x=Array(122).fill(" ");
   const put=(at,value)=>{for(let i=0;i<value.length;i++)x[at+i]=value[i];};
-  put(31,id);put(38,"TARANA CROSSING ALERT");
+  put(27,id);put(34,"TARANA CROSSING ALERT");
   put(85,minor);put(100,moderate);put(117,major);
   return x.join("");
 };

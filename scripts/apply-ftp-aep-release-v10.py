@@ -15,7 +15,8 @@ for source,target in [
  ("frontend/src/context-layers/significant-rainfall-source-v1.js","src/context-layers/significant-rainfall-source-v1.js"),
  ("frontend/src/context-layers/significant-rainfall-operational-v1.js","src/context-layers/significant-rainfall-operational-v1.js"),
  ("frontend/src/context-layers/rainfall-ifd-aep-v1.js","src/context-layers/rainfall-ifd-aep-v1.js"),
- ("frontend/src/north-compass-v1.js","src/north-compass-v1.js")
+ ("frontend/src/north-compass-v1.js","src/north-compass-v1.js"),
+ ("frontend/src/hires-radar-loop-policy-v1.js","src/hires-radar-loop-policy-v1.js")
 ]:
     assert Path(source).is_file(),source
     copyfile(source,site/target)
@@ -24,7 +25,7 @@ app=site/"src/live3d-operational-v9.js"
 js=app.read_text()
 needle="bom-wmts-loop-v2.js?v=9.18.6-bounded-published-history"
 assert js.count(needle)==1, "V10 radar source import contract changed"
-js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1")
+js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1-observed-only")
 needle="significant-rainfall-operational-v1.js"
 assert js.count(needle)==1
 js=js.replace(needle,needle+"?v=ifd-aep-native-20261019")
@@ -45,6 +46,30 @@ assert js.count(mount)==1
 js=js.replace(mount,
  "mountNorthCompass({cameraController:mapCamera,mapPanel:document.getElementById('mapPanel')});"+chr(10)+mount,1)
 js='import {mountNorthCompass} from "./north-compass-v1.js?v=north-up-20261019";'+chr(10)+js
+
+# These replacements target ONLY the sealed v10.2.0 delivered operator runtime.
+# A true five-minute, 30-minute loop has six genuine BoM frames. Old low-res
+# 512px FTP sources and interpolated temporal frames are NEVER displayed.
+js='import {isVerifiedHiResRadarFrame,measuredHiResRainWindow} from "./hires-radar-loop-policy-v1.js?v=observed-only-6-per-30-20261019";'+chr(10)+js
+before='const plan = buildRadarPlaybackPlan(history);'
+assert js.count(before)==1,"V10 radar-summary plan anchor changed"
+js=js.replace(before,'const plan = measuredHiResRainWindow(history,"all").plan;',1)
+before=': resolveRainHistoryWindow(availableRadarHistoryTimes, loopSelection);'
+assert js.count(before)==1,"V10 rain source window anchor changed"
+js=js.replace(before,': measuredHiResRainWindow(availableRadarHistoryTimes, loopSelection);',1)
+before='displayPlan = resolveRainHistoryWindow('
+assert js.count(before)==1,"V10 display plan anchor changed"
+js=js.replace(before,'displayPlan = measuredHiResRainWindow(',1)
+# Exclude stale low-resolution frames persisted in browser storage from former
+# production versions. Genuine BoM national WMTS rasters remain eligible.
+before='getRadarFrames(region, cacheCutoff).catch(error => {'
+assert js.count(before)==1,"V10 cached-frame adapter changed"
+js=js.replace(before,
+  'getRadarFrames(region, cacheCutoff).then(frames=>frames.filter(isVerifiedHiResRadarFrame)).catch(error => {',1)
+before='radarFrameCache.has(entry.observedUtc)'+chr(10)+'        ? Promise.resolve(radarFrameCache.get(entry.observedUtc))'
+assert js.count(before)==1,"V10 live-frame cache anchor changed"
+js=js.replace(before,
+  'radarFrameCache.has(entry.observedUtc) && isVerifiedHiResRadarFrame(radarFrameCache.get(entry.observedUtc))'+chr(10)+'        ? Promise.resolve(radarFrameCache.get(entry.observedUtc))',1)
 app.write_text(js)
 
 page=site/"live3d-operational-v9.html"
@@ -62,7 +87,7 @@ assert html.count(old)==1
 html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP · <span style="color:#929da6">●</span> Grey = AEP not assessed (verified local IFD unavailable)')
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
-html=html.replace(needle,needle+"native-bom-hires-20261019-")
+html=html.replace(needle,needle+"hires-observed-six-20261019-")
 page.write_text(html)
 entry=site/"index.html"
 html=entry.read_text()
@@ -75,4 +100,5 @@ with (site/"BUILD.txt").open("a") as f:
  f.write("TRUE NORTH DEFAULT ISOMETRIC + PRIMARY RADAR RESET + COMPASS 2026-10-19\n")
  f.write("NATIONAL BOM REFLECTIVITY MOSAIC PRIMARY WHEN PROVEN LIVE, AUTHENTIC ORIGINAL FTP BACKUP 2026-10-19\n")
  f.write("VERIFIED CURRENT NATIVE BOM WMTS HIGH-RES DIRECT TILES + XML CORS RELAY 2026-10-19\n")
+ f.write("HIRES BOM NATIVE SOURCE ONLY; 30 MINUTES = SIX OBSERVED FRAMES; NO TEMPORAL GAP FILL 2026-10-19\n")
 print("FTP_AEP_V10_RELEASE_PACKAGED",len(list(site.rglob("*.js"))))

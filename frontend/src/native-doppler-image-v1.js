@@ -7,12 +7,14 @@ import { dopplerMapCoordinateToLonLat, lonLatToDopplerMapCoordinate } from "./bo
 
 export const NATIVE_DOPPLER_PANEL_SIZE = 512;
 export const NATIVE_DOPPLER_DISPLAY_SIZE = 1024;
-// BoM's separately delivered weather PNGs exclude the optional Locations
-// and Range overlays, BUT UTC/angle/range text is burned into the lower panel.
-// Use a HARD image boundary from source row 438: full original swatch/alpha
-// above it, fully transparent below. No partial alpha, blending, fill or
-// fabricated wind observations. Raw decoded BoM samples remain unchanged.
-export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 438;
+// The native 512px panel spans about 128 km either side of a 128km BoM
+// Doppler radar. A legacy row-438 full-width mask discarded genuine weather
+// south of about 91 km. Do not hide that measured southern coverage.
+// Screen the lower strip for *exact* Doppler palette swatches (not nearby
+// antialiased text ink); reserve the hard cutoff for the true caption zone
+// at about 112 km south. Scientific/source image data is never modified.
+export const NATIVE_DOPPLER_STRICT_PALETTE_START_ROW = 438;
+export const NATIVE_DOPPLER_ANNOTATION_START_ROW = 480;
 export function nativeDopplerDisplayFooterOpacity(row) {
   return row < NATIVE_DOPPLER_ANNOTATION_START_ROW ? 1 : 0;
 }
@@ -37,7 +39,7 @@ export function extractNativeDopplerPanel(imageData, palette, {
   const data = new Uint8ClampedArray(size * size * 4);
   let nativePixelCount = 0;
   for (let row = 0; row < size; row++) {
-    // Crop the bottom annotation rows once, not on animation frames.
+    // Strip the bottom caption, not the preceding 20+ km of weather.
     if(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow(row))continue;
     for (let col = 0; col < size; col++) {
       const from = ((row + layout.panelY) * imageData.width + col + layout.panelX) * 4;
@@ -46,6 +48,10 @@ export function extractNativeDopplerPanel(imageData, palette, {
       const rgb = [imageData.data[from], imageData.data[from + 1], imageData.data[from + 2]];
       const swatch = nearestPaletteMatch(rgb, palette);
       if (!swatch || (!includeZero && swatch.velocity_kmh === 0)) continue;
+      // In the potentially annotated margin, accept only a native palette
+      // swatch. Antialiased caption lettering must not resemble radial wind.
+      if(maskAnnotationRows && row >= NATIVE_DOPPLER_STRICT_PALETTE_START_ROW &&
+         swatch.match_mode !== "exact") continue;
       const to = (row * size + col) * 4;
       data[to] = rgb[0];
       data[to + 1] = rgb[1];

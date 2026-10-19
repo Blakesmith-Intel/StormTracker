@@ -7,6 +7,9 @@ export const MAX_SECONDARY_WIND_OFFSET_MINUTES=8;
 export const SECONDARY_WIND_BLEND_MS=120;
 export const SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350;
 export const SECONDARY_WIND_RETRY_COOLDOWN_MS=60000;
+// A normal BoM Doppler loop has seven true scans. Three cached providers
+// forced re-decode/reproject on every repeat, especially on extra radars.
+export const SECONDARY_WIND_PROVIDER_CACHE_SIZE=8;
 // Stage genuine secondary scans concurrently with primary decoding. At each
 // primary frame boundary, wait at most 350 ms for extra-site preparation;
 // never let an unavailable/sluggish radar freeze the operator playback.
@@ -78,6 +81,7 @@ export function createSupplementalDopplerDisplay({
     s.entries.clear();
     s.failedFrameUntil.clear();
     s.historyRetryAt=0;
+    s.pendingDisplay=null;
     s.error=null;
   }
   function stateFor(id){
@@ -85,16 +89,25 @@ export function createSupplementalDopplerDisplay({
     if(!s){
       s={id,observedUtc:null,error:null,staged:null,
         history:null,historyAt:0,historyTask:null,historyRetryAt:0,
-        entries:new Map(),failedFrameUntil:new Map(),
+        entries:new Map(),failedFrameUntil:new Map(),pendingDisplay:null,
         transition:createTransition({imageryLayers,scene,retireLayer,
           requestRender:()=>scene.requestRender()})};
       states.set(id,s);
     }
     return s;
   }
-  function invalidateStages(){
+  function invalidateStages(nextUtc=null){
     generation++;committedUtc=null;preparingKey="";preparingPromise=null;
-    for(const s of states.values())removeStage(s);
+    for(const s of states.values()){
+      // The primary clock can change while an extra site is staging exactly
+      // the same authentic BoM observation. Keep that invisible ready layer;
+      // destroying/re-adding it on each playback tick caused the flicker.
+      const match=nextUtc && s.history
+        ? matchingSecondaryWindFrame(s.history.frames,nextUtc) : null;
+      if(s.staged && match?.frame.observedUtc===s.staged.observedUtc){
+        s.staged.utc=nextUtc;
+      }else removeStage(s);
+    }
   }
   function configure(primaryId,extras=[]){
     const next=supportedSecondaryWindSites(primaryId,extras,sites);
@@ -153,7 +166,13 @@ export function createSupplementalDopplerDisplay({
   }
   async function frameFor(s,frame,palette){
     const key=frame.filename;
-    if(s.entries.has(key))return s.entries.get(key);
+    if(s.entries.has(key)){
+      // Bounded per-site LRU: keep a complete normal seven-frame loop warm.
+      const cached=s.entries.get(key);
+      s.entries.delete(key);
+      s.entries.set(key,cached);
+      return cached;
+    }
     if(now()<(s.failedFrameUntil.get(key)??0))
       throw Error("BoM Doppler image temporarily unavailable; waiting before retry");
     const task=bounded(Promise.resolve().then(()=>
@@ -170,7 +189,8 @@ export function createSupplementalDopplerDisplay({
       throw error;
     });
     s.entries.set(key,task);
-    while(s.entries.size>3)s.entries.delete(s.entries.keys().next().value);
+    while(s.entries.size>SECONDARY_WIND_PROVIDER_CACHE_SIZE)
+      s.entries.delete(s.entries.keys().next().value);
     task.catch(()=>{if(s.entries.get(key)===task)s.entries.delete(key);});
     return task;
   }
@@ -199,28 +219,30 @@ export function createSupplementalDopplerDisplay({
       scene.requestRender();
     });
   }
-  async function prepareSite(s,utc,mine){
-    const valid=()=>current(mine,utc)&&selected.includes(s.id) &&
-      states.get(s.id)===s;
+  // Each site owns its in-flight decoded image by REAL source filename, not
+  // by the primary's rapidly advancing playback-clock timestamp. A 5-minute
+  // clock step must not abort an image that also genuinely matches that step.
+  function selectedMatch(s){
+    if(!enabled || !selected.includes(s.id) || states.get(s.id)!==s ||
+       !targetUtc || !s.history)return null;
+    return matchingSecondaryWindFrame(s.history.frames,targetUtc);
+  }
+  function stillMatches(s,frame){
+    return selectedMatch(s)?.frame.filename===frame.filename;
+  }
+  async function stageSourceFrame(s,frame,palette){
     let layer=null;
     try{
-      const {frames,palette}=await ensureHistory(s);
-      if(!valid())return;
-      const match=matchingSecondaryWindFrame(frames,utc);
-      if(!match){
-        s.error="No measured Doppler scan within 8 minutes";
-        return;
-      }
-      // Existing source-accurate scan can remain visible at this clock time.
-      if(s.observedUtc===match.frame.observedUtc &&
+      const result=await frameFor(s,frame,palette);
+      if(!stillMatches(s,frame))return;
+      // A different pending task may have already revealed this very source.
+      if(s.observedUtc===frame.observedUtc &&
          s.transition.currentLayer?.show!==false){
-        s.staged={utc,observedUtc:match.frame.observedUtc,reuse:true};
+        s.staged={utc:targetUtc,observedUtc:frame.observedUtc,reuse:true};
         s.error=null;
-        if(committedUtc===utc){commitSite(s,utc);report();}
+        if(committedUtc===targetUtc){commitSite(s,targetUtc);report();}
         return;
       }
-      const result=await frameFor(s,match.frame,palette);
-      if(!valid())return;
       layer=createLayer(result.provider);
       layer.alpha=.001;
       const previous=s.transition.currentLayer;
@@ -228,17 +250,22 @@ export function createSupplementalDopplerDisplay({
          imageryLayers.indexOf(previous)>=0){
         imageryLayers.add(layer,imageryLayers.indexOf(previous));
       }else imageryLayers.add(layer);
-      const staged=await waitForStage(layer,valid);
-      if(!valid()||!staged)return;
-      s.staged={utc,observedUtc:match.frame.observedUtc,layer};
-      layer=null;
-      s.error=null;
-      // Finish late authentic scans only if the master is still on this UTC.
-      if(committedUtc===utc){commitSite(s,utc);scene.requestRender();report();}
+      // A Cesium stage takes multiple renders, often longer than a playback
+      // tick. Keep staging while its authentic filename still matches the
+      // current primary time; reject it if the selected source actually moves.
+      const staged=await waitForStage(layer,()=>stillMatches(s,frame));
+      if(!staged||!stillMatches(s,frame))return;
+      removeStage(s);
+      const activeUtc=targetUtc;
+      s.staged={utc:activeUtc,observedUtc:frame.observedUtc,layer};
+      layer=null;s.error=null;
+      if(committedUtc===activeUtc){
+        commitSite(s,activeUtc);scene.requestRender();report();
+      }
     }catch(error){
-      if(valid()){
+      if(stillMatches(s,frame)){
         s.error=String(error?.message??error);
-        if(committedUtc===utc)report();
+        if(committedUtc===targetUtc)report();
       }
     }finally{
       if(layer){
@@ -246,11 +273,52 @@ export function createSupplementalDopplerDisplay({
       }
     }
   }
+  async function prepareSite(s,utc,mine){
+    try{
+      const {frames,palette}=await ensureHistory(s);
+      if(!enabled||!selected.includes(s.id)||states.get(s.id)!==s)return;
+      // An older prepare may arrive after another primary-clock step. Always
+      // select the current actual BoM source, not a superseded clock request.
+      const match=matchingSecondaryWindFrame(frames,targetUtc);
+      if(!match){
+        if(current(mine,utc))s.error="No measured Doppler scan within 8 minutes";
+        return;
+      }
+      if(s.staged?.observedUtc===match.frame.observedUtc){
+        s.staged.utc=targetUtc;
+        if(committedUtc===targetUtc){commitSite(s,targetUtc);report();}
+        return;
+      }
+      if(s.observedUtc===match.frame.observedUtc &&
+         s.transition.currentLayer?.show!==false){
+        s.staged={utc:targetUtc,observedUtc:match.frame.observedUtc,reuse:true};
+        s.error=null;
+        if(committedUtc===targetUtc){commitSite(s,targetUtc);report();}
+        return;
+      }
+      // Reuse ONE pending Cesium raster per site/real observation even if the
+      // primary advances several UTC ticks before the image is rendered.
+      if(s.pendingDisplay?.filename===match.frame.filename){
+        await s.pendingDisplay.promise;
+        return;
+      }
+      const task=stageSourceFrame(s,match.frame,palette);
+      s.pendingDisplay={filename:match.frame.filename,promise:task};
+      try{await task;}finally{
+        if(s.pendingDisplay?.promise===task)s.pendingDisplay=null;
+      }
+    }catch(error){
+      if(current(mine,utc)){
+        s.error=String(error?.message??error);
+        if(committedUtc===utc)report();
+      }
+    }
+  }
   function prepare(utc){
     if(!enabled || !Number.isFinite(Date.parse(utc)))return Promise.resolve([]);
     const key=primary+"|"+selected.join(",")+"|"+utc;
     if(preparingKey===key && preparingPromise)return preparingPromise;
-    invalidateStages();
+    invalidateStages(utc);
     targetUtc=utc;
     const mine=generation;
     preparingKey=key;
@@ -308,6 +376,19 @@ export function createSupplementalDopplerDisplay({
   // Commit the primary source clock immediately. A secondary stage may
   // complete afterwards at THIS SAME clock time; do not discard it merely
   // because it missed a 350ms primary deadline. New clock steps invalidate it.
+  // A real scan needed at the playback wrap/first selection may already be
+  // decoding but outside the prior ±8-minute hold. Give that specific
+  // truthful handover a longer bounded pre-commit wait, rather than blanking
+  // the older site for a fraction of every loop. Ordinary steps stay fast.
+  function needsBoundaryWait(utc){
+    if(!enabled||!selected.length)return false;
+    return selected.some(id=>{
+      const site=states.get(id);
+      if(!site?.history || !matchingSecondaryWindFrame(site.history.frames,utc))
+        return false;
+      return !holdIsValid(site,utc);
+    });
+  }
   function commit(utc){
     if(!enabled||targetUtc!==utc)return [];
     committedUtc=utc;
@@ -353,6 +434,7 @@ export function createSupplementalDopplerDisplay({
     for(const s of states.values())release(s);
     states.clear();selected=[];targetUtc=null;report();
   }
-  return {configure,setEnabled,prepare,commit,showAt,prewarm,refresh,destroy,snapshot:reported,
+  return {configure,setEnabled,prepare,commit,needsBoundaryWait,
+    showAt,prewarm,refresh,destroy,snapshot:reported,
     get visibleSites(){return [...states].filter(([,s])=>s.observedUtc).map(([id])=>id);}};
 }

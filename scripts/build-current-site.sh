@@ -61,7 +61,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
     html=page.read_text(encoding="utf-8")
     assert html.count("<head>")==1
     page.write_text(html.replace("<head>",
-       '<head>\\n<script>globalThis.__STORMTRACKER_FTP_FIRST=true;</script>',1),
+       '<head>\n<script>globalThis.__STORMTRACKER_FTP_FIRST=true;</script>',1),
        encoding="utf-8")
 
 for relative in ("index.html","live3d-operational-v9.html"):

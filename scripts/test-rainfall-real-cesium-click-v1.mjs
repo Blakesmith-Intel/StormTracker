@@ -53,12 +53,36 @@ try{
   const at=entity.position.getValue(Cesium.JulianDate.now());
   const point=viewer.scene.cartesianToCanvasCoordinates(at);
   const rect=viewer.scene.canvas.getBoundingClientRect();
-  return point?{x:point.x+rect.left,y:point.y+rect.top}:null;
+  const pos=point?new Cesium.Cartesian2(point.x,point.y):null;
+  const hits=pos?viewer.scene.drillPick(pos,24,42,42).map(hit=>({
+   id:hit?.id?.id??hit?.id??null, primitiveId:hit?.primitive?.id?.id??null
+  })).slice(0,12):[];
+  return point?{x:point.x+rect.left,y:point.y+rect.top,
+   relX:point.x,relY:point.y,
+   rect:{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom},
+   picks:hits,activeDataSources:viewer.dataSources.length,
+   mapSceneMode:viewer.scene.mode,sceneCanvas:[viewer.scene.canvas.width,viewer.scene.canvas.height]}:null;
  });
  assert(projected,"QA station projection missing from viewport");
+ console.log("RAIN_MARKER_PROJECTED_PICK_DIAGNOSTIC",JSON.stringify(projected));
+ await page.evaluate(p=>{window.__STORMTRACKER_QA_PROJECTED=p},projected);
  await page.mouse.click(projected.x,projected.y);
- await page.waitForFunction(()=>document.getElementById("significantRainfallInfo")?.hidden===false,
-  null,{timeout:12000});
+ try{
+  await page.waitForFunction(()=>document.getElementById("significantRainfallInfo")?.hidden===false,
+   null,{timeout:6500});
+ }catch(error){
+  const dbg=await page.evaluate(()=>{
+   const v=window.__STORMTRACKER_QA_VIEWER;
+   const r=document.getElementById("significantRainfallInfo");
+   return {hidden:r?.hidden,style:r?.getAttribute("style"),
+    atPointer:document.elementFromPoint(1*0+window.__STORMTRACKER_QA_PROJECTED?.x,
+     window.__STORMTRACKER_QA_PROJECTED?.y)?.outerHTML.slice(0,350),
+    status:document.getElementById("significantRainfallStatus")?.textContent,
+    mapBody:document.getElementById("mapPanel")?.contains(document.elementFromPoint(window.__STORMTRACKER_QA_PROJECTED?.x,window.__STORMTRACKER_QA_PROJECTED?.y))}
+  });
+  console.error("RAIN_CLICK_FAILURE_DETAILS",JSON.stringify(dbg));
+  throw error;
+ }
  const popup=await page.evaluate(()=>({
   title:document.getElementById("significantRainfallInfoTitle")?.textContent,
   content:document.getElementById("significantRainfallInfoRows")?.textContent,

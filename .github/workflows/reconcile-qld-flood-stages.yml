@@ -1,0 +1,34 @@
+name: Reconcile complete Queensland flood classifications with BoM 2026
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/reconcile-bom-sls-2026.mjs'
+      - 'frontend/tests/run-bom-sls-2026-catalogue-tests.mjs'
+      - '.github/workflows/reconcile-qld-flood-stages.yml'
+permissions:
+  contents: write
+jobs:
+  import-official-sls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify importer with independent fixtures
+        run: node frontend/tests/run-bom-sls-2026-catalogue-tests.mjs
+      - name: Parse official 2026 BoM PDF; reject incomplete or ambiguous IDs
+        run: node scripts/reconcile-bom-sls-2026.mjs --write
+      - name: Commit source-verified full classification catalogue and audit
+        run: |
+          git config user.name "stormtracker-source-audit[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/context-layers/river-flood-stages-2026-full-v1.js docs/BOM_2026_FLOOD_CLASSIFICATION_AUDIT.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Import verified statewide 2026 BoM station flood classifications and full audit"
+            git push origin HEAD:main
+          fi

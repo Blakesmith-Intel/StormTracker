@@ -1,0 +1,48 @@
+name: QA — FTP first plus local AEP rainfall
+on:
+  push:
+    branches: [feature/aep-rainfall-ftp-v10-20261019]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  end-to-end:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/checkout@v4
+        with:
+          ref: acfa0ebd3717a793369e3e887e2d1a54785620b7
+          path: checked/accepted-v9.18
+      - uses: actions/checkout@v4
+        with:
+          ref: 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2
+          path: checked/production-v10.2.0
+      - uses: actions/checkout@v4
+        with:
+          ref: f3a07688ca02f5f0234ae6425fc1177722518c53
+          path: checked/wind-hook-v10.3-qa
+      - name: Validate all sources and existing science tests
+        run: |
+          npm test
+          node --check relay/worker.js
+          node --check frontend/src/context-layers/rainfall-ifd-aep-v1.js
+      - name: Assemble full operational Pages build and verify IFD calibration artifact
+        run: |
+          bash scripts/build-current-site.sh
+          test -s _site/data/ifd-2016-verified-points-v1.json
+          test -s _site/src/context-layers/rainfall-ifd-aep-v1.js
+          grep -Fq '__STORMTRACKER_FTP_FIRST=true' _site/index.html
+      - name: Prepare actual Chromium browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.58.2
+          npx playwright install chromium
+      - name: Exercise current live FTP-first source, real HTTPS relay and QA origin
+        run: |
+          echo '<!doctype html><meta charset="utf-8"><p>FTP-first AEP QA</p>' > _site/ftp-smoke.html
+          python -m http.server 8137 --bind 127.0.0.1 --directory _site >/tmp/aep-ftp-http.log 2>&1 &
+          node scripts/test-ftp-first-operational-browser-v1.mjs

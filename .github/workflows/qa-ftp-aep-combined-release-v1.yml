@@ -61,6 +61,7 @@ jobs:
           grep -Fq '__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true' _site/live3d-operational-v9.html
           grep -Fq 'ftp-reflectivity-operational-v1.js' _site/src/bom-wmts-loop-v2.js
           node scripts/test-national-source-policy-v1.mjs
+          python scripts/test-ftp-publisher-sha-reuse-v1.py
           grep -Fq 'window.addEventListener("pointerdown",pointerDown' _site/src/context-layers/significant-rainfall-operational-v1.js
       - name: Install headless Chromium
         run: |

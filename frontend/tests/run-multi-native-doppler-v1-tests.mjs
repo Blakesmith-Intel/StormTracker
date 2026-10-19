@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import {
   MAX_SECONDARY_WIND_OFFSET_MINUTES,SECONDARY_WIND_BLEND_MS,
   SECONDARY_WIND_FRAME_SYNC_WAIT_MS,waitForSecondaryWindPreparation,
-  SECONDARY_WIND_RETRY_COOLDOWN_MS,supportedSecondaryWindSites,
+  SECONDARY_WIND_RETRY_COOLDOWN_MS,SECONDARY_WIND_PROVIDER_CACHE_SIZE,
+  supportedSecondaryWindSites,
   matchingSecondaryWindFrame,createSupplementalDopplerDisplay
 } from "../src/multi-doppler-display-v1.js";
 
@@ -14,6 +15,8 @@ assert.equal(await waitForSecondaryWindPreparation(Promise.reject(Error("Optiona
 assert.equal(await waitForSecondaryWindPreparation(new Promise(()=>{}),5),false,
   "Slow optional Doppler must never stop the primary timeline");
 assert.equal(SECONDARY_WIND_RETRY_COOLDOWN_MS,60000);
+assert.equal(SECONDARY_WIND_PROVIDER_CACHE_SIZE,8,
+  "One complete seven-frame authentic BoM loop must fit in the bounded site cache");
 const sites={
   "66":{dopplerProduct:"IDR66I"},
   "50":{dopplerProduct:"IDR50I"},
@@ -267,3 +270,95 @@ assert.equal(seek.snapshot().sources[0].observedUtc,"2026-10-17T00:15:00Z",
 seek.destroy();
 assert.equal(visibleLayers.length,0);
 console.log("PASS no secondary Doppler flicker, source-accurate hold, late same-UTC recovery and stale-seek rejection.");
+
+// Live-camera regression: image staging requires three Cesium post-render
+// callbacks, often spanning one or more PRIMARY Doppler playback ticks.
+// The source filename remains genuine and matches the newer clock, so the
+// pending staged layer must not be cancelled or redundantly decoded.
+const callbacks=new Set();
+const slowScene={requestRender(){},postRender:{
+  addEventListener(cb){callbacks.add(cb);return ()=>callbacks.delete(cb);}
+}};
+const warmCounts=new Map();
+const slowDisplay=createSupplementalDopplerDisplay({
+  sites,imageryLayers,scene:slowScene,createTransition:makeTransition,
+  createLayer:provider=>({provider,alpha:1}),
+  loadSiteHistory:async()=>({frames,palette:{}}),
+  loadSiteFrame:async(id,frame)=>{
+    const key=id+"@"+frame.filename;
+    warmCounts.set(key,(warmCounts.get(key)??0)+1);
+    return {provider:key,observedUtc:frame.observedUtc};
+  }
+});
+slowDisplay.configure("66",["50","08"]);slowDisplay.setEnabled(true);
+const firstPending=slowDisplay.prepare("2026-10-17T00:10:00Z");
+slowDisplay.commit("2026-10-17T00:10:00Z");
+await until(()=>callbacks.size===2,"two authentic secondary Cesium stages running");
+const clockAdvanced=slowDisplay.prepare("2026-10-17T00:12:00Z");
+slowDisplay.commit("2026-10-17T00:12:00Z");
+assert.equal(callbacks.size,2,
+  "Clock change within same source UTC must not destroy and re-stage textures");
+for(let i=0;i<3;i++){
+  for(const callback of [...callbacks])callback();
+  await Promise.resolve();
+}
+await Promise.all([firstPending,clockAdvanced]);
+assert.deepEqual(slowDisplay.visibleSites.sort(),["08","50"],
+  "Both genuine extra sites must appear together after their original stage");
+assert.equal(warmCounts.get("50@f10"),1,"Marburg staged only once");
+assert.equal(warmCounts.get("08@f10"),1,"Gympie staged only once");
+assert.equal(visibleLayers.length,2,"No duplicate secondary Cesium imagery layers");
+assert.ok(slowDisplay.snapshot().sources.every(p=>p.offsetMinutes===-2),
+  "Retain the genuine original timestamp after primary clock advances");
+const nextPending=slowDisplay.prepare("2026-10-17T00:15:00Z");
+slowDisplay.commit("2026-10-17T00:15:00Z");
+assert.deepEqual(slowDisplay.visibleSites.sort(),["08","50"],
+  "Within-window previous real scan must remain visible while next scans stage");
+await until(()=>callbacks.size===2,"two next wind frames stage");
+for(let i=0;i<3;i++){
+  for(const callback of [...callbacks])callback();
+  await Promise.resolve();
+}
+await nextPending;
+assert.ok(slowDisplay.snapshot().sources.every(p=>p.observedUtc==="2026-10-17T00:15:00Z"),
+  "Once ready both selected radars hand over to the actual next BoM scan");
+assert.equal(visibleLayers.length,2);
+slowDisplay.destroy();assert.equal(visibleLayers.length,0);
+console.log("PASS slow Cesium stages survive 5-minute playback-clock steps without flicker, duplicate tiles or false UTC.");
+
+// The previous 3-frame provider LRU thrashed on every 7-frame loop repeat.
+// Decode each authentic frame once, then replay multiple loops from bounded
+// warm per-site providers, without synthetic frame creation.
+const sevenFrames=Array.from({length:7},(_,i)=>({
+  filename:"loop"+i,
+  observedUtc:new Date(Date.parse("2026-10-17T00:00:00Z")+i*300000).toISOString()
+}));
+const sevenLoads=new Map();
+const loopCache=createSupplementalDopplerDisplay({
+  sites,imageryLayers,scene,createTransition:makeTransition,
+  createLayer:provider=>({provider}),
+  loadSiteHistory:async()=>({frames:sevenFrames,palette:{}}),
+  loadSiteFrame:async(id,frame)=>{
+    const key=id+"@"+frame.filename;
+    sevenLoads.set(key,(sevenLoads.get(key)??0)+1);
+    return {provider:key,observedUtc:frame.observedUtc};
+  }
+});
+loopCache.configure("66",["50","08"]);loopCache.setEnabled(true);
+for(const frame of sevenFrames)await loopCache.prewarm(frame.observedUtc);
+assert.equal(sevenLoads.size,14,"Seven genuine BoM images loaded for each selected site");
+for(let cycle=0;cycle<3;cycle++){
+  for(const frame of sevenFrames){
+    await loopCache.prepare(frame.observedUtc);
+    loopCache.commit(frame.observedUtc);
+    assert.deepEqual(loopCache.visibleSites.sort(),["08","50"],
+      "All extra Doppler sites remain visible on every observed loop frame");
+    assert.ok(loopCache.snapshot().sources.every(p=>p.observedUtc===frame.observedUtc),
+      "Each visible site carries its original real BoM source timestamp");
+  }
+}
+assert.ok([...sevenLoads.values()].every(n=>n===1),
+  "Repeat loops must reuse cached native frames, not re-fetch/reproject them");
+assert.equal(visibleLayers.length,2);
+loopCache.destroy();assert.equal(visibleLayers.length,0);
+console.log("PASS three complete 7-frame multi-site Doppler loops without imagery dropout or repeated decoding.");

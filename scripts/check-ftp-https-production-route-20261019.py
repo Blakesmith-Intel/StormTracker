@@ -11,4 +11,4 @@ for site in ["08","50","66","28"]:
   try:
    with urllib.request.urlopen(req,timeout=14) as r:body=r.read(16);status=r.status;ctype=r.headers.get("content-type")
   except Exception as e:print("HTTPS_SOURCE",json.dumps({"site":site,"filename":filename,"url":host+filename,"error":str(e)}));continue
-  print("HTTPS_SOURCE",json.dumps({"site":site,"filename":filename,"url":host+filename,"status":status,"ctype":ctype,"png":body[:8]==b"\\x89PNG\\r\\n\\x1a\\n"}))
+  print("HTTPS_SOURCE",json.dumps({"site":site,"filename":filename,"url":host+filename,"status":status,"ctype":ctype,"magic":body[:8].hex(),"png":body[:8].hex()=="89504e470d0a1a0a"}))

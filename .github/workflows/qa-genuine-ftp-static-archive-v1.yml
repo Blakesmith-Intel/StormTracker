@@ -1,0 +1,42 @@
+name: Audit direct FTP radar PNG delivery — no Bureau HTTPS
+on:
+  push:
+    branches: [release/ftp-static-archive-aep-v10-20261019]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve authoritative metadata and genuine FTP image bytes
+        run: |
+          python scripts/publish-bom-ftp-manifest-v1.py --out /tmp/bom-ftp-manifest.json
+          python scripts/stage-genuine-ftp-png-feed-v1.py --manifest /tmp/bom-ftp-manifest.json --out /tmp/stormtracker-ftp-static
+      - name: Validate independent HTTPS manifest and all 512px original frames
+        run: |
+          python - <<'PY'
+          import json,hashlib,struct
+          from pathlib import Path
+          base=Path("/tmp/stormtracker-ftp-static")
+          m=json.loads((base/"manifest.json").read_text())
+          assert m["sourceKind"]=="ftp-original-png-byte-identical-static-archive"
+          assert len(m["siteFrameHistory"])>=3
+          count=0
+          for site,frames in m["siteFrameHistory"].items():
+            for frame in frames:
+              data=(base/"frames"/frame["filename"]).read_bytes()
+              assert data[:8]==b"\x89PNG\r\n\x1a\n"
+              assert struct.unpack(">II",data[16:24])==(512,512)
+              assert hashlib.sha256(data).hexdigest()==frame["sha256"]
+              assert frame["imageUrl"].startswith("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/frames/")
+              count+=1
+          print("DIRECT_FTP_STATIC_DELIVERY_VALIDATED",len(m["siteFrameHistory"]),count)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-bom-ftp-static-png-staging
+          path: /tmp/stormtracker-ftp-static/
+          retention-days: 1

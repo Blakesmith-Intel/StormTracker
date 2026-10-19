@@ -44,7 +44,7 @@ export function createSupplementalDopplerDisplay({
   // Rain radar's existing pattern: prepare source-true selected images while
   // primary decodes, then commit the ready layers together at its frame edge.
   let primary="",selected=[],enabled=false,targetUtc=null,generation=0;
-  let preparingKey="",preparingPromise=null;
+  let preparingKey="",preparingPromise=null,committedUtc=null;
   const reported=()=>({
     enabled,targetUtc,selected:[...selected],
     sources:selected.map(id=>{
@@ -93,7 +93,7 @@ export function createSupplementalDopplerDisplay({
     return s;
   }
   function invalidateStages(){
-    generation++;preparingKey="";preparingPromise=null;
+    generation++;committedUtc=null;preparingKey="";preparingPromise=null;
     for(const s of states.values())removeStage(s);
   }
   function configure(primaryId,extras=[]){
@@ -194,7 +194,8 @@ export function createSupplementalDopplerDisplay({
         if(++frames>=3){finish(true);return;}
         scene.requestRender();
       });
-      timer=setTimeout(()=>finish(false),700);
+      // Staging remains asynchronous and never gates the master playback.
+      timer=setTimeout(()=>finish(false),2500);
       scene.requestRender();
     });
   }
@@ -214,7 +215,9 @@ export function createSupplementalDopplerDisplay({
       if(s.observedUtc===match.frame.observedUtc &&
          s.transition.currentLayer?.show!==false){
         s.staged={utc,observedUtc:match.frame.observedUtc,reuse:true};
-        s.error=null;return;
+        s.error=null;
+        if(committedUtc===utc){commitSite(s,utc);report();}
+        return;
       }
       const result=await frameFor(s,match.frame,palette);
       if(!valid())return;
@@ -230,8 +233,13 @@ export function createSupplementalDopplerDisplay({
       s.staged={utc,observedUtc:match.frame.observedUtc,layer};
       layer=null;
       s.error=null;
+      // Finish late authentic scans only if the master is still on this UTC.
+      if(committedUtc===utc){commitSite(s,utc);scene.requestRender();report();}
     }catch(error){
-      if(valid())s.error=String(error?.message??error);
+      if(valid()){
+        s.error=String(error?.message??error);
+        if(committedUtc===utc)report();
+      }
     }finally{
       if(layer){
         try{if(!retireLayer?.(layer))imageryLayers.remove(layer,true);}catch{}
@@ -253,50 +261,60 @@ export function createSupplementalDopplerDisplay({
     })).then(ids=>current(mine,utc)?ids.filter(Boolean):[]);
     return preparingPromise;
   }
-  // Synchronous coordinated reveal at the primary scan boundary. If an
-  // optional source hasn't staged within the bounded budget, OMIT its stale
-  // imagery rather than let it pop onto the map at a later playback time.
-  function commit(utc){
-    if(!enabled||targetUtc!==utc)return [];
-    const ready=[];
-    for(const id of selected){
-      const s=stateFor(id);
-      const entry=s.staged?.utc===utc?s.staged:null;
-      if(entry?.reuse){
-        ready.push(id);
-        s.error=null;
-      }else if(entry?.layer){
-        s.staged=null;  // adopted by the transition, never remove it
-        try{
-          const key=id+"@"+entry.observedUtc;
-          s.transition.replace({
-            layer:entry.layer,key,alpha:1,durationMs:SECONDARY_WIND_BLEND_MS,
-            onAdded:()=>{
-              const wind=getPrimaryLayer();
-              if(wind&&imageryLayers.indexOf(wind)>=0)imageryLayers.raiseToTop(wind);
-              const surface=getSurfaceLayer();
-              if(surface&&imageryLayers.indexOf(surface)>=0)
-                imageryLayers.raiseToTop(surface);
-            }
-          });
-          s.observedUtc=entry.observedUtc;
-          s.error=null;
-          ready.push(id);
-        }catch(error){
-          s.error=String(error?.message??error);
-          try{if(!retireLayer?.(entry.layer))
-            imageryLayers.remove(entry.layer,true);}catch{}
-          s.transition.clear();s.observedUtc=null;
-        }
-      }else{
-        // Rain's source-time atomic policy: missing partner means no stale
-        // Doppler overlay; never mix observations beyond the source window.
-        s.transition.clear();
-        s.observedUtc=null;
-        if(!s.error)s.error="Measured wind not ready for selected frame";
+  // Keep a previously measured image only while its original BoM timestamp
+  // remains within the accepted eight-minute selection window.
+  function holdIsValid(s,utc){
+    return Boolean(s.observedUtc && s.transition.currentLayer &&
+      s.transition.currentLayer.show!==false &&
+      Number.isFinite(Date.parse(utc)) &&
+      Math.abs(Date.parse(s.observedUtc)-Date.parse(utc))<=
+        MAX_SECONDARY_WIND_OFFSET_MINUTES*60000);
+  }
+  function commitSite(s,utc){
+    const entry=s.staged?.utc===utc?s.staged:null;
+    if(entry?.reuse){
+      s.staged=null;s.error=null;return true;
+    }
+    if(entry?.layer){
+      s.staged=null; // Hand ownership of the ready image to the transition.
+      try{
+        s.transition.replace({
+          layer:entry.layer,key:s.id+"@"+entry.observedUtc,
+          alpha:1,durationMs:SECONDARY_WIND_BLEND_MS,
+          onAdded:()=>{
+            const wind=getPrimaryLayer();
+            if(wind&&imageryLayers.indexOf(wind)>=0)imageryLayers.raiseToTop(wind);
+            const surface=getSurfaceLayer();
+            if(surface&&imageryLayers.indexOf(surface)>=0)
+              imageryLayers.raiseToTop(surface);
+          }
+        });
+        s.observedUtc=entry.observedUtc;s.error=null;
+        return true;
+      }catch(error){
+        s.error=String(error?.message??error);
+        try{if(!retireLayer?.(entry.layer))
+          imageryLayers.remove(entry.layer,true);}catch{}
       }
     }
-    invalidateStages(); // late async loads cannot resurrect an old frame
+    if(holdIsValid(s,utc)){
+      // Keep the last in-window genuine image, never modify its source UTC.
+      return true;
+    }
+    s.transition.clear();s.observedUtc=null;
+    if(!s.error)s.error="Measured wind not ready for selected frame";
+    return false;
+  }
+  // Commit the primary source clock immediately. A secondary stage may
+  // complete afterwards at THIS SAME clock time; do not discard it merely
+  // because it missed a 350ms primary deadline. New clock steps invalidate it.
+  function commit(utc){
+    if(!enabled||targetUtc!==utc)return [];
+    committedUtc=utc;
+    const ready=[];
+    for(const id of selected){
+      if(commitSite(stateFor(id),utc))ready.push(id);
+    }
     scene.requestRender();report();
     return ready;
   }

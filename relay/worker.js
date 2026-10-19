@@ -683,7 +683,7 @@ function riverHeightProductUrls(
 }
 
 async function fetchRiverHeightProduct(
-  product
+  product,force=false
 ) {
   const failures = [];
 
@@ -709,10 +709,8 @@ async function fetchRiverHeightProduct(
             },
 
             cf: {
-              cacheEverything:
-                true,
-              cacheTtl:
-                300
+              cacheEverything:!force,
+              cacheTtl:force?0:60
             }
           }
         );
@@ -769,7 +767,8 @@ async function fetchRiverHeightProduct(
 function riverHeightResponse(
   payload,
   origin,
-  method = "GET"
+  method = "GET",
+  force=false
 ) {
   const headers =
     corsHeaders(
@@ -783,7 +782,7 @@ function riverHeightResponse(
 
   headers.set(
     "Cache-Control",
-    "public, max-age=300"
+    force ? "no-store" : "public, max-age=60"
   );
 
   return new Response(
@@ -804,11 +803,12 @@ async function relayRiverHeightBulletins(
   request,
   origin
 ) {
+  const force=new URL(request.url).searchParams.get("force")==="1";
   const settled =
     await Promise.allSettled(
       QLD_RIVER_HEIGHT_PRODUCTS
         .map(
-          fetchRiverHeightProduct
+          product=>fetchRiverHeightProduct(product,force)
         )
     );
 
@@ -885,7 +885,8 @@ async function relayRiverHeightBulletins(
       failed
     },
     origin,
-    request.method
+    request.method,
+    force
   );
 }
 

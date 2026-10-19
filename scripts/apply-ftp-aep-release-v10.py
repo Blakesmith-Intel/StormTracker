@@ -41,7 +41,7 @@ assert html.count(old)==1
 html=html.replace(old,'●</span> Rainfall AEP</label>')
 old='<span class="significant-orange">●</span> 50–99.9 mm · <span class="significant-red">●</span> ≥100 mm'
 assert html.count(old)==1
-html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP')
+html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP · <span style="color:#929da6">●</span> Grey = AEP not assessed (verified local IFD unavailable)')
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
 html=html.replace(needle,needle+"ftp-live-direct-ifd-aep-20261019-")

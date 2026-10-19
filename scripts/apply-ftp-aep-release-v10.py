@@ -24,7 +24,7 @@ app=site/"src/live3d-operational-v9.js"
 js=app.read_text()
 needle="bom-wmts-loop-v2.js?v=9.18.6-bounded-published-history"
 assert js.count(needle)==1, "V10 radar source import contract changed"
-js=js.replace(needle,needle+"-ftp-static-original-20261019")
+js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1")
 needle="significant-rainfall-operational-v1.js"
 assert js.count(needle)==1
 js=js.replace(needle,needle+"?v=ifd-aep-native-20261019")
@@ -62,16 +62,17 @@ assert html.count(old)==1
 html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP · <span style="color:#929da6">●</span> Grey = AEP not assessed (verified local IFD unavailable)')
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
-html=html.replace(needle,needle+"national-boM-mosaic-first-20261019-")
+html=html.replace(needle,needle+"native-bom-hires-20261019-")
 page.write_text(html)
 entry=site/"index.html"
 html=entry.read_text()
 needle="live3d-operational-v9.html?v="
 assert html.count(needle)==1
-entry.write_text(html.replace(needle,needle+"national-boM-mosaic-first-20261019-"))
+entry.write_text(html.replace(needle,needle+"native-bom-hires-20261019-"))
 with (site/"BUILD.txt").open("a") as f:
  f.write("RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP\n")
  f.write("LIVE DIRECT BOM FTP TCP RADAR FALLBACK INDEPENDENT OF GITHUB CRON 2026-10-19\n")
  f.write("TRUE NORTH DEFAULT ISOMETRIC + PRIMARY RADAR RESET + COMPASS 2026-10-19\n")
  f.write("NATIONAL BOM REFLECTIVITY MOSAIC PRIMARY WHEN PROVEN LIVE, AUTHENTIC ORIGINAL FTP BACKUP 2026-10-19\n")
+ f.write("VERIFIED CURRENT NATIVE BOM WMTS HIGH-RES DIRECT TILES + XML CORS RELAY 2026-10-19\n")
 print("FTP_AEP_V10_RELEASE_PACKAGED",len(list(site.rglob("*.js"))))

@@ -93,7 +93,21 @@ try{
   pos.y>=pos.canvas.top&&pos.y<pos.canvas.bottom,
   "Rain gauge marker must be inside actual Cesium map canvas before user click");
  console.log("AEP_MARKER_PROJECTED_PICK",JSON.stringify(pos));
+ await page.evaluate(()=>{
+  window.__STORMTRACKER_QA_POINTER_TRACE=[];
+  for(const type of ["pointerdown","pointerup","pointercancel","click"]){
+   window.addEventListener(type,event=>{
+    window.__STORMTRACKER_QA_POINTER_TRACE.push({
+     type,pointerId:event.pointerId,clientX:event.clientX,clientY:event.clientY,
+     target:event.target?.tagName,defaultPrevented:event.defaultPrevented,
+     at:performance.now(),buttons:event.buttons,button:event.button
+    });
+   },{capture:true,once:false});
+  }
+ });
  await page.mouse.click(pos.x,pos.y);
+ const pointerTrace=await page.evaluate(()=>window.__STORMTRACKER_QA_POINTER_TRACE||[]);
+ console.log("AEP_ACTUAL_USER_POINTER_TRACE",JSON.stringify(pointerTrace));
  try{
   await page.waitForFunction(()=>document.querySelector("#significantRainfallInfo")?.hidden===false,null,{timeout:12000});
  }catch(error){

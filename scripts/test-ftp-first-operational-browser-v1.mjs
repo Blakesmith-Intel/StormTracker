@@ -11,7 +11,7 @@ await page.route("https://blakesmith-intel.github.io/StormTracker/**",async rout
 });
 const errors=[];
 page.on("pageerror",e=>errors.push(String(e)));
-page.on("console",m=>{if(m.type()==="error")errors.push(m.text())});
+page.on("console",m=>{if(["error","warning"].includes(m.type()))errors.push(m.text())});
 try{
  await page.goto("https://blakesmith-intel.github.io/StormTracker/ftp-smoke.html",{waitUntil:"domcontentloaded",timeout:20000});
  const output=await page.evaluate(async()=>{

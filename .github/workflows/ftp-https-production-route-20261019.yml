@@ -1,0 +1,13 @@
+name: FTP HTTPS production transport gate
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/check-ftp-https-production-route-20261019.py

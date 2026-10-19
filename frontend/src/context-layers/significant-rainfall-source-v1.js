@@ -10,11 +10,19 @@ function attr(tag,key){
  return tag.match(re)?.[2]??"";
 }
 export function parseBomRainfallMap(html,period,region="",{minimumMm=50}={}){
- if(!["since9am","lastHour"].includes(period))throw RangeError("Unknown BoM rain period");
+ if(!["since9am","lastHour","last24Hours"].includes(period))
+   throw RangeError("Unknown BoM rain period");
  const body=String(html||"");
  if(body.length>3_500_000)throw Error("BoM flood page exceeds safe size");
  const image=[...body.matchAll(/<img\b[^>]*>/gi)].map(m=>m[0])
-   .find(tag=>attr(tag,"id").toLowerCase()===(period==="since9am"?"since":"m1hr"));
+   .find(tag=>{
+     const id=attr(tag,"id").toLowerCase();
+     if(period==="since9am")return id==="since";
+     if(period==="lastHour")return id==="m1hr";
+     // Original BoM 24-hour map only: never sum adjacent periods.
+     const label=[id,attr(tag,"alt"),attr(tag,"title")].join(" ");
+     return /24\s*(?:hour|hr|hrs|h)?|(?:hour|hr|hrs)\s*24/i.test(label);
+   });
  if(!image)throw Error("BoM period map not published");
  const mapId=attr(image,"usemap").replace(/^#/,"");
  if(!/^IDQ\d{5}\.html$/i.test(mapId))throw Error("BoM rainfall map identifier invalid");

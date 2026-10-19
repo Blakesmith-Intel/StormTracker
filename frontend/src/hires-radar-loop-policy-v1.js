@@ -13,6 +13,24 @@ export function isVerifiedHiResRadarFrame(frame){
  );
 }
 
+// Archive windows are only selectable once every real 5-minute observation
+// needed for that window is available. Do not use the legacy helper that
+// inserts inferred frames to bridge gaps in source history.
+export const BROWSER_HIRES_LOOP_MINUTES=Object.freeze([30,60,90,120,180]);
+export function availableMeasuredHiResLoopMinutes(times=[]){
+ const unique=[...new Set((times??[]).map(t=>Date.parse(t)).filter(Number.isFinite))].sort((a,b)=>a-b);
+ if(!unique.length)return [];
+ const latest=unique.at(-1);
+ const present=new Set(unique);
+ return BROWSER_HIRES_LOOP_MINUTES.filter(minutes=>{
+  const count=minutes/BOM_HIRES_CADENCE_MINUTES;
+  for(let i=0;i<count;i++){
+   if(!present.has(latest-i*BOM_HIRES_CADENCE_MINUTES*60000))return false;
+  }
+  return true;
+ });
+}
+
 export function measuredHiResRainWindow(times=[],selection="30"){
  const sorted=[...new Set((times||[]).filter(t=>Number.isFinite(Date.parse(t))))]
   .sort((a,b)=>Date.parse(a)-Date.parse(b));

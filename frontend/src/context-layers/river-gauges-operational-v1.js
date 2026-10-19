@@ -14,7 +14,7 @@ const $ = id =>
     id
   );
 
-// The compact Layers button reuses the same snapshot refresh as the 20-minute
+// The compact Layers button reuses the same snapshot refresh as the 10-minute
 // poll. Prevent duplicate taps, retain status/error reporting from the layer,
 // and restore the control even if BoM is temporarily unavailable.
 export function bindRiverGaugeManualRefresh(button, refresh) {

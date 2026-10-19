@@ -133,6 +133,10 @@ engine.write_text(data,encoding="utf-8")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-official-flood-persistence-v1.js?v=20261018-stage-persistence")
+version_once("src/context-layers/river-gauge-layer-v1.js",
+    "river-gauge-latest-v1.js?v=20261019-fresh-observation-v1")
+version_once("src/context-layers/river-gauge-layer-v1.js",
     "bom-recent-river-history-v1.js?v=9.13.1")
 version_once("src/context-layers/river-gauge-layer-v1.js",
     "river-flood-signals-v1.js?v=9.13.2")

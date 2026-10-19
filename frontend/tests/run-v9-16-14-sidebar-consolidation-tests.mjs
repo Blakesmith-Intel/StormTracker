@@ -40,7 +40,8 @@ assert.match(html,/id="volumeOpacity"/);
 assert.match(html,/id="radarOpacity"/);
 
 // Hard scan cut - source rows are either fully opaque or excluded; NEVER fade.
-assert.match(native,/NATIVE_DOPPLER_ANNOTATION_START_ROW = 438/);
+assert.match(native,/NATIVE_DOPPLER_ANNOTATION_START_ROW = 480/);
+assert.match(native,/NATIVE_DOPPLER_STRICT_PALETTE_START_ROW = 438/);
 assert.doesNotMatch(native,/NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW/);
 assert.match(native,/if\(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow\(row\)\)continue/);
 assert.match(native,/data\[to \+ 3\] = alpha;/);

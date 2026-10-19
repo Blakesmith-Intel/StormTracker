@@ -12,7 +12,7 @@ COLS={"20":3,"10":5,"5":6,"2":7,"1":8}
 WANTED=(60,90,120,180,270,360,540,720,1080,1440)
 BASE="https://data.arr-software.org/"
 def ifd_cell(value):
- return round(math.floor(value/.025)*.025+.0125,4)
+ return round(math.floor(round(value/.025,8))*.025+.0125,4)
 def key(lat,lon):
  return f"{ifd_cell(lat):.4f},{ifd_cell(lon):.4f}"
 def text_only(value):

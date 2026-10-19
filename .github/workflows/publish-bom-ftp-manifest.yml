@@ -1,0 +1,42 @@
+name: Publish BoM FTP observation manifest
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/publish-bom-ftp-manifest-v1.py
+      - .github/workflows/publish-bom-ftp-manifest.yml
+permissions:
+  contents: write
+concurrency:
+  group: bom-ftp-observation-manifest
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve authentic BoM radar directory listing
+        run: python scripts/publish-bom-ftp-manifest-v1.py --out /tmp/bom-ftp-manifest.json
+      - name: Publish metadata-only feed branch
+        run: |
+          set -euo pipefail
+          git config user.name "stormtracker-source-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin radar-ftp-feed >/dev/null; then
+            git fetch --depth=1 origin radar-ftp-feed
+            git checkout -B radar-ftp-feed FETCH_HEAD
+          else
+            git checkout --orphan radar-ftp-feed
+            git rm -r --cached . >/dev/null
+          fi
+          cp /tmp/bom-ftp-manifest.json manifest.json
+          git add -f manifest.json
+          git diff --cached --quiet && exit 0
+          git commit -m "radar: publish BoM-observed FTP frame index"
+          git push origin HEAD:refs/heads/radar-ftp-feed
+      - name: Report data feed
+        run: echo "Metadata-only feed at https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json"

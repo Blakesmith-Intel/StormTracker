@@ -28,7 +28,8 @@ export function since9amWindowMinutes(sourceUtc){
 }
 export function rainfallWindowMinutes(period,sourceUtc){
  if(!Number.isFinite(Date.parse(sourceUtc)))return null;
- return period==="lastHour"?60:period==="since9am"?since9amWindowMinutes(sourceUtc):null;
+ return period==="lastHour"?60:period==="last24Hours"?1440:
+   period==="since9am"?since9amWindowMinutes(sourceUtc):null;
 }
 function interpolatedDepth(table,duration,aep){
  const points=Object.entries(table||{})

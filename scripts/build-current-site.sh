@@ -56,6 +56,10 @@ copyfile(Path("frontend/favicon.svg"),site / "favicon.svg")
 # Cloudflare image relay are available. Existing WMTS source remains fallback.
 copyfile(Path("frontend/src/ftp-reflectivity-operational-v1.js"),
          site / "src/ftp-reflectivity-operational-v1.js")
+copyfile(Path("frontend/src/context-layers/rainfall-ifd-aep-v1.js"),
+         site / "src/context-layers/rainfall-ifd-aep-v1.js")
+copyfile(Path("frontend/data/ifd-2016-verified-points-v1.json"),
+         site / "data/ifd-2016-verified-points-v1.json")
 for relative in ("index.html","live3d-operational-v9.html"):
     page=site / relative
     html=page.read_text(encoding="utf-8")
@@ -114,6 +118,8 @@ mount_anchor='initialiseOperationalQfdTechnicalRescues({\n  viewer\n});'
 assert data.count(mount_anchor)==1
 data=data.replace(mount_anchor,mount_anchor+'\n'+rain_mount,1)
 engine.write_text(data,encoding="utf-8")
+version_once("src/live3d-operational-v9.js",
+    "significant-rainfall-operational-v1.js?v=20261018-rain-v1")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
 version_once("src/context-layers/river-gauge-layer-v1.js",

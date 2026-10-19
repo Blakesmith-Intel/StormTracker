@@ -9,7 +9,9 @@ import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
 import { loadCompleteRadarTiles } from "./radar-tile-retry-v1.js?v=9.16-radar-recovery";
 import {publishedReflectivityTimes} from "./bom-wmts-published-times-v1.js?v=20261019-native-bom-hires-current";
 
-const BOM_WMTS_BASE = "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
+// Retain the genuine high-resolution national BoM WMTS PNG product; only
+// transport it through our existing CORS relay so browsers can read pixels.
+const BOM_WMTS_BASE = "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts";
 const REFLECTIVITY_LAYER = "atm_surf_air_precip_reflectivity_dbz";
 const TILE_MATRIX_SET = "GoogleMapsCompatible_BoM";
 const ZOOM = 8;
@@ -281,7 +283,7 @@ export async function loadVerifiedNationalMosaicAtTime(observedUtc, region = 'SE
     },
     sourceMetadata: {
       provider: "Australian Bureau of Meteorology",
-      transport: "Direct Bureau national WMTS reflectivity tiles (native Australian matrix)",
+      transport: "Official high-resolution Bureau national WMTS PNG via same-byte CORS relay (native Australian matrix)",
       metadataRelay: "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts-native-capabilities",
       product: "Public observed rain reflectivity WMTS",
       layer: REFLECTIVITY_LAYER,

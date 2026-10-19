@@ -27,6 +27,13 @@ assert.equal(rainfallWindowMinutes("last24Hours",issuedTime()),1440);
 assert.equal(rainfallWindowMinutes("since9am","2026-10-19T18:00:00Z"),1140,
  "At 04:00 AEST the BoM since-9am accumulation is 19 hours old");
 const rainfallCode=readFileSync(new URL("../src/context-layers/significant-rainfall-operational-v1.js",import.meta.url),"utf8");
+const rainfallHtml=readFileSync(new URL("../live3d-operational-v9.html",import.meta.url),"utf8");
+assert.match(rainfallHtml,/<option value="last24Hours">24hrs to 9am<\/option>/,
+ "The 24-hour-to-9am BoM observation window must be labelled precisely");
+assert.match(rainfallCode,/period==="last24Hours"\?"24hrs to 9am":"Last 1 hour"/,
+ "Station popup must use the same 24-hour-to-9am label");
+assert.match(rainfallCode,/period==="last24Hours"\?"24hrs to 9am":"last hour"/,
+ "Map status must use the same 24-hour-to-9am label");
 assert.match(rainfallCode,/image:marker\(record\),width:72,height:27,/,
  "Rainfall map billboard should be approximately two-thirds of previous dimensions");
 

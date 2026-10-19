@@ -91,7 +91,7 @@ export function initialiseOperationalSignificantRainfall({
   const display=significantRainfallDisplay(record);
   detailRow(rows,"Rainfall measured",record.mm.toFixed(1)+" mm");
   detailRow(rows,"Period",period==="since9am"?"Since 9 am AEST":
-   period==="last24Hours"?"Last 24 hours":"Last 1 hour");
+   period==="last24Hours"?"24hrs to 9am":"Last 1 hour");
   detailRow(rows,"Rainfall amount",display.amountBand);
   detailRow(rows,"How unusual here?",display.rarity.description);
   detailRow(rows,"In everyday terms",display.rarity.chance?
@@ -155,7 +155,7 @@ export function initialiseOperationalSignificantRainfall({
   if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
   const failed=source?.failed?.length??0;
   const label=period==="since9am"?"since 9 am":
-   period==="last24Hours"?"last 24 hours":"last hour";
+   period==="last24Hours"?"24hrs to 9am":"last hour";
   const stale=records.filter(record=>!qualifiesAepRainfallSnapshot(record,period,now())).length;
   const high=visibleRows.filter(x=>x.mm>=100).length;
   const rarer=visibleRows.filter(x=>[1,2,5,10].includes(x.aep?.aepDesignThreshold)).length;

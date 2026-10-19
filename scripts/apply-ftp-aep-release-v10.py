@@ -31,7 +31,7 @@ assert js.count(needle)==1, "V10 radar source import contract changed"
 js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1-observed-only")
 needle="significant-rainfall-operational-v1.js"
 assert js.count(needle)==1
-js=js.replace(needle,needle+"?v=rainfall-two-thirds-icons-aest-reporting-20261020")
+js=js.replace(needle,needle+"?v=rainfall-24hrs-to-9am-label-20261020")
 # The sealed V10 camera guardian owns orientation. Never call Cesium.camera.setView.
 # Amend only the built production artefact; the pinned V10 source is immutable.
 core_heading="heading:" + chr(10) + "      Cesium.Math.toRadians(" + chr(10) + "        345" + chr(10) + "      )"
@@ -98,7 +98,7 @@ html=html.replace(start,'title="Show 50+ mm observed rainfall and its local rari
 # The accepted simple sidebar now includes the complete plain-language
 # legend, distinct 50/100mm amounts, annual probabilities and 24-hour view.
 assert '●</span> Significant rain</label>' in html
-assert 'value="last24Hours"' in html
+assert '<option value="last24Hours">24hrs to 9am</option>' in html
 for item in ('Notable','Unusual','Rare','Very rare','Exceptional',
              '20%','10%','5%','2%','1%',
              '1 in 5','1 in 10','1 in 20','1 in 50','1 in 100'):

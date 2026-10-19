@@ -29,4 +29,37 @@ try:
  assert len(out["cells"])==1
  assert next(iter(out["cells"].values()))["sourceBaseline"]==m.BASELINE
 finally:m.fetch_point=original
-print("PASS first-party Bureau IFD parser, geographic cell, provenance and no-data handling")
+
+# A completed catalogue survives empty live data; recheck official values
+# only if their verification is old enough, and retain the old on failure.
+cell=m.key(-25.91,144.6)
+current={"sourceBaseline":m.BASELINE,"latitude":m.ifd_cell(-25.91),
+ "longitude":m.ifd_cell(144.6),"depthsMmByMinutes":grid,
+ "referenceUrl":"https://www.bom.gov.au/water/designRainfalls/revised-ifd/?latitude=-25.91&longitude=144.6",
+ "verifiedUtc":m.dt.datetime.now(m.dt.timezone.utc).isoformat()}
+old={"sourceBaseline":m.BASELINE,"latitude":m.ifd_cell(-25.91),
+ "longitude":m.ifd_cell(144.6),"depthsMmByMinutes":grid,
+ "referenceUrl":current["referenceUrl"],"verifiedUtc":"2000-01-01T00:00:00+00:00"}
+assert not m.needs_revalidation(current,m.dt.datetime.now(m.dt.timezone.utc))
+assert m.needs_revalidation(old,m.dt.datetime.now(m.dt.timezone.utc))
+original=m.fetch_point
+try:
+ m.fetch_point=lambda lat,lon: (_ for _ in ()).throw(ValueError("temporary BoM failure"))
+ unchanged=m.build([],{"cells":{cell:old}},max_new=2,workers=1)
+ assert unchanged["cells"][cell]==old, "Transient source failures must not delete verified historic references"
+ refreshed=[0]
+ def revised(lat,lon):
+  refreshed[0]+=1
+  data={k:dict(v) for k,v in grid.items()}
+  data["60"]["20"]=21
+  return current["referenceUrl"],data,m.BASELINE
+ m.fetch_point=revised
+ unchanged=m.build([],{"cells":{cell:current}},max_new=2,workers=1)
+ assert refreshed[0]==0, "Fresh official reference must not be downloaded every hourly run"
+ updated=m.build([],{"cells":{cell:old}},max_new=2,workers=1)
+ assert updated["cells"][cell]["depthsMmByMinutes"]["60"]["20"]==21
+ assert updated["cells"][cell]["verifiedUtc"]!=old["verifiedUtc"]
+ assert refreshed[0]==1
+finally:m.fetch_point=original
+
+print("PASS first-party Bureau IFD, persistent catalogue, aged-source refresh and source-failure safety")

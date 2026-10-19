@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {rainfallRarityDisplay,significantRainfallDisplay,rainfallMarkerSvg}
  from "../src/context-layers/significant-rainfall-operational-v1.js";
 import {rainfallWindowMinutes,classifyRainfallAep}
@@ -23,6 +24,10 @@ const html='<html><img class="mapimage" src="/fwo/IDQ65149.png" id = "since" '+
  a("540523","Rockside Mt","49.9")+'</map>'+
  '<p>This page was created at 07:06 on Sunday 18 October 2026 (UTC)</p></html>';
 assert.equal(rainfallWindowMinutes("last24Hours",issuedTime()),1440);
+const rainfallCode=readFileSync(new URL("../src/context-layers/significant-rainfall-operational-v1.js",import.meta.url),"utf8");
+assert.match(rainfallCode,/image:marker\(record\),width:72,height:27,/,
+ "Rainfall map billboard should be approximately two-thirds of previous dimensions");
+
 function issuedTime(){return "2026-10-18T07:06:00.000Z"}
 for(const [aep,chance,oneIn,label] of [
  [20,"20%","1 in 5","Notable"],[10,"10%","1 in 10","Unusual"],

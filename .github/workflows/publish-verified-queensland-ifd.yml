@@ -35,7 +35,8 @@ jobs:
       - name: Retrieve previously verified reference cells
         run: |
           git fetch --depth=1 origin radar-ftp-feed
-          git show FETCH_HEAD:ifd.json > /tmp/previous-ifd.json || true
+          git show FETCH_HEAD:ifd.json > /tmp/previous-ifd.json
+          test -s /tmp/previous-ifd.json
       - name: Download official 2016 BoM IFD for unrated station locations
         run: |
           if test -s /tmp/current-rainfall-gauges.json; then
@@ -43,6 +44,24 @@ jobs:
           else
             python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 30
           fi
+      - name: Verify catalogue is append-only and schema-compatible
+        run: |
+          python - <<'PY'
+          import json
+          previous=json.load(open("/tmp/previous-ifd.json"))
+          incoming=json.load(open("/tmp/stormtracker-ifd.json"))
+          schema="StormTrackerBoM2016IFDCellsV1"
+          if previous.get("schema")!=schema or incoming.get("schema")!=schema:
+            raise SystemExit("IFD schema invalid; refusing to overwrite preserved catalogue")
+          before=previous.get("cells")
+          after=incoming.get("cells")
+          if not isinstance(before,dict) or not before or not isinstance(after,dict):
+            raise SystemExit("Missing official IFD catalogue; refusing destructive replacement")
+          missing=set(before)-set(after)
+          if missing:
+            raise SystemExit(f"IFD catalogue loss blocked: {len(missing)} existing cells missing")
+          print("IFD_CATALOGUE_PRESERVED",len(before),"->",len(after))
+          PY
       - name: Publish authenticated IFD source table to data-only branch
         run: |
           set -euo pipefail

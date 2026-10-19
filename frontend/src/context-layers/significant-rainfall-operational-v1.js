@@ -143,7 +143,7 @@ export function initialiseOperationalSignificantRainfall({
       rainfallRarityDisplay(record.aep).description,
     position:CesiumRef.Cartesian3.fromDegrees(record.longitude,record.latitude),
     billboard:{
-      image:marker(record),width:108,height:40,
+      image:marker(record),width:72,height:27,
       verticalOrigin:CesiumRef.VerticalOrigin?.BOTTOM,
       heightReference:CesiumRef.HeightReference?.CLAMP_TO_GROUND,
       disableDepthTestDistance:Number.POSITIVE_INFINITY

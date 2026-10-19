@@ -73,9 +73,33 @@ def fetch_point(lat,lon):
   if response.status!=200:raise ValueError("Official BoM IFD HTTP "+str(response.status))
   markup=response.read(6_000_000).decode("utf8","replace")
  return url,parse_bom_ifd_table(markup),BASELINE
+def needs_revalidation(record,now):
+ """Recheck an established official IFD cell every 30 days without deleting it."""
+ stamp=record.get("verifiedUtc")
+ if not stamp:return True  # older preserved cells predate verification timestamps
+ try:
+  verified=dt.datetime.fromisoformat(str(stamp).replace("Z","+00:00"))
+  if verified.tzinfo is None:return True
+  return now-verified>=dt.timedelta(days=30)
+ except (ValueError,TypeError,OverflowError):
+  return True
+def reference_position(record):
+ """Recheck the same original BoM point where a reference URL is recorded."""
+ lat,lon=record.get("latitude"),record.get("longitude")
+ try:
+  params=urllib.parse.parse_qs(urllib.parse.urlsplit(record.get("referenceUrl","")).query)
+  new_lat=float((params.get("latitude") or params.get("lat_coord"))[0])
+  new_lon=float((params.get("longitude") or params.get("lon_coord"))[0])
+  if key(new_lat,new_lon)==key(lat,lon):return new_lat,new_lon
+ except (TypeError,ValueError,IndexError,ZeroDivisionError):
+  pass
+ return lat,lon
 def build(stations,existing,max_new=80,workers=4):
+ if not isinstance(existing.get("cells",{}),dict):
+  raise ValueError("Existing IFD catalogue missing cell dictionary")
  cells=dict(existing.get("cells",{}))
- candidates={}
+ now=dt.datetime.now(dt.timezone.utc)
+ pending={}
  for obs in stations:
   lat=obs.get("latitude");lon=obs.get("longitude")
   if not isinstance(lat,(int,float)) or not isinstance(lon,(int,float)):continue
@@ -84,31 +108,49 @@ def build(stations,existing,max_new=80,workers=4):
   if cell not in cells or not str(cells[cell].get("sourceBaseline","")).startswith(BASELINE):
    amount=obs.get("mm",0)
    amount=float(amount) if isinstance(amount,(int,float)) else 0.0
-   if cell not in candidates or amount>candidates[cell][2]:
-    candidates[cell]=(lat,lon,amount)
- # Prioritise gauges actually receiving the most rain, rather than all dry
- # stations first. Do not request hundreds of pages against a rate-limited API.
- candidates=sorted(candidates.items(),key=lambda kv:(kv[0] in cells,-kv[1][2]))[:max_new]
- failed=[]
+   if cell not in pending or amount>pending[cell][2]:
+    pending[cell]=(lat,lon,amount)
+ # Preserve ALL historical cells even when their gauge no longer appears in
+ # the latest rainfall observations. Periodically revalidate first-party
+ # reference depths, detecting genuine revisions to the published 2016 IFD.
+ stale={}
+ for cell,record in cells.items():
+  if str(record.get("sourceBaseline","")).startswith(BASELINE) and needs_revalidation(record,now):
+   lat,lon=reference_position(record)
+   if isinstance(lat,(int,float)) and isinstance(lon,(int,float)) and key(lat,lon)==cell:
+    stale[cell]=(lat,lon,0.0)
+ missing=sorted(pending.items(),key=lambda kv:(kv[0] in cells,-kv[1][2],kv[0]))
+ outdated=sorted(stale.items(),key=lambda kv:(str(cells[kv[0]].get("verifiedUtc","")),kv[0]))
+ cap=max(0,int(max_new))
+ # While filling gaps, reserve at most one lookup for revision checks.
+ # Once complete, unused hourly capacity can revalidate due cells.
+ reserve=1 if missing and outdated and cap>1 else 0
+ candidates=missing[:max(0,cap-reserve)]+outdated[:(reserve if missing else max(0,cap))]
+ failures=[]
  def work(item):
   k,(lat,lon,amount)=item
   try:
    url,table,baseline=fetch_point(lat,lon)
    return k,{"latitude":ifd_cell(lat),"longitude":ifd_cell(lon),
-     "depthsMmByMinutes":table,"referenceUrl":url,"sourceBaseline":baseline},None
+     "depthsMmByMinutes":table,"referenceUrl":url,
+     "sourceBaseline":baseline,"verifiedUtc":now.isoformat()},None
   except Exception as e:
    return k,None,type(e).__name__+": "+str(e)[:150]
  with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
   for key_name,record,error in ex.map(work,candidates):
    if record:cells[key_name]=record
-   else:failed.append((key_name,error))
+   else:failures.append((key_name,error))
+ if set(existing.get("cells",{}))-set(cells):
+  raise ValueError("Refusing to erase previously verified IFD cells")
  print("OFFICIAL_BOM_IFD_POINT_RESULT",json.dumps({"stations":len(stations),"previousCells":len(existing.get("cells",{})),
-   "newPoints":len(candidates),"success":len(candidates)-len(failed),"failures":failed[:12]}))
+   "newPoints":len(candidates),"success":len(candidates)-len(failures),
+   "referenceChecks":len(candidates)-len(missing[:max(0,cap-reserve)]),"failures":failures[:12]}))
  return {"schema":"StormTrackerBoM2016IFDCellsV1",
    "source":"Official Bureau of Meteorology BoM IFD 2016 point tables; previously verified references retained pending replacement",
-   "sourceUrl":BASE,"generatedUtc":dt.datetime.now(dt.timezone.utc).isoformat(),
+   "sourceUrl":BASE,"generatedUtc":now.isoformat(),
    "coverage":"Only independently verified matching 0.025-degree local IFD cells",
    "cells":cells}
+
 def main():
  parser=argparse.ArgumentParser()
  parser.add_argument("--stations");parser.add_argument("--existing");parser.add_argument("--out",required=True)

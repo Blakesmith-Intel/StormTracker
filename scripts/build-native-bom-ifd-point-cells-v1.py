@@ -103,13 +103,14 @@ def main():
  parser.add_argument("--stations");parser.add_argument("--existing");parser.add_argument("--out",required=True)
  parser.add_argument("--max-new",type=int,default=80)
  args=parser.parse_args()
+ fixed=[{"latitude":-28.002,"longitude":153.424},{"latitude":-25.91,"longitude":144.60},
+  {"latitude":-27.47,"longitude":153.03}]
  if args.stations:
   raw=json.loads(Path(args.stations).read_text())
-  if isinstance(raw,list):stations=raw
-  else:stations=list(raw.get("observations",{}).get("since9am",[]))+list(raw.get("observations",{}).get("lastHour",[]))
+  if isinstance(raw,list):stations=fixed+raw
+  else:stations=fixed+list(raw.get("observations",{}).get("since9am",[]))+list(raw.get("observations",{}).get("lastHour",[]))
  else:
-  stations=[{"latitude":-28.002,"longitude":153.424},{"latitude":-25.91,"longitude":144.60},
-    {"latitude":-27.47,"longitude":153.03}]
+  stations=fixed
  existing=json.loads(Path(args.existing).read_text()) if args.existing and Path(args.existing).exists() else {}
  result=build(stations,existing,max_new=args.max_new)
  if not result["cells"]:raise SystemExit("No verified native BoM IFD site data")

@@ -1,7 +1,7 @@
 name: Release gate — V10 combined FTP and rainfall AEP
 on:
   push:
-    branches: [release/ftp-static-archive-aep-v10-20261019, release/ftp-aep-v10-production-20261019]
+    branches: [main, release/ftp-static-archive-aep-v10-20261019, release/ftp-aep-v10-production-20261019]
     paths:
       - scripts/apply-ftp-aep-release-v10.py
       - scripts/test-combined-ftp-aep-operational-browser-v1.mjs

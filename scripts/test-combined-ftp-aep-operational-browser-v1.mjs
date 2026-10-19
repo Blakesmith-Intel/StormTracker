@@ -35,7 +35,7 @@ try{
      throw Error("High-resolution native BOM mosaic is not using the real tile grid");
    if(f.sourceMetadata?.tileMatrixSet!=="GoogleMapsCompatible_BoM")
      throw Error("Radar is not using official Australian BoM WMTS");
-   if(f.sourceMetadata?.transport?.indexOf("Direct Bureau national WMTS")!==0)
+   if(f.sourceMetadata?.transport?.indexOf("Official high-resolution Bureau national WMTS")!==0)
      throw Error("Unverified source substitution");
    if(Date.now()-Date.parse(f.observedUtc)>45*60000)
      throw Error("High-resolution radar timestamp is not current");

@@ -13,7 +13,7 @@ await assert.rejects(
   discoverBoundedBomReflectivityHistory(current,180,"66",{
     publishedTimes:async()=>old,
     ftpHistory:async()=>{throw Error("No verified current BoM reflectivity timestamp")}
-  }),/No verified current BoM reflectivity timestamp/,
+  }),/no verified current observation timestamp/i,
   "Do not fan out hours-old timestamps merely because stale GetCapabilities lists them");
 const currentSamples=["2026-10-18T06:45:00Z","2026-10-18T07:15:00Z"];
 assert.deepEqual(await discoverBoundedBomReflectivityHistory(current,180,"19",{

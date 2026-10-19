@@ -1,8 +1,8 @@
 // One national BoM reflectivity raster when it is genuinely current. The
 // independently verified FTP archive is the bounded source-of-truth fallback.
 // No direct Cloudflare TCP/FTP, guessed timestamps or stitched 22-site frontend.
-import {discoverFtpReflectivityHistory,loadFtpReflectivityMosaicAtTime} from "./ftp-reflectivity-operational-v1.js?v=verified-static-historical-v2";
 export const NATIONAL_MOSAIC_PRIMARY=true;
+export const HIGH_RESOLUTION_FRAMES_ONLY=true;
 import { BORDER_RADAR_SITES } from "./border-radar-sites-v1.js";
 import { decodeReflectivityImageData, SOURCE_PALETTES, REFLECTIVITY_CLASSES } from "./palette.js?v=diagnostics-v1";
 import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
@@ -155,14 +155,12 @@ async function validatedNationalTimes(now,region,publishedTimes,verifyTile=probe
 export async function findLatestBomReflectivityTime(
  now=Date.now(),region='SEQ',{
  publishedTimes=publishedReflectivityTimes,
- verifyNationalTile=probeTimestamp,
- ftpHistory=discoverFtpReflectivityHistory
+ verifyNationalTile=probeTimestamp
  }={}
 ){
- try{return (await validatedNationalTimes(now,region,publishedTimes,verifyNationalTile)).at(-1)}
- catch(error){console.warn("National reflectivity unavailable; using verified FTP archive",
-  String(error.message));}
- return (await ftpHistory(now,region,45)).at(-1);
+ // Only authentic currently issued high-resolution national dBZ imagery.
+ // No regional FTP mosaics, interpolation, substituted timestamps or textures.
+ return (await validatedNationalTimes(now,region,publishedTimes,verifyNationalTile)).at(-1);
 }
 
 function createCanvas(width, height) {
@@ -304,19 +302,10 @@ export async function loadVerifiedNationalMosaicAtTime(observedUtc, region = 'SE
 
 export async function loadBomReflectivityMosaicAtTime(observedUtc,region='SEQ'){
  if(!observedUtc)throw Error("observedUtc is required");
- let sourceTimes=[];
- try{sourceTimes=currentPublishedTimes(await publishedReflectivityTimes())}
- catch(error){/* The verified original FTP archive is an independent fallback. */}
- if(sourceTimes.includes(observedUtc)){
-  try{return await loadVerifiedNationalMosaicAtTime(observedUtc,region)}
-  catch(error){
-   console.warn("National source tile rejected; verifying original FTP history",
-    observedUtc,String(error.message));
-  }
- }
- // An FTP timestamp is never assumed valid for the national WMTS. The archive
- // validates observation UTC, original PNG hash, geography and recency.
- return loadFtpReflectivityMosaicAtTime(observedUtc,region);
+ const sourceTimes=currentPublishedTimes(await publishedReflectivityTimes());
+ if(!sourceTimes.includes(observedUtc))
+  throw Error("BoM high-resolution national frame not currently published: "+observedUtc);
+ return loadVerifiedNationalMosaicAtTime(observedUtc,region);
 }
 
 export async function loadLatestBomReflectivityMosaic(now = Date.now(), region = 'SEQ') {
@@ -328,21 +317,17 @@ export async function loadLatestBomReflectivityMosaic(now = Date.now(), region =
 // This removes the 4+9 speculative WMTS 400 requests per site/load while
 // retaining the browser's genuine old observations for 60/120/180-min loops.
 export async function discoverBoundedBomReflectivityHistory(
-  now=Date.now(),horizonMinutes=180,region='SEQ',
-  {publishedTimes=publishedReflectivityTimes,maximumPublishedFrames=9,
-   verifyNationalTile=probeTimestamp,ftpHistory=discoverFtpReflectivityHistory}={}
+ now=Date.now(),horizonMinutes=180,region='SEQ',
+ {publishedTimes=publishedReflectivityTimes,maximumPublishedFrames=9,
+  verifyNationalTile=probeTimestamp}={}
 ){
-  const max=Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
-  const horizon=Math.max(5,Math.min(180,Number(horizonMinutes)||180));
-  try{
-   const times=await validatedNationalTimes(now,region,publishedTimes,verifyNationalTile);
-   const newest=Date.parse(times.at(-1));
-   return times.filter(x=>Date.parse(x)>=newest-horizon*60000).slice(-max);
-  }catch(error){
-   console.warn("National mosaic unavailable; using only original source-confirmed FTP frames",
-    String(error.message));
-  }
-  return (await ftpHistory(now,region,horizon)).slice(-max);
+ const max=Math.min(9,Math.max(1,Math.trunc(maximumPublishedFrames)));
+ const horizon=Math.max(5,Math.min(180,Number(horizonMinutes)||180));
+ const times=await validatedNationalTimes(now,region,publishedTimes,verifyNationalTile);
+ const newest=Date.parse(times.at(-1));
+ // Never silently return unverified 512px FTP imagery if the native mosaic
+ // is unavailable. A caller may retain a PREVIOUSLY VERIFIED high-res frame.
+ return times.filter(x=>Date.parse(x)>=newest-horizon*60000).slice(-max);
 }
 
 export async function discoverBomReflectivityHistory(
@@ -355,13 +340,13 @@ export async function discoverBomReflectivityHistory(
 }
 
 export async function findRecentBomReflectivityTimes(
-  now=Date.now(),count=6,region='SEQ',
-  {publishedTimes=publishedReflectivityTimes,
-   verifyNationalTile=probeTimestamp,ftpHistory=discoverFtpReflectivityHistory}={}
+ now=Date.now(),count=6,region='SEQ',
+ {publishedTimes=publishedReflectivityTimes,
+  verifyNationalTile=probeTimestamp}={}
 ){
-  return (await discoverBoundedBomReflectivityHistory(now,180,region,{
-   publishedTimes,maximumPublishedFrames:count,verifyNationalTile,ftpHistory
-  })).slice(-Math.max(1,Math.min(9,Math.trunc(Number(count)||6))));
+ return (await discoverBoundedBomReflectivityHistory(now,180,region,{
+  publishedTimes,maximumPublishedFrames:count,verifyNationalTile
+ })).slice(-Math.max(1,Math.min(9,Math.trunc(Number(count)||6))));
 }
 
 export async function loadRecentBomReflectivityMosaics(

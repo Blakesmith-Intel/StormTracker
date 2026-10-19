@@ -847,6 +847,25 @@ export function officialPowerOutageBoundaryRings(feature){
  }).filter(r=>r.length>=4));
 }
 
+// Build filled outage geometry from the ORIGINAL provider boundaries, not
+// solely from GeoJsonDataSource entity IDs (Cesium may rename those IDs).
+// Interior rings remain holes: no invented affected areas.
+export function officialPowerOutagePolygonParts(feature){
+ const g=feature?.geometry;
+ const polys=g?.type==="Polygon"?[g.coordinates]:
+   g?.type==="MultiPolygon"?g.coordinates:[];
+ const clean=ring=>(ring??[]).filter(c=>Array.isArray(c)&&c.length>=2&&
+   Number.isFinite(Number(c[0]))&&Number.isFinite(Number(c[1]))&&
+   Number(c[0])>=110&&Number(c[0])<=160&&Number(c[1])>=-45&&Number(c[1])<=-8
+ ).map(c=>[Number(c[0]),Number(c[1])]);
+ return polys.flatMap(poly=>{
+   const [outer,...holes]=poly??[];
+   const outside=clean(outer);
+   if(outside.length<4)return [];
+   return [{outer:outside,holes:holes.map(clean).filter(r=>r.length>=4)}];
+ });
+}
+
 export function createPowerOutageLayer({
   viewer,
 
@@ -984,6 +1003,9 @@ export function createPowerOutageLayer({
               )
           );
 
+      // All provider polygon fills are reconstructed below from the original
+      // source coordinates; never leave a duplicate unstyled GeoJSON polygon.
+      if(entity.polygon) entity.polygon.show=false;
       if (!feature) {
         continue;
       }
@@ -1020,6 +1042,37 @@ export function createPowerOutageLayer({
       // graphics are unsupported by Cesium. Keep the existing translucent
       // fill and suppress the previously ineffective geometry outline.
       styleTerrainClampedPowerOutagePolygon(entity.polygon,unplannedColour);
+      // Replace GeoJSON polygon with a guaranteed visible source-bound shape.
+      // Cesium can assign a different internal entity ID, preventing the fill
+      // styling above from matching its provider feature.
+      if(entity.polygon) entity.polygon.show=false;
+    }
+
+    // Use the surveyed original Polygon/MultiPolygon, including any holes.
+    // Exactly the same source geometry is used for the shaded fill and edge.
+    for(const feature of currentFeatures){
+      const summary=powerOutageSummary(feature);
+      for(const [index,part] of officialPowerOutagePolygonParts(feature).entries()){
+        const outer=CesiumRef.Cartesian3.fromDegreesArray(part.outer.flat());
+        const holes=part.holes.map(ring=>{
+          const positions=CesiumRef.Cartesian3.fromDegreesArray(ring.flat());
+          return typeof CesiumRef.PolygonHierarchy==="function"?
+            new CesiumRef.PolygonHierarchy(positions):{positions,holes:[]};
+        });
+        const hierarchy=typeof CesiumRef.PolygonHierarchy==="function"?
+          new CesiumRef.PolygonHierarchy(outer,holes):{positions:outer,holes};
+        const fillEntity=dataSource.entities.add({
+          id:"stormtracker-outage-fill-"+summary.id+"-"+index,
+          name:summary.suburbs||"Power outage affected area",
+          polygon:{
+            hierarchy,show:true,fill:true,outline:false,
+            material:unplannedColour.withAlpha(0.38),
+            zIndex:25
+          }
+        });
+        fillEntity.stormTrackerPowerOutageId=String(summary.id);
+        fillEntity.stormTrackerPowerOutageProvider=summary.provider;
+      }
     }
 
     // The official outage boundaries are separately visualised with an

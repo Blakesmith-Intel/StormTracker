@@ -455,6 +455,16 @@ export function createFloodRoadClosureLayer({
     currentFeatures =
       filtered.features;
 
+    // Ground-clamped Cesium polylines can outlive datasource.show changes.
+    // A disabled layer must own ZERO primitives/entities, not just hide pins.
+    // Refresh-while-hidden may update the source snapshot but must not draw.
+    if (!dataSource.show) {
+      dataSource.entities.removeAll();
+      viewer.scene.requestRender();
+      onUpdate(currentFeatures.slice());
+      return;
+    }
+
     dataSource.entities
       .suspendEvents();
 
@@ -614,13 +624,18 @@ export function createFloodRoadClosureLayer({
     nextVisible
   ) {
     expireStaleSnapshot();
-    dataSource.show =
-      Boolean(
-        nextVisible
-      );
-
-    viewer.scene
-      .requestRender();
+    const wasVisible = Boolean(dataSource.show);
+    dataSource.show = Boolean(nextVisible);
+    if (!dataSource.show) {
+      // Physically detach the complete pair of official road polylines and
+      // every marker. Do not leave a clamped ground primitive behind.
+      dataSource.entities.removeAll();
+    } else if (!wasVisible && currentFeatures.length) {
+      // Reconstruct ONLY verified official geometry from the retained snapshot.
+      // A subsequent refresh will replace it if source data has advanced.
+      render({type:"FeatureCollection",features:currentFeatures});
+    }
+    viewer.scene.requestRender();
 
     if (
       dataSource.show

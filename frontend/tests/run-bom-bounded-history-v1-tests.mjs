@@ -22,20 +22,19 @@ assert.deepEqual(available,times,
 assert.equal(fetches,1,"One official GetCapabilities lookup");
 assert.equal(probeCalls,1,"One source PNG probe rather than speculative tile storms");
 assert.equal(fallBacks,0,"Verified national feed never mixes in old FTP source times");
-const empty=await discoverBoundedBomReflectivityHistory(now,180,"SEQ",{
- publishedTimes:async()=>[],verifyNationalTile:verified,ftpHistory:archive
-});
-assert.deepEqual(empty,[times.at(-1)],
- "Empty WMTS capabilities must fall back to actual FTP source frames");
-assert.equal(probeCalls,1,"No guessed WMTS requests when capabilities are empty");
+await assert.rejects(
+ discoverBoundedBomReflectivityHistory(now,180,"SEQ",{
+  publishedTimes:async()=>[],verifyNationalTile:verified,ftpHistory:archive
+ }),/no verified current observation timestamp/i,
+ "Missing high-resolution source MUST NOT display downgraded FTP imagery");
+assert.equal(probeCalls,1,"No guesses when official times are absent");
 let denied=0;
-const deniedResult=await discoverBoundedBomReflectivityHistory(now,180,"SEQ",{
+await assert.rejects(discoverBoundedBomReflectivityHistory(now,180,"SEQ",{
  publishedTimes:async()=>{denied++;throw Error("BoM WMTS capabilities HTTP 403")},
  verifyNationalTile:verified,ftpHistory:archive
-});
-assert.deepEqual(deniedResult,[times.at(-1)]);
+}),/HTTP 403/);
 assert.equal(denied,1);
-assert.equal(fallBacks,2);
+assert.equal(fallBacks,0,"Legacy low-resolution source must never be called");
 const partial=await discoverBoundedBomReflectivityHistory(now,180,"66",{
  publishedTimes:async()=>[times.at(-1)],
  verifyNationalTile:async(time,region)=>{
@@ -49,4 +48,4 @@ const thirty=await discoverBoundedBomReflectivityHistory(now,30,"SEQ",{
 });
 assert.equal(thirty.length,7);
 assert.equal(thirty[0],"2026-10-13T04:35:00Z");
-console.log("PASS national observed-only WMTS verification, no guessed timestamps, FTP fallback when WMTS is stale, 30-minute window");
+console.log("PASS national observed-only WMTS verification, no guessed timestamps, no low-resolution fallback when WMTS is stale, 30-minute window");

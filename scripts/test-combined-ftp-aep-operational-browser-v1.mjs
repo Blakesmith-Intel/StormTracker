@@ -21,13 +21,20 @@ try{
  const result=await page.evaluate(async()=>{
   globalThis.__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY=true;
   const radar=await import("./src/bom-wmts-loop-v2.js");
+  const policy=await import("./src/hires-radar-loop-policy-v1.js");
   const rain=await import("./src/context-layers/rainfall-ifd-aep-v1.js");
   const now=Date.now();
   const times=await radar.discoverBomReflectivityHistory(now,45,"SEQ");
-  if(times.length<3)throw Error("Fewer than 3 current authenticated BoM radar frames");
+  if(times.length<6)throw Error("Fewer than six current authentic high-res BoM observations for 30-minute playback");
+  const measured=policy.measuredHiResRainWindow(times,"30");
+  if(measured.plan.length!==6||measured.partial)
+    throw Error("30-minute native radar must have exactly six observed high-resolution frames");
   const frameResults=[];
-  for(const time of times.slice(-3)){
+  for(const {observedUtc:time,kind} of measured.plan){
+   if(kind!=="observed")throw Error("Prohibited temporally inferred rain-radar frame");
    const f=await radar.loadBomReflectivityMosaicAtTime(time,"SEQ");
+   if(!policy.isVerifiedHiResRadarFrame(f))
+     throw Error("Not a verified BoM native high-res frame");
    if(f.sourceId!=="BOM-MOSAIC")
      throw Error("Repaired high-resolution radar regressed to coarse FTP fallback: "+f.sourceId);
    if(f.georef?.projection!=="EPSG:3857")throw Error("Incorrect measured source raster projection");
@@ -66,10 +73,10 @@ try{
   if(adavale.aepDesignThreshold!==10)throw Error("Adavale 50mm not graded by local native BoM IFD");
   return {frameResults,richmond:{time:rFrame.observedUtc,width:rFrame.width,height:rFrame.height,source:rFrame.sourceId},ifd:{cells:Object.keys(grid.cells).length,gold,adavale}};
  });
- assert.equal(result.frameResults.length,3);
- console.log("LIVE_NATIONAL_PRIMARY_AEP_COMBINED_BROWSER_PASS",JSON.stringify(result));
+ assert.equal(result.frameResults.length,6,"30 minutes displays only 6 five-minute native BoM frames");
+ console.log("LIVE_NATIVE_HIRES_SIX_FRAMES_AEP_BROWSER_PASS",JSON.stringify(result));
  if(errors.length)console.log("NON_FATAL_BROWSER_DIAGNOSTICS",errors.slice(0,8));
 }catch(error){
- console.log("LIVE_NATIONAL_PRIMARY_AEP_COMBINED_BROWSER_FAIL",JSON.stringify({error:String(error),errors:errors.slice(0,10)}));
+ console.log("LIVE_NATIVE_HIRES_SIX_FRAMES_AEP_BROWSER_FAIL",JSON.stringify({error:String(error),errors:errors.slice(0,10)}));
  throw error;
 }finally{await browser.close()}

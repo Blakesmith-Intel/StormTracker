@@ -119,6 +119,16 @@ assert rain_engine.count(rain_mount)==1
 mount_anchor='initialiseOperationalQfdTechnicalRescues({\n  viewer\n});'
 assert data.count(mount_anchor)==1
 data=data.replace(mount_anchor,mount_anchor+'\n'+rain_mount,1)
+# Only when the next selected UTC falls OUTSIDE the prior genuine site's
+# measured 8-minute hold, give the extra site a bounded opportunity to finish
+# its already warmed Cesium stage BEFORE committing the primary scan. This
+# prevents a transient empty western site at each loop wrap; other steps keep
+# the original 350ms wait. Source-true temporal matching remains unchanged.
+handover='await waitForSecondaryWindPreparation(extrasPreparing);'
+assert data.count(handover)==1,"Pinned native Doppler handover anchor changed"
+data=data.replace(handover,
+  'await waitForSecondaryWindPreparation(extrasPreparing, '+
+  'supplementalDopplerDisplay.needsBoundaryWait(source.observedUtc) ? 2200 : 350);',1)
 engine.write_text(data,encoding="utf-8")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015")
@@ -549,6 +559,7 @@ grep -Fq 'SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' "_site/src/multi-doppler-displa
 grep -Fq 'committedUtc=utc' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'holdIsValid(s,utc)' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'SECONDARY_WIND_PROVIDER_CACHE_SIZE=8' "_site/src/multi-doppler-display-v1.js"
+grep -Fq 'needsBoundaryWait(source.observedUtc) ? 2200 : 350' "_site/src/live3d-operational-v9.js"
 grep -Fq 'wind-stability-20261019-v4' "_site/src/live3d-operational-v9.js"
 grep -Fq 'NATIVE_DOPPLER_ANNOTATION_START_ROW = 480' "_site/src/native-doppler-image-v1.js"
 ! grep -Fq 'NATIVE_DOPPLER_STRICT_PALETTE_START_ROW' "_site/src/native-doppler-image-v1.js"

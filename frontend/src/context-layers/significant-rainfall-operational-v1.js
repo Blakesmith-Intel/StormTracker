@@ -1,4 +1,5 @@
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
+import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261020-final-severity-order";
 import {classifyRainfallAep} from "./rainfall-ifd-aep-v1.js";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
 export const SIGNIFICANT_RAINFALL_REFRESH_MS=300000;
@@ -71,8 +72,8 @@ export function initialiseOperationalSignificantRainfall({
  const checkbox=$("showSignificantRainfall"),select=$("significantRainfallPeriod");
  const status=$("significantRainfallStatus"),info=$("significantRainfallInfo");
  const rows=$("significantRainfallInfoRows"),title=$("significantRainfallInfoTitle");
- const collection=new CesiumRef.CustomDataSource("significant-rainfall");
- collection.show=false;viewer.dataSources.add(collection);
+ const severityLayers=createSeverityMarkerLayers({viewer,CesiumRef,owner:"rainfall",priorities:[0,1,2,3,4,5,6],visible:false});
+ const collection=severityLayers.dataSource;
  let lastLoadedAt=0,lastError=null,waiting=null,timer=null,selectedId="";
  let source=null,visibleRows=[],period="since9am",started=false;
  let ifdGrid=null,ifdLoadedAt=0;
@@ -134,10 +135,11 @@ export function initialiseOperationalSignificantRainfall({
    rainfallBand(record.mm)!==null).map(record=>{
     const aep=classifyRainfallAep({...record,grid:ifdGrid});
     return {...record,aep,band:rainfallBand(record.mm)};
-   });
-  collection.entities.removeAll();
+   }).sort((a,b)=>rainfallIconPriority(a.aep)-rainfallIconPriority(b.aep)||
+     a.mm-b.mm||String(a.id).localeCompare(String(b.id)));
+  severityLayers.clear();
   for(const record of visibleRows){
-   const entity=collection.entities.add({
+   const entity=severityLayers.sourceFor(rainfallIconPriority(record.aep)).entities.add({
     id:"significant-rain:"+period+":"+record.id,
     name:record.name+" · "+record.mm.toFixed(1)+" mm · "+
       rainfallRarityDisplay(record.aep).description,
@@ -151,6 +153,7 @@ export function initialiseOperationalSignificantRainfall({
    });
    entity.stormTrackerRainGaugeId=record.id;
   }
+  severityLayers.finish();
   viewer.scene.requestRender();
   if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
   const failed=source?.failed?.length??0;
@@ -215,7 +218,7 @@ export function initialiseOperationalSignificantRainfall({
   }finally{waiting=null;}
  }
  function setVisible(yes){
-  collection.show=Boolean(yes);
+  severityLayers.setVisible(yes);
   if(!collection.show){hideInfo();say("Significant rainfall off");}
   else if(!lastLoadedAt||now()-lastLoadedAt>=refreshMs)refresh().catch(()=>{});
   else render();
@@ -314,7 +317,7 @@ export function initialiseOperationalSignificantRainfall({
  }
  window.addEventListener("pagehide",stop,{once:true});
  start();
- return {dataSource:collection,refresh,setVisible,setPeriod,stop,pickAt,
+ return {dataSource:collection,severityDataSources:severityLayers.dataSources,refresh,setVisible,setPeriod,stop,pickAt,
   get features(){return visibleRows.slice();},get period(){return period;},
   get lastLoadedAt(){return lastLoadedAt;},get error(){return lastError;}};
 }

@@ -292,3 +292,7 @@ Do not claim the IFD catalogue is geographically **complete** merely because the
 - [ ] Keep pending milestones and limitations explicit. Historical samples and algorithmic candidates are **never live official warnings**.
 
 **Document maintenance rule:** For each operator-approved production change, update this current handover and (where user-visible) [OPERATOR_GUIDE_CURRENT.md](OPERATOR_GUIDE_CURRENT.md). Keep old numbered handovers **historical**; do not erase provenance. The handover's last source-changing SHA is a **snapshot as of 20 October 2026**, not a claim that future main/deployments will forever have that SHA.
+
+## Final severity overlay priority — accepted 20 October 2026
+
+Overlapping BoM flood icons and significant rainfall rarity icons now use separate Cesium CustomDataSource draw tiers ordered across **both layers** through `context-layers/severity-marker-layer-v1.js` and `dataSources.raiseToTop`. Flood priority: unverified, rapid rise, minor, moderate, major. Rainfall priority: Unrated, Less rare, Notable, Unusual, Rare, Very rare, Exceptional. Within matching rainfall rarity, larger measured totals are added later. This corrects actual Cesium billboard overlap without unsupported z-index or changes to station data, thresholds, marker geometry, controls or refresh. Covered by `run-severity-marker-layer-v1-tests.mjs` and revised flood integration suite. Freeze recovery ref: `restore/production-severity-2026-10-20` after CI verification.

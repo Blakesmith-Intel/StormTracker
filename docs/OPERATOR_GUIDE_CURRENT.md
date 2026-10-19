@@ -124,3 +124,7 @@ The **Cyclones** panel does **not** provide an independently verified continuous
 - [Development and maintenance handover](DEVELOPMENT_HANDOVER_CURRENT.md)
 
 **Version note:** This document describes the accepted production behaviour at **20 October 2026**, including the **24hrs to 9am** label and **small droplet / normal-sized rarity text**. The underlying application is sealed V10.2.0 with later source-verified maintenance overlays. See the development handover for exact pins, source files and audit trails.
+
+## Which overlapping marker is displayed on top?
+
+Higher severity markers are deliberately drawn in front of lower severity markers, including when flood and rainfall layers are both on. Flood icons progress **major, moderate, minor, rapid rise**; rainfall rarity icons progress **Exceptional, Very rare, Rare, Unusual, Notable**, then Less rare/Unrated. This is only a visual order; actual BoM measurements and flood stages are unchanged.

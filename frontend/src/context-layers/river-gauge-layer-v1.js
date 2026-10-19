@@ -180,6 +180,8 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
+import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261020-final-severity-order";
+
 export function createRiverGaugeLayer({
   viewer,
 
@@ -213,20 +215,10 @@ export function createRiverGaugeLayer({
     );
   }
 
-  const dataSource =
-    new CesiumRef
-      .CustomDataSource(
-        "river-gauges"
-      );
-
-  dataSource.show =
-    Boolean(
-      visible
-    );
-
-  viewer.dataSources.add(
-    dataSource
-  );
+  const severityLayers=createSeverityMarkerLayers({
+    viewer,CesiumRef,owner:"flood",priorities:[0,1,2,4,6],visible
+  });
+  const dataSource=severityLayers.dataSource;
 
   const markerImages =
     new Map();
@@ -415,16 +407,15 @@ export function createRiverGaugeLayer({
       payload?.features
       ?? [];
 
-    dataSource.entities
-      .suspendEvents();
+    severityLayers.clear();
 
-    dataSource.entities
-      .removeAll();
-
-    for (
-      const feature
-      of currentFeatures
-    ) {
+    const drawOrder=[...currentFeatures].sort((a,b)=>{
+      const x=riverGaugeOperationalSummary(a),y=riverGaugeOperationalSummary(b);
+      return floodIconPriority(x.displayState)-floodIconPriority(y.displayState)||
+        Number(Boolean(x.rapidRise))-Number(Boolean(y.rapidRise))||
+        String(x.id).localeCompare(String(y.id));
+    });
+    for(const feature of drawOrder) {
       const summary =
         riverGaugeOperationalSummary(
           feature
@@ -442,7 +433,7 @@ export function createRiverGaugeLayer({
       }
 
       const entity =
-        dataSource.entities
+        severityLayers.sourceFor(floodIconPriority(summary.displayState)).entities
           .add({
             id:
               summary.id,
@@ -488,8 +479,7 @@ export function createRiverGaugeLayer({
         summary.id;
     }
 
-    dataSource.entities
-      .resumeEvents();
+    severityLayers.finish();
 
     viewer.scene
       .requestRender();
@@ -665,10 +655,7 @@ export function createRiverGaugeLayer({
   function setVisible(
     nextVisible
   ) {
-    dataSource.show =
-      Boolean(
-        nextVisible
-      );
+    severityLayers.setVisible(nextVisible);
 
     viewer.scene
       .requestRender();
@@ -758,6 +745,7 @@ export function createRiverGaugeLayer({
 
   return {
     dataSource,
+    severityDataSources:severityLayers.dataSources,
     refresh,
     setVisible,
     start,

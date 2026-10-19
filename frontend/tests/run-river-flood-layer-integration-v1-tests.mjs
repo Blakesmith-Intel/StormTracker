@@ -67,9 +67,12 @@ assert.deepEqual(layer.features.map(f=>f.id).sort(),["bom:040123","bom:040125"])
 assert.equal(layer.features.find(f=>f.id==="bom:040125").properties.STORMTRACKER_DISPLAY_STATE,"moderate");
 assert.equal(layer.features.find(f=>f.id==="bom:040123").properties.STORMTRACKER_RAPID_RISE,false);
 assert.equal(layer.historyStationCount,3,"Capture all water-level readings for later comparison");
-assert.equal(calls.added.length,1);
-assert.equal(layer.dataSource.entities.values.length,2);
-assert.ok(layer.dataSource.entities.values.some(e=>e.stormTrackerRiverGaugeId==="bom:040125"));
+assert.equal(calls.added.length,5,"Five flood drawing severity tiers");
+assert.equal(layer.severityDataSources.flatMap(s=>s.entities.values).length,2);
+assert.ok(layer.severityDataSources.flatMap(s=>s.entities.values)
+ .some(e=>e.stormTrackerRiverGaugeId==="bom:040125"));
+assert.equal(layer.severityDataSources[2].entities.values.length,1,"Minor tier");
+assert.equal(layer.severityDataSources[3].entities.values.length,1,"Moderate above minor");
 now+=45*60000;
 step=1;
 await layer.refresh({force:true});
@@ -84,9 +87,9 @@ assert.ok(rise.properties.STORMTRACKER_RISE_RATE_M_PER_H>0.3);
 assert.ok(!layer.features.some(f=>f.id==="bom:040124"),"Ordinary tide rise is suppressed without a tidal baseline");
 assert.ok(calls.stored["stormtracker.qld-flood-observations.v1"]);
 layer.setVisible(true);
-assert.equal(layer.dataSource.show,true);
+assert.ok(layer.severityDataSources.every(s=>s.show));
 layer.setVisible(false);
-assert.equal(layer.dataSource.show,false);
+assert.ok(layer.severityDataSources.every(s=>!s.show));
 await layer.refresh({force:true}); // Finish the refresh initiated by the earlier visibility toggle.
 assert.ok(calls.status.some(item=>item.count===2 && item.rapidRise===1 && item.moderate===1 && item.minor===1));
 assert.ok(calls.observed.length>=2);

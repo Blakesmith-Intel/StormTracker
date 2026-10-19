@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install official PDF text decoder
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
       - name: Verify importer with independent fixtures
         run: node frontend/tests/run-bom-sls-2026-catalogue-tests.mjs
       - name: Parse official 2026 BoM PDF; reject incomplete or ambiguous IDs

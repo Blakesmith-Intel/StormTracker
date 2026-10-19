@@ -1,0 +1,38 @@
+name: BoM FTP manifest source audit
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+    paths:
+      - scripts/publish-bom-ftp-manifest-v1.py
+      - .github/workflows/bom-ftp-manifest-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover real observation filenames by anonymous FTP
+        run: python scripts/publish-bom-ftp-manifest-v1.py --out /tmp/bom-ftp-manifest.json
+      - name: Validate freshness, chronological source frames and format
+        run: |
+          python - <<'PY'
+          import json,datetime as d,re
+          f=json.load(open('/tmp/bom-ftp-manifest.json'))
+          assert f['schema']=='StormTrackerBoMFtpReflectivityManifestV1'
+          for site,frames in f['siteFrameHistory'].items():
+            prev=''
+            for frame in frames:
+              assert re.fullmatch('IDR'+site+r'3\\.T\\.\\d{12}\\.png',frame['filename'])
+              assert frame['observedUtc']>prev
+              prev=frame['observedUtc']
+              assert frame['imageUrl']=='https://www.bom.gov.au/radar/'+frame['filename']
+          assert len(f['siteFrameHistory'])>=3,'Insufficient observed radar sites'
+          print('FTP_MANIFEST_GATE_PASS',len(f['siteFrameHistory']),f['missingOrStaleSites'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timestamped-bom-ftp-manifest
+          path: /tmp/bom-ftp-manifest.json

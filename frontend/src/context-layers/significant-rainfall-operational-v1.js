@@ -1,9 +1,10 @@
-import {qualifiesRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js";
+import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js";
+import {classifyRainfallAep} from "./rainfall-ifd-aep-v1.js";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
 export const SIGNIFICANT_RAINFALL_REFRESH_MS=300000;
 const $=id=>document.getElementById(id);
 const marker=(band)=>{
- const color=band==="red"?"#d92d35":"#ed871b";
+ const color=({purple:"#a12cf2",red:"#d92d35",orange:"#ed871b",yellow:"#e6be28",green:"#3faf65",unclassified:"#929da6"})[band]??"#929da6";
  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 54">'+
  '<path d="M22 2C12 16 5 24 5 34a17 17 0 0 0 34 0C39 24 32 16 22 2Z" '+
  'fill="'+color+'" stroke="#192934" stroke-width="2.6"/>'+
@@ -35,6 +36,7 @@ export function initialiseOperationalSignificantRainfall({
  collection.show=false;viewer.dataSources.add(collection);
  let lastLoadedAt=0,lastError=null,waiting=null,timer=null,selectedId="";
  let source=null,visibleRows=[],period="since9am",started=false;
+ let ifdGrid=null,ifdLoadedAt=0;
  const say=(text,kind="normal")=>{
   if(!status)return;status.textContent=text;status.dataset.kind=kind;
  };
@@ -49,7 +51,18 @@ export function initialiseOperationalSignificantRainfall({
   rows.replaceChildren();
   detailRow(rows,"Observed rainfall",record.mm.toFixed(1)+" mm");
   detailRow(rows,"Period",period==="since9am"?"Since 9 am AEST":"Last 1 hour (BoM map)");
-  detailRow(rows,"Threshold",record.band==="red"?"100 mm or more":"50–99.9 mm");
+  detailRow(rows,"Rainfall rarity",record.aep?.aepDesignThreshold
+    ?"Meets "+record.aep.aepDesignThreshold+"% AEP IFD design depth"
+    :record.aep?.classification==="below-20pct-aep"
+      ?"Below 20% AEP design depth":"Not rated — verified local IFD unavailable");
+  detailRow(rows,"IFD duration",record.aep?.durationMinutes
+    ?Number(record.aep.durationMinutes.toFixed(1))+" minutes":"Unverified");
+  if(record.aep?.designDepthMm)
+    detailRow(rows,"Local design rainfall",record.aep.designDepthMm.toFixed(1)+" mm");
+  if(record.aep?.ifdCell)detailRow(rows,"IFD grid cell",record.aep.ifdCell);
+  if(record.aep?.interpolatedDuration)
+    detailRow(rows,"Duration estimation","Logarithmic interpolation between official IFD durations");
+  detailRow(rows,"Rainfall interpretation","AEP is rainfall rarity, not a prediction of flood height or severity.");
   detailRow(rows,"BoM station number",record.id);
   detailRow(rows,"Source map issued",formatted(record.sourceCreatedAt));
   detailRow(rows,"Source region",record.region);
@@ -66,7 +79,14 @@ export function initialiseOperationalSignificantRainfall({
  }
  function render(){
   const records=source?.observations?.[period]??[];
-  visibleRows=records.filter(record=>qualifiesRainfallSnapshot(record,period,now()));
+  const assessed=records.filter(record=>qualifiesAepRainfallSnapshot(record,period,now()))
+    .map(record=>{
+      const aep=classifyRainfallAep({...record,grid:ifdGrid});
+      return {...record,aep,band:aep.band??(aep.classification==="unclassified"&&rainfallBand(record.mm)?"unclassified":null)};
+    });
+  // Unverified grid cells retain only neutral historical total markers.
+  // A low mm value is never upgraded by invented IFD climatology.
+  visibleRows=assessed.filter(record=>record.band);
   collection.entities.removeAll();
   for(const record of visibleRows){
    const entity=collection.entities.add({
@@ -86,8 +106,11 @@ export function initialiseOperationalSignificantRainfall({
   if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
   const failed=source?.failed?.length??0;
   const label=period==="since9am"?"since 9 am":"last hour";
-  const stale=(records.length-visibleRows.length);
-  say("Significant rain "+label+": "+visibleRows.length+" station(s) ≥50 mm"+
+  const stale=records.filter(record=>!qualifiesAepRainfallSnapshot(record,period,now())).length;
+  const rated=visibleRows.filter(x=>x.aep?.band).length;
+  const unrated=visibleRows.length-rated;
+  say("Rainfall AEP "+label+": "+rated+" locally graded"+
+    (unrated?" · "+unrated+" neutral (IFD missing)":"")+
     (failed?" · "+failed+" regional BoM source(s) unavailable":"")+
     (stale?" · "+stale+" stale readings excluded":"")+
     " · checked "+formatted(source?.checkedAt),
@@ -107,7 +130,21 @@ export function initialiseOperationalSignificantRainfall({
      !Array.isArray(incoming?.observations?.since9am)||
      !Array.isArray(incoming?.observations?.lastHour))
       throw Error("Unexpected BoM rainfall source response");
-   source=incoming;lastLoadedAt=now();lastError=null;render();
+   source=incoming;lastLoadedAt=now();lastError=null;
+   if(!ifdLoadedAt||now()-ifdLoadedAt>15*60000){
+     ifdLoadedAt=now();
+     try{
+       const response=await fetchImpl("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/ifd.json",{cache:"no-store"});
+       if(!response.ok)throw Error("BoM IFD grid data HTTP "+response.status);
+       const grid=await response.json();
+       if(grid?.schema!=="StormTrackerBoM2016IFDCellsV1"||!grid.cells||!grid.source?.includes("BoM IFD"))
+         throw Error("Invalid verified IFD grid dataset");
+       ifdGrid=grid;
+     }catch(error){
+       console.warn("Verified rainfall IFD station coverage unavailable; leaving sites unrated",error);
+     }
+   }
+   render();
    return visibleRows.slice();
   })();
   try{return await waiting;}
@@ -134,8 +171,6 @@ export function initialiseOperationalSignificantRainfall({
   period=value==="lastHour"?"lastHour":"since9am";
   if(collection.show)render();
  }
- // Resolve rain symbols by explicit station ID; avoid using the position
- // or label as a substitute for the source's authoritative gauge identifier.
  function stationIdFromPick(hit){
   const candidates=[hit?.id,hit?.primitive?.id];
   for(const candidate of candidates){

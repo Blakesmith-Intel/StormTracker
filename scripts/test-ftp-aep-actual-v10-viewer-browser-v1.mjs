@@ -45,6 +45,10 @@ try{
   return ds?.entities.values.length===1 &&
     ds.entities.values[0].stormTrackerRainGaugeId==="QA19501";
  },null,{timeout:40000});
+ // A real map gesture cancels StormTracker camera handover/navigation before
+ // following a station away from the currently selected radar location.
+ await page.mouse.click(1210,430);
+ await page.waitForTimeout(250);
  const atXY=await page.evaluate(()=>{
   const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
   const e=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall").entities.values[0];

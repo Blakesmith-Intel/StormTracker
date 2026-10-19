@@ -128,7 +128,7 @@ version_once("src/context-layers/power-outages-operational-v1.js",
 # Both genuine closure lines and Energex outage polygons otherwise resolve to
 # the obsolete, cached modules even after changes reach GitHub main.
 version_once("src/live3d-operational-v9.js",
-    "flood-road-closures-operational-v1.js?v=last-refresh-20261017-v1")
+    "flood-road-closures-operational-v1.js?v=sidebar-refresh-track-20261017-v1")
 version_once("src/context-layers/flood-road-closures-operational-v1.js",
     "flood-road-closures-v1.js?v=background-incident-refresh-20261017-v1")
 version_once("src/context-layers/flood-road-closures-operational-v1.js",

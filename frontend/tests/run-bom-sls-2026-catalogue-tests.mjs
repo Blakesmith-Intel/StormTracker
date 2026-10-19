@@ -28,8 +28,11 @@ assert.ok(result.dataLocations.includes("bom:540000"));
 assert.equal(result.stations["bom:540000"],undefined);
 assert.equal(result.duplicates.length,0);
 validateMay2026Catalog(result,{strict:false});
-const contradictory=source.replace("535142 TARANA CROSSING",
-  "535142 TARANA CROSSING")+String.fromCharCode(10)+"540610 HINZE DAM HW Seqwater Automatic 1 2 3 Medium";
+const contradictory=source.replace(
+  "535142 TARANA CROSSING Banana Shire Council Automatic 6 9 12 Medium",
+  "540610 HINZE DAM HW Seqwater Automatic 1 2 3 Medium"+
+  String.fromCharCode(10)+
+  "535142 TARANA CROSSING Banana Shire Council Automatic 6 9 12 Medium");
 const mixed=parseMay2026ServiceLevelSpecification(contradictory);
 assert.equal(mixed.stations["bom:540610"],undefined);
 assert.equal(mixed.duplicates.length,1);

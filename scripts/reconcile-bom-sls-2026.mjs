@@ -104,16 +104,16 @@ if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href){
   const sourceSha256=createHash("sha256").update(pdf).digest("hex");
   const sorted=Object.fromEntries(Object.entries(result.stations).sort(([a],[b])=>a.localeCompare(b)));
   const module="// Official Bureau Queensland SLS v3.7, source PDF sha256: "+sourceSha256+
-    "\\n// Reconciled source-station native-level classifications by exact ID.\\n"+
-    "export const BOM_2026_CLASSIFICATIONS="+JSON.stringify(sorted)+";\\n"+
-    "export const BOM_2026_DATA_ONLY_STATIONS="+JSON.stringify(result.dataLocations)+";\\n";
+    "\n// Reconciled source-station native-level classifications by exact ID.\n"+
+    "export const BOM_2026_CLASSIFICATIONS="+JSON.stringify(sorted)+";\n"+
+    "export const BOM_2026_DATA_ONLY_STATIONS="+JSON.stringify(result.dataLocations)+";\n";
   const audit={document:PDF,sourceSha256,importedAt:new Date().toISOString(),
     classified:Object.keys(sorted).length,dataOnly:result.dataLocations.length,
     bySchedule:result.perSchedule,ambiguous:result.duplicates,
     unparsedCount:result.unparsed.length,unparsed:result.unparsed.slice(0,100)};
   if(args.includes("--write")){
     writeFileSync("frontend/src/context-layers/river-flood-stages-2026-full-v1.js",module);
-    writeFileSync("docs/BOM_2026_FLOOD_CLASSIFICATION_AUDIT.json",JSON.stringify(audit,null,2)+"\\n");
+    writeFileSync("docs/BOM_2026_FLOOD_CLASSIFICATION_AUDIT.json",JSON.stringify(audit,null,2)+"\n");
   }
   console.log("SLS_2026_AUDIT "+JSON.stringify({...audit,unparsed:undefined}));
   console.log("SLS_2026_ANCHORS "+JSON.stringify(Object.fromEntries([

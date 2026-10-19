@@ -8,8 +8,6 @@ import {fetchReadableImage} from "./radar-source.js";
 
 const MANIFEST="https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json";
 const FRAME_BASE="https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/frames/";
-const LIVE_MANIFEST="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/ftp-live-manifest";
-const LIVE_FRAME_BASE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/ftp-live-frame?file=";
 const COLOURS=new Map(BOM_REFLECTIVITY_RGB.map(x=>[x.rgb.join(","),x.value]));
 const EARTH=6371008.8, MERC=6378137, RAD=Math.PI/180;
 let cached=null,cachedAt=0;
@@ -114,10 +112,7 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
    if(!record||!new RegExp("^IDR"+id+"3\\.T\\.[0-9]{12}\\.png$").test(record.filename))
      throw Error("Unverified FTP source filename");
    const geo=sourceGeometry(manifest.siteGeoreference[id]);
-   if(manifest.sourceKind==="ftp-live-direct-relay"){
-     if(record.imageUrl!==LIVE_FRAME_BASE+encodeURIComponent(record.filename))
-       throw Error("Unexpected direct FTP frame URL");
-   }else if(record.imageUrl!==FRAME_BASE+record.filename||
+   if(record.imageUrl!==FRAME_BASE+record.filename||
      !/^([a-f0-9]{64})$/.test(record.sha256||""))
      throw Error("Unverified source FTP image delivery path/hash");
    const image=await fetchReadableImage(record.imageUrl);
@@ -148,9 +143,7 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
  return {radarId:"BOM-FTP-MOSAIC",sourceId:"BOM-FTP-MOSAIC",observedUtc,width,height,categories,
    georef:{projection:"EPSG:3857",minX,maxX,minY,maxY},
    sourceMetadata:{provider:"Australian Bureau of Meteorology",
-     transport:manifest.sourceKind==="ftp-live-direct-relay"?
-       "Live original BoM anonymous FTP PNG via Cloudflare TCP":
-       "Original BoM FTP PNG archived unchanged to HTTPS feed",
+     transport:"Original BoM FTP PNG archived unchanged to HTTPS feed",
      product:"Observed site-specific 128 km Gnomonic PNG",siteIds:ids,
      nativeSourcePixels:512,sourceUrls:inputs.map(i=>i.record.imageUrl),
      colouredPixelCount:categories.length-histogram[0],strongPixelCount:histogram.slice(7).reduce((a,b)=>a+b,0),

@@ -134,36 +134,80 @@ export function initialiseOperationalSignificantRainfall({
   period=value==="lastHour"?"lastHour":"since9am";
   if(collection.show)render();
  }
- function pickAt(position){
-  if(!collection.show)return false;
-  const hits=viewer.scene.drillPick(position,12,30,30)||[];
-  for(const hit of hits){
-   const id=(hit?.id??hit?.primitive?.id)?.stormTrackerRainGaugeId;
-   const found=visibleRows.find(x=>x.id===id);
+ // Resolve rain symbols by explicit station ID; avoid using the position
+ // or label as a substitute for the source's authoritative gauge identifier.
+ function stationIdFromPick(hit){
+  const candidates=[hit?.id,hit?.primitive?.id];
+  for(const candidate of candidates){
+   if(candidate?.stormTrackerRainGaugeId)
+    return String(candidate.stormTrackerRainGaugeId);
+   const entityId=typeof candidate==="string"?candidate:candidate?.id;
+   const match=typeof entityId==="string"?
+     /^significant-rain:(?:since9am|lastHour):([0-9]{4,7})$/.exec(entityId):null;
+   if(match)return match[1];
+  }
+  return "";
+ }
+ function pickAt(position,{width=28,height=28}={}){
+  if(!collection.show||!visibleRows.length)return false;
+  const hits=viewer.scene.drillPick?.(position,24,width,height)??[];
+  // In real Cesium multiple layers can overlap one billboard; a single
+  // scene.pick is a fallback if the requested drill size returned nothing.
+  const primary=viewer.scene.pick?.(position,width,height);
+  for(const hit of [...hits,primary]){
+   const id=stationIdFromPick(hit);
+   const found=id?visibleRows.find(x=>String(x.id)===id):null;
    if(found){showInfo(found);return true;}
   }
   return false;
  }
- // One click/tap handler; no continuous Cesium picking on mouse movement.
  const canvas=viewer.scene.canvas;
- let down=null;
- const pointerDown=e=>{down={id:e.pointerId,x:e.clientX,y:e.clientY,at:Date.now()};};
- const pointerUp=e=>{
-  if(!down||down.id!==e.pointerId)return;
-  const wasTap=Math.hypot(e.clientX-down.x,e.clientY-down.y)<12&&
-    Date.now()-down.at<800;down=null;
-  if(!wasTap||!collection.show)return;
+ const mapContainer=viewer.container??canvas.parentElement;
+ const pointerTap={id:null,x:0,y:0,started:0,moved:false};
+ const interactiveControls=
+   "button,a,input,select,textarea,[role=button],.map-info-card,"+
+   "#controlSidebar,#legendDock,#sidebarToggle,#cesiumCredits";
+ function clearTap(){pointerTap.id=null;}
+ function pointerDown(event){
+  if(!collection.show||!mapContainer?.contains(event.target)||
+      event.target?.closest?.(interactiveControls))return;
+  if(event.button!==undefined&&event.button!==0)return;
+  pointerTap.id=event.pointerId;
+  pointerTap.x=event.clientX;pointerTap.y=event.clientY;
+  pointerTap.started=Date.now();pointerTap.moved=false;
+ }
+ function pointerMove(event){
+  if(pointerTap.id!==event.pointerId)return;
+  if(Math.hypot(event.clientX-pointerTap.x,event.clientY-pointerTap.y)>12)
+    pointerTap.moved=true;
+ }
+ function pointerUp(event){
+  if(pointerTap.id!==event.pointerId)return;
+  const isTap=!pointerTap.moved&&
+    Math.hypot(event.clientX-pointerTap.x,event.clientY-pointerTap.y)<12&&
+    Date.now()-pointerTap.started<800;
+  clearTap();
+  if(!isTap||!collection.show)return;
   const rect=canvas.getBoundingClientRect();
-  pickAt(new CesiumRef.Cartesian2(e.clientX-rect.left,e.clientY-rect.top));
- };
+  if(event.clientX<rect.left||event.clientX>rect.right||
+     event.clientY<rect.top||event.clientY>rect.bottom)return;
+  const position=new CesiumRef.Cartesian2(event.clientX-rect.left,event.clientY-rect.top);
+  const width=event.pointerType==="touch"?42:28;
+  pickAt(position,{width,height:width});
+ }
  function start(){
   if(started)return;started=true;
   checkbox?.addEventListener("change",e=>setVisible(e.target.checked));
   select?.addEventListener("change",e=>setPeriod(e.target.value));
   $("refreshSignificantRainfallButton")?.addEventListener("click",()=>refresh(true).catch(()=>{}));
   $("closeSignificantRainfallInfo")?.addEventListener("click",hideInfo);
-  canvas.addEventListener("pointerdown",pointerDown,{passive:true});
-  canvas.addEventListener("pointerup",pointerUp,{passive:true});
+  // Cesium map gestures may retarget pointerup away from the canvas.
+  // Capture at window level like the proven flood-gauge layer, but only
+  // process taps that began within the actual map (never sidebar UI).
+  window.addEventListener("pointerdown",pointerDown,{capture:true,passive:true});
+  window.addEventListener("pointermove",pointerMove,{capture:true,passive:true});
+  window.addEventListener("pointerup",pointerUp,{capture:true,passive:true});
+  window.addEventListener("pointercancel",clearTap,{capture:true,passive:true});
   timer=setInterval(()=>{
    if(!document.hidden&&collection.show)refresh().catch(()=>{});
   },refreshMs);
@@ -171,8 +215,10 @@ export function initialiseOperationalSignificantRainfall({
  }
  function stop(){
   if(timer!==null)clearInterval(timer);timer=null;
-  canvas.removeEventListener("pointerdown",pointerDown);
-  canvas.removeEventListener("pointerup",pointerUp);
+  window.removeEventListener("pointerdown",pointerDown,true);
+  window.removeEventListener("pointermove",pointerMove,true);
+  window.removeEventListener("pointerup",pointerUp,true);
+  window.removeEventListener("pointercancel",clearTap,true);
  }
  window.addEventListener("pagehide",stop,{once:true});
  start();

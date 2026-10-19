@@ -69,7 +69,7 @@ function sourceGeometry(control){
 }
 const xm=lon=>MERC*lon*RAD,ym=lat=>MERC*Math.log(Math.tan(Math.PI/4+lat*RAD/2));
 function ll(x,y){return {lon:x/MERC/RAD,lat:(2*Math.atan(Math.exp(y/MERC))-Math.PI/2)/RAD}}
-function rgbaCategories(image){
+function rgbaCategories(image,label="source"){
  if(image.width!==512||image.height!==512)throw Error("Incorrect FTP native 512px image");
  const cat=new Uint8Array(512*512),data=image.data;
  let opaque=0,valid=0;
@@ -78,7 +78,7 @@ function rgbaCategories(image){
    const category=COLOURS.get(data[i]+","+data[i+1]+","+data[i+2]);
    if(category){cat[y*512+x]=category;valid++}
  }
- if(opaque&&valid/opaque<0.55)throw Error("Incompatible FTP dBZ image palette: "+valid+"/"+opaque+" valid ("+(100*valid/opaque).toFixed(1)+"%)");
+ if(opaque&&valid/opaque<0.55)throw Error("Incompatible FTP dBZ image palette for "+label+": "+valid+"/"+opaque+" valid ("+(100*valid/opaque).toFixed(1)+"%)");
  return cat;
 }
 export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
@@ -92,7 +92,7 @@ export async function loadFtpReflectivityMosaicAtTime(observedUtc,region="SEQ"){
      throw Error("Unverified FTP source filename");
    const geo=sourceGeometry(manifest.siteGeoreference[id]);
    const image=await fetchReadableImage(FRAME_RELAY+"?file="+encodeURIComponent(record.filename));
-   return {id,record,geo,categories:rgbaCategories(image)};
+   return {id,record,geo,categories:rgbaCategories(image,record.filename)};
  }));
  const minX=Math.min(...inputs.map(i=>xm(i.geo.west))),maxX=Math.max(...inputs.map(i=>xm(i.geo.east)));
  const minY=Math.min(...inputs.map(i=>ym(i.geo.south))),maxY=Math.max(...inputs.map(i=>ym(i.geo.north)));

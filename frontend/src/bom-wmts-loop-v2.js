@@ -9,7 +9,7 @@ import { fetchReadableImage } from "./radar-source.js?v=diagnostics-v1";
 import { loadCompleteRadarTiles } from "./radar-tile-retry-v1.js?v=9.16-radar-recovery";
 import {publishedReflectivityTimes} from "./bom-wmts-published-times-v1.js?v=20261018-source-times-v1";
 
-const BOM_WMTS_BASE = "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/wmts";
+const BOM_WMTS_BASE = "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
 const REFLECTIVITY_LAYER = "atm_surf_air_precip_reflectivity_dbz";
 const TILE_MATRIX_SET = "GoogleMapsCompatible_BoM";
 const ZOOM = 8;

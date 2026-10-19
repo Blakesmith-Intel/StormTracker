@@ -44,13 +44,14 @@ assert html.count(old)==1
 html=html.replace(old,'<span class="significant-orange">●</span> 5% · <span class="significant-red">●</span> 2% · green 20% · yellow 10% · purple 1% AEP')
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
-html=html.replace(needle,needle+"ftp-static-ifd-aep-20261019-")
+html=html.replace(needle,needle+"ftp-live-direct-ifd-aep-20261019-")
 page.write_text(html)
 entry=site/"index.html"
 html=entry.read_text()
 needle="live3d-operational-v9.html?v="
 assert html.count(needle)==1
-entry.write_text(html.replace(needle,needle+"ftp-static-ifd-aep-20261019-"))
+entry.write_text(html.replace(needle,needle+"ftp-live-direct-ifd-aep-20261019-"))
 with (site/"BUILD.txt").open("a") as f:
  f.write("RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP\n")
+ f.write("LIVE DIRECT BOM FTP TCP RADAR FALLBACK INDEPENDENT OF GITHUB CRON 2026-10-19\n")
 print("FTP_AEP_V10_RELEASE_PACKAGED",len(list(site.rglob("*.js"))))

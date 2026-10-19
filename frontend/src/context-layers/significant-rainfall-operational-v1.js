@@ -36,7 +36,8 @@ export function significantRainfallDisplay(record){
 }
 const marker=record=>{
  const {amountColor,rarity}=significantRainfallDisplay(record);
- const mm=String(Math.round(record.mm));
+ // Do not round 99.9 mm into an apparent 100 mm red threshold.
+ const mm=Number(record.mm.toFixed(1)).toString();
  const size=mm.length>3?9:mm.length>2?12:14;
  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 54">'+
  '<path d="M24 2C14 15 7 23 7 33a17 17 0 0 0 34 0C41 23 34 15 24 2Z" '+

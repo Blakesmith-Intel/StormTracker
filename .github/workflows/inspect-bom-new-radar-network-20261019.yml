@@ -1,0 +1,15 @@
+name: Inspect new BoM radar live network
+on:
+  push:
+    branches: [diagnostics/bom-webgl-20261019]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --no-save --ignore-scripts playwright@1.58.2
+      - run: npx playwright install chromium
+      - run: node scripts/inspect-bom-new-radar-network-20261019.mjs

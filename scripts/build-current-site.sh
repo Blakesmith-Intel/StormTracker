@@ -70,7 +70,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -226,6 +226,10 @@ assert "createDopplerFrameFailureCooldown" in (
     site / "src/bom-doppler-intake-v3.js").read_text()
 assert "committedUtc=utc" in (
     site / "src/multi-doppler-display-v1.js").read_text()
+assert "SECONDARY_WIND_PROVIDER_CACHE_SIZE=8" in (
+    site / "src/multi-doppler-display-v1.js").read_text()
+assert "stillMatches(s,frame)" in (
+    site / "src/multi-doppler-display-v1.js").read_text()
 assert "holdIsValid(s,utc)" in (
     site / "src/multi-doppler-display-v1.js").read_text()
 assert "NATIVE_DOPPLER_ANNOTATION_START_ROW = 480" in (
@@ -282,6 +286,7 @@ with (site / "BUILD.txt").open("a", encoding="utf-8") as record:
     record.write("DOPPLER FULL 128KM SOUTH FULL-PANEL PALETTE SCREENING + RURAL LABEL DEDUP 2026-10-19\n")
     record.write("RICHMOND REAL PIXEL PALETTE TOLERANCE ALL ROWS NO ROW 438 EXCLUSION 2026-10-19\n")
     record.write("RICHMOND DOPPLER CACHE VERSION V3 2026-10-19\n")
+    record.write("DOPPLER MULTISITE SOURCE-STABLE STAGING EIGHT-FRAME LOOP CACHE 2026-10-19\n")
     record.write("WMTS ALL RADARS SOURCE-PUBLISHED TIME DIMENSION 2026-10-18 (no speculative timestamp probes)\n")
     record.write("WALKERSTON 533142 MINOR 2.75M STALE FLOOD CLASS PERSISTENCE 2026-10-18\n")
     record.write("ALL RADARS WMTS STALE TIME 400 ONE-TILE PREFLIGHT + IDR74 PNG SOURCE COOLDOWN 2026-10-18\n")
@@ -543,6 +548,8 @@ grep -Fq 'function commit(utc)' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'SECONDARY_WIND_FRAME_SYNC_WAIT_MS=350' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'committedUtc=utc' "_site/src/multi-doppler-display-v1.js"
 grep -Fq 'holdIsValid(s,utc)' "_site/src/multi-doppler-display-v1.js"
+grep -Fq 'SECONDARY_WIND_PROVIDER_CACHE_SIZE=8' "_site/src/multi-doppler-display-v1.js"
+grep -Fq 'wind-stability-20261019-v4' "_site/src/live3d-operational-v9.js"
 grep -Fq 'NATIVE_DOPPLER_ANNOTATION_START_ROW = 480' "_site/src/native-doppler-image-v1.js"
 ! grep -Fq 'NATIVE_DOPPLER_STRICT_PALETTE_START_ROW' "_site/src/native-doppler-image-v1.js"
 grep -Fq 'richmond-real-palette-20261019-v3' "_site/index.html"

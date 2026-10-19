@@ -35,6 +35,6 @@ const fetched=await publishedFtpManifest({now,fetcher:async endpoint=>{
     sourceKind:"ftp-original-png-byte-identical-static-archive"})};
 }});
 assert.equal(fetched.sourceKind,"ftp-original-png-byte-identical-static-archive");
-assert.deepEqual(requests,["https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json"],
- "Verified original BoM FTP archive must load without delayed Cloudflare FTP probe");
+assert.equal(requests.length,1);
+assert(requests[0].startsWith("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/manifest.json?refresh="));
 console.log("DIRECT_LIVE_FTP_PARSER_AND_BROWSER_CONTRACT_PASS",Object.keys(data));

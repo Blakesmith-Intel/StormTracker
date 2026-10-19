@@ -1,0 +1,17 @@
+name: Probe BoM native Australian high-resolution radar tiles
+on:
+  push:
+    branches: [qa/bom-native-aus-wmts-20261019]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Probe actual official national reflectivity via native Australian matrix
+        run: node scripts/probe-native-australian-bom-wmts-v1.mjs

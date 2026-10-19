@@ -71,7 +71,8 @@ assert.equal(layer.features[0].id,gauge.id);
 assert.equal(upstreamHistoryCalls,1);
 assert.equal(layer.recentHistoryRequestCount,1);
 assert.ok(status.some(item=>item.historyLoaded===1));
-assert.equal(dataSources[0].entities.values.length,1);
+assert.equal(dataSources.flatMap(source=>source.entities.values).length,1,
+ "Exactly one flood marker is rendered across the severity strata");
 await layer.refresh({force:true});
 assert.equal(upstreamHistoryCalls,1,"Do not refetch recent station tables during routine bulletin refresh");
 console.log("BoM historical cold-start integration passed: first real bulletin identifies candidate, bounded existing-relay request supplies 60-min evidence, map rapidly shows only qualifying signal without waiting 15-minute polls.");

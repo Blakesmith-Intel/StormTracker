@@ -3,9 +3,13 @@ import {reconcileFloodEvents,FLOOD_EVENTS_STORAGE_KEY,cleanFloodEvents}
  from "../src/context-layers/river-flood-events-v1.js";
 const MIN=60000,now=Date.UTC(2026,9,8,8,30);
 const datum=(level="minor",trend="steady",at="6:15 pm Thu 08/10/2026")=>({
+ // Mirani Township 533178 official BoM thresholds: minor 2.0m,
+ // moderate 14.8m, major 15.8m. Do not ask one fake height to be all three.
+
  id:"bom:533178",type:"Feature",geometry:{type:"Point",coordinates:[148.9,-21.2]},
  properties:{STORMTRACKER_OBSERVED_TEXT:at,
-   STORMTRACKER_HEIGHT_METRES:2.1,
+   STORMTRACKER_HEIGHT_METRES:level==="moderate"?14.8:
+     level==="major"?15.8:level==="below-minor"?0.3:2.1,
    STORMTRACKER_FLOOD_CLASS:level,STORMTRACKER_TENDENCY:trend,
    forecast_site_classification:"information",location_types:"water level gauge;"}
 });
@@ -44,4 +48,4 @@ assert.equal(reconcileFloodEvents([datum("minor","steady",
 assert.deepEqual(result.events,{});
 assert.match(FLOOD_EVENTS_STORAGE_KEY,/flood/);
 assert.deepEqual(cleanFloodEvents({"bogus":{type:"rapid-rise"}},now),{});
-console.log("PASS Mirani Township 533178: BoM flood severity persists after refresh, rapid arrow only while measured, below minor removed.");
+console.log("PASS Mirani Township 533178 authentic 2.0/14.8/15.8m classifications, measured rise modifier and below-minor recovery.");

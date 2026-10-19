@@ -13,7 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: "24"}
       - name: Audit official current Energex geometry and filtering
-        run: node scripts/diagnose-live-energex-wynnum-20261019.mjs
+        run: |
+          node scripts/diagnose-live-energex-wynnum-20261019.mjs
+          node scripts/diagnose-live-road-closure-geometry-v1.mjs
       - name: Verify affected JS modules and frontend regression tests
         run: |
           node --check frontend/src/context-layers/power-outages-v1.js

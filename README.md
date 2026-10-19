@@ -1,5 +1,8 @@
 # StormTracker — V10.2.0 cyclone-interface production release
 
+> **Current operator and developer documentation (20 October 2026):** [Plain-English operator guide](docs/OPERATOR_GUIDE_CURRENT.md) · [Complete development and operational handover](docs/DEVELOPMENT_HANDOVER_CURRENT.md). These supersede the older numbered user/handover guides for the **current composite production** (sealed V10.2.0 source plus accepted maintenance overlays). Older release notes and pins remain valid historical references.
+
+
 StormTracker is a **browser-only Queensland and southern NSW border BoM radar situational-awareness viewer**. It is **not** an official warning service or an emergency decision-making tool. Original source radar reflectivity is in **dBZ**, native Doppler is radial velocity, and vertical 3-D structures and storm cones are explicitly **empirical/inferred**, not measured 3-D weather radar.
 
 ## Current stable app

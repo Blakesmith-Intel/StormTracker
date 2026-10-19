@@ -1,5 +1,8 @@
 # StormTracker — V10.2.0 cyclone UI baseline (17 October 2026)
 
+> **Current composite production handover — 20 October 2026:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md) and [OPERATOR_GUIDE_CURRENT.md](OPERATOR_GUIDE_CURRENT.md). This existing document records the **immutable V10.2.0 source pin**, not all subsequently accepted maintenance overlays. For the latest shipped rainfall, radar-source and layer fixes, follow the current handover while preserving the original sealed pin and recovery references.
+
+
 **Accepted and sealed production:** `047b3bd1c66b0ed5f070d2298202f46d0cd8dae2` · verified annotated tag [`v10.2.0`](https://github.com/Blakesmith-Intel/StormTracker/releases/tag/v10.2.0) and recovery branch [`restore/v10.2.0`](https://github.com/Blakesmith-Intel/StormTracker/tree/restore/v10.2.0). Both were verified after successful GitHub Pages production deployment in [run 39012793972](https://github.com/Blakesmith-Intel/StormTracker/actions/runs/39012793972). The previous independently sealed V10.1.1 remains an immutable emergency recovery point.
 
 **Production:** https://blakesmith-intel.github.io/StormTracker/

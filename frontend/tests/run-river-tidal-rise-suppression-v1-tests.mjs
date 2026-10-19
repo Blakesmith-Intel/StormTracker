@@ -86,7 +86,9 @@ assert.equal(active.rapidRise,true);
 const oldWave=tidalHistory.slice(0,47);
 assert.equal(observedTidalOscillation(oldWave,now),true);
 const stableFlood={...river,properties:{...river.properties,
-  STORMTRACKER_TENDENCY:"falling",STORMTRACKER_FLOOD_CLASS:"minor"}};
+  STORMTRACKER_TENDENCY:"falling",STORMTRACKER_FLOOD_CLASS:"minor",
+  STORMTRACKER_HEIGHT_METRES:2.1}};
+
 const slow=evaluateFloodSignal(stableFlood,mixed,now);
 assert.equal(slow.state,"minor");
 assert.equal(slow.rapidRise,false);

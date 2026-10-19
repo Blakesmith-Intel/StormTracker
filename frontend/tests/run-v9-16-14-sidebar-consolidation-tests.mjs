@@ -42,10 +42,11 @@ assert.match(html,/id="radarOpacity"/);
 // Full native range: real south-edge swatches remain opaque; embedded caption
 // is removed using palette matching rather than an entire-row crop.
 assert.match(native,/NATIVE_DOPPLER_ANNOTATION_START_ROW = 480/);
-assert.match(native,/NATIVE_DOPPLER_STRICT_PALETTE_START_ROW = 438/);
+assert.doesNotMatch(native,/NATIVE_DOPPLER_STRICT_PALETTE_START_ROW/,
+  "No row-specific Doppler colour restriction anywhere in the 128 km panel");
 assert.doesNotMatch(native,/NATIVE_DOPPLER_ANNOTATION_FADE_START_ROW/);
 assert.doesNotMatch(native,/if\(maskAnnotationRows && isNativeDopplerDisplayAnnotationRow\(row\)\)continue/);
-assert.match(native,/row >= NATIVE_DOPPLER_STRICT_PALETTE_START_ROW/);
+assert.doesNotMatch(native,/row >= NATIVE_DOPPLER_STRICT_PALETTE_START_ROW/);
 assert.match(native,/data\[to \+ 3\] = alpha;/);
 assert.match(runtime,/native-doppler-image-v1\.js\?v=9\.16\.14-hard-footer/);
 

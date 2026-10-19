@@ -30,9 +30,11 @@ const htmlFor =
 `;
 
 const calls = [];
+const upstreamOptions=[];
 
 globalThis.fetch =
-  async url => {
+  async (url,options={}) => {
+    upstreamOptions.push(options);
     const target =
       String(url);
 
@@ -205,6 +207,7 @@ try {
     ""
   );
   const beforeForce=calls.length;
+  const optionsBefore=upstreamOptions.length;
   const force=await worker.fetch(new Request(
     "https://relay.invalid/river-height-bulletins?force=1&_ts=1234"),{});
   assert.equal(force.status,200);
@@ -212,6 +215,10 @@ try {
     "Operator-requested snapshot must never be held by intermediate caches");
   assert.equal(calls.length-beforeForce,13,
     "Force refresh must fetch all 12 regional products (including fallback)");
+  assert.equal(upstreamOptions.length-optionsBefore,13);
+  assert.ok(upstreamOptions.slice(optionsBefore).every(
+    options=>options.cf?.cacheEverything===false && options.cf?.cacheTtl===0),
+    "Every forced regional fetch bypasses Cloudflare's previous 5-minute cache");
 
 } finally {
   globalThis.fetch =

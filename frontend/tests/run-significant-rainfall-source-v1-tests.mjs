@@ -46,4 +46,11 @@ assert.equal(qualifiesRainfallSnapshot(observed,"since9am",now+100*60000),false)
 assert.equal(qualifiesRainfallSnapshot(observed,"since9am",Date.parse("2026-10-19T00:00:00Z")),false);
 assert.equal(qualifiesRainfallSnapshot({...hour[0],sourceCreatedAt:issued},"lastHour",now),true);
 assert.equal(qualifiesRainfallSnapshot({...hour[0],sourceCreatedAt:issued},"since9am",now),false);
+// Source still supports the old threshold tests, but AEP must also examine
+// true measurements below 50 mm rather than incorrectly discarding them.
+const allSince=parseBomRainfallMap(html,"since9am","seast",{minimumMm:1});
+assert(allSince.some(row=>row.id==="040204"&&row.mm===49.9));
+assert(!allSince.some(row=>row.mm===0));
+const allDedupe=dedupeSignificantRainfall(allSince,"since9am",{minimumMm:1});
+assert(allDedupe.some(row=>row.id==="040204"&&row.mm===49.9));
 console.log("PASS BoM station ID and coordinates, period-specific 50/100mm thresholds, dedupe and stale AEST 9am period handling.");

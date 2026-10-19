@@ -41,8 +41,11 @@ for(const [id,t] of Object.entries(BOM_2026_CLASSIFICATIONS)){
    ...(levels.moderate===null?[]:[[levels.moderate,"moderate"]]),
    ...(levels.major===null?[]:[[levels.major,"major"]])
  ];
- for(const [height,stage] of tests)
-  assert.equal(observedFloodClass(height,levels),stage,id+" at "+height);
+ for(const [height] of tests){
+  const strongest=levels.major!==null&&height>=levels.major?"major":
+    levels.moderate!==null&&height>=levels.moderate?"moderate":"minor";
+  assert.equal(observedFloodClass(height,levels),strongest,id+" at "+height);
+ }
 }
 assert.deepEqual(cleanFloodLevels({minor:null,moderate:1.1,major:1.2}),
  {minor:null,moderate:1.1,major:1.2});

@@ -1065,6 +1065,7 @@ async function relayRiverRecentHistory(request,incoming,origin){
 
 // One additional read-only route on the existing relay. The source publishes
 // station ID/coordinates and BOTH rainfall periods in original map tooltips.
+// Preserve dry-site coordinates for preregistering official local rainfall IFDs.
 async function relayQldSignificantRainfall(request,origin){
   const samples=[],failures=[],regional=[];
   // Max three simultaneous 1-MB-ish regional HTML pages. On partial BoM

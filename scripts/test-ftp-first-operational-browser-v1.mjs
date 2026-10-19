@@ -1,14 +1,22 @@
 import {chromium} from "playwright";
 const browser=await chromium.launch({headless:true,args:["--use-gl=angle","--use-angle=swiftshader"]});
 const page=await browser.newPage();
+await page.route("https://blakesmith-intel.github.io/StormTracker/**",async route=>{
+ const u=new URL(route.request().url());
+ const local="http://127.0.0.1:8137"+u.pathname.replace("/StormTracker","")+u.search;
+ try { const upstream=await fetch(local);
+   await route.fulfill({status:upstream.status,body:Buffer.from(await upstream.arrayBuffer()),
+     contentType:upstream.headers.get("content-type")||"application/octet-stream"});
+ } catch(e) { await route.abort("failed"); }
+});
 const errors=[];
 page.on("pageerror",e=>errors.push(String(e)));
 page.on("console",m=>{if(m.type()==="error")errors.push(m.text())});
 try{
- await page.goto("http://127.0.0.1:8137/ftp-smoke.html",{waitUntil:"domcontentloaded",timeout:20000});
+ await page.goto("https://blakesmith-intel.github.io/StormTracker/ftp-smoke.html",{waitUntil:"domcontentloaded",timeout:20000});
  const output=await page.evaluate(async()=>{
   globalThis.__STORMTRACKER_FTP_FIRST=true;
-  const api=await import("/src/bom-wmts-loop-v2.js");
+  const api=await import("/StormTracker/src/bom-wmts-loop-v2.js");
   const history=await api.discoverBomReflectivityHistory(Date.now(),45,"SEQ");
   if(history.length<1)throw Error("No verified FTP SEQ history");
   const latest=history.at(-1);

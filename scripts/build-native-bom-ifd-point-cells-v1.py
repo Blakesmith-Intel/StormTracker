@@ -76,11 +76,17 @@ def build(stations,existing,max_new=80,workers=4):
   if not isinstance(lat,(int,float)) or not isinstance(lon,(int,float)):continue
   if not -30.0<lat<-9.0 or not 137.0<lon<155.0:continue
   cell=key(lat,lon)
-  if cell not in cells:candidates[cell]=(lat,lon)
- candidates=list(candidates.items())[:max_new]
+  if cell not in cells:
+   amount=obs.get("mm",0)
+   amount=float(amount) if isinstance(amount,(int,float)) else 0.0
+   if cell not in candidates or amount>candidates[cell][2]:
+    candidates[cell]=(lat,lon,amount)
+ # Prioritise gauges actually receiving the most rain, rather than all dry
+ # stations first. Do not request hundreds of pages against a rate-limited API.
+ candidates=sorted(candidates.items(),key=lambda kv:-kv[1][2])[:max_new]
  failed=[]
  def work(item):
-  k,(lat,lon)=item
+  k,(lat,lon,amount)=item
   try:
    url,table,baseline=fetch_point(lat,lon)
    return k,{"latitude":ifd_cell(lat),"longitude":ifd_cell(lon),

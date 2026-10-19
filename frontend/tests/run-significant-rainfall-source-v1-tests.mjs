@@ -12,6 +12,9 @@ const html='<html><img class="mapimage" src="/fwo/IDQ65149.png" id = "since" '+
  a("540523","Rockside Mt","99.9")+a("040203","A &amp; B","100.0")+
  a("040204","Below","49.9")+a("040205","Missing","-")+
  a("040206","Zero","0.0")+'</map>'+
+ '<img class="mapimage" id="m24hr" usemap="#IDQ65351.html"/>'+
+ '<map name="IDQ65351.html">'+a("040908","Tewantin RSL Park","180.7")+
+ a("540523","Rockside Mt","49.9")+'</map>'+
  '<map name="IDQ65350.html">'+a("040908","Tewantin RSL Park","100.3")+
  a("540523","Rockside Mt","49.9")+'</map>'+
  '<p>This page was created at 07:06 on Sunday 18 October 2026 (UTC)</p></html>';
@@ -22,11 +25,14 @@ assert.equal(rainfallBand(100),"red");
 assert.equal(rainfallBand(-1),null);
 const since=parseBomRainfallMap(html,"since9am","seast");
 const hour=parseBomRainfallMap(html,"lastHour","seast");
+const fullDay=parseBomRainfallMap(html,"last24Hours","seast");
 assert.deepEqual(since.map(x=>[x.id,x.name,x.mm,x.band]),[
  ["040908","Tewantin RSL Park",50,"orange"],
  ["540523","Rockside Mt",99.9,"orange"],
  ["040203","A & B",100,"red"]]);
 assert.deepEqual(hour.map(x=>[x.id,x.mm]),[["040908",100.3]]);
+assert.deepEqual(fullDay.map(x=>[x.id,x.mm]),[["040908",180.7]]);
+assert.equal(fullDay[0].period,"last24Hours");
 const issued=qldFloodMapCreatedAt(html);
 assert.equal(issued,"2026-10-18T07:06:00.000Z");
 assert.equal(qldFloodMapCreatedAt(html.replace(
@@ -45,5 +51,8 @@ assert.equal(qualifiesRainfallSnapshot(observed,"since9am",now),true);
 assert.equal(qualifiesRainfallSnapshot(observed,"since9am",now+100*60000),false);
 assert.equal(qualifiesRainfallSnapshot(observed,"since9am",Date.parse("2026-10-19T00:00:00Z")),false);
 assert.equal(qualifiesRainfallSnapshot({...hour[0],sourceCreatedAt:issued},"lastHour",now),true);
+assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"last24Hours",now),true);
+assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"last24Hours",now+100*60000),false);
+assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"since9am",now),false);
 assert.equal(qualifiesRainfallSnapshot({...hour[0],sourceCreatedAt:issued},"since9am",now),false);
-console.log("PASS BoM station ID and coordinates, period-specific 50/100mm thresholds, dedupe and stale AEST 9am period handling.");
+console.log("PASS BoM separate 1hr, since9am and 24hr original station maps, threshold and freshness controls.");

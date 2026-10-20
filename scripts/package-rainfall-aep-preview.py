@@ -23,9 +23,25 @@ for item in site.iterdir():
     if item.is_dir(): copytree(item,destination)
     elif item.is_file(): copy2(item,destination)
 copy2(source,target/"src/context-layers/significant-rainfall-operational-v1.js")
+basin_module=Path("checked/aep-rainfall-preview/frontend/src/context-layers/rainfall-catchment-v1.js")
+assert basin_module.is_file()
+copy2(basin_module,target/"src/context-layers/rainfall-catchment-v1.js")
+runtime=target/"src/live3d-operational-v9.js"
+runtime_js=runtime.read_text()
+needle="significant-rainfall-operational-v1.js?v="
+assert runtime_js.count(needle)==1
+runtime.write_text(runtime_js.replace(needle,needle+"station-basin-20261020-",1))
+entry=target/"index.html"
+entry_html=entry.read_text()
+needle="live3d-operational-v9.html?v="
+assert entry_html.count(needle)==1
+entry.write_text(entry_html.replace(needle,needle+"station-basin-20261020-",1))
 page=target/"live3d-operational-v9.html"
 html=page.read_text()
 html=html.replace("<title>", "<title>Rainfall AEP Test — ",1)
+needle="src/live3d-operational-v9.js?v="
+assert html.count(needle)==1
+html=html.replace(needle,needle+"station-basin-20261020-",1)
 assert "Rainfall AEP Test" in html
 page.write_text(html)
 (target/"BUILD.txt").write_text(
@@ -35,4 +51,5 @@ page.write_text(html)
 assert (target/"src/context-layers/rainfall-ifd-aep-v1.js").is_file()
 assert (target/"src/context-layers/severity-marker-layer-v1.js").is_file()
 assert (target/"index.html").is_file()
+assert (target/"src/context-layers/rainfall-catchment-v1.js").is_file()
 print("AEP_PREVIEW_PACKAGED",target)

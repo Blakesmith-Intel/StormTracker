@@ -36,3 +36,15 @@ jobs:
           curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/significant-rainfall-operational-v1.js" | grep -F 'queueIfdLookups'
           curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/live3d-operational-v9.html" | grep -F 'showSignificantRainfall'
           curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/index.html" > /dev/null
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/rainfall-catchment-v1.js" | grep -F 'catchmentForStation'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/significant-rainfall-operational-v1.js" | grep -F '"Catchment"'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/data/qld-rainfall-basins-v1.json" > /tmp/qld-basins.json
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          const j=JSON.parse(readFileSync('/tmp/qld-basins.json','utf8'));
+          if(j.schema!=='StormTrackerBoMQldRainfallBasinsV1'||Object.keys(j.stations||{}).length<500||
+             j.stations['543013']?.basin!=='Condamine–Balonne')
+            throw new Error('Published official BoM catchment registry invalid or Kingull missing');
+          console.log('PUBLISHED_BO_M_CATCHMENTS',Object.keys(j.stations).length,
+            'Kingull',j.stations['543013'].basin);
+          JS

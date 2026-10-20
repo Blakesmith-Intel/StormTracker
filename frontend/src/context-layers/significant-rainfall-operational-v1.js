@@ -243,9 +243,12 @@ export function initialiseOperationalSignificantRainfall({
        const grid=await response.json();
        if(grid?.schema!=="StormTrackerBoM2016IFDCellsV1"||!grid.cells||!grid.source?.includes("BoM IFD"))
          throw Error("Invalid verified IFD grid dataset");
-       ifdGrid=grid;
+       if(!ifdGrid)ifdGrid=grid;
+       else Object.assign(ifdGrid.cells,grid.cells);
      }catch(error){
-       console.warn("Verified rainfall IFD station coverage unavailable; leaving sites unrated",error);
+       console.warn("Published IFD catalogue unavailable; using on-demand official lookup",error);
+       if(!ifdGrid)ifdGrid={schema:"StormTrackerBoM2016IFDCellsV1",
+         source:"Official BoM IFD on-demand references",cells:{}};
      }
    }
    render();

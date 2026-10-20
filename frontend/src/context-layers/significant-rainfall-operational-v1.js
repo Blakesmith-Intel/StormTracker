@@ -1,6 +1,6 @@
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
 import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261020-final-severity-order";
-import {classifyRainfallAep} from "./rainfall-ifd-aep-v1.js";
+import {classifyRainfallAep,ifdCellKey} from "./rainfall-ifd-aep-v1.js";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
 export const SIGNIFICANT_RAINFALL_REFRESH_MS=300000;
 const $=id=>document.getElementById(id);
@@ -14,6 +14,7 @@ export function rainfallRarityDisplay(aep){
   2:["Very rare","#ad3540","Very rare for this area","2%","1 in 50"],
   1:["Exceptional","#7e399c","Exceptionally rare for this area","1%","1 in 100"]
  };
+ if(aep?.pending)return {short:"Checking",color:"#66717b",description:"Calculating local rarity",explanation:"Retrieving the official local BoM rainfall-frequency reference."};
  const entry=levels[aep?.aepDesignThreshold];
  if(entry){
   const [short,color,description,chance,oneIn]=entry;
@@ -77,6 +78,48 @@ export function initialiseOperationalSignificantRainfall({
  let lastLoadedAt=0,lastError=null,waiting=null,timer=null,selectedId="";
  let source=null,visibleRows=[],period="since9am",started=false;
  let ifdGrid=null,ifdLoadedAt=0;
+ const pendingCells=new Set(),attempts=new Map(),queue=[];
+ let running=0;
+ function queueIfdLookups(){
+  if(!collection.show||!ifdGrid)return;
+  const records=source?.observations?.[period]??[];
+  for(const rec of records){
+   if(!qualifiesAepRainfallSnapshot(rec,period,now())||rec.mm<50||
+     !Number.isFinite(rec.latitude)||!Number.isFinite(rec.longitude))continue;
+   const cell=ifdCellKey(rec.latitude,rec.longitude);
+   if(ifdGrid.cells[cell]||pendingCells.has(cell)||
+     now()<(attempts.get(cell)??0))continue;
+   pendingCells.add(cell);queue.push({cell,latitude:rec.latitude,longitude:rec.longitude});
+  }
+  drainIfdQueue();
+ }
+ function drainIfdQueue(){
+  while(running<3&&queue.length){
+   const item=queue.shift();running++;
+   (async()=>{
+    try{
+     const url="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-ifd-point?"+
+       new URLSearchParams({lat:String(item.latitude),lon:String(item.longitude)});
+     const response=await fetchImpl(url,{cache:"no-store",signal:AbortSignal.timeout(22000)});
+     if(!response.ok)throw Error("IFD HTTP "+response.status);
+     const point=await response.json();
+     if(point?.schema!=="StormTrackerBoM2016IFDPointV1"||point.cell!==item.cell||
+       !point.depthsMmByMinutes?.["60"]||!point.depthsMmByMinutes?.["1440"])
+       throw Error("Invalid IFD source response");
+     ifdGrid.cells[item.cell]={depthsMmByMinutes:point.depthsMmByMinutes,
+       verifiedUtc:point.verifiedUtc,sourceBaseline:point.source};
+     attempts.delete(item.cell);
+    }catch(error){
+     console.warn("Official IFD point retry scheduled",item.cell,error);
+     attempts.set(item.cell,now()+5*60000);
+    }finally{
+     pendingCells.delete(item.cell);running--;
+     if(collection.show){render();queueIfdLookups();}
+     drainIfdQueue();
+    }
+   })();
+  }
+ }
  const say=(text,kind="normal")=>{
   if(!status)return;status.textContent=text;status.dataset.kind=kind;
  };
@@ -134,6 +177,9 @@ export function initialiseOperationalSignificantRainfall({
    qualifiesAepRainfallSnapshot(record,period,now())&&
    rainfallBand(record.mm)!==null).map(record=>{
     const aep=classifyRainfallAep({...record,grid:ifdGrid});
+    if(aep.reason==="Authoritative IFD grid cell unavailable"&&
+       (pendingCells.has(aep.ifdCell)||!attempts.has(aep.ifdCell)))
+      aep.pending=true;
     return {...record,aep,band:rainfallBand(record.mm)};
    }).sort((a,b)=>rainfallIconPriority(a.aep)-rainfallIconPriority(b.aep)||
      a.mm-b.mm||String(a.id).localeCompare(String(b.id)));
@@ -154,6 +200,7 @@ export function initialiseOperationalSignificantRainfall({
    entity.stormTrackerRainGaugeId=record.id;
   }
   severityLayers.finish();
+  queueIfdLookups();
   viewer.scene.requestRender();
   if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
   const failed=source?.failed?.length??0;

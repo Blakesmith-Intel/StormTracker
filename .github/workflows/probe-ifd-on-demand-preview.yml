@@ -28,3 +28,11 @@ jobs:
             throw Error('Official Kingull calibration failed validation');
           console.log('IFD_KINGULL_VERIFIED',data.cell);
           JS
+      - name: Confirm deployed interactive rainfall preview and source module
+        run: |
+          set -euo pipefail
+          base='https://blakesmith-intel.github.io/StormTracker/preview/rainfall-aep'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/BUILD.txt" | grep -F 'ISOLATED INTERACTIVE RAINFALL AEP TEST'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/significant-rainfall-operational-v1.js" | grep -F 'queueIfdLookups'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/live3d-operational-v9.html" | grep -F 'showSignificantRainfall'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/index.html" > /dev/null

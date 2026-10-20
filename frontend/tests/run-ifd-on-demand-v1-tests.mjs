@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {parseOfficialIfdPoint,officialIfdCell} from "../relay/ifd-on-demand.js";
+import {parseOfficialIfdPoint,officialIfdCell} from "../../relay/ifd-on-demand.js";
 const durations=[["1 hour",60],["1.5 hours",90],["2 hours",120],["3 hours",180],["4.5 hours",270],["6 hours",360],["9 hours",540],["12 hours",720],["18 hours",1080],["24 hours",1440]];
 let html='<h2>IFD Design Rainfall Depth (mm)</h2><p>Annual Exceedance Probability</p><table><tr><th>Duration</th>'+
  ["63.2%","50%","20%","10%","5%","2%","1%"].map(x=>'<th>'+x+'</th>').join("")+'</tr>';

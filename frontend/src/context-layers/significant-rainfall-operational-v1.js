@@ -1,6 +1,7 @@
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
 import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261020-final-severity-order";
 import {classifyRainfallAep,ifdCellKey} from "./rainfall-ifd-aep-v1.js";
+import {catchmentForStation,RAINFALL_BASIN_REGISTRY_URL} from "./rainfall-catchment-v1.js";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
 export const SIGNIFICANT_RAINFALL_REFRESH_MS=300000;
 const $=id=>document.getElementById(id);
@@ -78,6 +79,26 @@ export function initialiseOperationalSignificantRainfall({
  let lastLoadedAt=0,lastError=null,waiting=null,timer=null,selectedId="";
  let source=null,visibleRows=[],period="since9am",started=false;
  let ifdGrid=null,ifdLoadedAt=0;
+ let basinRegistry=null,basinLoading=null;
+ function loadCatchments(){
+  if(basinRegistry||basinLoading)return basinLoading??Promise.resolve();
+  basinLoading=(async()=>{
+   try{
+    const response=await fetchImpl(RAINFALL_BASIN_REGISTRY_URL,{cache:"no-store",
+      signal:AbortSignal.timeout(15000)});
+    if(!response.ok)throw Error("BoM basin register HTTP "+response.status);
+    const registry=await response.json();
+    if(registry?.schema!=="StormTrackerBoMQldRainfallBasinsV1"||
+       !registry.stations||!registry.source?.includes("bom.gov.au/qld/flood/networks/section1.shtml"))
+      throw Error("Unverified BoM station basin register");
+    basinRegistry=registry;
+    if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
+   }catch(error){
+    console.warn("Official BoM rainfall basin list unavailable",error);
+   }finally{basinLoading=null}
+  })();
+  return basinLoading;
+ }
  const pendingCells=new Set(),attempts=new Map(),queue=[];
  let running=0;
  function queueIfdLookups(){
@@ -157,7 +178,9 @@ export function initialiseOperationalSignificantRainfall({
   detailRow(rows,"Interpretation","An annual chance is not a fixed repeat interval, and rainfall rarity is NOT flood severity.");
   detailRow(rows,"BoM station number",record.id);
   detailRow(rows,"Source map issued",formatted(record.sourceCreatedAt));
-  detailRow(rows,"BoM source map",record.region+" (publication feed, not catchment)");
+  const catchment=catchmentForStation(record,basinRegistry);
+  detailRow(rows,"Catchment",catchment?catchment+" (BoM river basin)":
+    basinRegistry?"Unavailable in BoM station register":"Checking BoM basin register…");
   detailRow(rows,"Caution","BoM automatic observations; limited quality control. These are station totals, not radar estimates.");
   const link=document.createElement("a");
   link.href="https://www.bom.gov.au/qld/flood/"+record.region+".shtml";
@@ -235,6 +258,7 @@ export function initialiseOperationalSignificantRainfall({
      !Array.isArray(incoming?.observations?.last24Hours))
       throw Error("Unexpected BoM rainfall source response");
    source=incoming;lastLoadedAt=now();lastError=null;
+   void loadCatchments();
    if(!ifdLoadedAt||now()-ifdLoadedAt>15*60000){
      ifdLoadedAt=now();
      try{

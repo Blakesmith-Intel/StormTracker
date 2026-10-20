@@ -1,4 +1,8 @@
-# StormTracker — V10.2.0 cyclone UI baseline (17 October 2026)
+# StormTracker — frozen V10.2.5 composite production baseline (20 October 2026)
+
+**Latest accepted maintenance release:** V10.2.5; the V10.2.0 radar/cyclone scientific source pin is unchanged. The production rainfall display automatically looks up an official local IFD reference when a gauge reaches 50 mm and its exact IFD cell is missing. Popup catchments use official BoM station IDs and coordinate-checked river basins. The release is tagged only after successful production deployment and verification; preserve `v10.2.5` and `restore/v10.2.5`, and await operator feedback before any further changes. See [V10.2.5 release notes](RELEASE_NOTES_V10.2.5.md).
+
+## Underlying immutable V10.2.0 scientific source baseline
 
 > **Current composite production handover — 20 October 2026:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md) and [OPERATOR_GUIDE_CURRENT.md](OPERATOR_GUIDE_CURRENT.md). This existing document records the **immutable V10.2.0 source pin**, not all subsequently accepted maintenance overlays. For the latest shipped rainfall, radar-source and layer fixes, follow the current handover while preserving the original sealed pin and recovery references.
 

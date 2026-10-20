@@ -1,4 +1,6 @@
 # StormTracker — current development and operational handover
+
+> **Frozen V10.2.5 production overlay (20 October 2026):** Adds automated, exact-cell authoritative BoM IFD lookup for qualifying ≥50 mm rainfall and replaces the rainfall popup's broad BoM publication-source region with coordinate-checked official BoM river basin catchments where available. The V10.2.0 radar/cyclone science pin remains unchanged. Do not alter this release while awaiting operator feedback. See [RELEASE_NOTES_V10.2.5.md](RELEASE_NOTES_V10.2.5.md).
 **Baseline prepared:** 20 October 2026 (Australia/Brisbane)  
 **Application:** https://blakesmith-intel.github.io/StormTracker/  
 **Repository:** https://github.com/Blakesmith-Intel/StormTracker  

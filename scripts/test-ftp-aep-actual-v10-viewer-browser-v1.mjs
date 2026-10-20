@@ -45,9 +45,11 @@ try{
  await page.locator("#showSignificantRainfall").check();
  await page.waitForFunction(()=>{
   const viewer=window.__STORMTRACKER_QA_VIEWER;
-  const ds=viewer?.dataSources?._dataSources?.find(x=>x.name==="significant-rainfall");
-  return ds?.entities.values.length===2 &&
-    ds.entities.values[0].stormTrackerRainGaugeId==="QA19501";
+  const markers=(viewer?.dataSources?._dataSources??[])
+   .filter(x=>String(x.name).startsWith("rainfall-severity-"))
+   .flatMap(x=>x.entities.values);
+  return markers.length===2 &&
+    markers.some(x=>x.stormTrackerRainGaugeId==="QA19501");
  },null,{timeout:40000});
  // A real map gesture cancels StormTracker camera handover/navigation before
  // following a station away from the currently selected radar location.
@@ -58,7 +60,10 @@ try{
   const controller=window.__STORMTRACKER_QA_CAMERA;
   if(!controller?.setView||!controller?.getState)
    throw Error("StormTracker operator-owned camera controller unavailable");
-  const e=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall").entities.values[0];
+  const e=v.dataSources._dataSources
+    .filter(s=>String(s.name).startsWith("rainfall-severity-"))
+    .flatMap(s=>s.entities.values)
+    .find(e=>e.stormTrackerRainGaugeId==="QA19501");
   // Native camera.setView is intentionally reverted every 250 ms by
   // StormTracker's camera guardian. Use the exact operator navigation API.
   controller.setView({
@@ -71,7 +76,10 @@ try{
  assert(/QA19501/.test(atXY));
  await page.waitForFunction(()=>{
   const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
-  const marker=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall")?.entities.values[0];
+  const marker=v.dataSources._dataSources
+    .filter(s=>String(s.name).startsWith("rainfall-severity-"))
+    .flatMap(s=>s.entities.values)
+    .find(e=>e.stormTrackerRainGaugeId==="QA19501");
   if(!marker)return false;
   const p=v.scene.cartesianToCanvasCoordinates(marker.position.getValue(C.JulianDate.now()));
   const b=v.scene.canvas.getBoundingClientRect();
@@ -81,7 +89,10 @@ try{
  },null,{timeout:30000});
  const pos=await page.evaluate(()=>{
   const v=window.__STORMTRACKER_QA_VIEWER,C=window.Cesium;
-  const e=v.dataSources._dataSources.find(s=>s.name==="significant-rainfall").entities.values[0];
+  const e=v.dataSources._dataSources
+    .filter(s=>String(s.name).startsWith("rainfall-severity-"))
+    .flatMap(s=>s.entities.values)
+    .find(e=>e.stormTrackerRainGaugeId==="QA19501");
   const p=v.scene.cartesianToCanvasCoordinates(e.position.getValue(C.JulianDate.now()));
   const b=v.scene.canvas.getBoundingClientRect();
   return p?{x:b.left+p.x,y:b.top+p.y,localX:p.x,localY:p.y,
@@ -134,7 +145,9 @@ try{
   return {popup:document.getElementById("significantRainfallInfoRows")?.textContent,
   title:document.getElementById("significantRainfallInfoTitle")?.textContent,
   status:document.getElementById("significantRainfallStatus")?.textContent,
-  visibleMarkerCount:v.dataSources._dataSources.find(x=>x.name==="significant-rainfall").entities.values.length,
+  visibleMarkerCount:v.dataSources._dataSources
+    .filter(x=>String(x.name).startsWith("rainfall-severity-"))
+    .reduce((total,x)=>total+x.entities.values.length,0),
   nationalPrimary:globalThis.__STORMTRACKER_NATIONAL_MOSAIC_PRIMARY===true,
   noFtpFirst:globalThis.__STORMTRACKER_FTP_FIRST!==true,cesium:!!window.Cesium}
  });

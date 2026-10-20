@@ -209,6 +209,12 @@ jobs:
           node --check relay/ifd-on-demand.js
           python scripts/package-rainfall-aep-preview.py
           python scripts/build-bom-rainfall-basins.py --out _site/preview/rainfall-aep/data/qld-rainfall-basins-v1.json
+          cp _site/preview/rainfall-aep/data/qld-rainfall-basins-v1.json _site/data/qld-rainfall-basins-v1.json
+          test -s _site/data/qld-rainfall-basins-v1.json
+          grep -Fq '"543013"' _site/data/qld-rainfall-basins-v1.json
+          node --check _site/src/context-layers/rainfall-catchment-v1.js
+          grep -Fq 'queueIfdLookups' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq '"Catchment"' _site/src/context-layers/significant-rainfall-operational-v1.js
           node --check _site/preview/rainfall-aep/src/context-layers/rainfall-catchment-v1.js
           grep -Fq '"543013"' _site/preview/rainfall-aep/data/qld-rainfall-basins-v1.json
           grep -Fq '"Catchment"' _site/preview/rainfall-aep/src/context-layers/significant-rainfall-operational-v1.js
@@ -239,6 +245,7 @@ jobs:
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' <<< "$root"
           grep -Fq 'RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP' <<< "$root"
+          grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.5' <<< "$root"
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
           grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' <<< "$root"
@@ -263,6 +270,14 @@ jobs:
           rainfall_layer="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/significant-rainfall-operational-v1.js")"
           grep -Fq 'SIGNIFICANT_RAINFALL_RELAY' <<< "$rainfall_layer"
           grep -Fq 'classifyRainfallAep' <<< "$rainfall_layer"
+          grep -Fq 'queueIfdLookups' <<< "$rainfall_layer"
+          grep -Fq '"Catchment"' <<< "$rainfall_layer"
+          grep -Fq 'rainfall-aep-catchment-v10-2-5-20261020' <<< "$rainfall_engine"
+          basin_code="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/rainfall-catchment-v1.js")"
+          grep -Fq 'catchmentForStation' <<< "$basin_code"
+          basin_json="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/data/qld-rainfall-basins-v1.json")"
+          grep -Fq '"543013"' <<< "$basin_json"
+          grep -Fq 'Condamine' <<< "$basin_json"
           rainfall_ifd="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/rainfall-ifd-aep-v1.js")"
           grep -Fq 'AEP_GRADES' <<< "$rainfall_ifd"
           hires="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/hires-radar-loop-policy-v1.js")"
@@ -539,3 +554,29 @@ jobs:
           fi
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+      - name: Seal frozen V10.2.5 rainfall AEP and catchment production baseline
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.5"
+          restore="restore/v10.2.5"
+          grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.5' scripts/apply-ftp-aep-release-v10.py
+          current_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          if [ -n "$current_restore" ]; then
+            test "$current_restore" = "$release_sha"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-list -n 1 "$tag")" = "$release_sha"
+          else
+            tag_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags"               -f tag="$tag"               -f message="StormTracker V10.2.5 — frozen production AEP/catchment baseline (20 October 2026)"               -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$tag_sha"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$tag_sha" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED V10.2.5 at $release_sha; existing V10.2.0 scientific source unchanged."

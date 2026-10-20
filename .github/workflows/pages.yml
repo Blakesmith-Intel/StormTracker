@@ -193,6 +193,24 @@ jobs:
           node scripts/test-national-source-policy-v1.mjs
           grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
 
+      - name: Checkout AEP live rainfall preview (separate from sealed production)
+        uses: actions/checkout@v4
+        with:
+          ref: a6fb0af5e1dcd2039bf9ce60ac5937ce91c1b4e1
+          path: checked/aep-rainfall-preview
+          persist-credentials: false
+
+      - name: Validate and package interactive on-demand AEP test preview
+        run: |
+          set -euo pipefail
+          node checked/aep-rainfall-preview/frontend/tests/run-ifd-on-demand-v1-tests.mjs
+          node --check checked/aep-rainfall-preview/frontend/src/context-layers/significant-rainfall-operational-v1.js
+          node --check relay/ifd-on-demand.js
+          python scripts/package-rainfall-aep-preview.py
+          grep -Fq 'queueIfdLookups' _site/preview/rainfall-aep/src/context-layers/significant-rainfall-operational-v1.js
+          test -s _site/preview/rainfall-aep/BUILD.txt
+          grep -Fq 'SEALED StormTracker V10.2.0' _site/BUILD.txt
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 

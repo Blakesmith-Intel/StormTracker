@@ -114,7 +114,7 @@ export function initialiseOperationalSignificantRainfall({
   detailRow(rows,"Interpretation","An annual chance is not a fixed repeat interval, and rainfall rarity is NOT flood severity.");
   detailRow(rows,"BoM station number",record.id);
   detailRow(rows,"Source map issued",formatted(record.sourceCreatedAt));
-  detailRow(rows,"Source region",record.region);
+  detailRow(rows,"BoM source map",record.region+" (publication feed, not catchment)");
   detailRow(rows,"Caution","BoM automatic observations; limited quality control. These are station totals, not radar estimates.");
   const link=document.createElement("a");
   link.href="https://www.bom.gov.au/qld/flood/"+record.region+".shtml";

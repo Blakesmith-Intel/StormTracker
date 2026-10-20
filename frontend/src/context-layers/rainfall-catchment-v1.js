@@ -7,7 +7,7 @@ const kmBetween=(a,b,c,d)=>{
    Math.cos(p1)*Math.cos(p2)*Math.sin((d-b)*R/2)**2;
  return 6371*2*Math.asin(Math.min(1,Math.sqrt(h)));
 };
-export function catchmentForStation(record,registry,{maxSeparationKm:2}={}){
+export function catchmentForStation(record,registry,{maxSeparationKm=2}={}){
  if(registry?.schema!=="StormTrackerBoMQldRainfallBasinsV1")return null;
  const station=registry?.stations?.[String(record?.id??"")];
  if(!station||!station.basin||!Number.isFinite(record?.latitude)||

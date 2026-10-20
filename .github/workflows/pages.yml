@@ -196,7 +196,7 @@ jobs:
       - name: Checkout AEP live rainfall preview (separate from sealed production)
         uses: actions/checkout@v4
         with:
-          ref: 0a306826dca05866eeabfc2cfa4c989116cb0a37
+          ref: 18ca3f44cfa0cb431c440995fa44744f866d885b
           path: checked/aep-rainfall-preview
           persist-credentials: false
 

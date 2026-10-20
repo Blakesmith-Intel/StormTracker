@@ -196,7 +196,7 @@ jobs:
       - name: Checkout AEP live rainfall preview (separate from sealed production)
         uses: actions/checkout@v4
         with:
-          ref: a6fb0af5e1dcd2039bf9ce60ac5937ce91c1b4e1
+          ref: 0a306826dca05866eeabfc2cfa4c989116cb0a37
           path: checked/aep-rainfall-preview
           persist-credentials: false
 
@@ -204,9 +204,14 @@ jobs:
         run: |
           set -euo pipefail
           node checked/aep-rainfall-preview/frontend/tests/run-ifd-on-demand-v1-tests.mjs
+          node checked/aep-rainfall-preview/frontend/tests/run-rainfall-catchment-v1-tests.mjs
           node --check checked/aep-rainfall-preview/frontend/src/context-layers/significant-rainfall-operational-v1.js
           node --check relay/ifd-on-demand.js
           python scripts/package-rainfall-aep-preview.py
+          python scripts/build-bom-rainfall-basins.py --out _site/preview/rainfall-aep/data/qld-rainfall-basins-v1.json
+          node --check _site/preview/rainfall-aep/src/context-layers/rainfall-catchment-v1.js
+          grep -Fq '"543013"' _site/preview/rainfall-aep/data/qld-rainfall-basins-v1.json
+          grep -Fq '"Catchment"' _site/preview/rainfall-aep/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq 'queueIfdLookups' _site/preview/rainfall-aep/src/context-layers/significant-rainfall-operational-v1.js
           test -s _site/preview/rainfall-aep/BUILD.txt
           grep -Fq 'SEALED StormTracker V10.2.0' _site/BUILD.txt

@@ -33,6 +33,8 @@ import {
   qldFloodMapCreatedAt,dedupeSignificantRainfall
 } from "../frontend/src/context-layers/significant-rainfall-source-v1.js";
 
+import {relayOfficialIfdPoint} from "./ifd-on-demand.js";
+
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
 
@@ -1722,6 +1724,9 @@ export default {
       );
     }
 
+    if (incoming.pathname === "/qld-ifd-point") {
+      return relayOfficialIfdPoint(request,incoming,origin,corsHeaders,errorResponse);
+    }
     if (incoming.pathname === "/qld-significant-rainfall") {
       return relayQldSignificantRainfall(request,origin);
     }

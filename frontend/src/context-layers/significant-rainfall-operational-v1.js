@@ -2,6 +2,7 @@ import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-
 import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261021-geographic-severity-v2";
 import {classifyRainfallAep,ifdCellKey} from "./rainfall-ifd-aep-v1.js";
 import {catchmentForStation,RAINFALL_BASIN_REGISTRY_URL} from "./rainfall-catchment-v1.js";
+import {buildSignificantRainfallReport} from "./significant-rainfall-report-v1.js?v=20261022-report-v1";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
 export const SIGNIFICANT_RAINFALL_REFRESH_MS=300000;
 const $=id=>document.getElementById(id);
@@ -74,6 +75,12 @@ export function initialiseOperationalSignificantRainfall({
  const checkbox=$("showSignificantRainfall"),select=$("significantRainfallPeriod");
  const status=$("significantRainfallStatus"),info=$("significantRainfallInfo");
  const rows=$("significantRainfallInfoRows"),title=$("significantRainfallInfoTitle");
+ const reportDialog=$("significantRainfallReport"),reportTitle=$("significantRainfallReportTitle");
+ const reportPeriod=$("significantRainfallReportPeriod"),reportStatus=$("significantRainfallReportStatus");
+ const reportSummary=$("significantRainfallReportSummary"),reportRows=$("significantRainfallReportRows");
+ let reportMode="amount";
+ const reportPeriodName=()=>period==="since9am"?"Since 9 am AEST":
+   period==="last24Hours"?"24hrs to 9am":"Last 1 hour";
  const severityLayers=createSeverityMarkerLayers({viewer,CesiumRef,owner:"rainfall",priorities:[0,1,2,3,4,5,6],visible:false});
  const collection=severityLayers.dataSource;
  let lastLoadedAt=0,lastError=null,waiting=null,timer=null,selectedId="";
@@ -93,6 +100,7 @@ export function initialiseOperationalSignificantRainfall({
       throw Error("Unverified BoM station basin register");
     basinRegistry=registry;
     if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
+    if(reportDialog?.open)renderReport();
    }catch(error){
     console.warn("Official BoM rainfall basin list unavailable",error);
    }finally{basinLoading=null}
@@ -102,7 +110,7 @@ export function initialiseOperationalSignificantRainfall({
  const pendingCells=new Set(),attempts=new Map(),queue=[];
  let running=0;
  function queueIfdLookups(){
-  if(!collection.show||!ifdGrid)return;
+  if((!collection.show&&!reportDialog?.open)||!ifdGrid)return;
   const records=source?.observations?.[period]??[];
   for(const rec of records){
    if(!qualifiesAepRainfallSnapshot(rec,period,now())||rec.mm<50||
@@ -135,7 +143,7 @@ export function initialiseOperationalSignificantRainfall({
      attempts.set(item.cell,now()+5*60000);
     }finally{
      pendingCells.delete(item.cell);running--;
-     if(collection.show){render();queueIfdLookups();}
+     if(collection.show||reportDialog?.open){render();queueIfdLookups();}
      drainIfdQueue();
     }
    })();
@@ -192,6 +200,70 @@ export function initialiseOperationalSignificantRainfall({
   }
   info.hidden=false;
  }
+ function renderReport(){
+  if(!reportDialog?.open||!reportRows)return;
+  const model=buildSignificantRainfallReport(visibleRows,reportMode);
+  reportTitle.textContent=reportMode==="aep"?"Notable+ rainfall locations":"Significant rainfall totals";
+  reportPeriod.textContent=reportPeriodName()+" · individual source issue times below";
+  reportRows.replaceChildren();
+  const failed=source?.failed?.length??0;
+  const pending=visibleRows.filter(x=>x.aep?.pending).length;
+  reportStatus.textContent=!source?"No observations loaded":
+   "Last checked "+formatted(source.checkedAt)+
+   (failed?" · "+failed+" regional sources unavailable":"")+
+   (reportMode==="aep"&&pending?" · "+pending+" IFD lookups pending":"");
+  reportSummary.textContent=reportMode==="aep"?
+   model.total+" stations Notable or rarer, from "+model.observedCount+" stations with 50+ mm"+
+   (model.unknownCount?" · "+model.unknownCount+" unrated/checking":""):
+   model.total+" stations reporting 50+ mm across two categories";
+  if(!source){
+   const note=document.createElement("p");
+   note.className="rainfall-report-empty";
+   note.textContent="No verified observations loaded. Select Refresh to check BoM.";
+   reportRows.append(note);return;
+  }
+  for(const group of model.groups){
+   const section=document.createElement("section");section.className="rainfall-report-group";
+   const h=document.createElement("h3"),heading=document.createElement("span"),
+     count=document.createElement("span");
+   heading.textContent=group.title;
+   count.className="rainfall-report-count";
+   count.textContent=group.rows.length+" station"+(group.rows.length===1?"":"s");
+   h.append(heading,count);section.append(h);
+   if(!group.rows.length){
+    const empty=document.createElement("p");empty.className="rainfall-report-empty";
+    empty.textContent="No qualifying stations in this category.";section.append(empty);
+   }else{
+    const list=document.createElement("ul");
+    for(const station of group.rows){
+     const item=document.createElement("li"),top=document.createElement("div"),
+      name=document.createElement("strong"),value=document.createElement("span"),
+      meta=document.createElement("div");
+     top.className="rainfall-report-entry";name.textContent=station.name;
+     value.className="rainfall-report-mm";value.textContent=station.mm.toFixed(1)+" mm";
+     top.append(name,value);
+     const basin=catchmentForStation(station,basinRegistry);
+     meta.className="rainfall-report-meta";
+     meta.textContent="BoM "+station.id+" · "+rainfallRarityDisplay(station.aep).short+
+      (basin?" · "+basin+" catchment":"")+" · "+formatted(station.sourceCreatedAt);
+     item.append(top,meta);list.append(item);
+    }
+    section.append(list);
+   }
+   reportRows.append(section);
+  }
+ }
+ function openReport(mode){
+  if(!reportDialog||!["amount","aep"].includes(mode))return;
+  reportMode=mode;
+  if(!reportDialog.open)reportDialog.showModal();
+  renderReport();
+  if(!lastLoadedAt||now()-lastLoadedAt>=refreshMs)
+   refresh(true).catch(error=>{
+    reportStatus.textContent="BoM refresh unavailable: "+String(error?.message??error).slice(0,120);
+   });
+  else if(reportMode==="aep"){queueIfdLookups();void loadCatchments();}
+ }
  function render(){
   const records=source?.observations?.[period]??[];
   // ALL stations recording 50+ mm are visible, even if that amount is
@@ -225,6 +297,7 @@ export function initialiseOperationalSignificantRainfall({
   }
   severityLayers.finish();
   queueIfdLookups();
+  if(reportDialog?.open)renderReport();
   viewer.scene.requestRender();
   if(selectedId)showInfo(visibleRows.find(x=>x.id===selectedId)??null);
   const failed=source?.failed?.length??0;
@@ -301,7 +374,7 @@ export function initialiseOperationalSignificantRainfall({
  }
  function setPeriod(value){
   period=["lastHour","last24Hours"].includes(value)?value:"since9am";
-  if(collection.show)render();
+  if(collection.show||reportDialog?.open)render();
  }
  function stationIdFromPick(hit){
   const candidates=[hit?.id,hit?.primitive?.id];
@@ -371,6 +444,12 @@ export function initialiseOperationalSignificantRainfall({
   select?.addEventListener("change",e=>setPeriod(e.target.value));
   $("refreshSignificantRainfallButton")?.addEventListener("click",()=>refresh(true).catch(()=>{}));
   $("closeSignificantRainfallInfo")?.addEventListener("click",hideInfo);
+  $("openRainfallTotalsReport")?.addEventListener("click",()=>openReport("amount"));
+  $("openRainfallAepReport")?.addEventListener("click",()=>openReport("aep"));
+  $("closeSignificantRainfallReport")?.addEventListener("click",()=>reportDialog?.close());
+  $("refreshSignificantRainfallReport")?.addEventListener("click",()=>refresh(true).catch(error=>{
+   reportStatus.textContent="BoM refresh unavailable: "+String(error?.message??error).slice(0,120);
+  }));
   // Cesium map gestures may retarget pointerup away from the canvas.
   // Capture at window level like the proven flood-gauge layer, but only
   // process taps that began within the actual map (never sidebar UI).

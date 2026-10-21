@@ -221,6 +221,7 @@ export function initialiseOperationalSignificantRainfall({
     }
    });
    entity.stormTrackerRainGaugeId=record.id;
+   entity.stormTrackerRainGaugeMm=record.mm;
   }
   severityLayers.finish();
   queueIfdLookups();

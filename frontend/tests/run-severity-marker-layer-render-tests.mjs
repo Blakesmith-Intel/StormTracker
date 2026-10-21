@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority}
+import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority,chooseVisibleSeverityMarkers}
  from "../src/context-layers/severity-marker-layer-v1.js";
 
 // Cesium billboard drawing is ordered by one BillboardCollection, not by
@@ -82,4 +82,27 @@ flood.finish();
 assert.deepEqual(stage[0].items.map(x=>x.image),[
  "less-rare","notable","unusual","rare","very-rare","exceptional"
 ]);
+const rect=(x,y,w=98,h=40)=>({left:x,top:y,right:x+w,bottom:y+h});
+const material=[
+ {id:"less",rank:1,owner:"rainfall",rect:rect(0,0)},
+ {id:"notable",rank:2,owner:"rainfall",rect:rect(10,4)},
+ {id:"exceptional",rank:6,owner:"rainfall",rect:rect(13,7)},
+ {id:"separate-less",rank:1,owner:"rainfall",rect:rect(250,0)}
+];
+const near=chooseVisibleSeverityMarkers(material);
+assert.deepEqual([...near].sort(),["exceptional","separate-less"],
+ "Highest rarity must remain visible and materially overlapping lower rarity must be obscured");
+const moved=chooseVisibleSeverityMarkers(material.map(x=>x.id==="less"?
+ {...x,rect:rect(-200,0)}:x));
+assert(moved.has("less"),"Lower rarity must reappear when camera separates its footprint");
+const edge=chooseVisibleSeverityMarkers([
+ {id:"notable",rank:2,owner:"rainfall",rect:rect(0,0)},
+ {id:"less",rank:1,owner:"rainfall",rect:rect(95,0)}
+]);
+assert.equal(edge.size,2,"A slight 3px icon-edge touch must not hide a gauge");
+const same=chooseVisibleSeverityMarkers([
+ {id:"lower-total",rank:4,owner:"rainfall",mm:51,rect:rect(0,0)},
+ {id:"higher-total",rank:4,owner:"rainfall",mm:160,rect:rect(0,0)}
+]);
+assert.deepEqual([...same],["higher-total"],"Equal rarity prefers the larger measured total");
 console.log("PASS scene-level flood/rainfall AEP severity overlaps, pick IDs and toggles");

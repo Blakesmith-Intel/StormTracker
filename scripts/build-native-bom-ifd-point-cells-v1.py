@@ -156,7 +156,8 @@ def main():
  parser.add_argument("--stations");parser.add_argument("--existing");parser.add_argument("--out",required=True)
  parser.add_argument("--max-new",type=int,default=80)
  args=parser.parse_args()
- fixed=[{"latitude":-28.002,"longitude":153.424},{"latitude":-25.91,"longitude":144.60},
+ fixed=[{"latitude":-26.4094,"longitude":148.6550,"id":"543013","name":"KINGULL TM"},
+  {"latitude":-28.002,"longitude":153.424},{"latitude":-25.91,"longitude":144.60},
   {"latitude":-27.47,"longitude":153.03}]
  if args.stations:
   raw=json.loads(Path(args.stations).read_text())

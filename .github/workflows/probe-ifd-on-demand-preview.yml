@@ -1,0 +1,50 @@
+name: Probe deployed on-demand BoM IFD for rainfall preview
+on:
+  push:
+    branches: [fix/rainfall-station-ifd-coverage-20261020]
+    paths: [.github/workflows/probe-ifd-on-demand-preview.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify live Kingull IFD lookup through deployed Cloudflare endpoint
+        run: |
+          node --input-type=module - <<'JS'
+          const url='https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-ifd-point?lat=-26.4094&lon=148.6550';
+          const response=await fetch(url,{signal:AbortSignal.timeout(26000)});
+          const body=await response.text();
+          console.log('IFD_LIVE_STATUS',response.status,'bytes',body.length,'payload',body.slice(0,700));
+          if(!response.ok)throw Error('IFD route returned '+response.status);
+          const data=JSON.parse(body);
+          if(data.schema!=='StormTrackerBoM2016IFDPointV1'||data.cell!=='-26.4125,148.6625'||!data.depthsMmByMinutes?.['60']||!data.depthsMmByMinutes?.['1440'])
+            throw Error('Official Kingull calibration failed validation');
+          console.log('IFD_KINGULL_VERIFIED',data.cell);
+          JS
+      - name: Confirm deployed interactive rainfall preview and source module
+        run: |
+          set -euo pipefail
+          base='https://blakesmith-intel.github.io/StormTracker/preview/rainfall-aep'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/BUILD.txt" | grep -F 'ISOLATED INTERACTIVE RAINFALL AEP TEST'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/significant-rainfall-operational-v1.js" | grep -F 'queueIfdLookups'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/live3d-operational-v9.html" | grep -F 'showSignificantRainfall'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/index.html" > /dev/null
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/rainfall-catchment-v1.js" | grep -F 'catchmentForStation'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/src/context-layers/significant-rainfall-operational-v1.js" | grep -F '"Catchment"'
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 4 "$base/data/qld-rainfall-basins-v1.json" > /tmp/qld-basins.json
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          const j=JSON.parse(readFileSync('/tmp/qld-basins.json','utf8'));
+          if(j.schema!=='StormTrackerBoMQldRainfallBasinsV1'||Object.keys(j.stations||{}).length<500||
+             j.stations['543013']?.basin!=='Condamine–Balonne')
+            throw new Error('Published official BoM catchment registry invalid or Kingull missing');
+          console.log('PUBLISHED_BO_M_CATCHMENTS',Object.keys(j.stations).length,
+            'Kingull',j.stations['543013'].basin);
+          JS

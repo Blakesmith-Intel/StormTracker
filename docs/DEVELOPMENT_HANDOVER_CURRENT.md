@@ -126,6 +126,10 @@ The report MUST reuse `visibleRows` derived from actual `source.observations[per
 
 Regression: `frontend/tests/run-significant-rainfall-report-v1-tests.mjs`, the existing rainfall-source tests, all frontend `npm test` suites, Pages-build contract and public-site source verification. Review whether the report remains readable in narrow/mobile browsers and that counts change appropriately with all three clock periods and delayed IFD lookups.
 
+### 22 October 2026 — non-obstructive operator guide access
+
+The sole operator-guide link is the small `#operatorGuideLink` text anchor **inside the existing `#controlSidebar > .dashboard-heading`** (beside the brand). It opens `docs/OPERATOR_GUIDE_CURRENT.md` at GitHub in a separate tab (`target="_blank"`, `rel="noopener noreferrer"`). It must never become a map overlay, floating button, new sidebar row, modal, legend element or map information card. It adds no scripts, fetches, gauges or interaction handlers, and is styled without changing the fixed sidebar header height. The production shell is assembled from immutable V10.2.0 plus `scripts/build-current-site.sh` — copy the new link from the accepted maintenance HTML into the **existing pinned heading** and ship its small CSS rule, rather than modifying the frozen V10.2.0 source. Regression contract: `frontend/tests/run-operator-guide-link-tests.mjs`, production build and public Pages checks.
+
 ## 5. Significant rainfall — accepted current contract
 
 **Observed totals source:** BoM [Queensland Rainfall and River Conditions](https://www.bom.gov.au/qld/flood/), seven regional original rainfall HTML maps: **gulf, north, tvl2mck, widebay, seast, west, border**. The existing Worker route **/qld-significant-rainfall** parses original BoM map popup values by **station ID**, coordinates, mm total, period and published UTC source time. Duplicate station IDs are deduplicated; a regional failure is recorded explicitly, not converted to 0 mm. Operator map shows **≥50 mm** stations even if no rarity data is available.

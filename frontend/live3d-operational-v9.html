@@ -94,7 +94,10 @@
         </select>
         <button id="refreshSignificantRainfallButton" type="button" title="Refresh significant rainfall observations" aria-label="Refresh rainfall">↻</button>
       </div>
-      <div class="significant-rainfall-report-action"><button id="openRainfallTotalsReport" type="button" aria-haspopup="dialog" aria-controls="significantRainfallReport">View rainfall totals report</button></div>
+      <div class="significant-rainfall-report-actions" role="group" aria-label="Rainfall reports">
+        <button id="openRainfallTotalsReport" type="button" aria-haspopup="dialog" aria-controls="significantRainfallReport">Rainfall totals report</button>
+        <button id="openRainfallAepReport" type="button" aria-haspopup="dialog" aria-controls="significantRainfallReport">AEP Notable+ report</button>
+      </div>
       <details class="significant-rainfall-details"><summary>Rainfall colours and local rarity <span class="significant-orange">●</span> 50+ <span class="significant-red">●</span> 100+ mm</summary>
         <div class="rainfall-amount-key"><strong>Measured rainfall</strong><span><b class="significant-orange">●</b> 50–99.9 mm</span><span><b class="significant-red">●</b> 100+ mm</span></div>
         <div class="rainfall-rarity-key" aria-label="Local rainfall rarity and annual chance">
@@ -107,7 +110,6 @@
           <p>Chance in any given year of at least this much rain over the selected time period. <b>Not flood severity.</b></p>
           <p>Less rare = below the 20% benchmark. Unrated = local comparison unavailable.</p>
         </div>
-        <div class="significant-rainfall-report-action"><button id="openRainfallAepReport" type="button" aria-haspopup="dialog" aria-controls="significantRainfallReport">View Notable+ locations report</button></div>
         <div id="significantRainfallStatus" class="note" role="status" aria-live="off">Off by default · official BoM station totals</div>
       </details>
       <!-- SIG_RAIN_ROW_END -->

@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority}
  from "../src/context-layers/severity-marker-layer-v1.js";
+
+const rainfallSource=readFileSync(new URL(
+ "../src/context-layers/significant-rainfall-operational-v1.js",import.meta.url),"utf8");
+assert.match(rainfallSource,/Cartesian3\.fromDegrees\(record\.longitude,record\.latitude\)/,
+ "Source BoM gauge longitude/latitude must map directly to Cesium");
+assert.match(rainfallSource,/image:marker\(record\),width:98,height:40/,
+ "The entire droplet and rarity label must remain attached as one image");
+assert.doesNotMatch(rainfallSource,/pixelOffset\s*:/,
+ "Do not move the AEP label independently from its gauge");
 
 // Every BoM station and its entire SVG (droplet + label) stays anchored to
 // its verified coordinate. The 3-D draw priority must never discard a gauge.

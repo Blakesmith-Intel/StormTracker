@@ -1,34 +1,43 @@
 import assert from "node:assert/strict";
-import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority,chooseVisibleSeverityMarkers}
+import {readFileSync} from "node:fs";
+import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority}
  from "../src/context-layers/severity-marker-layer-v1.js";
 
-// Cesium billboard drawing is ordered by one BillboardCollection, not by
-// CustomDataSource.raiseToTop(). Exercise low -> high overlap order across
-// BOTH rainfall and river/flood marker owners, and preserve native pick IDs.
-class FakeBillboardCollection {
+const rainfallSource=readFileSync(new URL(
+ "../src/context-layers/significant-rainfall-operational-v1.js",import.meta.url),"utf8");
+assert.match(rainfallSource,/Cartesian3\.fromDegrees\(record\.longitude,record\.latitude\)/,
+ "Source BoM gauge longitude/latitude must map directly to Cesium");
+assert.match(rainfallSource,/image:marker\(record\),width:98,height:40/,
+ "The entire droplet and rarity label must remain attached as one image");
+assert.doesNotMatch(rainfallSource,/pixelOffset\s*:/,
+ "Do not move the AEP label independently from its gauge");
+
+// Every BoM station and its entire SVG (droplet + label) stays anchored to
+// its verified coordinate. The 3-D draw priority must never discard a gauge.
+class FakeBillboardCollection{
  constructor(){this.items=[];}
  removeAll(){this.items=[];}
  add(item){this.items.push(item);return item;}
 }
-class FakeEntitySource {
+class FakeEntitySource{
  constructor(name){
   this.name=name;this.show=false;
   this.entities={
-   values:[],
-   add(item){this.values.push(item);return item;},
-   removeAll(){this.values=[];},
-   suspendEvents(){},
-   resumeEvents(){}
+   values:[],add(item){this.values.push(item);return item;},
+   removeAll(){this.values=[];},suspendEvents(){},resumeEvents(){}
   };
  }
 }
-const stage=[];
+const stack=[];
 const viewer={
  dataSources:{add(s){return s;},raiseToTop(){}},
  scene:{
   primitives:{
-   add(pool){stage.push(pool);return pool;},
-   raiseToTop(pool){assert.equal(pool,stage[0]);}
+   add(pool){stack.push(pool);return pool;},
+   raiseToTop(pool){
+    const index=stack.indexOf(pool);
+    assert(index>=0);stack.splice(index,1);stack.push(pool);
+   }
   },
   requestRender(){}
  }
@@ -39,70 +48,58 @@ const flood=createSeverityMarkerLayers({viewer,CesiumRef,owner:"flood",
  priorities:[0,1,2,4,6],visible:true});
 const rainfall=createSeverityMarkerLayers({viewer,CesiumRef,owner:"rainfall",
  priorities:[0,1,2,3,4,5,6],visible:true});
-function add(layer,rank,id){
+function add(layer,rank,id,longitude,latitude){
+ const position=Object.freeze({longitude,latitude});
  const entity=layer.sourceFor(rank).entities.add({
-  id,position:{x:1},billboard:{
-   image:id,width:98,height:40,disableDepthTestDistance:Infinity
+  id,position,billboard:{
+   image:"whole-droplet-plus-AEP-label:"+id,width:98,height:40,
+   disableDepthTestDistance:Infinity
   }
  });
  entity.stormTrackerRainGaugeId=id;
  return entity;
 }
-assert.equal(rainfallIconPriority({classification:"below-20pct-aep"}),1);
-assert.equal(rainfallIconPriority({aepDesignThreshold:20}),2);
-assert.equal(rainfallIconPriority({aepDesignThreshold:10}),3);
-assert.equal(rainfallIconPriority({aepDesignThreshold:5}),4);
-assert.equal(rainfallIconPriority({aepDesignThreshold:2}),5);
-assert.equal(rainfallIconPriority({aepDesignThreshold:1}),6);
-assert.equal(floodIconPriority("major"),6);
-const less=add(rainfall,1,"less-rare");
-add(rainfall,2,"notable");
-add(rainfall,3,"unusual");
-add(rainfall,4,"rare");
-add(rainfall,5,"very-rare");
-const exceptional=add(rainfall,6,"exceptional");
-add(flood,6,"major-flood");
-rainfall.finish();
-flood.finish();
-assert.equal(stage.length,1,"Both owners must use one billboard collection");
-assert.deepEqual(stage[0].items.map(x=>x.image),[
- "less-rare","notable","unusual","rare","very-rare","major-flood","exceptional"
-],"More severe rainfall appears AFTER less-rare markers, never hidden below them");
-assert.equal(less.billboard.show,false,"Entity visual must not double-render");
-assert.equal(stage[0].items.at(-1).id,exceptional,
- "Original Cesium entity identity must survive primitive picking");
-assert.equal(stage[0].items.at(-1).disableDepthTestDistance,Infinity);
-rainfall.setVisible(false);
-assert.deepEqual(stage[0].items.map(x=>x.image),["major-flood"],
- "Turning off rainfall must retain flood markers");
-rainfall.setVisible(true);
-assert.equal(stage[0].items.at(-1).image,"exceptional");
-flood.clear();
-flood.finish();
-assert.deepEqual(stage[0].items.map(x=>x.image),[
- "less-rare","notable","unusual","rare","very-rare","exceptional"
-]);
-const rect=(x,y,w=98,h=40)=>({left:x,top:y,right:x+w,bottom:y+h});
-const material=[
- {id:"less",rank:1,owner:"rainfall",rect:rect(0,0)},
- {id:"notable",rank:2,owner:"rainfall",rect:rect(10,4)},
- {id:"exceptional",rank:6,owner:"rainfall",rect:rect(13,7)},
- {id:"separate-less",rank:1,owner:"rainfall",rect:rect(250,0)}
+const ranks=[
+ ["less-rare",1,151.55,-25.65],
+ ["notable",2,151.61,-25.66],
+ ["unusual",3,151.62,-25.68],
+ ["rare",4,151.64,-25.69],
+ ["very-rare",5,151.71,-25.7],
+ ["exceptional",6,151.75,-25.71]
 ];
-const near=chooseVisibleSeverityMarkers(material);
-assert.deepEqual([...near].sort(),["exceptional","separate-less"],
- "Highest rarity must remain visible and materially overlapping lower rarity must be obscured");
-const moved=chooseVisibleSeverityMarkers(material.map(x=>x.id==="less"?
- {...x,rect:rect(-200,0)}:x));
-assert(moved.has("less"),"Lower rarity must reappear when camera separates its footprint");
-const edge=chooseVisibleSeverityMarkers([
- {id:"notable",rank:2,owner:"rainfall",rect:rect(0,0)},
- {id:"less",rank:1,owner:"rainfall",rect:rect(95,0)}
-]);
-assert.equal(edge.size,2,"A slight 3px icon-edge touch must not hide a gauge");
-const same=chooseVisibleSeverityMarkers([
- {id:"lower-total",rank:4,owner:"rainfall",mm:51,rect:rect(0,0)},
- {id:"higher-total",rank:4,owner:"rainfall",mm:160,rect:rect(0,0)}
-]);
-assert.deepEqual([...same],["higher-total"],"Equal rarity prefers the larger measured total");
-console.log("PASS scene-level flood/rainfall AEP severity overlaps, pick IDs and toggles");
+for(const [id,rank,longitude,latitude] of ranks)
+ add(rainfall,rank,id,longitude,latitude);
+const major=add(flood,6,"major-flood",151.7,-25.67);
+assert.deepEqual([20,10,5,2,1].map(x=>
+ rainfallIconPriority({aepDesignThreshold:x})),[2,3,4,5,6]);
+assert.equal(rainfallIconPriority({classification:"below-20pct-aep"}),1);
+assert.equal(floodIconPriority("major"),6);
+rainfall.finish();flood.finish();
+const all=()=>stack.flatMap(pool=>pool.items);
+assert.equal(stack.length,7,"One rank-specific Cesium collection for each severity");
+assert.equal(all().length,7,"Never suppress an overlapping BoM station");
+assert.deepEqual(stack.flatMap(pool=>pool.items.map(x=>x.id.id)),[
+ "less-rare","notable","unusual","rare","very-rare","major-flood","exceptional"
+],"Less rare draws before Notable and rarer categories");
+for(const [id,rank,longitude,latitude] of ranks){
+ const rendered=all().find(x=>x.id.id===id);
+ assert(rendered,"Every gauge retained even at overlapping screen coordinates");
+ assert.deepEqual(rendered.position,{longitude,latitude},
+  "Never move geographic marker positions or round to a different station");
+ assert.equal(rendered.image,"whole-droplet-plus-AEP-label:"+id);
+ assert.equal(rendered.width,98);
+ assert.equal(rendered.height,40);
+ assert.equal(rendered.pixelOffset,undefined,"Never offset the label from its gauge");
+ assert.equal(rendered.eyeOffset,undefined,"Never displace the gauge in 3-D");
+ assert.equal(rendered.id.stormTrackerRainGaugeId,id,"Original picking identity retained");
+ assert.equal(rendered.disableDepthTestDistance,Infinity);
+}
+assert.equal(major.stormTrackerRainGaugeId,"major-flood");
+rainfall.setVisible(false);
+assert.deepEqual(all().map(x=>x.id.id),["major-flood"],
+ "Turning off rainfall cannot erase river/flood gauges");
+rainfall.setVisible(true);
+assert.equal(all().length,7,"Every measured station must return without needing zoom");
+flood.clear();flood.finish();
+assert.deepEqual(all().map(x=>x.id.id),ranks.map(x=>x[0]));
+console.log("PASS geographic accuracy, all AEP marker/label pairs, priority draw order, pick IDs and toggles");

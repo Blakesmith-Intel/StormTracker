@@ -180,7 +180,7 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
-import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261021-shared-scene-priority-v1";
+import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261021-geographic-severity-v2";
 
 export function createRiverGaugeLayer({
   viewer,

@@ -597,7 +597,7 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED V10.2.5 at $release_sha; existing V10.2.0 scientific source unchanged."
-- name: Seal verified V10.2.6 rainfall report UI production
+      - name: Seal verified V10.2.6 rainfall report UI production
         env:
           GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
         run: |

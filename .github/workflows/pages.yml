@@ -263,6 +263,13 @@ jobs:
           grep -Fq 'value="last24Hours"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallTotalsReport"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallAepReport"' <<< "$rainfall_html"
+          # Read-only user guide must be part of the existing sidebar header,
+          # not a floating overlay or anything inside the Cesium map panel.
+          grep -Fq 'id="operatorGuideLink"' <<< "$rainfall_html"
+          grep -Fq 'https://github.com/Blakesmith-Intel/StormTracker/blob/main/docs/OPERATOR_GUIDE_CURRENT.md' <<< "$rainfall_html"
+          grep -Fq 'target="_blank" rel="noopener noreferrer"' <<< "$rainfall_html"
+          guide_css="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
+          grep -Fq '#controlSidebar > .dashboard-heading .operator-guide-link' <<< "$guide_css"
           grep -Fq 'class="significant-rainfall-report-actions"' <<< "$rainfall_html"
           rainfall_style="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
           grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' <<< "$rainfall_style"
@@ -637,4 +644,39 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha with recovery branch $restore."
-
+      - name: Seal verified V10.2.7 operator guide link
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.7"
+          restore="restore/v10.2.7"
+          current_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          current_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$current_restore" ] && [ -n "$current_tag" ]; then
+            test "$current_restore" = "$current_tag"
+            echo "Preserved immutable $tag at $current_tag."
+            exit 0
+          fi
+          grep -Fq 'id="operatorGuideLink"' frontend/live3d-operational-v9.html
+          grep -Fq 'operator-guide-link' frontend/src/single-interface-v1.css
+          grep -Fq 'old_heading' scripts/build-current-site.sh
+          test -z "$current_restore" || test "$current_restore" = "$release_sha"
+          test -z "$current_tag" || test "$current_tag" = "$release_sha"
+          if [ -z "$current_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$current_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.7 — unobtrusive operator guide link; approved production (22 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha."

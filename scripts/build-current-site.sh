@@ -213,6 +213,19 @@ for start_tag,end_tag,anchor in (
     fragment=operator_html[start:end]
     assert html.count(anchor)==1
     html=html.replace(anchor,fragment+'\n    '+anchor,1)
+# The sealed V10 shell is immutable. Patch only its EXISTING heading with
+# the exact sidebar text link from the current accepted maintenance HTML.
+# No new sidebar row, floating overlay, button or information panel.
+guide_link_start='<a id="operatorGuideLink"'
+assert operator_html.count(guide_link_start)==1
+link_start=operator_html.index(guide_link_start)
+link_end=operator_html.index('</a>',link_start)+len('</a>')
+guide_link=operator_html[link_start:link_end]
+assert html.count('<header class="dashboard-heading">')==1
+assert html.count('id="operatorGuideLink"')==0
+old_heading='<span>Live weather map</span></div></header>'
+assert html.count(old_heading)==1
+html=html.replace(old_heading,'<span>Live weather map</span></div>'+guide_link+'</header>',1)
 html_path.write_text(html,encoding="utf-8")
 
 style_source=Path("frontend/src/single-interface-v1.css").read_text(encoding="utf-8")

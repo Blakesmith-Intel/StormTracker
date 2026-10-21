@@ -5,6 +5,8 @@
 
 > **Purpose and safety:** StormTracker brings together official source observations and selected public incident information for situational awareness. It is **not** a Bureau of Meteorology (BoM) warning service, an incident dispatch system, or a replacement for agency procedures. For warnings, evacuation advice and operational decisions, consult the original issuing authority. Some displays (3-D clouds, storm tracks, projected cones and rapid-rise arrows) are estimates and **not official warnings**.
 
+**Finding this guide from the map:** select the small **Operator guide ↗** text link in the existing StormTracker sidebar heading. It opens this up-to-date guide in a separate browser tab and leaves the active weather map, controls and information panels unchanged.
+
 ## At a glance
 
 1. Open the [StormTracker map](https://blakesmith-intel.github.io/StormTracker/) in a current desktop or mobile browser.

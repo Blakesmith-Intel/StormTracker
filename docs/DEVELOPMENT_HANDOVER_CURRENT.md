@@ -112,6 +112,18 @@ The relay's role is to **transport or normalise public source data** and expose 
 
 **Validation refs:** [WMTS_ALL_RADARS_SOURCE_PUBLISHED_TIMES_20261018.md](WMTS_ALL_RADARS_SOURCE_PUBLISHED_TIMES_20261018.md), [QUEENSLAND_RADAR_COVERAGE.md](QUEENSLAND_RADAR_COVERAGE.md), [PLAYBACK_PERFORMANCE_AND_STABILITY_AUDIT_2026-10-16.md](PLAYBACK_PERFORMANCE_AND_STABILITY_AUDIT_2026-10-16.md).
 
+### 22 October 2026 — read-only rainfall report views
+
+This maintenance adds exactly **two reports** driven by the existing significant-rainfall client feed and local AEP classifications, with **no new BoM endpoint**:
+- **View rainfall totals report** in the main Significant rain controls: exhaustive source-eligible 50–99.9 mm and 100+ mm lists, with the 100+ group first. Include Less rare, Unrated and pending rating stations in the measured-total group.
+- **View Notable+ locations report** within the expanded local-rarity submenu: all source-eligible ≥50 mm gauges meeting a verified **20%, 10%, 5%, 2% or 1% AEP design depth**, grouped from Exceptional through Notable. Do not count unknown/pending or Less rare as a verified Notable result.
+
+Production modules: `frontend/src/context-layers/significant-rainfall-report-v1.js` (pure grouping/model and export), `significant-rainfall-operational-v1.js` (modal rendering, current reporting period, BoM issue times, source/catchment display), `frontend/live3d-operational-v9.html` (two buttons, one dialog) and `frontend/src/single-interface-v1.css` (mobile-scrollable report layout). The pinned V10.2.0 shell is rebuilt with only these accepted source overlays; **both** `scripts/build-current-site.sh` and `scripts/apply-ftp-aep-release-v10.py` must ship the report module, not just the modified operational importer.
+
+The report MUST reuse `visibleRows` derived from actual `source.observations[period]`, with exactly the existing 50-mm qualification, original BoM station ID, raw source longitude/latitude, source issue time, and cell-verified IFD grade. **Never use rendered billboards or camera viewport to decide which stations appear.** Never guess a catchment, infer a different location from the station name, move/detach the droplet or its label, hide stations to tidy the report, substitute a neighbouring IFD cell, or treat missing IFD as ordinary rainfall. Opening a report while the map layer is off must request fresh observations and permits the same source-verified on-demand IFD retrieval. Report refresh reuses the existing current feed, not duplicate polling.
+
+Regression: `frontend/tests/run-significant-rainfall-report-v1-tests.mjs`, the existing rainfall-source tests, all frontend `npm test` suites, Pages-build contract and public-site source verification. Review whether the report remains readable in narrow/mobile browsers and that counts change appropriately with all three clock periods and delayed IFD lookups.
+
 ## 5. Significant rainfall — accepted current contract
 
 **Observed totals source:** BoM [Queensland Rainfall and River Conditions](https://www.bom.gov.au/qld/flood/), seven regional original rainfall HTML maps: **gulf, north, tvl2mck, widebay, seast, west, border**. The existing Worker route **/qld-significant-rainfall** parses original BoM map popup values by **station ID**, coordinates, mm total, period and published UTC source time. Duplicate station IDs are deduplicated; a regional failure is recorded explicitly, not converted to 0 mm. Operator map shows **≥50 mm** stations even if no rarity data is available.

@@ -13,6 +13,7 @@ for source,target in [
  ("frontend/src/bom-wmts-loop-v2.js","src/bom-wmts-loop-v2.js"),
  ("frontend/src/context-layers/significant-rainfall-source-v1.js","src/context-layers/significant-rainfall-source-v1.js"),
  ("frontend/src/context-layers/significant-rainfall-operational-v1.js","src/context-layers/significant-rainfall-operational-v1.js"),
+ ("frontend/src/context-layers/significant-rainfall-report-v1.js","src/context-layers/significant-rainfall-report-v1.js"),
  ("frontend/src/context-layers/rainfall-ifd-aep-v1.js","src/context-layers/rainfall-ifd-aep-v1.js"),
  ("frontend/src/context-layers/rainfall-catchment-v1.js","src/context-layers/rainfall-catchment-v1.js"),
  ("frontend/src/context-layers/severity-marker-layer-v1.js","src/context-layers/severity-marker-layer-v1.js"),

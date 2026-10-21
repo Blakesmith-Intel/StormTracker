@@ -284,3 +284,55 @@ body.simple-ui #cycloneForecastQaPanel {
 .rainfall-rarity-key p{font-size:10px;margin:5px 0 0;line-height:1.35;}
 .significant-orange{color:#ec861c}.significant-red{color:#db3238}
 .significant-rainfall-info .metric{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);}
+
+/* Source-backed rainfall reports; never alter or displace map gauges. */
+.significant-rainfall-report-action{margin:3px 0 4px 22px;}
+.significant-rainfall-report-action button{
+  border:1px solid #597d93;border-radius:6px;
+  background:#163346;color:#dcf4ff;font-size:11px;font-weight:650;
+  padding:5px 9px;min-height:29px;max-width:100%;cursor:pointer;
+}
+.significant-rainfall-report-action button:hover{background:#25516a;}
+.significant-rainfall-report{
+  box-sizing:border-box;position:fixed;
+  width:min(660px,calc(100vw - 22px));max-width:none;
+  max-height:min(84dvh,840px);margin:auto;
+  padding:14px;overflow:auto;color:#eaf5fb;background:#102633;
+  border:1px solid #6a8da1;border-radius:12px;
+  box-shadow:0 12px 36px #000a;
+  font-size:13px;line-height:1.42;
+}
+.significant-rainfall-report::backdrop{background:rgba(4,15,24,.76);}
+.rainfall-report-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.rainfall-report-header strong{display:block;font-size:19px;line-height:1.2;margin:3px 0;}
+.rainfall-report-header p{margin:3px 0;color:#b6cdd9;font-size:12px;}
+.rainfall-report-header button,.rainfall-report-toolbar button{
+  flex-shrink:0;background:#1d4054;border:1px solid #7098ab;color:#f1faff;
+  border-radius:7px;padding:7px 10px;cursor:pointer;min-height:32px;
+}
+.rainfall-report-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:9px 0;border-bottom:1px solid #476276;
+}
+#significantRainfallReportStatus{font-size:11px;color:#c2d5df;}
+.rainfall-report-summary{font-size:12px;font-weight:650;margin:11px 0;}
+.rainfall-report-group{margin:13px 0;}
+.rainfall-report-group h3{
+  display:flex;justify-content:space-between;align-items:center;
+  margin:0 0 5px;padding:6px 8px;font-size:13px;
+  background:#254457;border-radius:6px;
+}
+.rainfall-report-group h3 .rainfall-report-count{font-weight:550;color:#d5e9f3;}
+.rainfall-report-group ul{list-style:none;margin:0;padding:0;}
+.rainfall-report-group li{padding:8px 5px;border-bottom:1px solid #385263;}
+.rainfall-report-entry{display:flex;gap:10px;justify-content:space-between;align-items:baseline;}
+.rainfall-report-entry strong{font-size:13px;min-width:0;}
+.rainfall-report-mm{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:750;}
+.rainfall-report-meta{margin-top:3px;color:#b6cbd5;font-size:11px;overflow-wrap:anywhere;}
+.rainfall-report-empty{margin:7px 4px;color:#9db5c1;font-style:italic;font-size:12px;}
+.rainfall-report-footnote{font-size:11px;color:#b3c9d4;border-top:1px solid #476276;padding-top:10px;margin-bottom:0;}
+@media(max-width:480px){
+ .significant-rainfall-report{padding:11px;font-size:12px;}
+ .rainfall-report-header strong{font-size:17px;}
+ .rainfall-report-entry strong{font-size:12px;}
+}

@@ -114,9 +114,11 @@ The relay's role is to **transport or normalise public source data** and expose 
 
 ### 22 October 2026 — read-only rainfall report views
 
+**V10.2.6 UI maintenance:** operator-verified reports remain read-only, with both controls in one two-column row, side by side. Only the buttons' HTML and layout CSS changed; rainfall quantities, AEP classification, gauge ID/geographic fidelity, on-screen dialog and map markers are preserved. Seal `v10.2.6` and `restore/v10.2.6` **only after** the actual GitHub Pages deployed sources pass final checks; do not repoint earlier version tags or recovery branches.
+
 This maintenance adds exactly **two reports** driven by the existing significant-rainfall client feed and local AEP classifications, with **no new BoM endpoint**:
-- **View rainfall totals report** in the main Significant rain controls: exhaustive source-eligible 50–99.9 mm and 100+ mm lists, with the 100+ group first. Include Less rare, Unrated and pending rating stations in the measured-total group.
-- **View Notable+ locations report** within the expanded local-rarity submenu: all source-eligible ≥50 mm gauges meeting a verified **20%, 10%, 5%, 2% or 1% AEP design depth**, grouped from Exceptional through Notable. Do not count unknown/pending or Less rare as a verified Notable result.
+- **Rainfall totals report** in the compact two-column button row beneath the main Significant rain controls: exhaustive source-eligible 50–99.9 mm and 100+ mm lists, with the 100+ group first. Include Less rare, Unrated and pending rating stations in the measured-total group.
+- **AEP Notable+ report** beside the totals button, outside the expandable local-rarity legend: all source-eligible ≥50 mm gauges meeting a verified **20%, 10%, 5%, 2% or 1% AEP design depth**, grouped from Exceptional through Notable. Do not count unknown/pending or Less rare as a verified Notable result.
 
 Production modules: `frontend/src/context-layers/significant-rainfall-report-v1.js` (pure grouping/model and export), `significant-rainfall-operational-v1.js` (modal rendering, current reporting period, BoM issue times, source/catchment display), `frontend/live3d-operational-v9.html` (two buttons, one dialog) and `frontend/src/single-interface-v1.css` (mobile-scrollable report layout). The pinned V10.2.0 shell is rebuilt with only these accepted source overlays; **both** `scripts/build-current-site.sh` and `scripts/apply-ftp-aep-release-v10.py` must ship the report module, not just the modified operational importer.
 

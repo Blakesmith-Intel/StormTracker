@@ -263,6 +263,9 @@ jobs:
           grep -Fq 'value="last24Hours"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallTotalsReport"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallAepReport"' <<< "$rainfall_html"
+          grep -Fq 'class="significant-rainfall-report-actions"' <<< "$rainfall_html"
+          rainfall_style="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
+          grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' <<< "$rainfall_style"
           grep -Fq 'id="significantRainfallReport"' <<< "$rainfall_html"
           grep -Fq '1 in 20' <<< "$rainfall_html"
           grep -Fq '1 in 100' <<< "$rainfall_html"
@@ -597,3 +600,41 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED V10.2.5 at $release_sha; existing V10.2.0 scientific source unchanged."
+      - name: Seal verified V10.2.6 rainfall report UI production
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.6"
+          restore="restore/v10.2.6"
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserved frozen $tag ($existing_tag); later maintenance needs a new version."
+            exit 0
+          fi
+          grep -Fq 'V10.2.6 UI maintenance' docs/DEVELOPMENT_HANDOVER_CURRENT.md
+          grep -Fq 'significant-rainfall-report-actions' frontend/live3d-operational-v9.html
+          grep -Fq 'openRainfallTotalsReport' frontend/live3d-operational-v9.html
+          grep -Fq 'openRainfallAepReport' frontend/live3d-operational-v9.html
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            tag_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.6 — verified rainfall reports side-by-side and operator documentation (22 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$tag_sha"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$tag_sha" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha with recovery branch $restore."
+

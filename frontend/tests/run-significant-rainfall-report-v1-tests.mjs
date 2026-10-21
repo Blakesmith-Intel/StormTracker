@@ -41,6 +41,18 @@ for(const id of ["openRainfallTotalsReport","openRainfallAepReport",
  "significantRainfallReport","significantRainfallReportRows",
  "refreshSignificantRainfallReport","closeSignificantRainfallReport"])
  assert(html.includes('id="'+id+'"'),"Rainfall report UI missing "+id);
+const actionStart=html.indexOf('<div class="significant-rainfall-report-actions"');
+const actionEnd=html.indexOf('</div>',actionStart);
+assert(actionStart>=0&&actionEnd>actionStart,
+ "Both reports must share one side-by-side button container");
+const reportRow=html.slice(actionStart,actionEnd);
+assert(reportRow.includes('id="openRainfallTotalsReport"') &&
+ reportRow.includes('id="openRainfallAepReport"'),
+ "Both reports must be siblings in the same compact row");
+const legendStart=html.indexOf('<details class="significant-rainfall-details">');
+const legendEnd=html.indexOf('</details>',legendStart);
+assert(legendStart>=0&&legendEnd>legendStart&&!html.slice(legendStart,legendEnd).includes('id="openRainfallAepReport"'),
+ "AEP report must not be buried inside the expandable rarity submenu");
 assert(runtime.includes('import {buildSignificantRainfallReport}'));
 assert.match(runtime,/openReport\("amount"\)/);
 assert.match(runtime,/openReport\("aep"\)/);

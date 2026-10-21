@@ -2,12 +2,12 @@
 
 **New read-only reports | Operator information sheet | 22 October 2026**
 
-**Where to find them:** Layers → Significant rain. Choose **Since 9 am**, **Last hour**, or **24hrs to 9am** first; both reports follow this selection.
+**Where to find them:** Layers → Significant rain. The **Rainfall totals report** and **AEP Notable+ report** buttons are directly beside each other below the rainfall controls. Choose **Since 9 am**, **Last hour**, or **24hrs to 9am** first; both reports follow this selection.
 
 | Report | Open from | What it shows |
 |---|---|---|
-| **Rainfall totals** | **View rainfall totals report** directly below the rainfall layer controls | All valid stations reporting **100+ mm**, then all reporting **50–99.9 mm**, with station totals and counts. Includes *Less rare* and *Unrated* stations because this report measures **millimetres, not rarity**. |
-| **Notable+ locations** | Expand **Rainfall colours and local rarity** → **View Notable+ locations report** | Every 50+ mm station meeting an official local design benchmark, grouped **Exceptional (1% AEP) → Very rare (2%) → Rare (5%) → Unusual (10%) → Notable (20%)**. *Less rare* and *Unrated* are excluded from this verified-rarity list and indicated separately. |
+| **Rainfall totals** | **Rainfall totals report** — left button, directly below rainfall controls | All valid stations reporting **100+ mm**, then all reporting **50–99.9 mm**, with station totals and counts. Includes *Less rare* and *Unrated* stations because this report measures **millimetres, not rarity**. |
+| **Notable+ locations** | **AEP Notable+ report** — right button alongside Rainfall totals report | Every 50+ mm station meeting an official local design benchmark, grouped **Exceptional (1% AEP) → Very rare (2%) → Rare (5%) → Unusual (10%) → Notable (20%)**. *Less rare* and *Unrated* are excluded from this verified-rarity list and indicated separately. |
 
 ## Reading the reports
 

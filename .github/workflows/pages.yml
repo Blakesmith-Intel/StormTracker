@@ -268,6 +268,9 @@ jobs:
           rainfall_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/significant-rainfall-source-v1.js")"
           grep -Fq 'parseBomRainfallMap' <<< "$rainfall_source"
           rainfall_layer="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/significant-rainfall-operational-v1.js")"
+          severity_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/severity-marker-layer-v1.js")"
+          grep -Fq 'postRender.addEventListener(safeguardOverlap)' <<< "$severity_source"
+          grep -Fq 'chooseVisibleSeverityMarkers' <<< "$severity_source"
           grep -Fq 'SIGNIFICANT_RAINFALL_RELAY' <<< "$rainfall_layer"
           grep -Fq 'classifyRainfallAep' <<< "$rainfall_layer"
           grep -Fq 'queueIfdLookups' <<< "$rainfall_layer"
@@ -565,7 +568,12 @@ jobs:
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.5' scripts/apply-ftp-aep-release-v10.py
           current_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
           if [ -n "$current_restore" ]; then
-            test "$current_restore" = "$release_sha"
+            # V10.2.5 was frozen previously: later approved maintenance must
+            # never repoint its immutable recovery branch or annotated tag.
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-list -n 1 "$tag")" = "$current_restore"
+            echo "Preserved frozen $tag at $current_restore; current maintenance source $release_sha deployed without resealing old version."
+            exit 0
           else
             gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
           fi

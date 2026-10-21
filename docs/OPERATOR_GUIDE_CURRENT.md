@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 20 October 2026 | **Applies to:** public V10.2.0 operational site with accepted maintenance overlays  
+**Edition:** 22 October 2026 | **Applies to:** public V10.2.0 operational site with accepted maintenance overlays  
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -50,7 +50,7 @@ Enable **Significant rain** in **Layers**. The map shows BoM stations reporting 
 
 **What the two parts of the rain marker mean:**
 - **Small orange raindrop:** 50–99.9 mm **measured**. **Small red raindrop:** 100 mm or more **measured**. The droplet carries **no numerical text**; open the marker for the amount.
-- **Separate full-size coloured text label:** How unusual that amount is *locally*, relative to official BoM 2016 design rainfall for the same duration. The label's colour is **not** the measured rainfall colour.
+- **Attached full-size coloured text label:** How unusual that amount is *locally*, relative to official BoM 2016 design rainfall for the same duration. The label's colour is **not** the measured rainfall colour.
 
 | Rarity label | Colour | Design rainfall benchmark | Everyday interpretation |
 |---|---|---|---|
@@ -67,6 +67,16 @@ Enable **Significant rain** in **Layers**. The map shows BoM stations reporting 
 **Source integrity.** Observed totals come directly from the [BoM Queensland Rainfall and River Conditions maps](https://www.bom.gov.au/qld/flood/). Local rarity benchmarks come separately from the [BoM 2016 Design Rainfall system](https://www.bom.gov.au/water/designRainfalls/revised-ifd/?multipoint). The reference catalogue is progressively populated, so some legitimate gauges may temporarily show **Unrated**. StormTracker never substitutes a design rainfall amount for a measured rainfall amount.
 
 **Refresh:** while the rainfall layer is on and the tab is visible, StormTracker checks observations every **5 minutes**. You may also press the rainfall **↻** button. The original BoM page may itself update less frequently; always compare source issue times. Station rainfall measurements are automated and may receive limited quality checking.
+
+### New: on-screen rainfall reports
+
+The two reports list **all qualifying BoM stations**, not just the labels that are easy to see at the current map zoom. They use the **same verified station IDs, coordinates, observation totals and local IFD ratings** as the map; they do not relocate, merge or suppress gauges. Each report follows the observation-period selector (**Since 9 am**, **Last hour**, or **24hrs to 9am**).
+
+1. **Rainfall totals report:** In the main **Significant rain** controls, select **View rainfall totals report**. A scrollable report lists **100 mm or more** first, then **50–99.9 mm**. Each section gives a station count and every source-qualified station's name, exact measured total, BoM number, rarity, issue time and verified catchment where available. **Less rare** and **Unrated** stations are included in their measured-amount group.
+2. **Notable+ locations report:** Expand **Rainfall colours and local rarity**, then select **View Notable+ locations report**. Stations are grouped **Exceptional (1% AEP), Very rare (2%), Rare (5%), Unusual (10%), Notable (20%)**, in descending rarity. The report includes every station at or above the **Notable** local benchmark **among those currently reporting at least 50 mm**. **Less rare**, **Unrated** and pending IFD assessments are not misrepresented as Notable; the report indicates how many remain unrated/checking.
+3. Use **↻ Refresh** inside the report to check the current BoM source; select **Close** or press Escape to return to the map. The report may be opened when the rainfall map layer is off: doing so requests observations without turning on markers. BoM publication may lag the refresh request.
+
+The report window is **read-only**: selecting a category or reviewing a row **does not move the map**, change any station's geographic position, detach the AEP label from its droplet, or alter the original reported totals. Its station counts are based on the chosen period and valid observations, **not the visible map viewport**.
 
 ## Flood signals
 
@@ -123,7 +133,7 @@ The **Cyclones** panel does **not** provide an independently verified continuous
 - [BoM official warnings](https://www.bom.gov.au/)
 - [Development and maintenance handover](DEVELOPMENT_HANDOVER_CURRENT.md)
 
-**Version note:** This document describes the accepted production behaviour at **20 October 2026**, including the **24hrs to 9am** label and **small droplet / normal-sized rarity text**. The underlying application is sealed V10.2.0 with later source-verified maintenance overlays. See the development handover for exact pins, source files and audit trails.
+**Version note:** This document describes the accepted production behaviour through **22 October 2026**, including the **24hrs to 9am** label and **small droplet / normal-sized rarity text**. The underlying application is sealed V10.2.0 with later source-verified maintenance overlays. See the development handover for exact pins, source files and audit trails.
 
 ## Which overlapping marker is displayed on top?
 

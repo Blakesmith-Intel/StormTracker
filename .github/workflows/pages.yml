@@ -263,6 +263,13 @@ jobs:
           grep -Fq 'value="last24Hours"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallTotalsReport"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallAepReport"' <<< "$rainfall_html"
+          # Read-only user guide must be part of the existing sidebar header,
+          # not a floating overlay or anything inside the Cesium map panel.
+          grep -Fq 'id="operatorGuideLink"' <<< "$rainfall_html"
+          grep -Fq 'https://github.com/Blakesmith-Intel/StormTracker/blob/main/docs/OPERATOR_GUIDE_CURRENT.md' <<< "$rainfall_html"
+          grep -Fq 'target="_blank" rel="noopener noreferrer"' <<< "$rainfall_html"
+          guide_css="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
+          grep -Fq '#controlSidebar > .dashboard-heading .operator-guide-link' <<< "$guide_css"
           grep -Fq 'class="significant-rainfall-report-actions"' <<< "$rainfall_html"
           rainfall_style="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
           grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' <<< "$rainfall_style"

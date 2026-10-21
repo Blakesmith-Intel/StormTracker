@@ -79,7 +79,7 @@ const all=()=>stack.flatMap(pool=>pool.items);
 assert.equal(stack.length,7,"One rank-specific Cesium collection for each severity");
 assert.equal(all().length,7,"Never suppress an overlapping BoM station");
 assert.deepEqual(stack.flatMap(pool=>pool.items.map(x=>x.id.id)),[
- "less-rare","notable","unusual","rare","very-rare","exceptional","major-flood"
+ "less-rare","notable","unusual","rare","very-rare","major-flood","exceptional"
 ],"Less rare draws before Notable and rarer categories");
 for(const [id,rank,longitude,latitude] of ranks){
  const rendered=all().find(x=>x.id.id===id);

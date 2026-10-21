@@ -94,6 +94,7 @@
         </select>
         <button id="refreshSignificantRainfallButton" type="button" title="Refresh significant rainfall observations" aria-label="Refresh rainfall">↻</button>
       </div>
+      <div class="significant-rainfall-report-action"><button id="openRainfallTotalsReport" type="button" aria-haspopup="dialog" aria-controls="significantRainfallReport">View rainfall totals report</button></div>
       <details class="significant-rainfall-details"><summary>Rainfall colours and local rarity <span class="significant-orange">●</span> 50+ <span class="significant-red">●</span> 100+ mm</summary>
         <div class="rainfall-amount-key"><strong>Measured rainfall</strong><span><b class="significant-orange">●</b> 50–99.9 mm</span><span><b class="significant-red">●</b> 100+ mm</span></div>
         <div class="rainfall-rarity-key" aria-label="Local rainfall rarity and annual chance">
@@ -106,6 +107,7 @@
           <p>Chance in any given year of at least this much rain over the selected time period. <b>Not flood severity.</b></p>
           <p>Less rare = below the 20% benchmark. Unrated = local comparison unavailable.</p>
         </div>
+        <div class="significant-rainfall-report-action"><button id="openRainfallAepReport" type="button" aria-haspopup="dialog" aria-controls="significantRainfallReport">View Notable+ locations report</button></div>
         <div id="significantRainfallStatus" class="note" role="status" aria-live="off">Off by default · official BoM station totals</div>
       </details>
       <!-- SIG_RAIN_ROW_END -->
@@ -198,6 +200,22 @@
       <button id="closeSignificantRainfallInfo" type="button" aria-label="Close rainfall details">×</button></header>
       <div id="significantRainfallInfoRows" class="metric"></div>
     </section>
+    <dialog id="significantRainfallReport" class="significant-rainfall-report" aria-labelledby="significantRainfallReportTitle" aria-describedby="significantRainfallReportStatus">
+      <header class="rainfall-report-header">
+        <div><span class="map-info-kicker">BoM OBSERVED STATION RAINFALL</span>
+          <strong id="significantRainfallReportTitle">Rainfall report</strong>
+          <p id="significantRainfallReportPeriod"></p>
+        </div>
+        <button type="button" id="closeSignificantRainfallReport" aria-label="Close rainfall report">Close</button>
+      </header>
+      <div class="rainfall-report-toolbar">
+        <span id="significantRainfallReportStatus" role="status" aria-live="polite">Checking observations…</span>
+        <button type="button" id="refreshSignificantRainfallReport" aria-label="Refresh rainfall report">↻ Refresh</button>
+      </div>
+      <div id="significantRainfallReportSummary" class="rainfall-report-summary" aria-live="polite"></div>
+      <div id="significantRainfallReportRows" class="rainfall-report-groups"></div>
+      <p class="rainfall-report-footnote">BoM automatic station observations, not radar estimates. AEP describes local rainfall rarity, not flood severity. Stations retain their original BoM coordinates and IDs.</p>
+    </dialog>
     <!-- SIG_RAIN_CARD_END -->
     <section id="riverGaugeInfo" class="map-info-card river-gauge-info" aria-live="polite" hidden>
       <header><div class="river-gauge-info-heading"><span class="river-gauge-key river-gauge-key-large" aria-hidden="true"></span><div><span id="riverGaugeInfoKicker" class="map-info-kicker">RIVER GAUGE</span><strong id="riverGaugeInfoTitle">River gauge</strong></div></div><button id="closeRiverGaugeInfo" type="button" aria-label="Close river gauge details">×</button></header>

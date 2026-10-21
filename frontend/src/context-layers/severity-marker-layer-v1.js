@@ -27,6 +27,12 @@ export function createSeverityMarkerLayers({viewer,CesiumRef,owner,priorities,vi
   sources.set(rank,source);
   registry.layers.push({rank,owner,source});
  }
+ function stack(){
+  if(typeof viewer.dataSources.raiseToTop==="function")
+   for(const entry of [...registry.layers].sort((a,b)=>
+     a.rank-b.rank||a.owner.localeCompare(b.owner)))
+    viewer.dataSources.raiseToTop(entry.source);
+ }
  function redrawBillboards(){
   const scene=viewer.scene;
   if(!scene?.primitives||!CesiumRef.BillboardCollection)return;
@@ -65,11 +71,11 @@ export function createSeverityMarkerLayers({viewer,CesiumRef,owner,priorities,vi
    for(const rank of ranks)scene.primitives.raiseToTop(registry.billboards.get(rank));
   scene.requestRender?.();
  }
- const list=[...sources.values()];
+ const list=[...sources.values()];stack();
  return {dataSource:list[0],dataSources:list,
   sourceFor(rank){const s=sources.get(rank);if(!s)throw Error("Unknown rank "+rank);return s;},
   clear(){for(const s of list){s.entities.suspendEvents?.();s.entities.removeAll();}},
-  finish(){for(const s of list)s.entities.resumeEvents?.();redrawBillboards();},
-  setVisible(yes){for(const s of list)s.show=Boolean(yes);redrawBillboards();}
+  finish(){for(const s of list)s.entities.resumeEvents?.();stack();redrawBillboards();},
+  setVisible(yes){for(const s of list)s.show=Boolean(yes);stack();redrawBillboards();}
  };
 }

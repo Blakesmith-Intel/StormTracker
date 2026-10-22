@@ -34,7 +34,7 @@ assert js.count(needle)==1, "V10 radar source import contract changed"
 js=js.replace(needle,needle+"-ftp-static-original-20261019-native-bom-hires-v1-observed-only")
 needle="significant-rainfall-operational-v1.js"
 assert js.count(needle)==1
-js=js.replace(needle,needle+"?v=rainfall-aep-catchment-v10-2-5-20261020")
+js=js.replace(needle,needle+"?v=rainfall-aep-catchment-v10-2-8-ifd-fast-20261022")
 # The sealed V10 camera guardian owns orientation. Never call Cesium.camera.setView.
 # Amend only the built production artefact; the pinned V10 source is immutable.
 core_heading="heading:" + chr(10) + "      Cesium.Math.toRadians(" + chr(10) + "        345" + chr(10) + "      )"
@@ -108,13 +108,13 @@ for item in ('Notable','Unusual','Rare','Very rare','Exceptional',
     assert item in html, "Rainfall legend missing "+item
 needle="src/live3d-operational-v9.js?v="
 assert html.count(needle)==1
-html=html.replace(needle,needle+"hires-observed-90-20261019-v10-2-5-")
+html=html.replace(needle,needle+"hires-observed-90-20261019-v10-2-8-")
 page.write_text(html)
 entry=site/"index.html"
 html=entry.read_text()
 needle="live3d-operational-v9.html?v="
 assert html.count(needle)==1
-entry.write_text(html.replace(needle,needle+"native-bom-hires-20261019-v10-2-5-"))
+entry.write_text(html.replace(needle,needle+"native-bom-hires-20261019-v10-2-8-"))
 with (site/"BUILD.txt").open("a") as f:
  f.write("RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP\n")
  f.write("LIVE DIRECT BOM FTP TCP RADAR FALLBACK INDEPENDENT OF GITHUB CRON 2026-10-19\n")
@@ -125,4 +125,5 @@ with (site/"BUILD.txt").open("a") as f:
  f.write("MEASURED BROWSER ARCHIVE RAIN WINDOWS: 30/60/90/120/180 MINUTES; 6/12/18/24/36 FRAMES\n")
 with (site/"BUILD.txt").open("a") as f:
  f.write("ACCEPTED MAINTENANCE RELEASE V10.2.5 — VERIFIED AEP ON-DEMAND AND BOM RIVER BASIN CATCHMENT 2026-10-20\n")
+ f.write("ACCEPTED MAINTENANCE RELEASE V10.2.8 — PERSISTENT EXACT-CELL IFD + SIX-WIDE PRIORITISED LOOKUPS 2026-10-22\n")
 print("FTP_AEP_V10_RELEASE_PACKAGED",len(list(site.rglob("*.js"))))

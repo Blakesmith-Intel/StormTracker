@@ -94,7 +94,7 @@ def reference_position(record):
  except (TypeError,ValueError,IndexError,ZeroDivisionError):
   pass
  return lat,lon
-def build(stations,existing,max_new=80,workers=4):
+def build(stations,existing,max_new=80,workers=6):
  if not isinstance(existing.get("cells",{}),dict):
   raise ValueError("Existing IFD catalogue missing cell dictionary")
  cells=dict(existing.get("cells",{}))

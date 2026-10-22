@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {rainfallRarityDisplay,significantRainfallDisplay,rainfallMarkerSvg}
  from "../src/context-layers/significant-rainfall-operational-v1.js";
-import {rainfallWindowMinutes,classifyRainfallAep}
+import {rainfallWindowMinutes,classifyRainfallAep,ifdCellKey,IFD_LOOKUP_CONCURRENCY,
+ IFD_LOCAL_CACHE_KEY,verifiedPersistentIfdCell,loadPersistedIfdCells,persistVerifiedIfdCell}
  from "../src/context-layers/rainfall-ifd-aep-v1.js";
 import {
  rainfallBand,parseBomRainfallMap,dedupeSignificantRainfall,
@@ -134,4 +135,41 @@ assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"l
 assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"last24Hours",now+100*60000),false);
 assert.equal(qualifiesRainfallSnapshot({...fullDay[0],sourceCreatedAt:issued},"since9am",now),false);
 assert.equal(qualifiesRainfallSnapshot({...hour[0],sourceCreatedAt:issued},"since9am",now),false);
+// Browser-local IFD persistence: only source-verified EXACT matching coordinates
+// survive page reloads. Never turn corrupt, neighbour or invented values into AEP.
+assert.equal(IFD_LOOKUP_CONCURRENCY,6,"A modest six-wide lookup pipe replaces three");
+const cell=ifdCellKey(-27.71,152.30);
+const storageMap=new Map();
+const storage={getItem:key=>storageMap.get(key)??null,
+ setItem:(key,value)=>storageMap.set(key,value)};
+const verified={verifiedUtc:"2026-10-22T01:00:00Z",
+ sourceBaseline:"Bureau of Meteorology 2016 Design Rainfall Data System",
+ depthsMmByMinutes:{
+  "60":{"20":40,"10":50,"5":60,"2":70,"1":80},
+  "1440":{"20":100,"10":120,"5":140,"2":160,"1":180}
+ }};
+assert(verifiedPersistentIfdCell(cell,verified));
+assert.equal(verifiedPersistentIfdCell(cell,{...verified,sourceBaseline:"Unknown"}),false);
+assert.equal(persistVerifiedIfdCell(cell,verified,storage),true);
+assert(storageMap.has(IFD_LOCAL_CACHE_KEY));
+assert.deepEqual(loadPersistedIfdCells(storage)[cell],verified);
+assert.equal(classifyRainfallAep({
+ mm:150,period:"last24Hours",latitude:-27.71,longitude:152.30,
+ sourceCreatedAt:issuedTime(),grid:{cells:loadPersistedIfdCells(storage)}
+}).aepDesignThreshold,5,"A 24-hour period reuses saved 1440-minute thresholds directly");
+assert.equal(persistVerifiedIfdCell(cell,{...verified,sourceBaseline:"unverified"},storage),false);
+assert.equal(persistVerifiedIfdCell(cell,{...verified,
+ depthsMmByMinutes:{"60":verified.depthsMmByMinutes["60"]}},storage),false);
+assert.deepEqual(Object.keys(loadPersistedIfdCells(storage)),[cell]);
+storageMap.set(IFD_LOCAL_CACHE_KEY,"not json");
+assert.deepEqual(loadPersistedIfdCells(storage),{});
+assert.equal(persistVerifiedIfdCell(cell,verified,{
+ getItem:()=>null,setItem:()=>{throw Error("Storage unavailable")}
+}),false,"Storage errors must not block live classification");
+assert.match(rainfallCode,/sort\(\(a,b\)=>b\.mm-a\.mm/,
+ "Highest recorded rainfall must be prioritised for missing IFD cells");
+assert.match(rainfallCode,/scheduleAepRender\(\)/,
+ "Each request should not trigger an immediate full Cesium rebuild");
+assert.match(rainfallCode,/void updateIfdCatalogue\(\)/,
+ "The remote catalogue must not block the first map render");
 console.log("PASS BoM separate 1hr, since9am and 24hr original station maps, threshold and freshness controls.");

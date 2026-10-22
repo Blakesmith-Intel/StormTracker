@@ -40,9 +40,9 @@ jobs:
       - name: Download official 2016 BoM IFD for unrated station locations
         run: |
           if test -s /tmp/current-rainfall-gauges.json; then
-            python scripts/build-native-bom-ifd-point-cells-v1.py --stations /tmp/current-rainfall-gauges.json --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 30
+            python scripts/build-native-bom-ifd-point-cells-v1.py --stations /tmp/current-rainfall-gauges.json --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 48
           else
-            python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 30
+            python scripts/build-native-bom-ifd-point-cells-v1.py --existing /tmp/previous-ifd.json --out /tmp/stormtracker-ifd.json --max-new 48
           fi
       - name: Verify catalogue is append-only and schema-compatible
         run: |

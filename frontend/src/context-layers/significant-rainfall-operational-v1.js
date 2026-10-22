@@ -1,6 +1,7 @@
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
 import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261021-geographic-severity-v2";
-import {classifyRainfallAep,ifdCellKey} from "./rainfall-ifd-aep-v1.js";
+import {classifyRainfallAep,ifdCellKey,IFD_LOOKUP_CONCURRENCY,
+ loadPersistedIfdCells,persistVerifiedIfdCell,verifiedPersistentIfdCell} from "./rainfall-ifd-aep-v1.js";
 import {catchmentForStation,RAINFALL_BASIN_REGISTRY_URL} from "./rainfall-catchment-v1.js";
 import {buildSignificantRainfallReport} from "./significant-rainfall-report-v1.js?v=20261022-report-v1";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
@@ -85,7 +86,9 @@ export function initialiseOperationalSignificantRainfall({
  const collection=severityLayers.dataSource;
  let lastLoadedAt=0,lastError=null,waiting=null,timer=null,selectedId="";
  let source=null,visibleRows=[],period="since9am",started=false;
- let ifdGrid=null,ifdLoadedAt=0;
+ let ifdGrid={schema:"StormTrackerBoM2016IFDCellsV1",
+  source:"Official BoM IFD verified saved point references",cells:loadPersistedIfdCells()};
+ let ifdLoadedAt=0,catalogueLoading=null,renderTimer=null;
  let basinRegistry=null,basinLoading=null;
  function loadCatchments(){
   if(basinRegistry||basinLoading)return basinLoading??Promise.resolve();
@@ -110,20 +113,34 @@ export function initialiseOperationalSignificantRainfall({
  const pendingCells=new Set(),attempts=new Map(),queue=[];
  let running=0;
  function queueIfdLookups(){
-  if((!collection.show&&!reportDialog?.open)||!ifdGrid)return;
-  const records=source?.observations?.[period]??[];
+  if((!collection.show&&!reportDialog?.open)||catalogueLoading)return;
+  // Reprioritise only QUEUED (not already running) work when the operator
+  // switches periods. Never keep draining obsolete low-priority requests.
+  for(const obsolete of queue.splice(0))pendingCells.delete(obsolete.cell);
+  const records=(source?.observations?.[period]??[]).filter(rec=>
+   qualifiesAepRainfallSnapshot(rec,period,now())&&rec.mm>=50&&
+   Number.isFinite(rec.latitude)&&Number.isFinite(rec.longitude))
+   .sort((a,b)=>b.mm-a.mm||String(a.id).localeCompare(String(b.id)));
   for(const rec of records){
-   if(!qualifiesAepRainfallSnapshot(rec,period,now())||rec.mm<50||
-     !Number.isFinite(rec.latitude)||!Number.isFinite(rec.longitude))continue;
    const cell=ifdCellKey(rec.latitude,rec.longitude);
    if(ifdGrid.cells[cell]||pendingCells.has(cell)||
-     now()<(attempts.get(cell)??0))continue;
-   pendingCells.add(cell);queue.push({cell,latitude:rec.latitude,longitude:rec.longitude});
+      now()<(attempts.get(cell)??0))continue;
+   pendingCells.add(cell);
+   queue.push({cell,latitude:rec.latitude,longitude:rec.longitude});
   }
   drainIfdQueue();
  }
+ function scheduleAepRender(){
+  // Painting every Cesium marker after every response causes mobile stalls.
+  // Coalesce completions without ever moving a gauge or its attached label.
+  if(renderTimer!==null)return;
+  renderTimer=setTimeout(()=>{
+   renderTimer=null;
+   if(collection.show||reportDialog?.open)render();
+  },250);
+ }
  function drainIfdQueue(){
-  while(running<3&&queue.length){
+  while(running<IFD_LOOKUP_CONCURRENCY&&queue.length){
    const item=queue.shift();running++;
    (async()=>{
     try{
@@ -135,15 +152,19 @@ export function initialiseOperationalSignificantRainfall({
      if(point?.schema!=="StormTrackerBoM2016IFDPointV1"||point.cell!==item.cell||
        !point.depthsMmByMinutes?.["60"]||!point.depthsMmByMinutes?.["1440"])
        throw Error("Invalid IFD source response");
-     ifdGrid.cells[item.cell]={depthsMmByMinutes:point.depthsMmByMinutes,
+     const node={depthsMmByMinutes:point.depthsMmByMinutes,
        verifiedUtc:point.verifiedUtc,sourceBaseline:point.source};
+     if(!verifiedPersistentIfdCell(item.cell,node))throw Error("Unverified IFD point payload");
+     // Cache persistence is best-effort: inaccessible localStorage is not a data failure.
+     persistVerifiedIfdCell(item.cell,node);
+     ifdGrid.cells[item.cell]=node;
      attempts.delete(item.cell);
     }catch(error){
      console.warn("Official IFD point retry scheduled",item.cell,error);
      attempts.set(item.cell,now()+5*60000);
     }finally{
      pendingCells.delete(item.cell);running--;
-     if(collection.show||reportDialog?.open){render();queueIfdLookups();}
+     scheduleAepRender();
      drainIfdQueue();
     }
    })();
@@ -273,7 +294,7 @@ export function initialiseOperationalSignificantRainfall({
    rainfallBand(record.mm)!==null).map(record=>{
     const aep=classifyRainfallAep({...record,grid:ifdGrid});
     if(aep.reason==="Authoritative IFD grid cell unavailable"&&
-       (pendingCells.has(aep.ifdCell)||!attempts.has(aep.ifdCell)))
+       (catalogueLoading||pendingCells.has(aep.ifdCell)||!attempts.has(aep.ifdCell)))
       aep.pending=true;
     return {...record,aep,band:rainfallBand(record.mm)};
    }).sort((a,b)=>rainfallIconPriority(a.aep)-rainfallIconPriority(b.aep)||
@@ -316,6 +337,36 @@ export function initialiseOperationalSignificantRainfall({
    " · checked "+formatted(source?.checkedAt),
     failed||stale?"warning":"ok");
  }
+ function updateIfdCatalogue(){
+  if(catalogueLoading)return catalogueLoading;
+  if(ifdLoadedAt&&now()-ifdLoadedAt<=15*60000)return Promise.resolve();
+  ifdLoadedAt=now();
+  catalogueLoading=(async()=>{
+   try{
+    const response=await fetchImpl("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/ifd.json",{
+     cache:"no-store",signal:AbortSignal.timeout(15000)});
+    if(!response.ok)throw Error("BoM IFD grid data HTTP "+response.status);
+    const grid=await response.json();
+    if(grid?.schema!=="StormTrackerBoM2016IFDCellsV1"||!grid.cells||
+       !grid.source?.includes("BoM IFD"))
+      throw Error("Invalid verified IFD grid dataset");
+    for(const [cell,node] of Object.entries(grid.cells)){
+     const previous=ifdGrid.cells[cell];
+     // An older shared snapshot must never overwrite a newly verified
+     // exact-cell value retained from this browser's successful lookup.
+     if(!previous||Date.parse(node?.verifiedUtc??"")>Date.parse(previous?.verifiedUtc??""))
+      ifdGrid.cells[cell]=node;
+    }
+    ifdGrid.source=grid.source;
+   }catch(error){
+    console.warn("Published IFD catalogue unavailable; retained verified local cells",error);
+   }finally{
+    catalogueLoading=null;
+    if(collection.show||reportDialog?.open)render();
+   }
+  })();
+  return catalogueLoading;
+ }
  async function refresh(force=false){
   if(!collection.show&&!force)return visibleRows.slice();
   if(waiting)return waiting;
@@ -333,22 +384,9 @@ export function initialiseOperationalSignificantRainfall({
       throw Error("Unexpected BoM rainfall source response");
    source=incoming;lastLoadedAt=now();lastError=null;
    void loadCatchments();
-   if(!ifdLoadedAt||now()-ifdLoadedAt>15*60000){
-     ifdLoadedAt=now();
-     try{
-       const response=await fetchImpl("https://raw.githubusercontent.com/Blakesmith-Intel/StormTracker/radar-ftp-feed/ifd.json",{cache:"no-store"});
-       if(!response.ok)throw Error("BoM IFD grid data HTTP "+response.status);
-       const grid=await response.json();
-       if(grid?.schema!=="StormTrackerBoM2016IFDCellsV1"||!grid.cells||!grid.source?.includes("BoM IFD"))
-         throw Error("Invalid verified IFD grid dataset");
-       if(!ifdGrid)ifdGrid=grid;
-       else Object.assign(ifdGrid.cells,grid.cells);
-     }catch(error){
-       console.warn("Published IFD catalogue unavailable; using on-demand official lookup",error);
-       if(!ifdGrid)ifdGrid={schema:"StormTrackerBoM2016IFDCellsV1",
-         source:"Official BoM IFD on-demand references",cells:{}};
-     }
-   }
+   // Show persisted classifications immediately; the shared catalogue loads
+   // independently and is never a prerequisite for the first map paint.
+   void updateIfdCatalogue();
    render();
    return visibleRows.slice();
   })();
@@ -464,6 +502,8 @@ export function initialiseOperationalSignificantRainfall({
  }
  function stop(){
   if(timer!==null)clearInterval(timer);timer=null;
+  if(renderTimer!==null)clearTimeout(renderTimer);renderTimer=null;
+  queue.length=0;
   window.removeEventListener("pointerdown",pointerDown,true);
   window.removeEventListener("pointermove",pointerMove,true);
   window.removeEventListener("pointerup",pointerUp,true);

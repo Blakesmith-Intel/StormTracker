@@ -195,6 +195,7 @@ jobs:
           grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' _site/src/context-layers/rainfall-ifd-aep-v1.js
           grep -Fq 'loadPersistedIfdCells' _site/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq 'persistVerifiedIfdCell' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq 'rainfall-ifd-aep-v1.js?v=20261022-v10-2-8-verified-ifd-persistence' _site/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq 'scheduleAepRender' _site/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.8' _site/BUILD.txt
 
@@ -311,6 +312,7 @@ jobs:
           grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' <<< "$rainfall_ifd"
           grep -Fq 'loadPersistedIfdCells' <<< "$rainfall_layer"
           grep -Fq 'persistVerifiedIfdCell' <<< "$rainfall_layer"
+          grep -Fq 'rainfall-ifd-aep-v1.js?v=20261022-v10-2-8-verified-ifd-persistence' <<< "$rainfall_layer"
           grep -Fq 'scheduleAepRender' <<< "$rainfall_layer"
           grep -Fq 'running<IFD_LOOKUP_CONCURRENCY' <<< "$rainfall_layer"
           hires="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/hires-radar-loop-policy-v1.js")"

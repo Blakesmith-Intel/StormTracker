@@ -86,3 +86,49 @@ export function classifyRainfallAep({
  result.designDepthMm=cells[0].depth;result.interpolatedDuration=cells[0].interpolated;
  return result;
 }
+
+// Six modestly parallel lookups instead of the former 3-request bottleneck.
+ // Failures keep their existing five-minute per-cell cooldown.
+ export const IFD_LOOKUP_CONCURRENCY=6;
+ export const IFD_LOCAL_CACHE_KEY="stormtracker:verified-bom-ifd-cells:v1";
+ const IFD_CACHE_SCHEMA="StormTrackerVerifiedBoMIFDLocalV1";
+ const REQUIRED_AEP=["20","10","5","2","1"];
+ // Only cache independently fetched, exactly located BoM point references;
+ // do not allow a stale browser record to manufacture a rainfall rarity.
+ export function verifiedPersistentIfdCell(cell,node){
+  if(typeof cell!=="string"||!/^[-\d.]+,[-\d.]+$/.test(cell)||!node||
+     !String(node.sourceBaseline??"").includes("Bureau of Meteorology")||
+     !Number.isFinite(Date.parse(node.verifiedUtc??"")))return false;
+  const coordinates=cell.split(",").map(Number);
+  if(coordinates.length!==2||!coordinates.every(Number.isFinite)||
+     ifdCellKey(coordinates[0],coordinates[1])!==cell)return false;
+  const depths=node.depthsMmByMinutes;
+  if(!depths||typeof depths!=="object")return false;
+  for(const minutes of ["60","1440"]){
+   const row=depths[minutes];
+   if(!row||REQUIRED_AEP.some(a=>!Number.isFinite(row[a])||row[a]<=0))return false;
+   if(REQUIRED_AEP.some((a,i)=>i>0&&row[a]<row[REQUIRED_AEP[i-1]]))return false;
+  }
+  return REQUIRED_AEP.every(a=>depths["1440"][a]>=depths["60"][a]);
+ }
+ export function loadPersistedIfdCells(storage){
+  try{
+   const target=storage??globalThis.localStorage;
+   const saved=JSON.parse(target?.getItem(IFD_LOCAL_CACHE_KEY)??"null");
+   if(saved?.schema!==IFD_CACHE_SCHEMA||!saved.cells||typeof saved.cells!=="object")return {};
+   return Object.fromEntries(Object.entries(saved.cells).filter(([cell,node])=>
+    verifiedPersistentIfdCell(cell,node)));
+  }catch{return {}}
+ }
+ export function persistVerifiedIfdCell(cell,node,storage){
+  if(!verifiedPersistentIfdCell(cell,node))return false;
+  try{
+   const target=storage??globalThis.localStorage;
+   if(!target)return false;
+   const cells=loadPersistedIfdCells(target);
+   if(Date.parse(cells[cell]?.verifiedUtc??"")>=Date.parse(node.verifiedUtc))return true;
+   cells[cell]=node;
+   target.setItem(IFD_LOCAL_CACHE_KEY,JSON.stringify({schema:IFD_CACHE_SCHEMA,cells}));
+   return true;
+  }catch{return false} // Private browsing/quota failure must never block rainfall.
+ }

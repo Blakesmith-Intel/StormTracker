@@ -192,6 +192,11 @@ jobs:
           node frontend/tests/run-hires-radar-road-toggle-20261019-tests.mjs
           node scripts/test-national-source-policy-v1.mjs
           grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' _site/src/context-layers/rainfall-ifd-aep-v1.js
+          grep -Fq 'loadPersistedIfdCells' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq 'persistVerifiedIfdCell' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq 'scheduleAepRender' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.8' _site/BUILD.txt
 
       - name: Checkout AEP live rainfall preview (separate from sealed production)
         uses: actions/checkout@v4
@@ -246,6 +251,7 @@ jobs:
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' <<< "$root"
           grep -Fq 'RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP' <<< "$root"
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.5' <<< "$root"
+          grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.8' <<< "$root"
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
           grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' <<< "$root"
@@ -294,7 +300,7 @@ jobs:
           grep -Fq 'AEP_REPORT_TIERS' <<< "$report_logic"
           grep -Fq 'Below' <<< "$report_logic" || grep -Fq 'below-20pct' <<< "$report_logic" || grep -Fq '100 mm or more' <<< "$report_logic"
           grep -Fq '"Catchment"' <<< "$rainfall_layer"
-          grep -Fq 'rainfall-aep-catchment-v10-2-5-20261020' <<< "$rainfall_engine"
+          grep -Fq 'rainfall-aep-catchment-v10-2-8-ifd-fast-20261022' <<< "$rainfall_engine"
           basin_code="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/rainfall-catchment-v1.js")"
           grep -Fq 'catchmentForStation' <<< "$basin_code"
           basin_json="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/data/qld-rainfall-basins-v1.json")"
@@ -302,6 +308,11 @@ jobs:
           grep -Fq 'Condamine' <<< "$basin_json"
           rainfall_ifd="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/rainfall-ifd-aep-v1.js")"
           grep -Fq 'AEP_GRADES' <<< "$rainfall_ifd"
+          grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' <<< "$rainfall_ifd"
+          grep -Fq 'loadPersistedIfdCells' <<< "$rainfall_layer"
+          grep -Fq 'persistVerifiedIfdCell' <<< "$rainfall_layer"
+          grep -Fq 'scheduleAepRender' <<< "$rainfall_layer"
+          grep -Fq 'running<IFD_LOOKUP_CONCURRENCY' <<< "$rainfall_layer"
           hires="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/hires-radar-loop-policy-v1.js")"
           grep -Fq 'isVerifiedHiResRadarFrame' <<< "$hires"
           grep -Fq 'measuredHiResRainWindow' <<< "$hires"
@@ -680,3 +691,40 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha."
+      - name: Seal verified V10.2.8 persistent IFD and faster AEP production
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          # Only run after green tests, Pages build, deployment and public-source verification.
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.8"
+          restore="restore/v10.2.8"
+          grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.8' scripts/apply-ftp-aep-release-v10.py
+          grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' frontend/src/context-layers/rainfall-ifd-aep-v1.js
+          grep -Fq -- '--max-new 48' .github/workflows/publish-verified-queensland-ifd.yml
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserved frozen $tag ($existing_tag); never move existing tags."
+            exit 0
+          fi
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.8 — verified persistent AEP IFD, six concurrent lookups, 48 hourly catalogue attempts (22 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha; recover with $restore."

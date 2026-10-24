@@ -34,7 +34,7 @@ const th=make("535162",2.80,now-8*MIN,{STORMTRACKER_PLOT_CROSSING:crossing});
 const alerts=reconcileFloodEvents([th],{}, {},now);
 assert.equal(alerts.features.length,1,
  "535162 above BoM 1.71 m bridge must be mapped without a minor flood threshold or session history");
-assert.equal(alerts.features[0].properties.STORMTRACKER_DISPLAY_STATE,"elevated");
+assert.equal(alerts.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
 assert.equal(alerts.features[0].properties.STORMTRACKER_RAPID_RISE,false,
  "Crossing reach alone is not proof of an active rapid rise");
 assert.equal(alerts.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);

@@ -19,8 +19,13 @@ export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
   const reportedTime=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
   const observedAt=finite(reportedTime)&&reportedTime>0&&reportedTime<=now+5*60000
    ?reportedTime:parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,now);
-  if(!finite(observedAt)||now-observedAt>FLOOD_SIGNAL_MAX_AGE_MS||
-     observedAt>now+5*60000){excludedStale.push(id);continue;}
+  // Preserve a source-confirmed ABOVE-CROSSING last observation with
+  // explicit stale status; never call it a CURRENT crossing exceedance.
+  // Older than the retained BoM observation window is not reportable.
+  const invalidTime=!finite(observedAt)||observedAt>now+5*60000||
+    now-observedAt>48*3600000;
+  if(invalidTime){excludedStale.push(id);continue;}
+  const stale=now-observedAt>FLOOD_SIGNAL_MAX_AGE_MS;
   const measured=observedFloodClass(height,stationFloodLevels(f));
   const originalClass=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
   // Measured station-specific official thresholds beat repeated old
@@ -31,14 +36,15 @@ export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
   const crossing=publishedCrossingForFeature(f,catalogue);
   const crossingValid=Boolean(crossing);
   const crossed=Boolean(crossingValid && height>=crossing.heightMetres);
+  if(stale&&!crossed){excludedStale.push(id);continue;}
   if(!stageNotable&&!crossed)continue;
-  const severity=floodClass==="major"?"major":
-    floodClass==="moderate"?"moderate":"crossing";
+  const severity=!stale&&floodClass==="major"?"major":
+    !stale&&floodClass==="moderate"?"moderate":"crossing";
   const row={
    id,name:String(p.name??f.name??id),
    latitude:Number(f.geometry?.coordinates?.[1]),
    longitude:Number(f.geometry?.coordinates?.[0]),
-   heightMetres:height,observedAt,
+   heightMetres:height,observedAt,observationStale:stale,
    tendency:String(p.STORMTRACKER_TENDENCY??""),
    floodClass:grades.has(floodClass)?floodClass:
      ["minor","below-minor"].includes(floodClass)?floodClass:"unclassified",
@@ -65,7 +71,8 @@ export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
    {key:"moderate",title:"Moderate flooding",rows:ranked.filter(x=>x.severity==="moderate")},
    {key:"crossing",title:"Published bridge / causeway / crossing level reached",
     rows:ranked.filter(x=>x.severity==="crossing")}],
-  crossedCount:ranked.filter(x=>x.bridgeOrCausewayReached).length,
+  crossedCount:ranked.filter(x=>x.bridgeOrCausewayReached&&!x.observationStale).length,
+  lastConfirmedCrossedCount:ranked.filter(x=>x.bridgeOrCausewayReached&&x.observationStale).length,
   excludedStaleCount:excludedStale.length,
   crossingSourceAvailable:catalogue?.schema===FLOOD_CROSSINGS_SCHEMA||
     ranked.some(row=>Boolean(row.crossing)),

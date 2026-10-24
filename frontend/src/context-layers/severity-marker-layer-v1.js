@@ -4,7 +4,7 @@
 // receives its own scene primitive collection. Draw lower ranks first and
 // higher rarity over them; geographically fixed symbols stay selectable.
 const byViewer=new WeakMap();
-export const FLOOD_ICON_PRIORITY=Object.freeze({unverified:0,"rapid-rise":1,elevated:1,minor:2,moderate:4,major:6});
+export const FLOOD_ICON_PRIORITY=Object.freeze({unverified:0,"rapid-rise":1,elevated:1,crossing:1,minor:2,moderate:4,major:6});
 export const floodIconPriority=state=>FLOOD_ICON_PRIORITY[String(state)]??0;
 export function rainfallIconPriority(aep){
  if(aep?.classification==="below-20pct-aep")return 1;

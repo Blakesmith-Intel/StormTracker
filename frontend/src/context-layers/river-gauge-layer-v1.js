@@ -209,7 +209,7 @@ export function riverGaugeOperationalSummary(
 // ONE blue arrow badge is used for measured rapid rise / possible flash flooding.
 // A below-minor candidate is the blue icon with the same blue arrow.
 const FLOOD_MARKER_COLORS=Object.freeze({
-  "rapid-rise":"#1269e8",elevated:"#1269e8",minor:"#2db76f",
+  "rapid-rise":"#1269e8",elevated:"#1269e8",crossing:"#f5a21b",minor:"#2db76f",
   moderate:"#ffd43b",major:"#e53935",unverified:"#8292a2"
 });
 export function createRiverGaugeMarkerImage(state,rapidRise=false){
@@ -219,10 +219,19 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 88">
     <path d="M35 5 C16 5 6 19 6 35 C6 54 19 65 35 80 C51 65 64 54 64 35 C64 19 54 5 35 5Z"
       fill="${colour}" stroke="#132337" stroke-width="2.6" stroke-linejoin="round"/>
+    ${level==="crossing"?`<!-- Bridge deck and supports with blue water overtopping the roadway. -->
+    <path d="M18 26 H52 M21 26 V47 M49 26 V47
+             M21 47 Q35 33 49 47"
+       fill="none" stroke="#ffffff" stroke-width="4.4"
+       stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16 31 Q21 26 26 31 T36 31 T46 31 T56 31
+             M16 39 Q21 34 26 39 T36 39 T46 39 T56 39"
+       fill="none" stroke="#1269e8" stroke-width="4.2"
+       stroke-linecap="round"/>`:`
     <circle cx="35" cy="34" r="21" fill="none" stroke="#fff" stroke-width="3"/>
     <path d="M20 30 Q25 35 30 30 T40 30 T50 30
              M20 39 Q25 44 30 39 T40 39 T50 39"
-      fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round"/>
+      fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round"/>`}
     ${arrow?`<circle cx="61" cy="16" r="14" fill="#1269e8"
        stroke="#ffffff" stroke-width="3"/>
       <path d="M61 6 L52.5 17 H57.5 V25 H64.5 V17 H69.5Z"

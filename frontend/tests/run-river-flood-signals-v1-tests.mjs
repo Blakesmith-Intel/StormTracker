@@ -64,7 +64,8 @@ const selected=reconcileFloodEvents(input,measured,{
  "bom:999997":{type:"rapid-rise",lastObservedAt:now-15*MIN,activatedAt:now-60*MIN}
 },now);
 assert.equal(selected.features.length,5);
-assert.deepEqual(selected.events,{},"Old rate-based markers must not persist after source changes");
+assert.ok(selected.events[below.id],"Unclassified gauge retains its exact pre-rise level for recovery monitoring");
+assert.equal(selected.events[below.id].baselineHeight,1.0);
 assert.equal(selected.counts.rapidRise,2);
 assert.equal(selected.features.find(f=>f.id==="bom:3").properties.STORMTRACKER_RAPID_RISE,false);
 assert.equal(selected.features.find(f=>f.id===below.id).properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");

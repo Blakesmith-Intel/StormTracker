@@ -290,7 +290,7 @@ jobs:
           grep -Fq 'target="_blank" rel="noopener noreferrer"' <<< "$rainfall_html"
           guide_css="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
           grep -Fq '#controlSidebar > .dashboard-heading .operator-guide-link' <<< "$guide_css"
-          grep -Fq '.flood-report-actions button' <<< "$guide_css"
+          grep -Fq '#openFloodGaugeReport' <<< "$guide_css"
           grep -Fq 'class="significant-rainfall-report-actions"' <<< "$rainfall_html"
           rainfall_style="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
           grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' <<< "$rainfall_style"

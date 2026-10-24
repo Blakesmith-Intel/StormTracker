@@ -138,7 +138,9 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   let kept=decision.show?showFeature(feature,decision):null;
   if(event){
    if(isFresh && observation>event.lastObservedAt){
-    const reached=height<=event.baselineHeight+event.recoveryMarginMetres;
+    const reached=height<=event.baselineHeight+event.recoveryMarginMetres &&
+      !decision.rapidRise &&
+      String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising";
     const confirming=reached &&
       (event.lastRecoveryAt===null||
        observation-event.lastRecoveryAt>=RECOVERY_MIN_GAP_MS);

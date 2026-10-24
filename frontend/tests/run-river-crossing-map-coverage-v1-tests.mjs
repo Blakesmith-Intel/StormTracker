@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import {parseBoMStationCrossingHeader,publishedCrossingForFeature,CROSSING_SCHEMA}
  from "../src/context-layers/river-crossing-state-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
+import {createRiverGaugeMarkerImage} from "../src/context-layers/river-gauge-layer-v1.js";
+import {riverGaugePanelAppearance} from "../src/context-layers/river-gauges-operational-v1.js";
+import {floodIconPriority} from "../src/context-layers/severity-marker-layer-v1.js";
 import {buildNotableFloodGaugeReport} from "../src/context-layers/river-gauge-notable-report-v1.js";
 import worker from "../../relay/worker.js";
 
@@ -39,6 +42,59 @@ assert.equal(alerts.features[0].properties.STORMTRACKER_RAPID_RISE,false,
  "Crossing reach alone is not proof of an active rapid rise");
 assert.equal(alerts.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
 assert.equal(alerts.features[0].properties.STORMTRACKER_CROSSING_LEVEL_METRES,1.71);
+const amber=decodeURIComponent(createRiverGaugeMarkerImage("crossing",false).split(",")[1]);
+assert.match(amber,/#f5a21b/,"Crossing-only indicator has amber pin");
+assert.match(amber,/Bridge deck and supports/,
+ "Amber icon illustrates a BRIDGE instead of a car");
+assert.match(amber,/#1269e8/,"Blue water visibly crosses the bridge");
+assert(!amber.includes('cx="61"'),"No rapid-rise arrow unless measured rise qualifies");
+assert.equal(floodIconPriority("crossing"),1,
+ "New crossing icon uses existing source/drawing tier without shifting geography");
+const info=riverGaugePanelAppearance({
+ displayState:"crossing",rapidRise:false,crossingReached:true
+});
+assert.match(info.category,/CROSSING HEIGHT REACHED/);
+assert.match(info.category,/ROAD STATUS UNCONFIRMED/);
+assert.equal(decodeURIComponent(info.image.split(",")[1]),amber,
+ "Popup MUST show exact same crossing icon as map");
+// Gauge 535162: official BoM crossing reference 1.71m, earlier source
+// reading 2.77m; tests do not pretend the historical reading is live.
+const theresa277=make("535162",2.77,now-8*MIN,{
+ STORMTRACKER_PLOT_CROSSING:crossing
+});
+const matched=reconcileFloodEvents([theresa277],{}, {},now);
+assert.equal(matched.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
+assert.equal(matched.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
+assert.equal(buildNotableFloodGaugeReport([theresa277],null,now).groups[2].rows[0]
+ .crossing.amountAboveMetres,1.06);
+// Rapid rise is measured from valid samples, NOT merely a high water height.
+const risingTheresa=make("535162",2.77,now-8*MIN,{
+ STORMTRACKER_PLOT_CROSSING:crossing,STORMTRACKER_TENDENCY:"rising"
+});
+const risingHistory={"bom:535162":[
+ {time:now-68*MIN,height:1.85},{time:now-8*MIN,height:2.77}]};
+const risingAlert=reconcileFloodEvents([risingTheresa],risingHistory,{},now);
+assert.equal(risingAlert.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
+assert.equal(risingAlert.features[0].properties.STORMTRACKER_RAPID_RISE,true,
+ "Bridge marker retains blue arrow if and only if measured rise criteria met");
+const arrowSvg=decodeURIComponent(
+ createRiverGaugeMarkerImage("crossing",true).split(",")[1]);
+assert(arrowSvg.includes('cx="61"'),"Badge is shown over the bridge pin");
+assert(arrowSvg.includes("Bridge deck and supports"),"Arrow does not replace bridge");
+assert.equal(riverGaugePanelAppearance({
+ displayState:"crossing",rapidRise:true,crossingReached:true
+}).rapidRise,true,"Popup retains actual rapid-rise modifier");
+// Existing official minor/moderate/major ALWAYS supersede crossing colour.
+// This hypothetical same-station bridge is a controlled regression fixture.
+const official=make("035295",12.55,now-8*MIN,{
+ bom_stn_num:"035295",STORMTRACKER_TENDENCY:"steady",
+ STORMTRACKER_PLOT_CROSSING:{type:"B",heightMetres:7.45,
+ crossingName:"Synthetic test-only bridge"},STORMTRACKER_FLOOD_CLASS:"moderate"
+});
+const moderate=reconcileFloodEvents([official],{}, {},now);
+assert.equal(moderate.features[0].properties.STORMTRACKER_DISPLAY_STATE,
+ "moderate","Amber bridge must never replace verified yellow moderate flooding");
+assert.equal(moderate.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
 assert.equal(reconcileFloodEvents([
  make("535162",1.70,now-8*MIN,{STORMTRACKER_PLOT_CROSSING:crossing})
 ],{}, {},now).features.length,0,"Below an exact published crossing without rapid rise is excluded");

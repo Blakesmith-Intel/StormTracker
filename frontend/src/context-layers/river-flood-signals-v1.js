@@ -262,7 +262,7 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
       ["2026-station-native","2026-ahd-converted"].includes(
         p.STORMTRACKER_THRESHOLD_STATUS) &&
       ["below-minor","minor","moderate","major"].includes(reported) &&
-      calculated!==reported){
+      calculated!==reported && !(timely && measured===null)){
     return {show:true,state:"unverified",source:"bom-datum-conflict",
       reason:"2026 threshold and current BoM bulletin conflict: reported "+
         reported+", computed "+(measured??"below minor")+
@@ -270,6 +270,9 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
       rapidRise:false,tidalScreened:tidal,rise:null,stale:!timely,
       classificationUnverified:true,lastObservedAt:observed};
   }
+  // New, fresh, same-datum measured below-minor is positive recovery evidence,
+  // even when the bulletin still repeats a prior flood classification.
+  // Preserve an unverified conflict for ABOVE-minor disagreeing classes.
   if(measured!==undefined)level=measured??"below-minor";
   const official=["minor","moderate","major"].includes(level);
   // Do not mistake an omitted flood class for an official below-minor reading.

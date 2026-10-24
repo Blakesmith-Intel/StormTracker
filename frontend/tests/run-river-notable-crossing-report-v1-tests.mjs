@@ -43,7 +43,7 @@ const gauges=[
  station("540291",0.10,"below-minor",now-15*MIN,{name:"Clagiraba"}),
  station("540254",4.80,"",now-15*MIN,{name:"Mudgeeraba"}),
  station("540063",2.67,"",now-15*MIN,{name:"Colleges Crossing"}),
- station("540154",5.30,"minor"),
+ station("540154",0.10,"below-minor"),
  station("999991",7.5,"moderate",now-15*MIN,{name:"Official moderate station"}),
  station("999992",9.0,"major",now-15*MIN,{name:"Official major station"}),
  station("999993",1.0,"major",now-180*MIN,{name:"Stale major"}),

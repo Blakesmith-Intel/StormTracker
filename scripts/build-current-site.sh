@@ -200,17 +200,12 @@ old_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-leg
 new_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span style=\"color:#1269e8\">↑</span> Rapid rise below minor · <span class=\"flood-green\">●</span> Minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span style=\"color:#1269e8\">↑</span> on any flood icon = rapid rise / potential flash flooding</div>"
 assert html.count(old_legend)==1, "Pinned production legend layout changed"
 html=html.replace(old_legend,new_legend,1)
-html=html.replace(needle,"Flood signals</label>"+button_match.group(0)+"</div>",1)
-# Insert the small flood report button AFTER the source-verified legend.
-# The accepted compact checkbox/refresh row and its layout stay unchanged.
-flood_action_start='<div class="flood-report-actions">'
-assert operator_html.count(flood_action_start)==1
-action_start=operator_html.index(flood_action_start)
-action_end=operator_html.index('</div>',action_start)+len('</div>')
-flood_action=operator_html[action_start:action_end]
-assert html.count(new_legend)==1
-html=html.replace(new_legend,new_legend+'\n      '+flood_action,1)
-# This page uses the latest source features, not only map-visible flood icons.
+report_button=search(r'<button id="openFloodGaugeReport"[^>]*>[^<]*</button>',operator_html)
+assert report_button, "Flood gauge report button absent from maintenance source"
+html=html.replace(needle,"Flood signals</label>"+report_button.group(0)+
+  button_match.group(0)+"</div>",1)
+# Same flood controls row: the additional report action does NOT increase
+# sidebar height or require a second map or a nested disclosure.
 
 # Copy the two exact maintenance-source rainfall controls into pinned HTML;
 # preserve the accepted one-screen sidebar and original panel ordering.

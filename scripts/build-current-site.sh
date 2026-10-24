@@ -70,7 +70,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -197,7 +197,12 @@ assert html.count(needle)==1
 # Replace the old rapid/tide-only legend while retaining pinned sidebar
 # controls, positions, app shell and independent historical QA preview.
 old_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span class=\"flood-green\">●</span> Rapid above minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span class=\"flood-cyan\">●</span> Unusual tidal rise (screening)</div>"
-new_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span style=\"color:#1269e8\">↑</span> Rapid rise below minor · <span class=\"flood-green\">●</span> Minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span style=\"color:#1269e8\">↑</span> on any flood icon = rapid rise / potential flash flooding</div>"
+legend_start=operator_html.index('<div id="riverGaugeSeverityLegend"')
+legend_end=operator_html.index('<!-- SIG_RAIN_ROW_START -->',legend_start)
+new_legend=operator_html[legend_start:legend_end].strip()
+assert new_legend.count('data-flood-legend-state=')==6
+assert 'data-flood-legend-state="crossing"' in new_legend
+assert 'data-flood-legend-rapid-rise="true"' in new_legend
 assert html.count(old_legend)==1, "Pinned production legend layout changed"
 html=html.replace(old_legend,new_legend,1)
 report_button=search(r'<button id="openFloodGaugeReport"[^>]*>[^<]*</button>',operator_html)
@@ -346,6 +351,10 @@ assert "INLAND_COAST_BUFFER_KM = 125" in (layers / "river-gauge-coastal-screen-v
 assert "rateMatches && !tidal" in (layers / "river-flood-signals-v1.js").read_text()
 panel=(layers / "river-gauges-operational-v1.js").read_text()
 assert "riverGaugePanelAppearance(summary)" in panel
+assert 'icon.src=createRiverGaugeMarkerImage(state,rapid)' in panel
+assert 'data-flood-legend-state="crossing"' in html
+assert 'flood-legend-grid' in html
+assert 'flood-legend-grid' in style_source
 assert "icon.src=appearance.image" in panel
 assert "summary.tidalScreened" in panel
 assert "#riverGaugeInfo .river-gauge-key img" in style
@@ -454,6 +463,9 @@ grep -Fq 'const feature = idKey ? byId.get(idKey) : null' _site/src/context-laye
 grep -Fq 'STORMTRACKER_RAPID_RISE' _site/src/context-layers/river-flood-events-v1.js
 grep -Fq 'FLOOD_MARKER_COLORS' _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq 'Bridge deck and supports' _site/src/context-layers/river-gauge-layer-v1.js
+grep -Fq 'data-flood-legend-state="crossing"' _site/live3d-operational-v9.html
+grep -Fq 'flood-legend-grid' _site/src/single-interface-v1.css
+grep -Fq 'icon.src=createRiverGaugeMarkerImage(state,rapid)' _site/src/context-layers/river-gauges-operational-v1.js
 grep -Fq 'state:"crossing"' _site/src/context-layers/river-flood-events-v1.js
 grep -Fq 'BOM ALL-GAUGE FLOOD PERSISTENCE ID-ONLY JOIN' _site/BUILD.txt
 grep -Fq 'BOM TIDAL FALSE FLASH-RISE SUPPRESSION 2026-10-18' _site/BUILD.txt

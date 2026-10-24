@@ -462,9 +462,11 @@ export function createRiverGaugeLayer({
   }
 
   function scheduleCrossingScan(delayMs=30000){
-    if(crossingScanTimer||!latestSourceFeatures.length)return;
+    // No autonomous scans on a stopped layer or bare refresh test harness.
+    if(!timer||crossingScanTimer||!latestSourceFeatures.length)return;
     crossingScanTimer=setTimeout(()=>{
       crossingScanTimer=null;
+      if(!timer)return;
       if(typeof document!=="undefined"&&document.hidden){
         scheduleCrossingScan(60000);
         return;

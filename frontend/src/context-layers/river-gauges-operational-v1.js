@@ -1,3 +1,5 @@
+import {buildNotableFloodGaugeReport,FLOOD_CROSSINGS_SCHEMA}
+ from "./river-gauge-notable-report-v1.js?v=20261024-notable-crossings-v1";
 import {addOfficialSourceRow,bomGaugePlotUrl,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.13.2";
 import {
   createRiverGaugeLayer,
@@ -496,6 +498,126 @@ export function initialiseOperationalRiverGauges({
   const panel =
     $("riverGaugeInfo");
 
+  const reportDialog=$("floodGaugeReport");
+  const reportRows=$("floodGaugeReportRows");
+  const reportSummary=$("floodGaugeReportSummary");
+  const reportStatus=$("floodGaugeReportStatus");
+  let crossingCatalogue=null,crossingLoading=null,crossingRetryAfter=0;
+
+  const timeAest=at=>at?new Date(at).toLocaleString("en-AU",{
+    timeZone:"Australia/Brisbane",day:"2-digit",month:"short",
+    hour:"2-digit",minute:"2-digit",hour12:false
+  })+" AEST":"unknown time";
+  function renderFloodGaugeReport(){
+    if(!reportDialog?.open||!reportRows||!reportSummary||!reportStatus)return;
+    const now=Date.now();
+    const snapshot=buildNotableFloodGaugeReport(layer.sourceFeatures,
+      crossingCatalogue,now);
+    reportRows.replaceChildren();
+    const last=layer.lastLoadedAt;
+    const checked=last?"Checked "+timeAest(last):"Awaiting BoM observations";
+    reportStatus.textContent=checked+(crossingCatalogue?
+      " · BoM crossing levels published 5 Jan 2022":
+      crossingLoading?" · Loading official crossing references…":
+      " · Crossing reference unavailable (moderate/major only)");
+    reportSummary.textContent=snapshot.total+" qualifying gauge"+
+      (snapshot.total===1?"":"s")+" · "+snapshot.groups[0].rows.length+
+      " major · "+snapshot.groups[1].rows.length+" moderate"+
+      (crossingCatalogue?" · "+snapshot.crossedCount+
+      " meeting published crossing levels":" · crossing checks unavailable")+
+      (snapshot.excludedStaleCount?" · "+snapshot.excludedStaleCount+
+       " stale/unverified readings excluded":"");
+    if(!last){
+      const note=document.createElement("p");
+      note.className="rainfall-report-empty";
+      note.textContent="River observations are loading. Use Refresh to request current BoM data.";
+      reportRows.append(note);
+      return;
+    }
+    for(const group of snapshot.groups){
+      const section=document.createElement("section");
+      section.className="rainfall-report-group";
+      const title=document.createElement("h3"),name=document.createElement("span"),
+        count=document.createElement("span");
+      name.textContent=group.title;
+      count.className="rainfall-report-count";
+      count.textContent=group.rows.length+" gauge"+(group.rows.length===1?"":"s");
+      title.append(name,count);section.append(title);
+      if(!group.rows.length){
+        const empty=document.createElement("p");
+        empty.className="rainfall-report-empty";
+        empty.textContent=group.key==="crossing"&&!crossingCatalogue?
+          "Crossing reference unavailable; results cannot be verified.":
+          "No qualifying gauges in this category.";
+        section.append(empty);
+      }else{
+        const list=document.createElement("ul");
+        for(const station of group.rows){
+          const item=document.createElement("li"),top=document.createElement("div"),
+            name=document.createElement("strong"),height=document.createElement("span");
+          top.className="rainfall-report-entry";
+          name.textContent=station.name;
+          height.className="rainfall-report-mm";
+          height.textContent=station.heightMetres.toFixed(2)+" m";
+          top.append(name,height);item.append(top);
+          const meta=document.createElement("div");
+          meta.className="rainfall-report-meta";
+          meta.textContent=station.id+" · "+
+            (station.floodClass==="unclassified"?"No current official flood class":
+             station.floodClass.charAt(0).toUpperCase()+station.floodClass.slice(1))+
+            " · "+(station.tendency||"tendency not supplied")+
+            " · "+timeAest(station.observedAt);
+          item.append(meta);
+          if(station.bridgeOrCausewayReached&&station.crossing){
+            const crossing=document.createElement("div");
+            crossing.className="flood-report-crossing";
+            crossing.textContent=station.crossing.name+" · published "+
+              station.crossing.levelMetres.toFixed(2)+" m · current "+
+              station.heightMetres.toFixed(2)+" m ("+
+              station.crossing.amountAboveMetres.toFixed(2)+" m above reference)";
+            item.append(crossing);
+          }
+          list.append(item);
+        }
+        section.append(list);
+      }
+      reportRows.append(section);
+    }
+  }
+  async function loadCrossingReference(){
+    if(crossingCatalogue||crossingLoading)return crossingLoading;
+    if(Date.now()<crossingRetryAfter)return null;
+    crossingLoading=(async()=>{
+      try{
+        const response=await fetch(
+          "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-crossing-heights",
+          {signal:AbortSignal.timeout(20000),cache:"default"});
+        if(!response.ok)throw Error("Crossing reference HTTP "+response.status);
+        const data=await response.json();
+        if(data?.schema!==FLOOD_CROSSINGS_SCHEMA||
+           !data?.entries||Object.keys(data.entries).length<40||
+           data.sourceDate!=="2022-01-05")
+          throw Error("Published crossing catalogue failed validation");
+        crossingCatalogue=data;
+      }catch(error){
+        console.warn("Official bridge/causeway reference unavailable:",error);
+        crossingRetryAfter=Date.now()+15*60000;
+      }finally{
+        crossingLoading=null;
+        renderFloodGaugeReport();
+      }
+    })();
+    return crossingLoading;
+  }
+  function openFloodGaugeReport(){
+    if(!reportDialog)return;
+    if(!reportDialog.open)reportDialog.showModal();
+    renderFloodGaugeReport();
+    void loadCrossingReference();
+    if(!layer.lastLoadedAt || Date.now()-layer.lastLoadedAt>10*60000)
+      layer.refresh().catch(()=>renderFloodGaugeReport());
+  }
+
   const canvas =
     viewer.scene.canvas;
 
@@ -518,6 +640,7 @@ export function initialiseOperationalRiverGauges({
 
       onUpdate:
         features => {
+          if(reportDialog?.open)renderFloodGaugeReport();
           if (
             !panel
             || panel.hidden
@@ -877,6 +1000,20 @@ export function initialiseOperationalRiverGauges({
         }
       }
     );
+
+  $("openFloodGaugeReport")?.addEventListener("click",openFloodGaugeReport);
+  $("closeFloodGaugeReport")?.addEventListener("click",()=>reportDialog?.close());
+  $("refreshFloodGaugeReport")?.addEventListener("click",async()=>{
+    const button=$("refreshFloodGaugeReport");
+    if(button?.disabled)return;
+    if(button)button.disabled=true;
+    try{
+      await Promise.allSettled([layer.refresh({force:true}),loadCrossingReference()]);
+    }finally{
+      if(button)button.disabled=false;
+      renderFloodGaugeReport();
+    }
+  });
 
   bindRiverGaugeManualRefresh(
     $("refreshRiverGaugesButton"),

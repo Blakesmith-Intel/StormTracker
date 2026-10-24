@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {createRiverGaugeLayer} from "../src/context-layers/river-gauge-layer-v1.js";
 import {buildNotableFloodGaugeReport} from "../src/context-layers/river-gauge-notable-report-v1.js";
 const now=Date.UTC(2026,9,24,11,30);
-const ids=Array.from({length:80},(_,i)=>String(535100+i));
+const ids=Array.from({length:130},(_,i)=>String(535100+i));
 const features=ids.map((number,i)=>({
  id:"bom:"+number,type:"Feature",
  geometry:{type:"Point",coordinates:[147.5569+i*0.0001,-22.973]},
@@ -59,10 +59,12 @@ const before=layer.crossingCoverage;
 assert(before.pending>0,"Cold browser must have pending crossing sources");
 await layer.checkCrossingReferences();
 assert.equal(layer.crossingCoverage.pending,0,
- "A requested full report check must finish ALL 80 source records, not just 16");
+ "A requested full report check must finish ALL 130 source records, not just 16");
 assert.equal(layer.crossingCoverage.sourceMissing,0);
-assert.equal(calls.recent.size,80);
+assert.equal(calls.recent.size,130);
 assert(calls.maximum<=4,"No more than four simultaneous station source requests");
+assert.equal(new Set(calls.recent.keys()).size,130,
+ "The 64-station limit is a batch size, NEVER a global cap");
 assert(calls.maximum>=2,"Avoid expensive fully serial station retrieval");
 const report=buildNotableFloodGaugeReport(layer.sourceFeatures,null,now);
 const station=report.groups[2].rows.find(x=>x.id==="bom:535162");
@@ -71,4 +73,4 @@ assert.equal(station.crossing.levelMetres,1.71);
 assert.equal(station.crossing.amountAboveMetres,1.06);
 assert.equal(layer.features.some(f=>f.id==="bom:535162"),true,
  "Map also shows the real crossing after source verification");
-console.log("PASS 80-station complete crossing scan via original BoM relay, 535162 included in map/report, bounded concurrency and no silent remaining eligible gauges");
+console.log("PASS 130-station complete crossing scan via original BoM relay, 535162 included in map/report, bounded concurrency and no silent remaining eligible gauges");

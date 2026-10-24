@@ -334,9 +334,9 @@ export function createRiverGaugeLayer({
     // All BoM stations with a current reported height are eligible.
     // Crossing discovery does not depend on the bulletin saying "rising".
     // A previously failed or insufficient station becomes eligible again
-    // after its own cooldown. Cap each pass and fetch serially to protect BoM.
+    // after its own cooldown. Cap each pass without increasing concurrency.
     const candidates=list.filter(item=>nowMs >= (recentNextAttemptAt.get(item.id)??0))
-      .slice(0,16);
+      .slice(0,64);
     if(!candidates.length){
       // A station-specific cooldown is not an exclusion from future scans.
       const next=list.reduce((min,item)=>
@@ -348,7 +348,7 @@ export function createRiverGaugeLayer({
     recentLoading=(async()=>{
       let success=0,failures=0,noData=0,lastFailureScope=null;
       // Four simultaneous reads on the EXISTING BoM relay, rather than
-      // 16 serial waits. Keep the 16-station per-pass limit.
+      // 64 serial waits. Keep four simultaneous requests, 64 stations/pass.
       for(let i=0;i<candidates.length;i+=4){
        if(now()<recentRelayBlockedUntil)break;
        await Promise.all(candidates.slice(i,i+4).map(async target=>{
@@ -457,16 +457,16 @@ export function createRiverGaugeLayer({
         // the next 10-minute observation refresh. Not an unbounded burst.
         const earliest=Math.min(...remaining.map(item=>
           recentNextAttemptAt.get(item.id)??now()));
-        const nextDue=Math.max(now()+3000,earliest);
+        const nextDue=Math.max(now(),earliest);
         const delay=now()<recentRelayBlockedUntil
-          ?Math.max(3000,recentRelayBlockedUntil-now()):nextDue-now();
+          ?Math.max(0,recentRelayBlockedUntil-now()):nextDue-now();
         scheduleCrossingScan(delay);
       }
     }
   }
 
   // The report must finish the entire currently eligible source catalogue,
-  // not stop after the first 16 gauge tables. Reuse the existing bounded
+  // not stop after the first 64 gauge tables. Reuse the existing bounded
   // worker calls and their verified exact-station cache.
   let crossingAudit=null;
   async function finishCrossingReferenceChecks(){
@@ -475,9 +475,9 @@ export function createRiverGaugeLayer({
       const initial=planBoMStationTableLookups(latestSourceFeatures,{
         history,plotCrossings,crossingCatalogue,nowMs:now()
       }).length;
-      // Each pass handles at most 16 sources. This is an iteration safety
+      // Each pass handles at most 64 sources. This is an iteration safety
       // guard, NOT a limit on the stations checked.
-      const maxPasses=Math.ceil(initial/16)+2;
+      const maxPasses=Math.ceil(initial/64)+2;
       for(let pass=0;pass<maxPasses;pass++){
         if(now()<recentRelayBlockedUntil)break;
         const pending=planBoMStationTableLookups(latestSourceFeatures,{
@@ -521,7 +521,7 @@ export function createRiverGaugeLayer({
       retryPending:blocked?pending.length:pending.length-available.length};
   }
 
-  function scheduleCrossingScan(delayMs=3000){
+  function scheduleCrossingScan(delayMs=0){
     // No autonomous scans on a stopped layer or bare refresh test harness.
     if(!timer||crossingScanTimer||!latestSourceFeatures.length)return;
     crossingScanTimer=setTimeout(()=>{
@@ -533,7 +533,7 @@ export function createRiverGaugeLayer({
       }
       void backfillRecentBoMHistory(latestSourceFeatures).catch(error=>
         console.warn("BoM crossing catalogue scan unavailable:",error));
-    },Math.max(3000,Math.min(15*60000,delayMs)));
+    },Math.max(0,Math.min(15*60000,delayMs)));
   }
 
   function markerImage(state,rapidRise=false){

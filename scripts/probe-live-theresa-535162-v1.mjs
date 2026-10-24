@@ -1,3 +1,6 @@
+import {joinRiverGaugeObservations} from "../frontend/src/context-layers/river-gauge-observations-v1.js";
+import {withStationFloodLevels} from "../frontend/src/context-layers/river-flood-thresholds-v1.js";
+import {planBoMStationTableLookups} from "../frontend/src/context-layers/bom-recent-river-history-v1.js";
 // One-off operational diagnosis: exact station 535162, no guessed data.
 // Logs station-specific results, no persistence or production side effects.
 const worker="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev";
@@ -35,3 +38,23 @@ const stations=(metadata.data?.features??[]).filter(f=>
  coordinates:f.geometry?.coordinates,types:f.properties?.location_types,
  forecast:f.properties?.forecast_site_classification}));
 console.log("METADATA",JSON.stringify({total:metadata.data?.features?.length,stations}));
+
+if(bulletins.data?.products && metadata.data?.features){
+ const joined=joinRiverGaugeObservations({
+  gauges:metadata.data,bulletins:bulletins.data,nowMs:Date.now()
+ });
+ const features=withStationFloodLevels(joined.payload.features);
+ const plan=planBoMStationTableLookups(features,{nowMs:Date.now()});
+ const at=plan.findIndex(x=>x.id==="bom:535162");
+ const missing=features.find(x=>x.id==="bom:535162");
+ console.log("LIVE_PLAN",JSON.stringify({
+  matched:joined.matchedCount,totalLocations:joined.totalGaugeLocations,
+  pending:plan.length,positionOf535162:at,priority535162:plan[at]?.priority,
+  dataOnly:missing?.properties?.STORMTRACKER_THRESHOLD_STATUS,
+  name:missing?.properties?.name,
+  height:missing?.properties?.STORMTRACKER_HEIGHT_METRES,
+  stationId:missing?.properties?.bom_stn_num,
+  href:missing?.properties?.STORMTRACKER_RECENT_DATA_HREF,
+  tendency:missing?.properties?.STORMTRACKER_TENDENCY
+ }));
+}

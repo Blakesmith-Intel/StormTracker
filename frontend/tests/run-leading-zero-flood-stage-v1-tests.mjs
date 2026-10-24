@@ -64,7 +64,7 @@ const fetchImpl=async url=>{
  let body;
  if(u.includes("river-gauge-metadata"))body=gauges;
  else if(u.includes("river-height-bulletins"))body=bulletin(step===0?7.35:12.55,
-   step===0?"":"moderate");
+   step===0?"":"moderate",step===0?"10:14 pm Sat":"10:16 pm Sat");
  else throw Error("Unexpected fetch "+u);
  return {ok:true,json:async()=>body};
 };

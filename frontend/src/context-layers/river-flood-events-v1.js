@@ -4,7 +4,7 @@
 import {
  evaluateFloodSignal,parseQueenslandObservationTime,
  latestRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS
-} from "./river-flood-signals-v1.js?v=20261024-below-minor-recovery";
+} from "./river-flood-signals-v1.js?v=9.13.2";
 import {stationFloodLevels} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
 export const FLOOD_EVENTS_STORAGE_KEY="stormtracker.qld-flood-events.v1";

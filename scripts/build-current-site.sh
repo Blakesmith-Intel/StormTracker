@@ -359,6 +359,7 @@ assert "width: 38" not in map_marker
 panel=(layers / "river-gauges-operational-v1.js").read_text()
 assert "riverGaugePanelAppearance(summary)" in panel
 assert 'icon.src=createRiverGaugeMarkerImage(state,rapid)' in panel
+assert 'uniform-v10.2.19' in panel, 'Published mobile flood icon module must have the latest cache key'
 assert 'data-flood-legend-state="crossing"' in html
 assert 'flood-legend-grid' in html
 assert 'flood-legend-grid' in style_source

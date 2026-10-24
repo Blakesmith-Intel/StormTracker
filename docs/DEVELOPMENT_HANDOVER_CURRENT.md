@@ -197,7 +197,7 @@ The current BoM gauge poll interval is **10 minutes**, and a manual **Refresh** 
 
 Useful refs: [FLOOD_GAUGE_ID_AND_ICONS_20261018.md](FLOOD_GAUGE_ID_AND_ICONS_20261018.md), [WALKERSTON_533142_MINOR_GAUGE_DISAPPEARANCE_20261018.md](WALKERSTON_533142_MINOR_GAUGE_DISAPPEARANCE_20261018.md), docs/BOM_2026_FLOOD_CLASSIFICATION_AUDIT.json, docs/BOM_2026_GAUGE_COVERAGE_AUDIT.json.
 
-### 24 October 2026 — Notable flood gauge and road crossing report (v10.3.0)
+### 24 October 2026 — Notable flood gauge and road crossing report (v10.2.10)
 
 `frontend/src/context-layers/river-gauge-notable-report-v1.js` is a pure report builder over **all** source-matched river height observations exposed by `createRiverGaugeLayer().sourceFeatures`, never only filtered map icons. Selection: BoM moderate/major flood stage (station-specific actual measured stage preferred over possibly repeated old bulletin class); OR latest source-measured height at/above an exact-station published B (bridge), C (causeway), or X (crossing) height. One row per station; current source timestamp required within the existing 90-minute flood-signal freshness window; source identifiers/positions remain untouched. Source levels are obtained from BoM's public Section 5 register (05 January 2022) through the **existing Cloudflare Worker** `/river-crossing-heights` endpoint, with 24-hour upstream cache. The parser recognises only the documented B/C/X types, ignores roads/approaches/weirs/dams/tides, and fails closed if the official upstream data or reference count is invalid; no nearby/derived crossing levels are permitted. Historical datum/source-age limitations are made prominent; **crossing reference reached** must never be represented as a verified road closure.
 

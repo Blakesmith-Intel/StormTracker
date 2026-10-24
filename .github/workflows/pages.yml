@@ -897,3 +897,39 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha; recovery branch $restore."
+      - name: Seal verified V10.2.12 canonical BoM gauge identities
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.12"
+          restore="restore/v10.2.12"
+          grep -Fq 'canonicalBomRiverStationNumber(' frontend/src/context-layers/river-gauges-v1.js
+          grep -Fq 'Bingeegang at 7.35m must NOT display a yellow moderate marker' frontend/tests/run-leading-zero-flood-stage-v1-tests.mjs
+          grep -Fq -- '-leading-zero-station-ids-v10.2.12' scripts/build-current-site.sh
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserved immutable $tag at $existing_tag."
+            exit 0
+          fi
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.12 — exact BoM station IDs with restored leading zero, station-native flood thresholds, and elimination of false moderate alert at Bingeegang Weir (24 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha"

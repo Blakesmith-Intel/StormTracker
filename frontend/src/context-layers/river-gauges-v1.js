@@ -39,6 +39,14 @@ function normalise(
   ).toLowerCase();
 }
 
+// BoM publishes six-digit station numbers (e.g. 035295), while its ArcGIS
+// metadata can expose the numeric value without the leading zero (35295).
+// Normalise the SAME station; never infer identity from a nearby name/site.
+export function canonicalBomRiverStationNumber(value){
+  const raw=text(value);
+  return /^\d{1,6}$/.test(raw)?raw.padStart(6,"0"):raw;
+}
+
 // Exact BoM National Flood Gauge Network source classification. Only
 // sites explicitly marked "Qualitative" qualify for persistent display
 // outside the measured rapid-rise screen. A missing, Quantitative or unknown
@@ -72,7 +80,7 @@ export function riverGaugeId(
     );
 
   const bomStation =
-    text(
+    canonicalBomRiverStationNumber(
       properties.bom_stn_num
     );
 
@@ -107,7 +115,7 @@ export function riverGaugeSummary(
       ),
 
     bomStationNumber:
-      text(
+      canonicalBomRiverStationNumber(
         properties.bom_stn_num
       ),
 

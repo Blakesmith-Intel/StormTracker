@@ -1,0 +1,83 @@
+import assert from "node:assert/strict";
+import {canonicaliseLegacyBoMStationCache,createRiverGaugeLayer}
+ from "../src/context-layers/river-gauge-layer-v1.js";
+import {FLOOD_SIGNAL_STORAGE_KEY} from "../src/context-layers/river-flood-signals-v1.js";
+import {OFFICIAL_FLOOD_STORAGE_KEY}
+ from "../src/context-layers/river-official-flood-persistence-v1.js";
+
+const NOW=Date.UTC(2026,9,24,12,20),PREVIOUS=NOW-70*60000;
+const SOURCE_ID="035295",OLD_ID="bom:35295",CURRENT_ID="bom:035295";
+const oldFeature={id:OLD_ID,type:"Feature",
+ geometry:{type:"Point",coordinates:[149.7,-23.3]},
+ properties:{bom_stn_num:"35295",state:"QLD",name:"Bingeegang Weir HG",
+ STORMTRACKER_HEIGHT_METRES:4.5,STORMTRACKER_FLOOD_CLASS:"moderate"}};
+const metadata={type:"FeatureCollection",features:[{
+ type:"Feature",geometry:oldFeature.geometry,
+ properties:{bom_stn_num:35295,awrc_stateid:"130950A",
+ state:"QLD",name:"Bingeegang Weir HG",lat:-23.3,long:149.7,
+ location_types:"water level gauge;"}
+}]};
+const items=canonicaliseLegacyBoMStationCache({
+ "bom:35295":[{time:PREVIOUS,height:4.5}],
+ "bom:035295":[{time:NOW-10*60000,height:7.35}],
+ "awrc:130950A":[{time:PREVIOUS,height:2}]});
+assert.deepEqual(items[CURRENT_ID].map(x=>x.height),[4.5,7.35],
+ "Only same numerical BoM station histories are merged, without data loss");
+assert(items["awrc:130950A"],"Do not rewrite AWRC station identities");
+const malformed=canonicaliseLegacyBoMStationCache({
+ [OLD_ID]:{observedAt:PREVIOUS,feature:{...oldFeature,properties:{
+  bom_stn_num:"35296"}}}});
+assert.equal(malformed[CURRENT_ID].feature.id,OLD_ID,
+ "Never relabel embedded records with conflicting native station numbers");
+
+class Collection{values=[];suspendEvents(){}resumeEvents(){}
+ removeAll(){this.values=[];}add(x){this.values.push(x);return x;}}
+class Source{constructor(){this.entities=new Collection();this.show=false;}}
+const CesiumRef={CustomDataSource:Source,
+ Cartesian3:{fromDegrees:(...values)=>values},
+ VerticalOrigin:{CENTER:0},HeightReference:{CLAMP_TO_GROUND:1}};
+const viewer={dataSources:{add(){}},scene:{requestRender(){}}};
+const bulletin={partial:false,products:[{product:"IDQ60289",observations:[{
+ stationId:SOURCE_ID,stationName:"Bingeegang Weir HG",
+ heightMetres:7.35,tendency:"rising",floodClass:"",
+ observedText:"10:10 pm Sat",sourceProduct:"IDQ60289"
+}]}]};
+const stored={
+ [FLOOD_SIGNAL_STORAGE_KEY]:JSON.stringify({
+  [OLD_ID]:[{time:PREVIOUS,height:4.5}]}),
+ [OFFICIAL_FLOOD_STORAGE_KEY]:JSON.stringify({
+  [OLD_ID]:{observedAt:PREVIOUS,feature:oldFeature}}),
+ "stormtracker.qld-plot-crossings.v1":JSON.stringify({
+  [OLD_ID]:{checkedAt:NOW,crossing:{type:"W",heightMetres:7.45,
+   crossingName:"Bingeegang Weir published source",
+   source:"Station height plot"}}})
+};
+const fetchImpl=async url=>{
+ const s=String(url);
+ const body=s.includes("river-gauge-metadata")?metadata:
+  s.includes("river-height-bulletins")?bulletin:null;
+ if(!body)throw Error("Unexpected fetch "+s);
+ return {ok:true,json:async()=>body};
+};
+let firstUpdate=undefined,layer;
+layer=createRiverGaugeLayer({viewer,CesiumRef,fetchImpl,now:()=>NOW,visible:true,
+ storage:{getItem:key=>stored[key]??null,setItem:(key,v)=>stored[key]=v},
+ onUpdate:()=>{if(firstUpdate===undefined)firstUpdate=layer.lastLoadedAt;}});
+await layer.refresh();
+assert.equal(firstUpdate,NOW,
+ "Map/report callback must observe confirmed BoM load time, not Awaiting");
+assert.equal(layer.lastLoadedAt,NOW);
+assert.equal(layer.sourceFeatures[0].id,CURRENT_ID);
+assert.equal(layer.sourceFeatures[0].properties.STORMTRACKER_IDENTITY_WARNING,
+ undefined);
+assert.equal(layer.sourceFeatures[0].properties.STORMTRACKER_CROSSING_LEVEL_METRES,
+ undefined);
+assert.equal(layer.features.length,1,
+ "Synthetic verified rapid rise must preserve the original BLUE gauge marker");
+assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
+assert.equal(layer.features[0].properties.STORMTRACKER_RAPID_RISE,true);
+assert.equal(layer.features[0].properties.STORMTRACKER_CROSSING_NAME,
+ "Bingeegang Weir published source");
+assert.equal(Object.keys(JSON.parse(stored[OFFICIAL_FLOOD_STORAGE_KEY])).length,0,
+ "A below-minor current reading must clear previously cached false moderate");
+console.log("PASS canonical BoM history/crossing migration preserves blue rapid-rise marker and report shows loaded observations before redraw.");

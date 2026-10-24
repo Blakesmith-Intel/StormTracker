@@ -42,6 +42,48 @@ import {
   officialRecentTableTarget
 } from "./bom-recent-river-history-v1.js?v=9.13.1";
 
+// Preserve exact same-station browser observations after a numeric BoM
+// network ID gains its published leading zero (35295 -> 035295).
+// Never join by geography/name and never reassign a different AWRC station.
+export function canonicaliseLegacyBoMStationCache(records){
+  if(!records||typeof records!=="object"||Array.isArray(records))return records;
+  const entries=Object.entries(records);
+  entries.sort(([a],[b])=>{
+    const canonical=id=>!/^bom:\d{1,6}$/.test(id)||
+      id.slice(4).length===6;
+    return Number(canonical(b))-Number(canonical(a));
+  });
+  const out={};
+  for(const [id,value] of entries){
+    const canonical=/^bom:\d{1,6}$/.test(id)
+      ?"bom:"+id.slice(4).padStart(6,"0"):id;
+    const repairFeature=feature=>{
+      if(!feature||typeof feature!=="object"||feature.id!==id)return feature;
+      const native=String(feature.properties?.bom_stn_num??"");
+      if(native&&(!/^\d{1,6}$/.test(native)||
+         native.padStart(6,"0")!==canonical.slice(4)))return feature;
+      return {...feature,id:canonical};
+    };
+    const repaired=id===canonical?value:
+      value&&typeof value==="object"&&!Array.isArray(value)
+        ?{...value,
+          ...(value.feature?{feature:repairFeature(value.feature)}:{}),
+          ...(value.latestFeature?
+            {latestFeature:repairFeature(value.latestFeature)}:{})}
+        :value;
+    if(!Object.hasOwn(out,canonical)){out[canonical]=repaired;continue;}
+    if(Array.isArray(out[canonical])&&Array.isArray(repaired)){
+      const byTime=new Map();
+      for(const item of [...repaired,...out[canonical]]){
+        if(Number.isFinite(item?.time)&&Number.isFinite(item?.height))
+          byTime.set(item.time,item);
+      }
+      out[canonical]=[...byTime.values()].sort((a,b)=>a.time-b.time);
+    }
+  }
+  return out;
+}
+
 export function riverGaugeOperationalSummary(
   feature
 ) {
@@ -242,7 +284,8 @@ export function createRiverGaugeLayer({
   const PLOT_CROSSING_CACHE_MS=24*3600000;
   let plotCrossings={};
   try{
-    const saved=JSON.parse(storage?.getItem(PLOT_CROSSING_CACHE_KEY)??"{}");
+    const saved=canonicaliseLegacyBoMStationCache(
+      JSON.parse(storage?.getItem(PLOT_CROSSING_CACHE_KEY)??"{}"));
     for(const [id,item] of Object.entries(saved??{}).slice(0,1800)){
       if(!/^bom:\d{6}$/.test(id)||!Number.isFinite(item?.checkedAt)||
          now()-item.checkedAt>PLOT_CROSSING_CACHE_MS)continue;
@@ -266,11 +309,13 @@ export function createRiverGaugeLayer({
   let latestHeightCache={};
   try{
     latestHeightCache=cleanLatestGaugeObservations(
-      JSON.parse(storage?.getItem(LATEST_RIVER_GAUGE_STORAGE_KEY)??"{}"),now());
+      canonicaliseLegacyBoMStationCache(
+        JSON.parse(storage?.getItem(LATEST_RIVER_GAUGE_STORAGE_KEY)??"{}")),now());
   }catch{latestHeightCache={};}
   try {
     confirmedFloodCache=cleanConfirmedFloodStations(
-      JSON.parse(storage?.getItem(OFFICIAL_FLOOD_STORAGE_KEY)??"{}"),now()
+      canonicaliseLegacyBoMStationCache(
+        JSON.parse(storage?.getItem(OFFICIAL_FLOOD_STORAGE_KEY)??"{}")),now()
     );
   }catch{confirmedFloodCache={};}
   const persistConfirmedFloods=()=>{
@@ -279,7 +324,8 @@ export function createRiverGaugeLayer({
   };
   try {
     floodEvents=cleanFloodEvents(
-      JSON.parse(storage?.getItem(FLOOD_EVENTS_STORAGE_KEY)??"{}"),now()
+      canonicaliseLegacyBoMStationCache(
+        JSON.parse(storage?.getItem(FLOOD_EVENTS_STORAGE_KEY)??"{}")),now()
     );
   }catch{floodEvents={};}
   const persistEventState=()=>{
@@ -288,7 +334,8 @@ export function createRiverGaugeLayer({
   };
   try {
     history = cleanFloodSignalHistory(
-      JSON.parse(storage?.getItem(FLOOD_SIGNAL_STORAGE_KEY) ?? "{}"), now()
+      canonicaliseLegacyBoMStationCache(
+        JSON.parse(storage?.getItem(FLOOD_SIGNAL_STORAGE_KEY) ?? "{}")), now()
     );
   } catch {
     history = {};
@@ -696,10 +743,9 @@ export function createRiverGaugeLayer({
         floodEvents=alerts.events;
         persistEventState();
         diagnostics = {...result, floodSignalCounts:alerts.counts};
+        // Report listeners run synchronously during render().
+        lastLoadedAt = observedAt;
         render({type:"FeatureCollection",features:alerts.features});
-
-        lastLoadedAt =
-          observedAt;
 
         const summaries =
           currentFeatures.map(

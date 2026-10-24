@@ -375,3 +375,63 @@ body.simple-ui #controlSidebar > .dashboard-heading .operator-guide-link:focus-v
 body.simple-ui #controlSidebar > .dashboard-heading .operator-guide-link:hover{
   color:#e4f7ff;
 }
+
+/* Flood legend: matching map symbols, scan-friendly on desktop and phone.
+   Stays inline with existing sidebar; no new overlay or disclosure. */
+body.simple-ui #riverGaugeSeverityLegend.flood-severity-legend {
+  margin:5px 0 6px;
+  padding:5px 7px 6px;
+  line-height:1.25;
+  font-size:11px;
+  min-width:0;
+  border:1px solid #587280;
+  border-radius:6px;
+  background:#142d3b;
+  color:#f1f8fb;
+}
+#riverGaugeSeverityLegend .flood-legend-title {
+  display:block;
+  font-size:11px;
+  font-weight:700;
+  margin:0 0 5px;
+}
+#riverGaugeSeverityLegend .flood-legend-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:4px 8px;
+}
+#riverGaugeSeverityLegend .flood-legend-entry,
+#riverGaugeSeverityLegend .flood-legend-rise {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+}
+#riverGaugeSeverityLegend .flood-legend-entry img,
+#riverGaugeSeverityLegend .flood-legend-rise img {
+  display:block;
+  width:24px;
+  height:27px;
+  flex:0 0 24px;
+  object-fit:contain;
+}
+#riverGaugeSeverityLegend .flood-legend-entry span,
+#riverGaugeSeverityLegend .flood-legend-rise span {
+  min-width:0;
+  overflow-wrap:break-word;
+}
+#riverGaugeSeverityLegend .flood-legend-entry small {
+  display:block;
+  margin-top:1px;
+  font-size:10px;
+  color:#c7dbe5;
+  line-height:1.22;
+}
+#riverGaugeSeverityLegend .flood-legend-rise {
+  border-top:1px solid #466575;
+  margin-top:5px;
+  padding-top:5px;
+  color:#d9eaf4;
+  font-size:10px;
+  line-height:1.25;
+}

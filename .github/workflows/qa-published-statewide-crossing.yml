@@ -15,3 +15,4 @@ jobs:
         with:
           node-version: '24'
       - run: node scripts/probe-published-statewide-crossings-v1.mjs
+      - run: node scripts/probe-live-theresa-end-to-end-v1.mjs

@@ -17,6 +17,12 @@ export function ifdCellCoordinate(value){
 }
 export const ifdCellKey=(lat,lon)=>
  ifdCellCoordinate(lat).toFixed(4)+","+ifdCellCoordinate(lon).toFixed(4);
+// Hourly-only cached IFD data cannot classify a genuine sub-hour accumulation.
+export function ifdCellSupportsDuration(node,duration){
+ if(!Number.isFinite(duration)||duration<1||!node?.depthsMmByMinutes)return false;
+ const keys=Object.keys(node.depthsMmByMinutes).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
+ return keys.length>1&&duration>=keys[0]&&duration<=keys.at(-1);
+}
 export function since9amWindowMinutes(sourceUtc){
  const time=Date.parse(sourceUtc);
  if(!Number.isFinite(time))return null;

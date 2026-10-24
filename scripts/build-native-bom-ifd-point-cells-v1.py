@@ -9,7 +9,7 @@ import urllib.parse, urllib.request
 from pathlib import Path
 
 COLS={"20":4,"10":6,"5":7,"2":8,"1":9}
-WANTED=(60,90,120,180,270,360,540,720,1080,1440)
+WANTED=(1,2,3,4,5,10,15,20,25,30,45,60,90,120,180,270,360,540,720,1080,1440)
 BASE="https://www.bom.gov.au/water/designRainfalls/revised-ifd/"
 def ifd_cell(value):
  return round(math.floor(round(value/.025,8))*.025+.0125,4)
@@ -54,7 +54,7 @@ def parse_bom_ifd_table(markup):
    if any(a>b for a,b in zip(depths,depths[1:])):
     raise ValueError("Official BoM IFD probability values out of order")
    dataset[str(minutes)]=values
-  if "60" in dataset and "1440" in dataset and len(dataset)>=9:
+  if all(str(x) in dataset for x in (1,5,10,15,30,45,60,1440)) and len(dataset)>=20:
    for aep in ("20","10","5","2","1"):
     values=[dataset[str(d)][aep] for d in sorted(map(int,dataset))]
     if any(a>b for a,b in zip(values,values[1:])):
@@ -105,7 +105,9 @@ def build(stations,existing,max_new=80,workers=6):
   if not isinstance(lat,(int,float)) or not isinstance(lon,(int,float)):continue
   if not -30.0<lat<-9.0 or not 137.0<lon<155.0:continue
   cell=key(lat,lon)
-  if cell not in cells or not str(cells[cell].get("sourceBaseline","")).startswith(BASELINE):
+  cache=cells.get(cell,{})
+  short_complete=all(str(d) in cache.get("depthsMmByMinutes",{}) for d in (1,5,10,15,30,45))
+  if cell not in cells or not str(cache.get("sourceBaseline","")).startswith(BASELINE) or not short_complete:
    amount=obs.get("mm",0)
    amount=float(amount) if isinstance(amount,(int,float)) else 0.0
    if cell not in pending or amount>pending[cell][2]:

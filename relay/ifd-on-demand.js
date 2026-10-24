@@ -1,6 +1,6 @@
 // Official BoM 2016 IFD point-depth retrieval. No nearest-neighbour substitution.
 const BASE="https://www.bom.gov.au/water/designRainfalls/revised-ifd/";
-const DURATIONS=new Set([60,90,120,180,270,360,540,720,1080,1440]);
+const DURATIONS=new Set([1,2,3,4,5,10,15,20,25,30,45,60,90,120,180,270,360,540,720,1080,1440]);
 const clean=s=>String(s).replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/\s+/g," ").trim();
 export function parseOfficialIfdPoint(html){
  if(!/IFD\s+Design\s+Rainfall\s+Depth/i.test(html)||
@@ -23,7 +23,7 @@ export function parseOfficialIfdPoint(html){
      vals.some((x,i)=>i&&x<vals[i-1]))continue;
    depthsMmByMinutes[String(minutes)]=Object.fromEntries(["20","10","5","2","1"].map((a,i)=>[a,vals[i]]));
   }
-  if(Object.keys(depthsMmByMinutes).length<9||!depthsMmByMinutes["60"]||!depthsMmByMinutes["1440"])continue;
+  if(Object.keys(depthsMmByMinutes).length<20||!["1","5","10","15","30","45","60","1440"].every(k=>depthsMmByMinutes[k]))continue;
   const keys=Object.keys(depthsMmByMinutes).map(Number).sort((a,b)=>a-b);
   if(["20","10","5","2","1"].some(a=>keys.some((k,i)=>i&&depthsMmByMinutes[k][a]<depthsMmByMinutes[keys[i-1]][a])))continue;
   return depthsMmByMinutes;

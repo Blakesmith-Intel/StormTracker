@@ -1,7 +1,8 @@
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
 import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1";
-import {classifyRainfallAep,ifdCellKey,IFD_LOOKUP_CONCURRENCY,
- loadPersistedIfdCells,persistVerifiedIfdCell,verifiedPersistentIfdCell} from "./rainfall-ifd-aep-v1.js?v=20261022-v10-2-8-verified-ifd-persistence";
+import {classifyRainfallAep,ifdCellKey,ifdCellSupportsDuration,
+ rainfallWindowMinutes,IFD_LOOKUP_CONCURRENCY,
+ loadPersistedIfdCells,persistVerifiedIfdCell,verifiedPersistentIfdCell} from "./rainfall-ifd-aep-v1.js?v=20261022-v10-2-8-verified-ifd-persistence-short-v10.2.18";
 import {catchmentForStation,RAINFALL_BASIN_REGISTRY_URL} from "./rainfall-catchment-v1.js";
 import {buildSignificantRainfallReport} from "./significant-rainfall-report-v1.js?v=20261022-report-v1";
 export const SIGNIFICANT_RAINFALL_RELAY="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-significant-rainfall";
@@ -123,8 +124,9 @@ export function initialiseOperationalSignificantRainfall({
    .sort((a,b)=>b.mm-a.mm||String(a.id).localeCompare(String(b.id)));
   for(const rec of records){
    const cell=ifdCellKey(rec.latitude,rec.longitude);
-   if(ifdGrid.cells[cell]||pendingCells.has(cell)||
-      now()<(attempts.get(cell)??0))continue;
+   const duration=rainfallWindowMinutes(period,rec.sourceCreatedAt);
+   if(!duration||ifdCellSupportsDuration(ifdGrid.cells[cell],duration)||
+      pendingCells.has(cell)||now()<(attempts.get(cell)??0))continue;
    pendingCells.add(cell);
    queue.push({cell,latitude:rec.latitude,longitude:rec.longitude});
   }
@@ -293,7 +295,8 @@ export function initialiseOperationalSignificantRainfall({
    qualifiesAepRainfallSnapshot(record,period,now())&&
    rainfallBand(record.mm)!==null).map(record=>{
     const aep=classifyRainfallAep({...record,grid:ifdGrid});
-    if(aep.reason==="Authoritative IFD grid cell unavailable"&&
+    if(["Authoritative IFD grid cell unavailable",
+         "IFD has no matching duration/probability"].includes(aep.reason)&&
        (catalogueLoading||pendingCells.has(aep.ifdCell)||!attempts.has(aep.ifdCell)))
       aep.pending=true;
     return {...record,aep,band:rainfallBand(record.mm)};

@@ -372,7 +372,7 @@ export function createRiverGaugeLayer({
             // station. Not a gateway failure, warning log, or false "safe".
             noData++;
             recentNextAttemptAt.set(target.id,now()+15*60*1000);
-            continue;
+            return;
           }
           const existing=new Map((history[target.id]??[])
             .map(x=>[x.time,x.height]));

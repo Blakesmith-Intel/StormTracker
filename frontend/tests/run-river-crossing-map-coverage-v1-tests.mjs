@@ -86,5 +86,25 @@ try{
  assert.equal(payload.station,"535162");
  assert.equal(payload.crossing?.heightMetres,1.71);
  assert.equal(upstreamCalls,1,"Do not add redundant station page requests");
+ // Actual Cloudflare reads streamed chunks: split even inside the station ID,
+ // `Crossing Levels` and the first table opening tag.
+ let offset=0;
+ globalThis.fetch=async()=>{
+  upstreamCalls++;
+  return new Response(new ReadableStream({
+   pull(controller){
+    if(offset>=table.length){controller.close();return;}
+    controller.enqueue(new TextEncoder().encode(table.slice(offset,offset+35)));
+    offset+=35;
+   }
+  }),{status:200,headers:{"Content-Type":"text/html"}});
+ };
+ const chunked=await worker.fetch(new Request(
+  "https://relay.invalid/river-recent-history?product=IDQ65392&station=535162",
+  {headers:{Origin:"https://blakesmith-intel.github.io"}}),{});
+ assert.equal(chunked.status,200);
+ assert.equal((await chunked.json()).crossing?.heightMetres,1.71,
+  "Stream chunk boundaries must not lose or corrupt exact station crossing metadata");
+ assert.equal(upstreamCalls,2,"Each history request still uses only one BoM table fetch");
 }finally{globalThis.fetch=oldFetch;}
 console.log("PASS BoM exact-ID bridge metadata + relay, 535162 map inclusion, all-station crossings, report, and stale/false-positive guards");

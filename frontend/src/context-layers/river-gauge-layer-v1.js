@@ -385,24 +385,22 @@ export function createRiverGaugeLayer({
         }catch(error){
           failures++;
           const scope=classifyBoMRecentHistoryFailure(error);
-          lastFailureScope=scope;
-          if(scope==="station"){
-            // Missing/expired tables are station-specific. Other stations
-            // can still be checked on the same pass.
-            recentNextAttemptAt.set(target.id,now()+60*60*1000);
-          }else{
-            // Upstream denial, timeout or transport failure affects the
-            // whole optional service; one failure ends this request burst.
-            recentRelayBlockedUntil=now()+15*60*1000;
-          }
-          if(failures===1 && scope==="service" &&
-              error?.code!=="source_timeout" &&
-              error?.name!=="AbortError")console.warn(
-            "Optional BoM station history service unavailable; current flood bulletins retained:",
+          // A failed SINGLE station is not evidence that all 1,000+ BoM
+          // stations are unavailable. Only explicit upstream rate limiting
+          // pauses the shared queue; every other error retries by station.
+          const rateLimited=error?.code==="source_rate_limited"||
+            Number(error?.upstreamStatus)===429||Number(error?.status)===429;
+          lastFailureScope=rateLimited?"rate-limited":"station";
+          recentNextAttemptAt.set(target.id,now()+
+            (scope==="station"?60:15)*60*1000);
+          if(rateLimited)recentRelayBlockedUntil=now()+15*60*1000;
+          if(failures===1&&error?.code!=="source_timeout"&&
+             error?.name!=="AbortError")console.warn(
+            "BoM station reference check failed for "+target.id+
+            (rateLimited?" (rate limited; pausing queue)":" (continuing other gauges)")+":",
             String(error?.message??error)
           );
-          // Already running requests in this small batch may finish, but
-          // service-wide errors prevent the next batch from starting.
+          // A failure for one station must not block the remaining sources.
         }
        }));
       }

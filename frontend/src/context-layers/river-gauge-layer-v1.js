@@ -467,6 +467,62 @@ export function createRiverGaugeLayer({
     }
   }
 
+  // The report must finish the entire currently eligible source catalogue,
+  // not stop after the first 16 gauge tables. Reuse the existing bounded
+  // worker calls and their verified exact-station cache.
+  let crossingAudit=null;
+  async function finishCrossingReferenceChecks(){
+    if(crossingAudit)return crossingAudit;
+    crossingAudit=(async()=>{
+      const initial=planBoMStationTableLookups(latestSourceFeatures,{
+        history,plotCrossings,crossingCatalogue,nowMs:now()
+      }).length;
+      // Each pass handles at most 16 sources. This is an iteration safety
+      // guard, NOT a limit on the stations checked.
+      const maxPasses=Math.ceil(initial/16)+2;
+      for(let pass=0;pass<maxPasses;pass++){
+        if(now()<recentRelayBlockedUntil)break;
+        const pending=planBoMStationTableLookups(latestSourceFeatures,{
+          history,plotCrossings,crossingCatalogue,nowMs:now()
+        });
+        if(!pending.length)break;
+        const due=pending.filter(item=>now()>=(recentNextAttemptAt.get(item.id)??0));
+        if(!due.length)break;
+        const tried=recentAttempted.size;
+        const cached=Object.keys(plotCrossings).length;
+        await backfillRecentBoMHistory(latestSourceFeatures);
+        // A failed source must not cause an endless retry loop. Existing
+        // station-specific and relay-wide cooldowns remain in force.
+        if(recentAttempted.size===tried&&Object.keys(plotCrossings).length===cached)break;
+      }
+      return getCrossingCoverage();
+    })();
+    try{return await crossingAudit;}
+    finally{crossingAudit=null;}
+  }
+
+  function getCrossingCoverage(){
+    const pending=planBoMStationTableLookups(latestSourceFeatures,{
+      history,plotCrossings,crossingCatalogue,nowMs:now()
+    }).filter(item=>item.needsCrossing);
+    const blocked=now()<recentRelayBlockedUntil;
+    const available=pending.filter(item=>now()>=(recentNextAttemptAt.get(item.id)??0));
+    const sourceMissing=latestSourceFeatures.filter(feature=>{
+      const p=feature?.properties??{};
+      const id=String(feature?.id??"");
+      if(!/^bom:\d{6}$/.test(id)||p.STORMTRACKER_IDENTITY_WARNING||
+         typeof p.STORMTRACKER_HEIGHT_METRES!=="number"||
+         !Number.isFinite(p.STORMTRACKER_HEIGHT_METRES)||
+         Object.hasOwn(plotCrossings,id)||
+         crossingCatalogue?.entries?.[id])return false;
+      const expected=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
+      return !expected||expected.station!==id.slice(4);
+    }).length;
+    return {pending:pending.length,checking:Boolean(recentLoading||crossingAudit),
+      blockedUntil:recentRelayBlockedUntil,sourceMissing,
+      retryPending:blocked?pending.length:pending.length-available.length};
+  }
+
   function scheduleCrossingScan(delayMs=3000){
     // No autonomous scans on a stopped layer or bare refresh test harness.
     if(!timer||crossingScanTimer||!latestSourceFeatures.length)return;
@@ -851,8 +907,8 @@ export function createRiverGaugeLayer({
     setVisible,
     start,
     stop,
-    // Report refresh uses this same scanner; it never invents a crossing.
-    checkCrossingReferences:()=>backfillRecentBoMHistory(latestSourceFeatures),
+    // Complete every currently accessible BoM station-page source check.
+    checkCrossingReferences:finishCrossingReferenceChecks,
     featureById,
 
     get features() {
@@ -868,13 +924,7 @@ export function createRiverGaugeLayer({
 
     // A crossing report is provisional until every source-identified station
     // has been checked. Missing height references are never assumed safe.
-    get crossingCoverage(){
-      const planned=planBoMStationTableLookups(latestSourceFeatures,{
-        history,plotCrossings,crossingCatalogue,nowMs:now()
-      });
-      return {pending:planned.filter(item=>item.needsCrossing).length,
-        checking:Boolean(recentLoading),blockedUntil:recentRelayBlockedUntil};
-    },
+    get crossingCoverage(){return getCrossingCoverage();},
 
     get lastLoadedAt() {
       return lastLoadedAt;

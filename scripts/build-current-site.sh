@@ -645,3 +645,6 @@ grep -Fq 'body.simple-ui #app.sidebar-collapsed' "_site/src/single-interface-v1.
 grep -Fq 'grid-template-rows:minmax(0,1fr)' "_site/src/single-interface-v1.css"
 grep -Fq 'full-map-controls-gauge-severity-v4' "_site/live3d-operational-v9.html"
 grep -Fq 'hide-controls-full-map-v1' "_site/index.html"
+
+# Post-regression production marker: only present after the build has passed.
+printf '%s\n' 'FLOOD RECOVERY V10.2.9 — SOURCE-VERIFIED BELOW-MINOR CLEAR + STATION PRE-RISE REFERENCE 2026-10-24' >> _site/BUILD.txt

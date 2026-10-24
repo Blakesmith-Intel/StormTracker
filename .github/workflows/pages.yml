@@ -1070,3 +1070,41 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha"
+
+      - name: Seal verified V10.2.16 compact flood map markers
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.16"
+          restore="restore/v10.2.16"
+          grep -Fq 'riverGaugeMapMarkerDimensions(summary.displayState)' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'width: mapMarkerDimensions.width' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq -- '-flood-map-marker-size-v10.2.16' scripts/build-current-site.sh
+          node frontend/tests/run-river-crossing-map-coverage-v1-tests.mjs
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserving immutable $tag."
+            exit 0
+          fi
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.16 — restore compact approved map flood markers independently of readable flood legend" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha"

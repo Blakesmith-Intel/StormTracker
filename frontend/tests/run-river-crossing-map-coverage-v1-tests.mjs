@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {parseBoMStationCrossingHeader,publishedCrossingForFeature,CROSSING_SCHEMA}
  from "../src/context-layers/river-crossing-state-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
-import {createRiverGaugeMarkerImage} from "../src/context-layers/river-gauge-layer-v1.js";
+import {createRiverGaugeMarkerImage,riverGaugeMapMarkerDimensions} from "../src/context-layers/river-gauge-layer-v1.js";
 import {riverGaugePanelAppearance} from "../src/context-layers/river-gauges-operational-v1.js";
 import {floodIconPriority} from "../src/context-layers/severity-marker-layer-v1.js";
 import {buildNotableFloodGaugeReport} from "../src/context-layers/river-gauge-notable-report-v1.js";
@@ -50,6 +50,15 @@ assert.match(amber,/#1269e8/,"Blue water visibly crosses the bridge");
 assert(!amber.includes('cx="61"'),"No rapid-rise arrow unless measured rise qualifies");
 assert.equal(floodIconPriority("crossing"),1,
  "New crossing icon uses existing source/drawing tier without shifting geography");
+// Regress the approved map footprint independently of the larger flood legend.
+for(const state of ["rapid-rise","elevated","unverified"]){
+ assert.deepEqual(riverGaugeMapMarkerDimensions(state),{width:29,height:32},
+  `${state}: map marker must not enlarge to legend-era 38x42`);
+}
+for(const state of ["crossing","minor","moderate","major"]){
+ assert.deepEqual(riverGaugeMapMarkerDimensions(state),{width:34,height:37},
+  `${state}: priority marker keeps compact, aspect-correct map dimensions`);
+}
 const info=riverGaugePanelAppearance({
  displayState:"crossing",rapidRise:false,crossingReached:true
 });

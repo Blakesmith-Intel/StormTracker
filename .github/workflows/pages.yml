@@ -192,6 +192,9 @@ jobs:
           node frontend/tests/run-hires-radar-road-toggle-20261019-tests.mjs
           node scripts/test-national-source-policy-v1.mjs
           grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
+          grep -Fq 'FLOOD RECOVERY V10.2.9' _site/BUILD.txt
+          grep -Fq 'preRiseReference' _site/src/context-layers/river-flood-events-v1.js
+          grep -Fq 'elevated:"#1269e8"' _site/src/context-layers/river-gauge-layer-v1.js
           grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' _site/src/context-layers/rainfall-ifd-aep-v1.js
           grep -Fq 'loadPersistedIfdCells' _site/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq 'persistVerifiedIfdCell' _site/src/context-layers/significant-rainfall-operational-v1.js
@@ -253,6 +256,7 @@ jobs:
           grep -Fq 'RELEASE CANDIDATE: original BoM FTP source archive + independently sourced location-specific IFD/AEP' <<< "$root"
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.5' <<< "$root"
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.8' <<< "$root"
+          grep -Fq 'FLOOD RECOVERY V10.2.9' <<< "$root"
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
           grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' <<< "$root"
@@ -331,6 +335,17 @@ jobs:
           grep -Fq 'confirmedFloodCache' <<< "$flood_layer"
           flood_levels="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-flood-signals-v1.js")"
           grep -Fq 'last-confirmed-bom-flood-class' <<< "$flood_levels"
+          grep -Fq '!(timely && measured===null)' <<< "$flood_levels"
+          flood_events="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-flood-events-v1.js")"
+          grep -Fq 'preRiseReference' <<< "$flood_events"
+          grep -Fq 'FLOOD_EVENT_RECOVERY_COUNT=2' <<< "$flood_events"
+          grep -Fq 'state:"elevated"' <<< "$flood_events"
+          grep -Fq 'STORMTRACKER_RECOVERY_BASELINE_METRES' <<< "$flood_events"
+          grep -Fq 'elevated:"#1269e8"' <<< "$flood_layer"
+          flood_ui="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauges-operational-v1.js")"
+          grep -Fq 'POST-RISE ELEVATED WATER' <<< "$flood_ui"
+          grep -Fq '20261024-flood-recovery-severity-v1' <<< "$flood_layer"
+          grep -Fq '20261024-flood-recovery-severity-v1' <<< "$rainfall_layer"
           wmts_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/bom-wmts-loop-v2.js")"
           grep -Fq 'publishedTimes()' <<< "$wmts_source"
           grep -Fq 'stopOnPermanent:true' <<< "$wmts_source"
@@ -730,3 +745,40 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha; recover with $restore."
+      - name: Seal verified V10.2.9 station-specific flood recovery
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          # Prior deploy job must succeed on main, including public Pages files.
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.9"
+          restore="restore/v10.2.9"
+          grep -Fq 'FLOOD RECOVERY V10.2.9' scripts/build-current-site.sh
+          grep -Fq 'preRiseReference' frontend/src/context-layers/river-flood-events-v1.js
+          grep -Fq '!(timely && measured===null)' frontend/src/context-layers/river-flood-signals-v1.js
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserved frozen $tag, no moved refs."
+            exit 0
+          fi
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.9 — below-minor marker recovery and source-verified station pre-rise elevation lifecycle (24 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha"

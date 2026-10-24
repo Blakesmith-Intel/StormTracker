@@ -242,12 +242,12 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
 
 import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1";
 
-// Compact map-only billboard dimensions, returning the approved pre-enlargement
-// footprint. Legend icons are independently sized by CSS; never inherit this.
-// Preserve the pin artwork's native 80:88 aspect ratio (including rise badge).
-export function riverGaugeMapMarkerDimensions(state){
-  const urgent=["minor","moderate","major","crossing"].includes(state);
-  return urgent?{width:34,height:37}:{width:29,height:32};
+// Every flood map pin is exactly the same screen size, regardless of stage,
+// crossing status or measured rapid rise. Keep legend sizing independent.
+// The artwork still uses its source-native 80:88 pin aspect ratio.
+export const RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:29,height:32});
+export function riverGaugeMapMarkerDimensions(){
+  return RIVER_GAUGE_MAP_MARKER_SIZE;
 }
 
 export function createRiverGaugeLayer({
@@ -639,7 +639,7 @@ export function createRiverGaugeLayer({
         continue;
       }
 
-      const mapMarkerDimensions=riverGaugeMapMarkerDimensions(summary.displayState);
+      const mapMarkerDimensions=riverGaugeMapMarkerDimensions();
       const entity =
         severityLayers.sourceFor(floodIconPriority(summary.displayState)).entities
           .add({

@@ -50,14 +50,20 @@ assert.match(amber,/#1269e8/,"Blue water visibly crosses the bridge");
 assert(!amber.includes('cx="61"'),"No rapid-rise arrow unless measured rise qualifies");
 assert.equal(floodIconPriority("crossing"),1,
  "New crossing icon uses existing source/drawing tier without shifting geography");
-// Regress the approved map footprint independently of the larger flood legend.
-for(const state of ["rapid-rise","elevated","unverified"]){
- assert.deepEqual(riverGaugeMapMarkerDimensions(state),{width:29,height:32},
-  `${state}: map marker must not enlarge to legend-era 38x42`);
+// Every map pin MUST have exactly the same screen dimensions, including
+// official categories, bridge/causeway and the measured-rise arrow variant.
+const fixedSize={width:29,height:32};
+for(const state of ["rapid-rise","elevated","unverified","crossing",
+                    "minor","moderate","major","unexpected"]){
+ assert.deepEqual(riverGaugeMapMarkerDimensions(state),fixedSize,
+  `${state}: ALL flood map markers must have identical dimensions`);
 }
-for(const state of ["crossing","minor","moderate","major"]){
- assert.deepEqual(riverGaugeMapMarkerDimensions(state),{width:34,height:37},
-  `${state}: priority marker keeps compact, aspect-correct map dimensions`);
+for(const state of ["rapid-rise","crossing","minor","moderate","major"]){
+ for(const rapid of [false,true]){
+  assert.match(createRiverGaugeMarkerImage(state,rapid),/^data:image\/svg\+xml/,
+   `${state}: both rapid-rise artwork variants must remain available`);
+  assert.deepEqual(riverGaugeMapMarkerDimensions(state),fixedSize);
+ }
 }
 const info=riverGaugePanelAppearance({
  displayState:"crossing",rapidRise:false,crossingReached:true

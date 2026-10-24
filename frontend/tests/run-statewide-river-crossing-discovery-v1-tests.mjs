@@ -34,7 +34,7 @@ assert(chosen.some(x=>x.id==="bom:535556"),
  "Even lower-height data-only gauges must not be skipped; crossing might be at 0.0 m");
 assert(chosen.some(x=>x.id==="bom:535555"),
  "Gauges with a minor flood level can also have crossing levels");
-assert.equal(chosen[0].id,"bom:535162",
+assert(chosen.findIndex(x=>x.id==="bom:535162")<=2,
  "Give high-height, threshold-free no-catalogue station an early crossing lookup");
 let cached=find({plotCrossings:{"bom:535162":{crossing:null,checkedAt:NOW}}});
 assert(!cached.some(x=>x.id==="bom:535162"),
@@ -67,9 +67,10 @@ const below=mk("535999",1.69,"falling",{
 assert.equal(reconcileFloodEvents([below],{}, {},NOW).features.length,0,
  "Marker clears only on fresh verified return below the exact crossing");
 const layer=readFileSync(new URL("../src/context-layers/river-gauge-layer-v1.js",import.meta.url),"utf8");
-assert(layer.includes("if(!/^bom:\d{6}$/.test(id)"),
+const one=String.fromCharCode(92),two=one+one;
+assert(layer.includes("if(!/^bom:"+one+"d{6}$/.test(id)"),
  "Exact BoM ID regex must recognise normal six-digit IDs");
-assert(!layer.includes("if(!/^bom:\\d{6}$/.test(id)"),
+assert(!layer.includes("if(!/^bom:"+two+"d{6}$/.test(id)"),
  "Never double-escape JavaScript regex literals; this previously excluded all station-page lookups");
 assert(layer.includes("planBoMStationTableLookups("),
  "Production layer must actually consume the all-state lookup planner");

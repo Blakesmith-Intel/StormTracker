@@ -36,6 +36,7 @@ import {
 import {
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
+  planBoMStationTableLookups,
   classifyBoMRecentHistoryFailure,
   fetchBoMRecentHistoryDetail,
   officialRecentTableTarget
@@ -243,7 +244,7 @@ export function createRiverGaugeLayer({
   try{
     const saved=JSON.parse(storage?.getItem(PLOT_CROSSING_CACHE_KEY)??"{}");
     for(const [id,item] of Object.entries(saved??{}).slice(0,1800)){
-      if(!/^bom:\\d{6}$/.test(id)||!Number.isFinite(item?.checkedAt)||
+      if(!/^bom:\d{6}$/.test(id)||!Number.isFinite(item?.checkedAt)||
          now()-item.checkedAt>PLOT_CROSSING_CACHE_MS)continue;
       plotCrossings[id]=item;
     }
@@ -302,6 +303,7 @@ export function createRiverGaugeLayer({
   const recentAttempted = new Set();
   const recentNextAttemptAt = new Map();
   let recentLoading = null;
+  let crossingScanTimer=null;
   // Optional historical station pages must never flood the relay or hold up
   // the core radar map when an upstream 403/429/502/503/504 occurs.
   let recentRelayBlockedUntil = 0;
@@ -326,27 +328,23 @@ export function createRiverGaugeLayer({
     if(recentLoading)return recentLoading;
     const nowMs=now();
     if(nowMs<recentRelayBlockedUntil)return null;
-    const list=features.map(f=>{
-      const candidate=recentFloodHistoryCandidate(f,history,nowMs);
-      if(candidate)return candidate;
-      // A known rising gauge needs its own BoM table crossing reference
-      // even when short-term rate observations already exist in this browser.
-      const p=f?.properties??{},id=String(f?.id??"");
-      const observation=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
-      const observedText=String(p.STORMTRACKER_OBSERVED_TEXT??"");
-      const fresh=Number.isFinite(observation)&&observation>0&&
-        nowMs-observation<=FLOOD_SIGNAL_MAX_AGE_MS;
-      const rising=String(p.STORMTRACKER_TENDENCY??"").toLowerCase()==="rising";
-      if(!/^bom:\\d{6}$/.test(id)||!rising||
-         (!fresh&&!observedText)||plotCrossings[id])return null;
-      const target=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
-      return target?{id,...target,inland:true}:null;
-    }).filter(Boolean).sort((a,b)=>Number(b.inland)-Number(a.inland));
+    const list=planBoMStationTableLookups(features,{
+      history,plotCrossings,crossingCatalogue,nowMs
+    });
+    // All BoM stations with a current reported height are eligible.
+    // Crossing discovery does not depend on the bulletin saying "rising".
     // A previously failed or insufficient station becomes eligible again
     // after its own cooldown. Cap each pass and fetch serially to protect BoM.
     const candidates=list.filter(item=>nowMs >= (recentNextAttemptAt.get(item.id)??0))
       .slice(0,16);
-    if(!candidates.length)return null;
+    if(!candidates.length){
+      // A station-specific cooldown is not an exclusion from future scans.
+      const next=list.reduce((min,item)=>
+        Math.min(min,recentNextAttemptAt.get(item.id)??nowMs),Infinity);
+      if(Number.isFinite(next)&&next>nowMs)
+        scheduleCrossingScan(Math.max(30000,next-nowMs));
+      return null;
+    }
     recentLoading=(async()=>{
       let success=0,failures=0,noData=0,lastFailureScope=null;
       for(const target of candidates){
@@ -445,9 +443,36 @@ export function createRiverGaugeLayer({
       }
     })();
     try{return await recentLoading;}
-    finally{recentLoading=null;}
+    finally{
+      recentLoading=null;
+      const remaining=planBoMStationTableLookups(latestSourceFeatures,{
+        history,plotCrossings,crossingCatalogue,nowMs:now()
+      });
+      if(remaining.length){
+        // Continue a bounded statewide scan in browser without waiting for
+        // the next 10-minute observation refresh. Not an unbounded burst.
+        const earliest=Math.min(...remaining.map(item=>
+          recentNextAttemptAt.get(item.id)??now()));
+        const nextDue=Math.max(now()+30000,earliest);
+        const delay=now()<recentRelayBlockedUntil
+          ?Math.max(30000,recentRelayBlockedUntil-now()):nextDue-now();
+        scheduleCrossingScan(delay);
+      }
+    }
   }
 
+  function scheduleCrossingScan(delayMs=30000){
+    if(crossingScanTimer||!latestSourceFeatures.length)return;
+    crossingScanTimer=setTimeout(()=>{
+      crossingScanTimer=null;
+      if(typeof document!=="undefined"&&document.hidden){
+        scheduleCrossingScan(60000);
+        return;
+      }
+      void backfillRecentBoMHistory(latestSourceFeatures).catch(error=>
+        console.warn("BoM crossing catalogue scan unavailable:",error));
+    },Math.max(30000,Math.min(15*60000,delayMs)));
+  }
 
   function markerImage(state,rapidRise=false){
     const key=state+":"+(rapidRise?"rising":"normal");
@@ -766,6 +791,7 @@ export function createRiverGaugeLayer({
   }
 
   function stop() {
+    if(crossingScanTimer){clearTimeout(crossingScanTimer);crossingScanTimer=null;}
     if (!timer) {
       return;
     }

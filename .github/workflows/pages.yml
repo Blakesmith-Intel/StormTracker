@@ -405,7 +405,7 @@ jobs:
           grep -Fq 'if(explicitlyTidal)return null' <<< "$history_source"
           grep -Fq 'if(!classified && !inland)return null' <<< "$history_source"
           gauge_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauge-layer-v1.js")"
-          grep -Fq '.slice(0,16)' <<< "$gauge_source"
+          grep -Fq '.slice(0,64)' <<< "$gauge_source"
           grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' <<< "$root"
           grep -Fq 'MANUAL FLOOD GAUGE REFRESH 2026-10-18' <<< "$root"
           grep -Fq 'BOUNDED STREAMING BOM RIVER TABLES 2026-10-18' <<< "$root"
@@ -860,3 +860,40 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha"
+      - name: Seal verified V10.2.11 flood crossing lookup performance
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          # Run only after deployment and public Pages source verification.
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.11"
+          restore="restore/v10.2.11"
+          grep -Fq '.slice(0,64)' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'candidates.slice(i,i+4)' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq -- '-flood-source-speed-64-v10.2.11' scripts/build-current-site.sh
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserved immutable $tag at $existing_tag; no tag movement."
+            exit 0
+          fi
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.11 — verified 64-station BoM crossing lookup batches, four concurrent reads, immediate continuation; existing map UI and 10-minute gauge refresh preserved (24 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha; recovery branch $restore."

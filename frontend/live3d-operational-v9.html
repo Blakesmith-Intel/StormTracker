@@ -86,6 +86,10 @@
       </svg> Flood signals</label><button id="refreshRiverGaugesButton" type="button" aria-label="Refresh BoM flood-gauge observations" title="Check for the latest available BoM river heights">↻ Refresh</button></div>
       <div id="riverGaugeSeverityLegend" class="note flood-severity-legend"><span style="color:#1269e8">↑</span> Rapid rise below minor · <span class="flood-green">●</span> Minor · <span class="flood-yellow">●</span> Moderate · <span class="flood-red">●</span> Major · <span style="color:#1269e8">↑</span> on any flood icon = rapid rise / potential flash flooding</div>
 
+      <div class="flood-report-actions">
+        <button id="openFloodGaugeReport" type="button" aria-haspopup="dialog" aria-controls="floodGaugeReport">Flood gauge report · Moderate+ / crossings</button>
+      </div>
+
       <!-- SIG_RAIN_ROW_START -->
       <div class="layer-row significant-rainfall-row">
         <label title="Show BoM rain gauges reporting at least 50 mm"><input id="showSignificantRainfall" type="checkbox"> <span class="significant-rain-icon" aria-hidden="true">●</span> Significant rain</label>
@@ -219,6 +223,24 @@
       <p class="rainfall-report-footnote">BoM automatic station observations, not radar estimates. AEP describes local rainfall rarity, not flood severity. Stations retain their original BoM coordinates and IDs.</p>
     </dialog>
     <!-- SIG_RAIN_CARD_END -->
+    <!-- FLOOD_GAUGE_REPORT_START -->
+    <dialog id="floodGaugeReport" class="significant-rainfall-report flood-gauge-report" aria-labelledby="floodGaugeReportTitle" aria-describedby="floodGaugeReportStatus">
+      <header class="rainfall-report-header">
+        <div><span class="map-info-kicker">BoM CURRENT RIVER HEIGHTS</span>
+          <strong id="floodGaugeReportTitle">Notable flood gauge report</strong>
+          <p>Moderate and major flooding, or an advertised bridge / causeway / crossing level reached</p>
+        </div>
+        <button type="button" id="closeFloodGaugeReport" aria-label="Close flood gauge report">Close</button>
+      </header>
+      <div class="rainfall-report-toolbar">
+        <span id="floodGaugeReportStatus" role="status" aria-live="polite">Checking river observations…</span>
+        <button id="refreshFloodGaugeReport" type="button" aria-label="Refresh flood gauge report">↻ Refresh</button>
+      </div>
+      <div id="floodGaugeReportSummary" class="rainfall-report-summary" aria-live="polite"></div>
+      <div id="floodGaugeReportRows" class="rainfall-report-groups"></div>
+      <p class="rainfall-report-footnote">Crossing levels are from the BoM's published Queensland crossing register (5 January 2022) and are matched ONLY to the same BoM gauge station number. Reaching a gauge crossing-reference height does not confirm road inundation or closure. Check QLDTraffic and local authorities before travelling. A stale or unavailable reading is not evidence that a crossing is safe.</p>
+    </dialog>
+    <!-- FLOOD_GAUGE_REPORT_END -->
     <section id="riverGaugeInfo" class="map-info-card river-gauge-info" aria-live="polite" hidden>
       <header><div class="river-gauge-info-heading"><span class="river-gauge-key river-gauge-key-large" aria-hidden="true"></span><div><span id="riverGaugeInfoKicker" class="map-info-kicker">RIVER GAUGE</span><strong id="riverGaugeInfoTitle">River gauge</strong></div></div><button id="closeRiverGaugeInfo" type="button" aria-label="Close river gauge details">×</button></header>
       <div id="riverGaugeInfoRows" class="metric"></div>

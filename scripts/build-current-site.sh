@@ -433,7 +433,7 @@ grep -Fq 'doppler-png-502-cooldown-v1-20261018' _site/src/live3d-operational-v9.
 grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' _site/BUILD.txt
 grep -Fq 'if(explicitlyTidal)return null' _site/src/context-layers/bom-recent-river-history-v1.js
 grep -Fq 'if(!classified && !inland)return null' _site/src/context-layers/bom-recent-river-history-v1.js
-grep -Fq '.slice(0,4)' _site/src/context-layers/river-gauge-layer-v1.js
+grep -Fq '.slice(0,16)' _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
 grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css
 node --check _site/src/context-layers/river-gauge-layer-v1.js

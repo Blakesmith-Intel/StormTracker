@@ -1,0 +1,17 @@
+name: Verify actual published statewide flood crossing browser logic
+on:
+  push:
+    branches:
+      - qa/verify-published-statewide-crossing-20261024
+permissions:
+  contents: read
+jobs:
+  live-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/probe-published-statewide-crossings-v1.mjs

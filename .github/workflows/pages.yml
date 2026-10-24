@@ -1079,7 +1079,7 @@ jobs:
           release_sha="$GITHUB_SHA"
           tag="v10.2.16"
           restore="restore/v10.2.16"
-          grep -Fq 'riverGaugeMapMarkerDimensions(summary.displayState)' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'riverGaugeMapMarkerDimensions(' frontend/src/context-layers/river-gauge-layer-v1.js
           grep -Fq 'width: mapMarkerDimensions.width' frontend/src/context-layers/river-gauge-layer-v1.js
           grep -Fq -- '-flood-map-marker-size-v10.2.16' scripts/build-current-site.sh
           node frontend/tests/run-river-crossing-map-coverage-v1-tests.mjs

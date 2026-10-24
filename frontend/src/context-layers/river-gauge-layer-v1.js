@@ -851,6 +851,8 @@ export function createRiverGaugeLayer({
     setVisible,
     start,
     stop,
+    // Report refresh uses this same scanner; it never invents a crossing.
+    checkCrossingReferences:()=>backfillRecentBoMHistory(latestSourceFeatures),
     featureById,
 
     get features() {

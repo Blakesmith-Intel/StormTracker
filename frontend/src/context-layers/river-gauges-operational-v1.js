@@ -534,11 +534,13 @@ export function initialiseOperationalRiverGauges({
     reportStatus.textContent=checked+(crossingCatalogue?
       " · BoM crossing levels published 5 Jan 2022":
       crossingLoading?" · Loading official crossing references…":
+      snapshot.crossingSourceAvailable?
+      " · Station-plot crossing levels available; Section 5 unavailable":
       " · Crossing reference unavailable (moderate/major only)");
     reportSummary.textContent=snapshot.total+" qualifying gauge"+
       (snapshot.total===1?"":"s")+" · "+snapshot.groups[0].rows.length+
       " major · "+snapshot.groups[1].rows.length+" moderate"+
-      (crossingCatalogue?" · "+snapshot.crossedCount+
+      (snapshot.crossingSourceAvailable?" · "+snapshot.crossedCount+
       " meeting published crossing levels":" · crossing checks unavailable")+
       (snapshot.excludedStaleCount?" · "+snapshot.excludedStaleCount+
        " stale/unverified readings excluded":"");
@@ -561,7 +563,7 @@ export function initialiseOperationalRiverGauges({
       if(!group.rows.length){
         const empty=document.createElement("p");
         empty.className="rainfall-report-empty";
-        empty.textContent=group.key==="crossing"&&!crossingCatalogue?
+        empty.textContent=group.key==="crossing"&&!snapshot.crossingSourceAvailable?
           "Crossing reference unavailable; results cannot be verified.":
           "No qualifying gauges in this category.";
         section.append(empty);

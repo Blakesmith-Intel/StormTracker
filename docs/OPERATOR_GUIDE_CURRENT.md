@@ -95,6 +95,14 @@ Turn on **Flood signals** under **Layers** and use **↻ Refresh** to request av
 
 **The upward arrow is an inferred indicator, not an official BoM flash-flood warning.** Tidal screening is used to reduce false alerts from ordinary rising tides; it cannot rule out every tidal effect, storm surge or flooding mechanism. Classified gauges disappear after a fresh measured height falls below their verified station-specific minor level. Where BoM has not published a minor level, a rapid-rise gauge may remain as a blue **no-arrow** marker while the water stays above that gauge's observed pre-rise height. Two different current readings at least 15 minutes apart must return near that pre-rise reference before the marker disappears. This reference is **not** a published normal river height or flood threshold; stale measurements cannot prove recovery. The map and station panel may identify an old or unavailable source: do not treat missing or stale data as “no flood.”
 
+### New: flood gauge report
+
+Select **Flood gauge report · Moderate+ / crossings** immediately below Flood signals. It opens an on-screen, scrollable window that lists all **fresh** BoM gauges with current **moderate or major flooding**, even while their map layer is off, and also stations whose latest measured height has reached a **published bridge, causeway or crossing reference** even when no flood level is set or the reading is below minor.
+
+The report groups gauges into **Major**, **Moderate**, and **Crossing level reached (other flood categories)**, showing the original station name and ID, current height, tendency and observation time. Where a crossing is reached, it shows the crossing name, the published reference height and the difference in metres. Each station appears only once, even when it meets both criteria. Use **↻ Refresh** to request the latest readings. The window updates automatically after normal 10-minute river-gauge updates and works on mobile.
+
+**Source and safety:** Crossing references are obtained from [BoM Queensland Section 5 — Details of Crossings](https://www.bom.gov.au/qld/flood/networks/section5.shtml), dated **5 January 2022**, by **exact BoM station number**. These are published reference heights, **not** confirmed road closures or proof that a road is passable. Cross-check [QLDTraffic](https://qldtraffic.qld.gov.au/) and local road authorities. If crossing reference data cannot be validated, the report still lists verified moderate/major gauges but explicitly warns that crossing-only results are unavailable. Stale or missing gauges are not shown as current, and are never assumed safe.
+
 ## Other information layers
 
 | Layer/control | How to use it | Interpretation |

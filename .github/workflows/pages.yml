@@ -253,7 +253,8 @@ jobs:
         env:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'echo "::error::Published-site verification failed at command: $BASH_COMMAND (line $LINENO)"' ERR
           base="${PAGES_URL%/}"
           # GitHub Pages publication can briefly serve the previous CDN copy.
           # Confirm all three actual published flood-legend assets before

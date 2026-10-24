@@ -976,17 +976,21 @@ async function extractBoundedRecentHistoryTable(response){
       for(let offset=0;offset<value.byteLength&&!completed;offset+=65536){
         const part=value.subarray(offset,Math.min(offset+65536,value.byteLength));
         received+=part.byteLength;
-        html+=decoder.decode(part,{stream:true});
+        const partText=decoder.decode(part,{stream:true});
+        html+=partText;
         if(!started){
           const match=RECENT_HISTORY_OPEN_TAG.exec(html);
+          // `html` includes the previous 512-character tag look-behind.
+          // Copy only NEW source characters into the separate station header.
+          const priorOverlap=Math.max(0,html.length-partText.length);
           if(match){
-            header=(header+html.slice(0,match.index)).slice(-32768);
+            header=(header+html.slice(priorOverlap,match.index)).slice(-32768);
             html=html.slice(match.index);
             started=true;
           }else{
             // Only a short look-behind is needed across normal HTML chunks.
             // A pathological megabyte-long tag deliberately fails closed.
-            header=(header+html).slice(-32768);
+            header=(header+partText).slice(-32768);
             html=html.slice(-512);
           }
         }

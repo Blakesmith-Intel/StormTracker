@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -200,7 +200,13 @@ old_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-leg
 new_legend="<div id=\"riverGaugeSeverityLegend\" class=\"note flood-severity-legend\"><span style=\"color:#1269e8\">↑</span> Rapid rise below minor · <span class=\"flood-green\">●</span> Minor · <span class=\"flood-yellow\">●</span> Moderate · <span class=\"flood-red\">●</span> Major · <span style=\"color:#1269e8\">↑</span> on any flood icon = rapid rise / potential flash flooding</div>"
 assert html.count(old_legend)==1, "Pinned production legend layout changed"
 html=html.replace(old_legend,new_legend,1)
-html=html.replace(needle,"Flood signals</label>"+button_match.group(0)+"</div>",1)
+report_button=search(r'<button id="openFloodGaugeReport"[^>]*>[^<]*</button>',operator_html)
+assert report_button, "Flood gauge report button absent from maintenance source"
+html=html.replace(needle,"Flood signals</label>"+report_button.group(0)+
+  button_match.group(0)+"</div>",1)
+# Same flood controls row: the additional report action does NOT increase
+# sidebar height or require a second map or a nested disclosure.
+
 # Copy the two exact maintenance-source rainfall controls into pinned HTML;
 # preserve the accepted one-screen sidebar and original panel ordering.
 for start_tag,end_tag,anchor in (
@@ -213,6 +219,17 @@ for start_tag,end_tag,anchor in (
     fragment=operator_html[start:end]
     assert html.count(anchor)==1
     html=html.replace(anchor,fragment+'\n    '+anchor,1)
+# The new dialog is read-only and appended beside the existing rainfall modal,
+# without changing any Cesium map, sidebar header, navigation or overlay.
+flood_start="<!-- FLOOD_GAUGE_REPORT_START -->"
+flood_end="<!-- FLOOD_GAUGE_REPORT_END -->"
+assert operator_html.count(flood_start)==1 and operator_html.count(flood_end)==1
+start=operator_html.index(flood_start)
+end=operator_html.index(flood_end,start)+len(flood_end)
+fragment=operator_html[start:end]
+flood_anchor='<section id="riverGaugeInfo"'
+assert html.count(flood_anchor)==1
+html=html.replace(flood_anchor,fragment+'\n    '+flood_anchor,1)
 # The sealed V10 shell is immutable. Patch only its EXISTING heading with
 # the exact sidebar text link from the current accepted maintenance HTML.
 # No new sidebar row, floating overlay, button or information panel.
@@ -246,6 +263,13 @@ assert "significantRainfallPeriod" in (
     site / "live3d-operational-v9.html").read_text()
 assert "qualifiesRainfallSnapshot" in (
     layers / "significant-rainfall-source-v1.js").read_text()
+assert 'id="openFloodGaugeReport"' in html
+assert 'id="floodGaugeReport"' in html
+assert 'id="floodGaugeReportRows"' in html
+assert "buildNotableFloodGaugeReport" in (
+    layers / "river-gauges-operational-v1.js").read_text()
+assert "sourceFeatures" in (
+    layers / "river-gauge-layer-v1.js").read_text()
 assert "bindRiverGaugeManualRefresh(" in (
     layers / "river-gauges-operational-v1.js").read_text()
 assert "recentNextAttemptAt" in (layers / "river-gauge-layer-v1.js").read_text()
@@ -648,3 +672,5 @@ grep -Fq 'hide-controls-full-map-v1' "_site/index.html"
 
 # Post-regression production marker: only present after the build has passed.
 printf '%s\n' 'FLOOD RECOVERY V10.2.9 — SOURCE-VERIFIED BELOW-MINOR CLEAR + STATION PRE-RISE REFERENCE 2026-10-24' >> _site/BUILD.txt
+
+printf '%s\n' 'FLOOD CROSSING REPORT V10.2.10 — SOURCE-ID ONLY MODERATE MAJOR BRIDGE CAUSEWAY REFERENCES 2026-10-24' >> _site/BUILD.txt

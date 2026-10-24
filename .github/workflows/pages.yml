@@ -193,6 +193,11 @@ jobs:
           node scripts/test-national-source-policy-v1.mjs
           grep -Fq 'classifyRainfallAep' _site/src/context-layers/significant-rainfall-operational-v1.js
           grep -Fq 'FLOOD RECOVERY V10.2.9' _site/BUILD.txt
+          grep -Fq 'FLOOD CROSSING REPORT V10.2.10' _site/BUILD.txt
+          node --check _site/src/context-layers/river-gauge-notable-report-v1.js
+          grep -Fq 'get sourceFeatures()' _site/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'openFloodGaugeReport' _site/live3d-operational-v9.html
+          grep -Fq 'buildNotableFloodGaugeReport' _site/src/context-layers/river-gauges-operational-v1.js
           grep -Fq 'preRiseReference' _site/src/context-layers/river-flood-events-v1.js
           grep -Fq 'elevated:"#1269e8"' _site/src/context-layers/river-gauge-layer-v1.js
           grep -Fq 'IFD_LOOKUP_CONCURRENCY=6' _site/src/context-layers/rainfall-ifd-aep-v1.js
@@ -257,6 +262,7 @@ jobs:
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.5' <<< "$root"
           grep -Fq 'ACCEPTED MAINTENANCE RELEASE V10.2.8' <<< "$root"
           grep -Fq 'FLOOD RECOVERY V10.2.9' <<< "$root"
+          grep -Fq 'FLOOD CROSSING REPORT V10.2.10' <<< "$root"
           grep -Fq 'RIVER-HISTORY MAINTENANCE HOTFIX 2026-10-18' <<< "$root"
           grep -Fq 'RIVER-HISTORY NO-DATA V2 2026-10-18' <<< "$root"
           grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' <<< "$root"
@@ -274,6 +280,9 @@ jobs:
           grep -Fq 'value="last24Hours"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallTotalsReport"' <<< "$rainfall_html"
           grep -Fq 'id="openRainfallAepReport"' <<< "$rainfall_html"
+          grep -Fq 'id="openFloodGaugeReport"' <<< "$rainfall_html"
+          grep -Fq 'id="floodGaugeReport"' <<< "$rainfall_html"
+          grep -Fq 'id="floodGaugeReportRows"' <<< "$rainfall_html"
           # Read-only user guide must be part of the existing sidebar header,
           # not a floating overlay or anything inside the Cesium map panel.
           grep -Fq 'id="operatorGuideLink"' <<< "$rainfall_html"
@@ -281,6 +290,7 @@ jobs:
           grep -Fq 'target="_blank" rel="noopener noreferrer"' <<< "$rainfall_html"
           guide_css="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
           grep -Fq '#controlSidebar > .dashboard-heading .operator-guide-link' <<< "$guide_css"
+          grep -Fq '#openFloodGaugeReport' <<< "$guide_css"
           grep -Fq 'class="significant-rainfall-report-actions"' <<< "$rainfall_html"
           rainfall_style="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/single-interface-v1.css")"
           grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' <<< "$rainfall_style"
@@ -333,6 +343,38 @@ jobs:
           grep -Fq 'retainConfirmedFloodStations' <<< "$flood_cache"
           flood_layer="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauge-layer-v1.js")"
           grep -Fq 'confirmedFloodCache' <<< "$flood_layer"
+          grep -Fq 'get sourceFeatures()' <<< "$flood_layer"
+          flood_report="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauge-notable-report-v1.js")"
+          grep -Fq 'buildNotableFloodGaugeReport' <<< "$flood_report"
+          grep -Fq 'FLOOD_CROSSINGS_SCHEMA' <<< "$flood_report"
+          flood_ui="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauges-operational-v1.js")"
+          grep -Fq 'renderFloodGaugeReport' <<< "$flood_ui"
+          grep -Fq 'layer.sourceFeatures' <<< "$flood_ui"
+          # The new data route must be live and include official station-ID
+          # references BEFORE this version can acquire an immutable seal.
+          # Relay deploy may start alongside Pages, hence bounded retry.
+          crossing_ok=0
+          for attempt in $(seq 1 18); do
+            if curl -fsSL --max-time 22 -H 'Origin: https://blakesmith-intel.github.io' \
+              'https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-crossing-heights' \
+              -o /tmp/stormtracker-crossings-v10-2-10.json; then
+              if node -e '
+                const fs=require("node:fs");
+                const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+                if(j.schema!=="StormTrackerBoMQldCrossingHeightsV1"||
+                   j.sourceDate!=="2022-01-05"||
+                   Object.keys(j.entries??{}).length<40||
+                   j.entries["bom:540063"]?.heightMetres!==2.67||
+                   j.entries["bom:540291"]?.heightMetres!==-0.03)
+                  process.exit(2);
+              ' /tmp/stormtracker-crossings-v10-2-10.json; then
+                crossing_ok=1
+                break
+              fi
+            fi
+            sleep 12
+          done
+          test "$crossing_ok" = 1
           flood_levels="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-flood-signals-v1.js")"
           grep -Fq 'last-confirmed-bom-flood-class' <<< "$flood_levels"
           grep -Fq '!(timely && measured===null)' <<< "$flood_levels"
@@ -774,6 +816,42 @@ jobs:
             annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
               -f tag="$tag" \
               -f message="StormTracker v10.2.9 — below-minor marker recovery and source-verified station pre-rise elevation lifecycle (24 October 2026)" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag at $release_sha"
+      - name: Seal verified V10.2.10 notable flood and crossing report
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.10"
+          restore="restore/v10.2.10"
+          grep -Fq 'FLOOD CROSSING REPORT V10.2.10' scripts/build-current-site.sh
+          grep -Fq 'buildNotableFloodGaugeReport' frontend/src/context-layers/river-gauge-notable-report-v1.js
+          grep -Fq 'river-crossing-heights' relay/worker.js
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          if [ -n "$existing_restore" ] && [ -n "$existing_tag" ]; then
+            test "$existing_restore" = "$existing_tag"
+            echo "Preserving previously frozen $tag"
+            exit 0
+          fi
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker v10.2.10 — exact-station BoM moderate-major and published bridge/causeway on-screen report (24 October 2026)" \
               -f object="$release_sha" -f type="commit" --jq .sha)"
             test -n "$annotated"
             gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \

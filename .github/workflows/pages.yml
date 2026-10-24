@@ -255,6 +255,28 @@ jobs:
         run: |
           set -euo pipefail
           base="${PAGES_URL%/}"
+          # GitHub Pages publication can briefly serve the previous CDN copy.
+          # Confirm all three actual published flood-legend assets before
+          # accepting the release; do not weaken any existing historic QA.
+          legend_published=0
+          for attempt in $(seq 1 10); do
+            suffix="?release=$GITHUB_SHA&check=$attempt"
+            legend_html="$(curl -fsSL --max-time 20 "$base/live3d-operational-v9.html$suffix" || true)"
+            legend_css="$(curl -fsSL --max-time 20 "$base/src/single-interface-v1.css$suffix" || true)"
+            legend_js="$(curl -fsSL --max-time 20 "$base/src/context-layers/river-gauges-operational-v1.js$suffix" || true)"
+            if grep -Fq 'data-flood-legend-state="crossing"' <<< "$legend_html" &&
+               grep -Fq 'flood-legend-grid' <<< "$legend_css" &&
+               grep -Fq 'icon.src=createRiverGaugeMarkerImage(state,rapid)' <<< "$legend_js"; then
+              legend_published=1
+              break
+            fi
+            echo "Live flood legend assets not yet fully published, check $attempt/10"
+            sleep 5
+          done
+          test "$legend_published" = 1 || {
+            echo "::error::Published Pages site is missing the amber crossing legend or its styling / matching marker code"
+            exit 1
+          }
           root="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/BUILD.txt")"
           preview="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/preview/radar-history-fix/BUILD.txt")"
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' <<< "$root"

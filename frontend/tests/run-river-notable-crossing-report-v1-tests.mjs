@@ -88,6 +88,18 @@ assert.equal(withCrossing.total,1,
 assert.equal(withCrossing.crossedCount,1);
 assert.equal(withCrossing.groups[2].rows[0].id,"bom:535162");
 assert.equal(withCrossing.groups[2].rows[0].crossing.amountAboveMetres,1.06);
+const staleTheresa=station("535162",2.77,"",now-180*MIN,
+ {name:"Theresa Creek Dam"});
+staleTheresa.properties.STORMTRACKER_PLOT_CROSSING=
+ theresa.properties.STORMTRACKER_PLOT_CROSSING;
+const lastConfirmed=buildNotableFloodGaugeReport([staleTheresa],reference,now);
+assert.equal(lastConfirmed.total,1,"Previously verified crossing must not disappear solely on a stale BoM observation");
+assert.equal(lastConfirmed.crossedCount,0,"Stale crossing must not be counted as current");
+assert.equal(lastConfirmed.lastConfirmedCrossedCount,1);
+assert.equal(lastConfirmed.groups[2].rows[0].observationStale,true);
+assert.equal(buildNotableFloodGaugeReport([
+ station("535162",2.77,"",now-50*60*MIN)
+],reference,now).total,0,"Very old unverified state must never be displayed as current");
 const html=readFileSync(new URL("../live3d-operational-v9.html",import.meta.url),"utf8");
 const script=readFileSync(new URL("../src/context-layers/river-gauges-operational-v1.js",import.meta.url),"utf8");
 const layer=readFileSync(new URL("../src/context-layers/river-gauge-layer-v1.js",import.meta.url),"utf8");

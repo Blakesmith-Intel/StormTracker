@@ -139,6 +139,56 @@ export function classifyBoMRecentHistoryFailure(error) {
 export const RECENT_HISTORY_RELAY_URL =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-recent-history";
 
+
+// Schedule verified SAME-station table lookups for every operational BoM
+// gauge with an observed height. The published crossing test is independent
+// of flood stage and tendency; steady and falling gauges can remain dangerous.
+// Reuse BoM source URLs and never match stations by name.
+export function planBoMStationTableLookups(features,{
+  history={},plotCrossings={},crossingCatalogue=null,nowMs=Date.now()
+}={}){
+  const planned=[];
+  const knownSection5=crossingCatalogue?.schema==="StormTrackerBoMQldCrossingHeightsV1"
+    ?crossingCatalogue.entries??{}:{};
+  for(const feature of features??[]){
+    const id=String(feature?.id??""),p=feature?.properties??{};
+    if(!/^bom:\d{6}$/.test(id)||p.STORMTRACKER_IDENTITY_WARNING)continue;
+    const native=String(p.bom_stn_num??"").trim();
+    if(native&&(!/^\d{1,6}$/.test(native)||native.padStart(6,"0")!==id.slice(4)))continue;
+    if(typeof p.STORMTRACKER_HEIGHT_METRES!=="number"||
+       !Number.isFinite(p.STORMTRACKER_HEIGHT_METRES))continue;
+    const target=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
+    if(!target||target.station!==id.slice(4))continue;
+    const historyGap=recentFloodHistoryGap(feature,history,nowMs);
+    const needsHistory=Boolean(historyGap?.target);
+    const needsCrossing=!Object.hasOwn(plotCrossings,id);
+    if(!needsHistory&&!needsCrossing)continue;
+    const observed=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
+    const observation=Number.isFinite(observed)&&observed>0
+      ?observed:parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
+    const fresh=observation!==null&&Number.isFinite(observation)&&
+      observation<=nowMs+5*60000&&nowMs-observation<=FLOOD_SIGNAL_MAX_AGE_MS;
+    const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
+    const noStage=p.STORMTRACKER_MINOR_FLOOD_METRES==null;
+    const noPublishedCrossing=!knownSection5[id];
+    // Priority is ONLY the order in which to CHECK an official source.
+    // A high current height cannot invent a bridge or flood classification.
+    const priority=needsHistory&&fresh?0:
+      needsCrossing&&fresh&&noStage&&noPublishedCrossing&&tendency==="rising"?1:
+      needsCrossing&&fresh&&noStage&&noPublishedCrossing&&
+        p.STORMTRACKER_HEIGHT_METRES>=1.5?2:
+      needsCrossing&&fresh&&noStage&&noPublishedCrossing?3:
+      needsCrossing&&fresh&&!knownSection5[id]?4:
+      needsCrossing&&fresh?5:6;
+    planned.push({...target,id,inland:historyGap?.inland??false,
+      needsHistory,needsCrossing,priority,
+      observedAt:observation??0,heightMetres:p.STORMTRACKER_HEIGHT_METRES});
+  }
+  return planned.sort((a,b)=>a.priority-b.priority||
+    (a.priority===2?b.heightMetres-a.heightMetres:0)||
+    b.observedAt-a.observedAt||a.id.localeCompare(b.id));
+}
+
 export async function fetchBoMRecentHistoryDetail(target,{
   fetchImpl=globalThis.fetch,endpoint=RECENT_HISTORY_RELAY_URL,timeoutMs=15000
 }={}) {

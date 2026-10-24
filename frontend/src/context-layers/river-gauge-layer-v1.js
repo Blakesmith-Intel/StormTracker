@@ -342,13 +342,17 @@ export function createRiverGaugeLayer({
       const next=list.reduce((min,item)=>
         Math.min(min,recentNextAttemptAt.get(item.id)??nowMs),Infinity);
       if(Number.isFinite(next)&&next>nowMs)
-        scheduleCrossingScan(Math.max(30000,next-nowMs));
+        scheduleCrossingScan(Math.max(3000,next-nowMs));
       return null;
     }
     recentLoading=(async()=>{
       let success=0,failures=0,noData=0,lastFailureScope=null;
-      for(const target of candidates){
-        if(now()<recentRelayBlockedUntil)break;
+      // Four simultaneous reads on the EXISTING BoM relay, rather than
+      // 16 serial waits. Keep the 16-station per-pass limit.
+      for(let i=0;i<candidates.length;i+=4){
+       if(now()<recentRelayBlockedUntil)break;
+       await Promise.all(candidates.slice(i,i+4).map(async target=>{
+        if(now()<recentRelayBlockedUntil)return;
         recentAttempted.add(target.id);
         // A successful but still insufficient table may gain observations
         // later; never permanently blacklist this station.
@@ -397,8 +401,10 @@ export function createRiverGaugeLayer({
             "Optional BoM station history service unavailable; current flood bulletins retained:",
             String(error?.message??error)
           );
-          if(scope==="service")break;
+          // Already running requests in this small batch may finish, but
+          // service-wide errors prevent the next batch from starting.
         }
+       }));
       }
       if(success||candidates.some(item=>plotCrossings[item.id])){
         latestSourceFeatures=attachPlotCrossings(latestSourceFeatures);
@@ -453,15 +459,15 @@ export function createRiverGaugeLayer({
         // the next 10-minute observation refresh. Not an unbounded burst.
         const earliest=Math.min(...remaining.map(item=>
           recentNextAttemptAt.get(item.id)??now()));
-        const nextDue=Math.max(now()+30000,earliest);
+        const nextDue=Math.max(now()+3000,earliest);
         const delay=now()<recentRelayBlockedUntil
-          ?Math.max(30000,recentRelayBlockedUntil-now()):nextDue-now();
+          ?Math.max(3000,recentRelayBlockedUntil-now()):nextDue-now();
         scheduleCrossingScan(delay);
       }
     }
   }
 
-  function scheduleCrossingScan(delayMs=30000){
+  function scheduleCrossingScan(delayMs=3000){
     // No autonomous scans on a stopped layer or bare refresh test harness.
     if(!timer||crossingScanTimer||!latestSourceFeatures.length)return;
     crossingScanTimer=setTimeout(()=>{
@@ -473,7 +479,7 @@ export function createRiverGaugeLayer({
       }
       void backfillRecentBoMHistory(latestSourceFeatures).catch(error=>
         console.warn("BoM crossing catalogue scan unavailable:",error));
-    },Math.max(30000,Math.min(15*60000,delayMs)));
+    },Math.max(3000,Math.min(15*60000,delayMs)));
   }
 
   function markerImage(state,rapidRise=false){
@@ -856,6 +862,16 @@ export function createRiverGaugeLayer({
     // The map's flood-only feature list is unsuitable for crossing reports.
     get sourceFeatures() {
       return latestSourceFeatures.slice();
+    },
+
+    // A crossing report is provisional until every source-identified station
+    // has been checked. Missing height references are never assumed safe.
+    get crossingCoverage(){
+      const planned=planBoMStationTableLookups(latestSourceFeatures,{
+        history,plotCrossings,crossingCatalogue,nowMs:now()
+      });
+      return {pending:planned.filter(item=>item.needsCrossing).length,
+        checking:Boolean(recentLoading),blockedUntil:recentRelayBlockedUntil};
     },
 
     get lastLoadedAt() {

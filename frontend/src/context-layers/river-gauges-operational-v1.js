@@ -147,10 +147,12 @@ export function riverGaugePanelAppearance(summary) {
   const state=["minor","moderate","major","unverified","elevated"].includes(summary?.displayState)
     ? summary.displayState:"rapid-rise";
   const rise=Boolean(summary?.rapidRise) || state==="rapid-rise";
+  const reached=Boolean(summary?.crossingReached);
   const category=state==="rapid-rise"
     ? "RAPID RISE BELOW MINOR · SCREENING"
     : state==="elevated"
-      ? "POST-RISE ELEVATED WATER · MONITORING"
+      ? (reached?"PUBLISHED CROSSING LEVEL REACHED · MONITORING":
+         "POST-RISE ELEVATED WATER · MONITORING")
     : state==="unverified"
       ? "LATEST HEIGHT · FLOOD CLASS UNVERIFIED"
     : summary?.classificationUnverified
@@ -160,7 +162,8 @@ export function riverGaugePanelAppearance(summary) {
   return {
     state,
     rapidRise:rise,
-    category:category+(summary?.observationStale?" · LAST CONFIRMED, STALE":""),
+    category:category+(reached&&state!=="elevated"?" · CROSSING LEVEL REACHED":"")+
+      (summary?.observationStale?" · LAST CONFIRMED, STALE":""),
     image:createRiverGaugeMarkerImage(state,rise)
   };
 }
@@ -251,6 +254,18 @@ function showRiverGaugeInfo(
   );
 
   addDetailRow(rows, "Signal", summary.alertReason);
+  if(typeof summary.crossingLevelMetres==="number"){
+    addDetailRow(rows,"BoM published crossing level",
+      (summary.crossingName||"Crossing")+" · "+
+      summary.crossingLevelMetres.toFixed(2)+" m");
+    addDetailRow(rows,"Crossing reference source",
+      summary.crossingSource||"BoM crossing reference");
+    addDetailRow(rows,"Crossing status",
+      summary.crossingReached&&typeof summary.heightMetres==="number"
+        ? (summary.heightMetres-summary.crossingLevelMetres).toFixed(2)+
+          " m above published reference · NOT confirmation of road closure"
+        : "Published reference not currently exceeded");
+  }
   if(summary.alertPersisted){
     addDetailRow(rows,"Event state",
       `Monitoring · ${summary.recoveryReadings}/2 recovery observations confirmed`);
@@ -519,11 +534,13 @@ export function initialiseOperationalRiverGauges({
     reportStatus.textContent=checked+(crossingCatalogue?
       " · BoM crossing levels published 5 Jan 2022":
       crossingLoading?" · Loading official crossing references…":
+      snapshot.crossingSourceAvailable?
+      " · Station-plot crossing levels available; Section 5 unavailable":
       " · Crossing reference unavailable (moderate/major only)");
     reportSummary.textContent=snapshot.total+" qualifying gauge"+
       (snapshot.total===1?"":"s")+" · "+snapshot.groups[0].rows.length+
       " major · "+snapshot.groups[1].rows.length+" moderate"+
-      (crossingCatalogue?" · "+snapshot.crossedCount+
+      (snapshot.crossingSourceAvailable?" · "+snapshot.crossedCount+
       " meeting published crossing levels":" · crossing checks unavailable")+
       (snapshot.excludedStaleCount?" · "+snapshot.excludedStaleCount+
        " stale/unverified readings excluded":"");
@@ -546,7 +563,7 @@ export function initialiseOperationalRiverGauges({
       if(!group.rows.length){
         const empty=document.createElement("p");
         empty.className="rainfall-report-empty";
-        empty.textContent=group.key==="crossing"&&!crossingCatalogue?
+        empty.textContent=group.key==="crossing"&&!snapshot.crossingSourceAvailable?
           "Crossing reference unavailable; results cannot be verified.":
           "No qualifying gauges in this category.";
         section.append(empty);
@@ -599,6 +616,7 @@ export function initialiseOperationalRiverGauges({
            data.sourceDate!=="2022-01-05")
           throw Error("Published crossing catalogue failed validation");
         crossingCatalogue=data;
+        layer.setCrossingCatalogue(data);
       }catch(error){
         console.warn("Official bridge/causeway reference unavailable:",error);
         crossingRetryAfter=Date.now()+15*60000;
@@ -1083,6 +1101,8 @@ export function initialiseOperationalRiverGauges({
   );
 
   layer.start();
+  // Load once at startup for ALL map gauges, not only when the report opens.
+  void loadCrossingReference();
 
   return layer;
 }

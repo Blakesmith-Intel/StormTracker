@@ -6,6 +6,7 @@ import {
  latestRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS
 } from "./river-flood-signals-v1.js?v=9.13.2";
 import {stationFloodLevels} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
+import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
 
 export const FLOOD_EVENTS_STORAGE_KEY="stormtracker.qld-flood-events.v1";
 export const FLOOD_EVENT_RECOVERY_COUNT=2;
@@ -99,7 +100,7 @@ function showFeature(feature,decision,{state=decision.state,
 // A threshold-free event stays visible while above its original measured
 // pre-rise reference, including steady or falling water; only two fresh,
 // distinct observations at the reference confirm recovery.
-export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.now()){
+export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.now(),crossingCatalogue=null){
  const prior=cleanFloodEvents(oldEvents,now),events={};
  const selected=[],counts={minor:0,moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
  const seen=new Set();
@@ -112,6 +113,9 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   const height=p.STORMTRACKER_HEIGHT_METRES;
   const isFresh=fresh(observation,now)&&isNumber(height);
   const noMinor=stationFloodLevels(feature)?.minor==null;
+  const crossing=publishedCrossingForFeature(feature,crossingCatalogue);
+  // Only a fresh SAME-station current river height can confirm a crossing.
+  const crossingReached=Boolean(isFresh&&crossing&&height>=crossing.heightMetres);
   const tidal=isObservedTidalGauge(feature,history[id]??[],now);
   let event=prior[id];
   // Never carry a rate-only alert through published flood-stage gauges,
@@ -136,6 +140,15 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
    }
   }
   let kept=decision.show?showFeature(feature,decision):null;
+  if(crossingReached&&!kept){
+   // Crossing references are independent of BoM minor/moderate/major stages.
+   // The existing blue elevated marker is suitable; no invented flood colour.
+   kept=showFeature(feature,decision,{state:"elevated",rapidRise:false,
+    stale:false,source:"bom-published-crossing",
+    reason:"Measured water level "+height.toFixed(2)+" m is at/above published "+
+      crossing.crossingName+" ("+crossing.heightMetres.toFixed(2)+" m). "+
+      "Crossing reference is not an official flood classification."});
+  }
   if(event){
    if(isFresh && observation>event.lastObservedAt){
     const reached=height<=event.baselineHeight+event.recoveryMarginMetres &&
@@ -175,6 +188,13 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
    }
   }
   if(!kept)continue;
+  if(crossing){
+   kept={...kept,properties:{...kept.properties,
+    STORMTRACKER_CROSSING_LEVEL_METRES:crossing.heightMetres,
+    STORMTRACKER_CROSSING_NAME:crossing.crossingName,
+    STORMTRACKER_CROSSING_SOURCE:crossing.source,
+    STORMTRACKER_CROSSING_REACHED:crossingReached}};
+  }
   const state=kept.properties.STORMTRACKER_DISPLAY_STATE;
   if(officialStates.has(state))counts[state]++;
   if(kept.properties.STORMTRACKER_RAPID_RISE){

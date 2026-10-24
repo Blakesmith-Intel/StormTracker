@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -70,7 +70,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -327,7 +327,7 @@ assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(!classified && !inland)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
-assert ".slice(0,4)" in (layers / "river-gauge-layer-v1.js").read_text()
+assert ".slice(0,16)" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
 assert 'const feature = idKey ? byId.get(idKey) : null' in (layers / "river-gauge-observations-v1.js").read_text()
@@ -433,7 +433,7 @@ grep -Fq 'doppler-png-502-cooldown-v1-20261018' _site/src/live3d-operational-v9.
 grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' _site/BUILD.txt
 grep -Fq 'if(explicitlyTidal)return null' _site/src/context-layers/bom-recent-river-history-v1.js
 grep -Fq 'if(!classified && !inland)return null' _site/src/context-layers/bom-recent-river-history-v1.js
-grep -Fq '.slice(0,4)' _site/src/context-layers/river-gauge-layer-v1.js
+grep -Fq '.slice(0,16)' _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
 grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css
 node --check _site/src/context-layers/river-gauge-layer-v1.js

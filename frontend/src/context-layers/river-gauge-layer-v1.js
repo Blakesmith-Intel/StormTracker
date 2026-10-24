@@ -37,7 +37,8 @@ import {
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
   classifyBoMRecentHistoryFailure,
-  fetchBoMRecentHistory
+  fetchBoMRecentHistoryDetail,
+  officialRecentTableTarget
 } from "./bom-recent-river-history-v1.js?v=9.13.1";
 
 export function riverGaugeOperationalSummary(
@@ -145,6 +146,11 @@ export function riverGaugeOperationalSummary(
       minor:properties.STORMTRACKER_MINOR_FLOOD_METRES??null,
       moderate:properties.STORMTRACKER_MODERATE_FLOOD_METRES??null,
       major:properties.STORMTRACKER_MAJOR_FLOOD_METRES??null},
+    crossingLevelMetres:typeof properties.STORMTRACKER_CROSSING_LEVEL_METRES==="number"
+      ?properties.STORMTRACKER_CROSSING_LEVEL_METRES:null,
+    crossingName:String(properties.STORMTRACKER_CROSSING_NAME??""),
+    crossingSource:String(properties.STORMTRACKER_CROSSING_SOURCE??""),
+    crossingReached:Boolean(properties.STORMTRACKER_CROSSING_REACHED),
     alertSource:String(properties.STORMTRACKER_ALERT_SOURCE??""),
     officialObservedAt:Number(properties.STORMTRACKER_OFFICIAL_OBSERVED_AT)||null,
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
@@ -228,6 +234,33 @@ export function createRiverGaugeLayer({
   let currentFeatures = [];
   let history = {};
   let floodEvents={};
+  // Bounded, same-station BoM table crossing metadata survives browser reloads.
+  // Negative results are cached too, preventing repeated lookups for stations
+  // whose official table does not publish a crossing level.
+  const PLOT_CROSSING_CACHE_KEY="stormtracker.qld-plot-crossings.v1";
+  const PLOT_CROSSING_CACHE_MS=24*3600000;
+  let plotCrossings={};
+  try{
+    const saved=JSON.parse(storage?.getItem(PLOT_CROSSING_CACHE_KEY)??"{}");
+    for(const [id,item] of Object.entries(saved??{}).slice(0,1800)){
+      if(!/^bom:\\d{6}$/.test(id)||!Number.isFinite(item?.checkedAt)||
+         now()-item.checkedAt>PLOT_CROSSING_CACHE_MS)continue;
+      plotCrossings[id]=item;
+    }
+  }catch{plotCrossings={};}
+  function storePlotCrossings(){
+    try{storage?.setItem(PLOT_CROSSING_CACHE_KEY,JSON.stringify(plotCrossings));}
+    catch{/* unavailable browser storage must not lose live session metadata */}
+  }
+  function attachPlotCrossings(features){
+    return features.map(feature=>{
+      const entry=plotCrossings[String(feature?.id??"")];
+      if(!entry?.crossing)return feature;
+      return {...feature,properties:{...feature.properties,
+        STORMTRACKER_PLOT_CROSSING:entry.crossing}};
+    });
+  }
+  let crossingCatalogue=null;
   let confirmedFloodCache={};
   let latestHeightCache={};
   try{
@@ -293,12 +326,26 @@ export function createRiverGaugeLayer({
     if(recentLoading)return recentLoading;
     const nowMs=now();
     if(nowMs<recentRelayBlockedUntil)return null;
-    const list=features.map(f=>recentFloodHistoryCandidate(f,history,nowMs))
-      .filter(Boolean).sort((a,b)=>Number(b.inland)-Number(a.inland));
+    const list=features.map(f=>{
+      const candidate=recentFloodHistoryCandidate(f,history,nowMs);
+      if(candidate)return candidate;
+      // A known rising gauge needs its own BoM table crossing reference
+      // even when short-term rate observations already exist in this browser.
+      const p=f?.properties??{},id=String(f?.id??"");
+      const observation=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
+      const observedText=String(p.STORMTRACKER_OBSERVED_TEXT??"");
+      const fresh=Number.isFinite(observation)&&observation>0&&
+        nowMs-observation<=FLOOD_SIGNAL_MAX_AGE_MS;
+      const rising=String(p.STORMTRACKER_TENDENCY??"").toLowerCase()==="rising";
+      if(!/^bom:\\d{6}$/.test(id)||!rising||
+         (!fresh&&!observedText)||plotCrossings[id])return null;
+      const target=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
+      return target?{id,...target,inland:true}:null;
+    }).filter(Boolean).sort((a,b)=>Number(b.inland)-Number(a.inland));
     // A previously failed or insufficient station becomes eligible again
     // after its own cooldown. Cap each pass and fetch serially to protect BoM.
     const candidates=list.filter(item=>nowMs >= (recentNextAttemptAt.get(item.id)??0))
-      .slice(0,4);
+      .slice(0,16);
     if(!candidates.length)return null;
     recentLoading=(async()=>{
       let success=0,failures=0,noData=0,lastFailureScope=null;
@@ -309,9 +356,15 @@ export function createRiverGaugeLayer({
         // later; never permanently blacklist this station.
         recentNextAttemptAt.set(target.id,now()+15*60*1000);
         try{
-          const observations=await fetchBoMRecentHistory(target,{
+          const detail=await fetchBoMRecentHistoryDetail(target,{
             fetchImpl,timeoutMs:10000
           });
+          const observations=detail.samples;
+          // The Worker reads this from the same BoM table already fetched.
+          // An absent crossing is a verified absence, not permission to
+          // borrow another station's bridge or causeway reference.
+          plotCrossings[target.id]={crossing:detail.crossing,checkedAt:now()};
+          storePlotCrossings();
           if(!observations.length){
             // BoM explicitly has no recent usable measurements for this
             // station. Not a gateway failure, warning log, or false "safe".
@@ -349,13 +402,14 @@ export function createRiverGaugeLayer({
           if(scope==="service")break;
         }
       }
-      if(success){
+      if(success||candidates.some(item=>plotCrossings[item.id])){
+        latestSourceFeatures=attachPlotCrossings(latestSourceFeatures);
         history=compactFloodHistory(history,latestSourceFeatures,now());
         persistHistory();
         // Only re-render when genuine new observations arrived. A failed
         // optional history fetch must not rebuild the Cesium map.
         const signals=reconcileFloodEvents(
-          latestSourceFeatures,history,floodEvents,now()
+          latestSourceFeatures,history,floodEvents,now(),crossingCatalogue
         );
         floodEvents=signals.events;
         persistEventState();
@@ -524,7 +578,7 @@ export function createRiverGaugeLayer({
         const newest=retainLatestGaugeObservations(
           result.payload.features,latestHeightCache,now());
         latestHeightCache=newest.cache;
-        result.payload.features=withStationFloodLevels(newest.features,result.thresholds);
+        result.payload.features=attachPlotCrossings(withStationFloodLevels(newest.features,result.thresholds));
         try{storage?.setItem(LATEST_RIVER_GAUGE_STORAGE_KEY,
           JSON.stringify(latestHeightCache));}catch{}
 
@@ -550,7 +604,7 @@ export function createRiverGaugeLayer({
         latestSourceFeatures=retained.features;
         lastBulletinsPartial = Boolean(result.partialBulletins);
         const alerts = reconcileFloodEvents(
-          retained.features,history,floodEvents,observedAt
+          retained.features,history,floodEvents,observedAt,crossingCatalogue
         );
         floodEvents=alerts.events;
         persistEventState();
@@ -633,7 +687,7 @@ export function createRiverGaugeLayer({
       confirmedFloodCache=retained.cache;
       if(retained.features.length){
         const alerts=reconcileFloodEvents(
-          retained.features,history,floodEvents,now()
+          retained.features,history,floodEvents,now(),crossingCatalogue
         );
         render({type:"FeatureCollection",features:alerts.features});
       }else if(lastLoadedAt && now()-lastLoadedAt>FLOOD_SIGNAL_MAX_AGE_MS){
@@ -749,6 +803,17 @@ export function createRiverGaugeLayer({
     dataSource,
     severityDataSources:severityLayers.dataSources,
     refresh,
+    setCrossingCatalogue(catalogue){
+      crossingCatalogue=catalogue?.schema==="StormTrackerBoMQldCrossingHeightsV1"
+        ?catalogue:null;
+      if(latestSourceFeatures.length){
+        const alerts=reconcileFloodEvents(latestSourceFeatures,history,floodEvents,
+          now(),crossingCatalogue);
+        floodEvents=alerts.events;
+        persistEventState();
+        render({type:"FeatureCollection",features:alerts.features});
+      }
+    },
     setVisible,
     start,
     stop,

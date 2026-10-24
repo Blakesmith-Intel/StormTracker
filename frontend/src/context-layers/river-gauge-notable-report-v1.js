@@ -4,12 +4,12 @@ import {stationFloodLevels,observedFloodClass}
  from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 import {parseQueenslandObservationTime,FLOOD_SIGNAL_MAX_AGE_MS}
  from "./river-flood-signals-v1.js?v=9.13.2";
+import {publishedCrossingForFeature}
+ from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
 export const FLOOD_CROSSINGS_SCHEMA="StormTrackerBoMQldCrossingHeightsV1";
 const grades=new Set(["major","moderate"]);
 const finite=v=>typeof v==="number"&&Number.isFinite(v);
 export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
- const entries=catalogue?.schema===FLOOD_CROSSINGS_SCHEMA?
-  catalogue.entries??{}:{};
  const rows=new Map(),excludedStale=[];
  for(const f of features??[]){
   const id=String(f?.id??""),p=f?.properties??{};
@@ -28,13 +28,8 @@ export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
   // moderate/major class, never infer from another gauge.
   const floodClass=measured!==undefined?measured:originalClass;
   const stageNotable=grades.has(floodClass);
-  const sourceNum=id.startsWith("bom:")?id.slice(4):null;
-  const rawNum=String(p.bom_stn_num??"").trim();
-  const consistentId=sourceNum && (!rawNum || /^\d{1,6}$/.test(rawNum)&&
-    rawNum.padStart(6,"0")===sourceNum) && !p.STORMTRACKER_IDENTITY_WARNING;
-  const crossing=consistentId?entries[id]:null;
-  const crossingValid=crossing&&["B","C","X"].includes(crossing.type)&&
-    finite(crossing.heightMetres);
+  const crossing=publishedCrossingForFeature(f,catalogue);
+  const crossingValid=Boolean(crossing);
   const crossed=Boolean(crossingValid && height>=crossing.heightMetres);
   if(!stageNotable&&!crossed)continue;
   const severity=floodClass==="major"?"major":
@@ -50,6 +45,7 @@ export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
    severity,bridgeOrCausewayReached:crossed,
    crossing:crossingValid?{
     name:String(crossing.crossingName??"Published crossing"),
+    source:crossing.source,
     type:crossing.type,levelMetres:crossing.heightMetres,
     amountAboveMetres:Math.round((height-crossing.heightMetres)*100)/100
    }:null,
@@ -71,7 +67,8 @@ export function buildNotableFloodGaugeReport(features,catalogue,now=Date.now()){
     rows:ranked.filter(x=>x.severity==="crossing")}],
   crossedCount:ranked.filter(x=>x.bridgeOrCausewayReached).length,
   excludedStaleCount:excludedStale.length,
-  crossingSourceAvailable:catalogue?.schema===FLOOD_CROSSINGS_SCHEMA,
+  crossingSourceAvailable:catalogue?.schema===FLOOD_CROSSINGS_SCHEMA||
+    ranked.some(row=>Boolean(row.crossing)),
   crossingSourceDate:catalogue?.sourceDate??null
  };
 }

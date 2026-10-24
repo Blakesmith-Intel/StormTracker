@@ -1,0 +1,34 @@
+name: Flood crossing source and map regression (isolated)
+on:
+  push:
+    branches:
+      - fix/flood-gauge-rising-crossing-coverage-20261024
+  pull_request:
+    paths:
+      - 'frontend/src/context-layers/river-crossing-state-v1.js'
+      - 'frontend/src/context-layers/river-flood-events-v1.js'
+      - 'frontend/src/context-layers/river-gauge-layer-v1.js'
+      - 'frontend/src/context-layers/river-gauges-operational-v1.js'
+      - 'frontend/src/context-layers/river-gauge-notable-report-v1.js'
+      - 'frontend/src/context-layers/bom-recent-river-history-v1.js'
+      - 'relay/worker.js'
+      - 'frontend/tests/run-river-crossing-map-coverage-v1-tests.mjs'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify JavaScript and all existing tests
+        run: |
+          node --check relay/worker.js
+          node --check frontend/src/context-layers/river-crossing-state-v1.js
+          node --check frontend/src/context-layers/river-flood-events-v1.js
+          node --check frontend/src/context-layers/bom-recent-river-history-v1.js
+          node --check frontend/src/context-layers/river-gauge-notable-report-v1.js
+          npm test

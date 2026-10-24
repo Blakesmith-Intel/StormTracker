@@ -678,4 +678,4 @@ grep -Fq 'hide-controls-full-map-v1' "_site/index.html"
 # Post-regression production marker: only present after the build has passed.
 printf '%s\n' 'FLOOD RECOVERY V10.2.9 — SOURCE-VERIFIED BELOW-MINOR CLEAR + STATION PRE-RISE REFERENCE 2026-10-24' >> _site/BUILD.txt
 
-printf '%s\n' 'FLOOD CROSSING REPORT V10.3.0 — SOURCE-ID ONLY MODERATE MAJOR BRIDGE CAUSEWAY REFERENCES 2026-10-24' >> _site/BUILD.txt
+printf '%s\n' 'FLOOD CROSSING REPORT V10.2.10 — SOURCE-ID ONLY MODERATE MAJOR BRIDGE CAUSEWAY REFERENCES 2026-10-24' >> _site/BUILD.txt

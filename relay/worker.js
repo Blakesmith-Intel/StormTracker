@@ -34,6 +34,7 @@ import {
 } from "../frontend/src/context-layers/significant-rainfall-source-v1.js";
 
 import {relayOfficialIfdPoint} from "./ifd-on-demand.js";
+import {relayQldCrossingHeights} from "./river-crossing-heights-v1.js";
 
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
@@ -1729,6 +1730,9 @@ export default {
     }
     if (incoming.pathname === "/qld-significant-rainfall") {
       return relayQldSignificantRainfall(request,origin);
+    }
+    if (incoming.pathname === "/river-crossing-heights") {
+      return relayQldCrossingHeights(request,origin,corsHeaders,errorResponse);
     }
     if (incoming.pathname === "/river-gauge-metadata") {
       return relayRiverGaugeMetadata(

@@ -28,6 +28,7 @@ import {
 } from "../frontend/src/context-layers/river-gauges-v1.js";
 
 import {inspectBomRecentWaterLevelTable} from "../frontend/src/context-layers/bom-recent-river-history-v1.js";
+import {parseBoMStationCrossingHeader} from "../frontend/src/context-layers/river-crossing-state-v1.js";
 import {
   RAINFALL_REGIONS,RAINFALL_SOURCE_BASE,parseBomRainfallMap,
   qldFloodMapCreatedAt,dedupeSignificantRainfall
@@ -965,7 +966,7 @@ async function extractBoundedRecentHistoryTable(response){
     throw error;
   }
   const decoder=new TextDecoder();
-  let received=0,html="",started=false,completed=false;
+  let received=0,html="",header="",started=false,completed=false;
   try{
     for(;;){
       const {done,value}=await reader.read();
@@ -979,11 +980,13 @@ async function extractBoundedRecentHistoryTable(response){
         if(!started){
           const match=RECENT_HISTORY_OPEN_TAG.exec(html);
           if(match){
+            header=(header+html.slice(0,match.index)).slice(-32768);
             html=html.slice(match.index);
             started=true;
           }else{
             // Only a short look-behind is needed across normal HTML chunks.
             // A pathological megabyte-long tag deliberately fails closed.
+            header=(header+html).slice(-32768);
             html=html.slice(-512);
           }
         }
@@ -1014,7 +1017,7 @@ async function extractBoundedRecentHistoryTable(response){
     reader.releaseLock();
   }
   if(!completed)return null;
-  return html;
+  return {tableHtml:html,headerHtml:header};
 }
 
 // The existing relay handles CORS. No new server, storage or infrastructure.
@@ -1066,14 +1069,15 @@ async function relayRiverRecentHistory(request,incoming,origin){
     return riverHistoryError(upstreamStatus>=500?503:502,"bom_upstream_http",
       "BoM station history upstream HTTP "+upstreamStatus,origin,upstreamStatus);
   }
-  let html,inspection;
+  let html,inspection,crossing=null;
   try {
     html=await extractBoundedRecentHistoryTable(response);
     // A login/error page or changed BoM HTML is a shared source-format fault,
     // NOT proof an individual station has no recent observations.
-    inspection=inspectBomRecentWaterLevelTable(html,{
+    inspection=inspectBomRecentWaterLevelTable(html?.tableHtml,{
       nowMs:Date.now(),maxAgeHours:48
     });
+    crossing=parseBoMStationCrossingHeader(html?.headerHtml,station);
     if(!inspection.formatRecognised)
       return riverHistoryError(502,"source_format_mismatch",
         "BoM station history table format does not match verified readings",origin);
@@ -1098,7 +1102,7 @@ async function relayRiverRecentHistory(request,incoming,origin){
   headers.set("Cache-Control",samples.length?"public, max-age=300":"public, max-age=60");
   return new Response(request.method==="HEAD"?null:JSON.stringify({
     format:"StormTrackerBomRecentRiverHistoryV1",
-    product,station,availability,samples
+    product,station,availability,samples,crossing
   }),{status:200,headers});
 }
 

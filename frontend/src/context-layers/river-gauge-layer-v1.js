@@ -146,6 +146,11 @@ export function riverGaugeOperationalSummary(
       minor:properties.STORMTRACKER_MINOR_FLOOD_METRES??null,
       moderate:properties.STORMTRACKER_MODERATE_FLOOD_METRES??null,
       major:properties.STORMTRACKER_MAJOR_FLOOD_METRES??null},
+    crossingLevelMetres:typeof properties.STORMTRACKER_CROSSING_LEVEL_METRES==="number"
+      ?properties.STORMTRACKER_CROSSING_LEVEL_METRES:null,
+    crossingName:String(properties.STORMTRACKER_CROSSING_NAME??""),
+    crossingSource:String(properties.STORMTRACKER_CROSSING_SOURCE??""),
+    crossingReached:Boolean(properties.STORMTRACKER_CROSSING_REACHED),
     alertSource:String(properties.STORMTRACKER_ALERT_SOURCE??""),
     officialObservedAt:Number(properties.STORMTRACKER_OFFICIAL_OBSERVED_AT)||null,
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),

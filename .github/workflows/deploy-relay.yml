@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "relay/worker.js"
+      - "relay/river-crossing-heights-v1.js"
       - "relay/ftp-live-v1.js"
       - "frontend/src/context-layers/river-flood-stages-2026-full-v1.js"
   workflow_dispatch:
@@ -35,6 +36,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: relay
           command: deploy --config wrangler.jsonc
+      - name: Verify live official BoM bridge and causeway catalogue and production browser CORS
+        run: node scripts/probe-live-qld-crossing-relay-v1.mjs
       - name: Verify official high-resolution BoM WMTS metadata and browser CORS
         run: node scripts/probe-native-wmts-capabilities-relay-v1.mjs
       - name: Check public BoM recent-history CORS (optional; warnings only)

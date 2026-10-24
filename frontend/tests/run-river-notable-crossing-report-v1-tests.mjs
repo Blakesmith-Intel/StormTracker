@@ -63,7 +63,8 @@ assert(model.groups[2].rows.some(x=>x.id==="bom:540063"),
  "Published X-type river crossing must be captured at equality");
 assert(!model.groups.some(g=>g.rows.some(x=>x.id==="bom:999993")));
 const without=buildNotableFloodGaugeReport(gauges,null,now);
-assert.equal(without.total,2);
+assert.equal(without.total,3,
+ "Official Mudgeeraba major stage remains valid even when crossing catalogue is unavailable");
 assert.equal(without.crossingSourceAvailable,false);
 assert.equal(without.groups[2].rows.length,0);
 assert.equal(buildNotableFloodGaugeReport([station("540291",-.04)],reference,now).total,0,

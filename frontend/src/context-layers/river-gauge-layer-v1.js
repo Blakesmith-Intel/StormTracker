@@ -759,6 +759,12 @@ export function createRiverGaugeLayer({
         .slice();
     },
 
+    // All newest source station observations, including low river heights.
+    // The map's flood-only feature list is unsuitable for crossing reports.
+    get sourceFeatures() {
+      return latestSourceFeatures.slice();
+    },
+
     get lastLoadedAt() {
       return lastLoadedAt;
     },

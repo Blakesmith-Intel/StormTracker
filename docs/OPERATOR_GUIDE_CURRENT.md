@@ -90,9 +90,10 @@ Turn on **Flood signals** under **Layers** and use **↻ Refresh** to request av
 | **Yellow flood icon** | BoM moderate flood classification |
 | **Red flood icon** | BoM major flood classification |
 | **Blue icon with upward arrow** | Below minor, but measured rapidly rising water according to StormTracker's screening |
+| **Blue icon without upward arrow** | A station without an official minor flood level is still above its own measured pre-rise height after a rapid-rise event; monitored until recovery is confirmed |
 | **Upward arrow on green/yellow/red** | A potential rapid-rise modifier **in addition to** the official flood classification |
 
-**The upward arrow is an inferred indicator, not an official BoM flash-flood warning.** Tidal screening is used to reduce false alerts from ordinary rising tides; it cannot rule out every tidal effect, storm surge or flooding mechanism. Flooded gauges can remain marked while levels are steady or falling if their current verified classification is still above minor. The map and station panel may identify an old or unavailable source: do not treat missing or stale data as “no flood.”
+**The upward arrow is an inferred indicator, not an official BoM flash-flood warning.** Tidal screening is used to reduce false alerts from ordinary rising tides; it cannot rule out every tidal effect, storm surge or flooding mechanism. Classified gauges disappear after a fresh measured height falls below their verified station-specific minor level. Where BoM has not published a minor level, a rapid-rise gauge may remain as a blue **no-arrow** marker while the water stays above that gauge's observed pre-rise height. Two different current readings at least 15 minutes apart must return near that pre-rise reference before the marker disappears. This reference is **not** a published normal river height or flood threshold; stale measurements cannot prove recovery. The map and station panel may identify an old or unavailable source: do not treat missing or stale data as “no flood.”
 
 ## Other information layers
 

@@ -64,17 +64,19 @@ const selected=reconcileFloodEvents(input,measured,{
  "bom:999997":{type:"rapid-rise",lastObservedAt:now-15*MIN,activatedAt:now-60*MIN}
 },now);
 assert.equal(selected.features.length,5);
-assert.deepEqual(selected.events,{},"Old rate-based markers must not persist after source changes");
+assert.ok(selected.events[below.id],"Unclassified gauge retains its exact pre-rise level for recovery monitoring");
+assert.equal(selected.events[below.id].baselineHeight,1.0);
 assert.equal(selected.counts.rapidRise,2);
 assert.equal(selected.features.find(f=>f.id==="bom:3").properties.STORMTRACKER_RAPID_RISE,false);
 assert.equal(selected.features.find(f=>f.id===below.id).properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
 const recovered=reconcileFloodEvents(
   [make(recent.id,"minor","falling"),make(below.id,"below-minor","falling")],
   measured,selected.events,now);
-assert.equal(recovered.features.length,1,
-  "Falling minor remains; falling below-minor is removed");
-assert.equal(recovered.features[0].properties.STORMTRACKER_DISPLAY_STATE,"minor");
-assert.equal(recovered.features[0].properties.STORMTRACKER_RAPID_RISE,false);
+assert.equal(recovered.features.length,2,
+  "Official minor persists; threshold-free gauge stays monitored while still 1.5m above its own pre-rise level");
+assert.equal(recovered.features.find(f=>f.id===recent.id).properties.STORMTRACKER_DISPLAY_STATE,"minor");
+assert.equal(recovered.features.find(f=>f.id===below.id).properties.STORMTRACKER_DISPLAY_STATE,"elevated");
+assert.equal(recovered.features.find(f=>f.id===below.id).properties.STORMTRACKER_RAPID_RISE,false);
 assert.ok(FLOOD_EVENTS_STORAGE_KEY.includes("flood"));
 assert.deepEqual(cleanFloodEvents({"garbage":{type:"rapid-rise"}},now),{});
 console.log("PASS missing-threshold BoM class fallback: classified minor/moderate/major persistence; measured rise badge; blue below minor; strict stale/recovery clearing; all forecast-site classes.");

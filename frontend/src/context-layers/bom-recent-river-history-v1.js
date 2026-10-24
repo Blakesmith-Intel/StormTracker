@@ -139,7 +139,7 @@ export function classifyBoMRecentHistoryFailure(error) {
 export const RECENT_HISTORY_RELAY_URL =
   "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-recent-history";
 
-export async function fetchBoMRecentHistory(target,{
+export async function fetchBoMRecentHistoryDetail(target,{
   fetchImpl=globalThis.fetch,endpoint=RECENT_HISTORY_RELAY_URL,timeoutMs=15000
 }={}) {
   if(!target?.station||!target?.product||!officialRecentTableTarget(
@@ -177,8 +177,13 @@ export async function fetchBoMRecentHistory(target,{
       (["no_recent_observations","not_published"].includes(payload.availability) &&
         payload.samples.length!==0))
       throw new Error("BoM station history response mismatch");
-    return payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
+    const samples=payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
       .slice(-225);
+    const crossing=payload.crossing;
+    const validCrossing=crossing&&["B","C","X"].includes(crossing.type)&&
+      typeof crossing.heightMetres==="number"&&Number.isFinite(crossing.heightMetres)&&
+      crossing.heightMetres>=-10&&crossing.heightMetres<=300;
+    return {samples,crossing:validCrossing?crossing:null};
   }catch(error){
     if(abort.signal.aborted){
       // A scheduled optional query timing out is not an unexplained Cesium
@@ -193,4 +198,10 @@ export async function fetchBoMRecentHistory(target,{
   }finally {
     clearTimeout(timer);
   }
+}
+
+// Existing callers keep the historical samples-only contract.
+export async function fetchBoMRecentHistory(target,options={}){
+  const result=await fetchBoMRecentHistoryDetail(target,options);
+  return result.samples;
 }

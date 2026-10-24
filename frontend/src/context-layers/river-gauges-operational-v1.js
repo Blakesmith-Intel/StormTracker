@@ -546,7 +546,10 @@ export function initialiseOperationalRiverGauges({
       (snapshot.total===1?"":"s")+" · "+snapshot.groups[0].rows.length+
       " major · "+snapshot.groups[1].rows.length+" moderate"+
       (snapshot.crossingSourceAvailable?" · "+snapshot.crossedCount+
-      " meeting published crossing levels":" · crossing checks unavailable")+
+      " with fresh readings at/above published crossings":" · crossing checks unavailable")+
+      (snapshot.lastConfirmedCrossedCount?
+       " · "+snapshot.lastConfirmedCrossedCount+
+         " LAST CONFIRMED above crossing (reading stale)":"")+
       (snapshot.excludedStaleCount?" · "+snapshot.excludedStaleCount+
        " stale/unverified readings excluded":"");
     if(!last){
@@ -584,7 +587,9 @@ export function initialiseOperationalRiverGauges({
           top.append(name,height);item.append(top);
           const meta=document.createElement("div");
           meta.className="rainfall-report-meta";
-          meta.textContent=station.id+" · "+
+          meta.textContent=(station.observationStale?
+            "LAST CONFIRMED — STALE READING, NOT CURRENT STATUS · ":"")+
+            station.id+" · "+
             (station.floodClass==="unclassified"?"No current official flood class":
              station.floodClass.charAt(0).toUpperCase()+station.floodClass.slice(1))+
             " · "+(station.tendency||"tendency not supplied")+
@@ -594,7 +599,8 @@ export function initialiseOperationalRiverGauges({
             const crossing=document.createElement("div");
             crossing.className="flood-report-crossing";
             crossing.textContent=station.crossing.name+" · published "+
-              station.crossing.levelMetres.toFixed(2)+" m · current "+
+              station.crossing.levelMetres.toFixed(2)+" m · "+
+              (station.observationStale?"last measured ":"current ")+
               station.heightMetres.toFixed(2)+" m ("+
               station.crossing.amountAboveMetres.toFixed(2)+" m above reference)";
             item.append(crossing);

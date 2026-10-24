@@ -77,7 +77,7 @@ jobs:
           grep -Fq 'doppler-png-502-cooldown-v1-20261018' _site/src/live3d-operational-v9.js
           grep -Fq 'if(explicitlyTidal)return null' _site/src/context-layers/bom-recent-river-history-v1.js
           grep -Fq 'if(!classified && !inland)return null' _site/src/context-layers/bom-recent-river-history-v1.js
-          grep -Fq '.slice(0,16)' _site/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq '.slice(0,64)' _site/src/context-layers/river-gauge-layer-v1.js
           grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' _site/BUILD.txt
           grep -Fq 'MANUAL FLOOD GAUGE REFRESH 2026-10-18' _site/BUILD.txt
           grep -Fq 'BOUNDED STREAMING BOM RIVER TABLES 2026-10-18' _site/BUILD.txt

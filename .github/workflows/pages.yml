@@ -468,7 +468,11 @@ jobs:
           curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors \
             "$base/src/context-layers/river-gauge-layer-v1.js" \
             | grep -F 'FLOOD_MARKER_COLORS' >/dev/null
-          grep -Fq 'Rapid rise below minor' <<< "$(curl --fail --silent --show-error --location "$base/live3d-operational-v9.html")"
+          # New readable legend separates the unchanged blue rapid-rise icon
+          # from its descriptive "Below minor" subtitle.
+          grep -Fq 'data-flood-legend-state="rapid-rise"' <<< "$rainfall_html"
+          grep -Fq 'Below minor' <<< "$rainfall_html"
+          grep -Fq 'data-flood-legend-state="crossing"' <<< "$rainfall_html"
 
           grep -Fq 'PRODUCTION ACTIVE-ONLY CYCLONES 2026-10-18' <<< "$root"
           # A sealed operational site must never show Jasper/Alfred/Fina test

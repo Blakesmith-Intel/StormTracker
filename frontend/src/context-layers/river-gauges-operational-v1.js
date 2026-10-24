@@ -142,11 +142,13 @@ function addDetailRow(
 // flood category from the map. Its blue arrow is never a separate warning
 // colour; rate-only tidal change does not qualify for that modifier.
 export function riverGaugePanelAppearance(summary) {
-  const state=["minor","moderate","major","unverified"].includes(summary?.displayState)
+  const state=["minor","moderate","major","unverified","elevated"].includes(summary?.displayState)
     ? summary.displayState:"rapid-rise";
   const rise=Boolean(summary?.rapidRise) || state==="rapid-rise";
   const category=state==="rapid-rise"
     ? "RAPID RISE BELOW MINOR · SCREENING"
+    : state==="elevated"
+      ? "POST-RISE ELEVATED WATER · MONITORING"
     : state==="unverified"
       ? "LATEST HEIGHT · FLOOD CLASS UNVERIFIED"
     : summary?.classificationUnverified
@@ -250,6 +252,9 @@ function showRiverGaugeInfo(
   if(summary.alertPersisted){
     addDetailRow(rows,"Event state",
       `Monitoring · ${summary.recoveryReadings}/2 recovery observations confirmed`);
+    if(typeof summary.recoveryBaselineMetres==="number")
+      addDetailRow(rows,"Measured pre-rise reference",
+        `${summary.recoveryBaselineMetres.toFixed(2)} m · same gauge, not an official flood threshold`);
   }
 
   addDetailRow(rows, "Measured rise",
@@ -383,6 +388,8 @@ function showRiverGaugeInfo(
   addDetailRow(rows,"Interpretation",
     appearance.state==="rapid-rise"
       ? "Measured rapid-rise screening only. Potential flash flooding is not an official BoM warning."
+      : appearance.state==="elevated"
+        ? "Post-rise water remains under observation until two distinct current readings return near this gauge\u0027s pre-rise reference. Not an official minor flood level."
       : summary.classificationUnverified
         ? "Height and time refer to the newest verified reading. Marker colour is the LAST confirmed flood classification, not a current BoM classification; consult official warnings."
         : "Current BoM flood classification controls colour. The blue arrow only appears for independent qualifying measured rapid rise; consult BoM warnings.");

@@ -97,7 +97,7 @@ Turn on **Flood signals** under **Layers** and use **↻ Refresh** to request av
 
 ### New: flood gauge report
 
-Select **Flood gauge report · Moderate+ / crossings** immediately below Flood signals. It opens an on-screen, scrollable window that lists all **fresh** BoM gauges with current **moderate or major flooding**, even while their map layer is off, and also stations whose latest measured height has reached a **published bridge, causeway or crossing reference** even when no flood level is set or the reading is below minor.
+Select **Flood gauge report · Moderate+ / crossings** in the same row as **Flood signals** and **Refresh**. It opens an on-screen, scrollable window that lists all **fresh** BoM gauges with current **moderate or major flooding**, even while their map layer is off, and also stations whose latest measured height has reached a **published bridge, causeway or crossing reference** even when no flood level is set or the reading is below minor.
 
 The report groups gauges into **Major**, **Moderate**, and **Crossing level reached (other flood categories)**, showing the original station name and ID, current height, tendency and observation time. Where a crossing is reached, it shows the crossing name, the published reference height and the difference in metres. Each station appears only once, even when it meets both criteria. Use **↻ Refresh** to request the latest readings. The window updates automatically after normal 10-minute river-gauge updates and works on mobile.
 

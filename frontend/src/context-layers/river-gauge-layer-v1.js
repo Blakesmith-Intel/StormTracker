@@ -245,7 +245,7 @@ import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-la
 // Every flood map pin is exactly the same screen size, regardless of stage,
 // crossing status or measured rapid rise. Keep legend sizing independent.
 // The artwork still uses its source-native 80:88 pin aspect ratio.
-export const RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:29,height:32});
+export const RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:24,height:27});
 export function riverGaugeMapMarkerDimensions(){
   return RIVER_GAUGE_MAP_MARKER_SIZE;
 }

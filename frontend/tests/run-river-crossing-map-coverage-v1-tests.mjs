@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {parseBoMStationCrossingHeader,publishedCrossingForFeature,CROSSING_SCHEMA}
  from "../src/context-layers/river-crossing-state-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
@@ -52,7 +53,12 @@ assert.equal(floodIconPriority("crossing"),1,
  "New crossing icon uses existing source/drawing tier without shifting geography");
 // Every map pin MUST have exactly the same screen dimensions, including
 // official categories, bridge/causeway and the measured-rise arrow variant.
-const fixedSize={width:29,height:32};
+const fixedSize={width:24,height:27};
+const legendCss=readFileSync(new URL("../src/single-interface-v1.css",import.meta.url),"utf8");
+const legendIconStyles=legendCss.match(/#riverGaugeSeverityLegend \.flood-legend-entry img,[\s\S]*?object-fit:contain;/);
+assert.ok(legendIconStyles,"Flood legend icon CSS must exist");
+assert.match(legendIconStyles[0],/width:24px;/,"Legend pin width must match map");
+assert.match(legendIconStyles[0],/height:27px;/,"Legend pin height must match map");
 for(const state of ["rapid-rise","elevated","unverified","crossing",
                     "minor","moderate","major","unexpected"]){
  assert.deepEqual(riverGaugeMapMarkerDimensions(state),fixedSize,

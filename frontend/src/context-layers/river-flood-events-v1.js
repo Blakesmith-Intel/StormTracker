@@ -140,15 +140,6 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
    }
   }
   let kept=decision.show?showFeature(feature,decision):null;
-  if(crossingReached&&!kept){
-   // Crossing references are independent of BoM minor/moderate/major stages.
-   // The existing blue elevated marker is suitable; no invented flood colour.
-   kept=showFeature(feature,decision,{state:"elevated",rapidRise:false,
-    stale:false,source:"bom-published-crossing",
-    reason:"Measured water level "+height.toFixed(2)+" m is at/above published "+
-      crossing.crossingName+" ("+crossing.heightMetres.toFixed(2)+" m). "+
-      "Crossing reference is not an official flood classification."});
-  }
   if(event){
    if(isFresh && observation>event.lastObservedAt){
     const reached=height<=event.baselineHeight+event.recoveryMarginMetres &&
@@ -186,6 +177,20 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
     }
     events[id]=event;
    }
+  }
+  // Amber bridge marker only for fresh exact-station crossing exceedance.
+  // Verified minor/moderate/major retain their own severity colour.
+  if(crossingReached&&(!kept||
+      !officialStates.has(kept.properties.STORMTRACKER_DISPLAY_STATE))){
+    kept=showFeature(feature,decision,{
+      state:"crossing",rapidRise:Boolean(decision.rapidRise)&&!tidal,
+      stale:false,source:"bom-published-crossing",
+      reason:"Measured water level "+height.toFixed(2)+
+        " m has reached/exceeded the published "+
+        crossing.crossingName+" reference ("+
+        crossing.heightMetres.toFixed(2)+" m). "+
+        "Road inundation or closure NOT confirmed."
+    });
   }
   if(!kept)continue;
   if(crossing){

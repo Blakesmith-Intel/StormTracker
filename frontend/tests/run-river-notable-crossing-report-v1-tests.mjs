@@ -72,6 +72,22 @@ assert.equal(buildNotableFloodGaugeReport([station("540291",-.04)],reference,now
 assert.equal(buildNotableFloodGaugeReport([
  station("540154",5.55,"major")
 ],reference,now).total,1,"Double criterion only listed once");
+
+// 535162 was omitted from the report despite being 2.77m against its
+// independently verified BoM station-page bridge reference of 1.71m.
+const theresa=station("535162",2.77,"",now-5*MIN,
+ {name:"Theresa Creek Dam"});
+assert.equal(buildNotableFloodGaugeReport([theresa],reference,now).total,0,
+ "An unresolved bridge must NOT be guessed from river height alone");
+theresa.properties.STORMTRACKER_PLOT_CROSSING={
+ type:"B",heightMetres:1.71,crossingName:"BoM station bridge level",
+ source:"BoM station river-height table"};
+const withCrossing=buildNotableFloodGaugeReport([theresa],reference,now);
+assert.equal(withCrossing.total,1,
+ "Once its exact-ID BoM bridge is known, 535162 must appear in report");
+assert.equal(withCrossing.crossedCount,1);
+assert.equal(withCrossing.groups[2].rows[0].id,"bom:535162");
+assert.equal(withCrossing.groups[2].rows[0].crossing.amountAboveMetres,1.06);
 const html=readFileSync(new URL("../live3d-operational-v9.html",import.meta.url),"utf8");
 const script=readFileSync(new URL("../src/context-layers/river-gauges-operational-v1.js",import.meta.url),"utf8");
 const layer=readFileSync(new URL("../src/context-layers/river-gauge-layer-v1.js",import.meta.url),"utf8");
@@ -82,6 +98,12 @@ assert(script.includes("reportDialog.showModal()"));
 assert(script.includes("layer.sourceFeatures"),"Report must consider all source observations");
 assert(layer.includes("get sourceFeatures()"));
 assert(script.includes("Crossing reference unavailable"));
+assert(script.includes("crossingCoverage.pending"),
+ "Report must disclose pending unchecked gauge crossing references");
+assert(script.includes("layer.checkCrossingReferences()"),
+ "Opening and refreshing the report must continue existing BoM lookups");
+assert(layer.includes("Promise.all(candidates.slice(i,i+4)"),
+ "Lookups must not stall behind 16 serial station waits");
 assert(script.includes("reportDialog?.open)renderFloodGaugeReport()"),
  "Report must update on same 10-minute background gauge refresh");
 console.log("PASS all-station moderate/major and BoM exact-ID bridge/causeway/crossing report, stale screening, no invented crossings, responsive modal");

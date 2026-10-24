@@ -511,6 +511,17 @@ export function initialiseOperationalRiverGauges({
     );
   }
 
+  // Use the exact SVG marker artwork as the map and gauge information panel.
+  // Legend is display-only; never changes gauge state, queries or layers.
+  const floodLegend=$("riverGaugeSeverityLegend");
+  for(const icon of floodLegend?.querySelectorAll("img[data-flood-legend-state]")??[]){
+    const state=icon.dataset.floodLegendState;
+    const rapid=icon.dataset.floodLegendRapidRise==="true";
+    icon.src=createRiverGaugeMarkerImage(state,rapid);
+    icon.width=24;
+    icon.height=27;
+  }
+
   const checkbox =
     $("showRiverGauges");
 

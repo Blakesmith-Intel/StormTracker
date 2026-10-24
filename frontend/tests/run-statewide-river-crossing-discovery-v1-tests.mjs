@@ -55,7 +55,7 @@ const catalogue={schema:CROSSING_SCHEMA,entries:{"bom:535162":{
 const state=reconcileFloodEvents([th],{}, {},NOW,catalogue);
 assert.equal(state.features.length,1);
 assert.equal(state.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
-assert.equal(state.features[0].properties.STORMTRACKER_DISPLAY_STATE,"elevated");
+assert.equal(state.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
 assert.equal(state.features[0].properties.STORMTRACKER_RAPID_RISE,false);
 const fallingWithCrossing=mk("535999",1.8,"falling",{
  STORMTRACKER_PLOT_CROSSING:{heightMetres:1.7,type:"B",

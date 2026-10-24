@@ -9,6 +9,17 @@ import {retainConfirmedFloodStations,OFFICIAL_FLOOD_STORAGE_KEY}
  from "../src/context-layers/river-official-flood-persistence-v1.js";
 import {createRiverGaugeLayer} from "../src/context-layers/river-gauge-layer-v1.js";
 
+import {BOM_2026_CLASSIFICATIONS,BOM_2026_DATA_ONLY_STATIONS}
+ from "../src/context-layers/river-flood-stages-2026-full-v1.js";
+
+const allPublishedIds=[...Object.keys(BOM_2026_CLASSIFICATIONS),
+ ...BOM_2026_DATA_ONLY_STATIONS];
+for(const id of allPublishedIds){
+ const stripped=String(Number(id.slice(4)));
+ assert.equal(riverGaugeId({properties:{bom_stn_num:stripped}}),id,
+  "Every 2026 published station, including its leading zero(s), must match the same BoM source ID");
+}
+
 const NOW=Date.UTC(2026,9,24,12,20);
 const old=Date.UTC(2026,9,24,11,17);
 assert.equal(canonicalBomRiverStationNumber("35295"),"035295");

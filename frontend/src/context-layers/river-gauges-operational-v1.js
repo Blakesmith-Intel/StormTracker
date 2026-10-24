@@ -539,9 +539,14 @@ export function initialiseOperationalRiverGauges({
       " · Verified station-plot crossing levels available":
       " · Crossing reference unavailable")+
       (crossingCoverage.pending?
-       " · INCOMPLETE: "+crossingCoverage.pending+
-         " station crossing references not yet checked":
-       " · Available station crossing references checked");
+       " · "+crossingCoverage.pending+" station references still unresolved"+
+         (crossingCoverage.checking?" · checking all available sources…":"")+
+         (crossingCoverage.retryPending?
+          " · "+crossingCoverage.retryPending+" awaiting source retry":""):
+       crossingCoverage.sourceMissing?
+         " · All available station pages checked; "+
+         crossingCoverage.sourceMissing+" without a verifiable source link":
+         " · All eligible station sources checked");
     reportSummary.textContent=snapshot.total+" qualifying gauge"+
       (snapshot.total===1?"":"s")+" · "+snapshot.groups[0].rows.length+
       " major · "+snapshot.groups[1].rows.length+" moderate"+
@@ -643,9 +648,13 @@ export function initialiseOperationalRiverGauges({
     if(!reportDialog.open)reportDialog.showModal();
     renderFloodGaugeReport();
     void loadCrossingReference();
-    void layer.checkCrossingReferences().catch(()=>renderFloodGaugeReport());
-    if(!layer.lastLoadedAt || Date.now()-layer.lastLoadedAt>10*60000)
-      layer.refresh().catch(()=>renderFloodGaugeReport());
+    // Refresh the observations first when missing/stale, THEN complete all
+    // available source checks. Never start a zero-station scan on cold load.
+    const source=(!layer.lastLoadedAt||Date.now()-layer.lastLoadedAt>10*60000)
+      ?layer.refresh():Promise.resolve();
+    void source.then(()=>layer.checkCrossingReferences())
+      .catch(error=>console.warn("BoM source coverage incomplete:",error))
+      .finally(renderFloodGaugeReport);
   }
 
   const canvas =
@@ -1038,8 +1047,8 @@ export function initialiseOperationalRiverGauges({
     if(button?.disabled)return;
     if(button)button.disabled=true;
     try{
-      await Promise.allSettled([layer.refresh({force:true}),loadCrossingReference(),
-        layer.checkCrossingReferences()]);
+      await Promise.allSettled([layer.refresh({force:true}),loadCrossingReference()]);
+      await layer.checkCrossingReferences();
     }finally{
       if(button)button.disabled=false;
       renderFloodGaugeReport();

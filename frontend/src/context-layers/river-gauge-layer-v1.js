@@ -149,6 +149,8 @@ export function riverGaugeOperationalSummary(
     officialObservedAt:Number(properties.STORMTRACKER_OFFICIAL_OBSERVED_AT)||null,
     alertPersisted:Boolean(properties.STORMTRACKER_ALERT_PERSISTED),
     recoveryReadings:Number(properties.STORMTRACKER_RECOVERY_READINGS??0),
+    recoveryBaselineMetres:typeof properties.STORMTRACKER_RECOVERY_BASELINE_METRES==="number"?
+      properties.STORMTRACKER_RECOVERY_BASELINE_METRES:null,
     rapidRise:Boolean(properties.STORMTRACKER_RAPID_RISE),
     tidalScreened:Boolean(properties.STORMTRACKER_TIDAL_SCREENED)
   };
@@ -158,7 +160,7 @@ export function riverGaugeOperationalSummary(
 // ONE blue arrow badge is used for measured rapid rise / possible flash flooding.
 // A below-minor candidate is the blue icon with the same blue arrow.
 const FLOOD_MARKER_COLORS=Object.freeze({
-  "rapid-rise":"#1269e8",minor:"#2db76f",
+  "rapid-rise":"#1269e8",elevated:"#1269e8",minor:"#2db76f",
   moderate:"#ffd43b",major:"#e53935",unverified:"#8292a2"
 });
 export function createRiverGaugeMarkerImage(state,rapidRise=false){

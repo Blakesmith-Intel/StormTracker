@@ -528,20 +528,28 @@ export function initialiseOperationalRiverGauges({
     const now=Date.now();
     const snapshot=buildNotableFloodGaugeReport(layer.sourceFeatures,
       crossingCatalogue,now);
+    const crossingCoverage=layer.crossingCoverage;
     reportRows.replaceChildren();
     const last=layer.lastLoadedAt;
     const checked=last?"Checked "+timeAest(last):"Awaiting BoM observations";
     reportStatus.textContent=checked+(crossingCatalogue?
-      " · BoM crossing levels published 5 Jan 2022":
+      " · BoM Section 5 crossing levels loaded":
       crossingLoading?" · Loading official crossing references…":
       snapshot.crossingSourceAvailable?
-      " · Station-plot crossing levels available; Section 5 unavailable":
-      " · Crossing reference unavailable (moderate/major only)");
+      " · Verified station-plot crossing levels available":
+      " · Crossing reference unavailable")+
+      (crossingCoverage.pending?
+       " · INCOMPLETE: "+crossingCoverage.pending+
+         " station crossing references not yet checked":
+       " · Available station crossing references checked");
     reportSummary.textContent=snapshot.total+" qualifying gauge"+
       (snapshot.total===1?"":"s")+" · "+snapshot.groups[0].rows.length+
       " major · "+snapshot.groups[1].rows.length+" moderate"+
       (snapshot.crossingSourceAvailable?" · "+snapshot.crossedCount+
-      " meeting published crossing levels":" · crossing checks unavailable")+
+      " with fresh readings at/above published crossings":" · crossing checks unavailable")+
+      (snapshot.lastConfirmedCrossedCount?
+       " · "+snapshot.lastConfirmedCrossedCount+
+         " LAST CONFIRMED above crossing (reading stale)":"")+
       (snapshot.excludedStaleCount?" · "+snapshot.excludedStaleCount+
        " stale/unverified readings excluded":"");
     if(!last){
@@ -579,7 +587,9 @@ export function initialiseOperationalRiverGauges({
           top.append(name,height);item.append(top);
           const meta=document.createElement("div");
           meta.className="rainfall-report-meta";
-          meta.textContent=station.id+" · "+
+          meta.textContent=(station.observationStale?
+            "LAST CONFIRMED — STALE READING, NOT CURRENT STATUS · ":"")+
+            station.id+" · "+
             (station.floodClass==="unclassified"?"No current official flood class":
              station.floodClass.charAt(0).toUpperCase()+station.floodClass.slice(1))+
             " · "+(station.tendency||"tendency not supplied")+
@@ -589,7 +599,8 @@ export function initialiseOperationalRiverGauges({
             const crossing=document.createElement("div");
             crossing.className="flood-report-crossing";
             crossing.textContent=station.crossing.name+" · published "+
-              station.crossing.levelMetres.toFixed(2)+" m · current "+
+              station.crossing.levelMetres.toFixed(2)+" m · "+
+              (station.observationStale?"last measured ":"current ")+
               station.heightMetres.toFixed(2)+" m ("+
               station.crossing.amountAboveMetres.toFixed(2)+" m above reference)";
             item.append(crossing);
@@ -632,6 +643,7 @@ export function initialiseOperationalRiverGauges({
     if(!reportDialog.open)reportDialog.showModal();
     renderFloodGaugeReport();
     void loadCrossingReference();
+    void layer.checkCrossingReferences().catch(()=>renderFloodGaugeReport());
     if(!layer.lastLoadedAt || Date.now()-layer.lastLoadedAt>10*60000)
       layer.refresh().catch(()=>renderFloodGaugeReport());
   }
@@ -1026,7 +1038,8 @@ export function initialiseOperationalRiverGauges({
     if(button?.disabled)return;
     if(button)button.disabled=true;
     try{
-      await Promise.allSettled([layer.refresh({force:true}),loadCrossingReference()]);
+      await Promise.allSettled([layer.refresh({force:true}),loadCrossingReference(),
+        layer.checkCrossingReferences()]);
     }finally{
       if(button)button.disabled=false;
       renderFloodGaugeReport();

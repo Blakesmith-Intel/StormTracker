@@ -1,4 +1,5 @@
 // Official BoM 2016 IFD point-depth retrieval. No nearest-neighbour substitution.
+// Preserve the complete official 1–45 minute depth series for real after-9am accumulation.
 const BASE="https://www.bom.gov.au/water/designRainfalls/revised-ifd/";
 const DURATIONS=new Set([1,2,3,4,5,10,15,20,25,30,45,60,90,120,180,270,360,540,720,1080,1440]);
 const clean=s=>String(s).replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/\s+/g," ").trim();

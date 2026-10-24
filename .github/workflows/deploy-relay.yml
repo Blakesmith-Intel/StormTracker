@@ -45,5 +45,30 @@ jobs:
         run: node scripts/probe-live-river-history-cors-v1.mjs
       - name: Check QLD and Brewarrina Doppler paths
         run: node scripts/probe-brewarrina-wind-source.mjs --require-production-route
+      - name: Verify production IFD route returns actual BoM sub-hour depths
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          const url="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/qld-ifd-point?lat=-26.41&lon=148.65";
+          let payload=null,last="";
+          for(let attempt=0;attempt<3;attempt++){
+            try{
+              const response=await fetch(url,{headers:{Origin:"https://blakesmith-intel.github.io"},signal:AbortSignal.timeout(23000),cache:"no-store"});
+              const raw=await response.text();
+              if(!response.ok)throw Error("HTTP "+response.status+" "+raw.slice(0,180));
+              payload=JSON.parse(raw);
+              break;
+            }catch(error){last=String(error);}
+          }
+          assert(payload,"Live BoM IFD relay unavailable: "+last);
+          assert.equal(payload.schema,"StormTrackerBoM2016IFDPointV1");
+          assert.equal(payload.cell,"-26.4125,148.6625");
+          for(const d of ["1","5","10","15","30","45","60","1440"]){
+            const depths=payload.depthsMmByMinutes?.[d];
+            assert(depths&&["20","10","5","2","1"].every(k=>Number.isFinite(depths[k])),
+              "Official BoM IFD duration missing: "+d);
+          }
+          console.log("PASS live exact-cell BoM IFD 1–1440 minutes",payload.cell);
+          NODE
       - name: Verify significant rainfall route and original BoM station data
         run: node scripts/probe-live-qld-significant-rainfall-v1.mjs

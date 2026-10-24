@@ -33,9 +33,15 @@ const fetchImpl=async url=>{
     }))}]})};
   if(u.includes("/river-recent-history?")){
     historyCalls++;
-    if(mode==="service-down")return new Response(JSON.stringify({
-      code:"source_transport_failure"}),{
+    if(mode==="service-down" ||
+       (mode==="one-503"&&u.includes("station=540384")))
+      return new Response(JSON.stringify({
+        code:"source_transport_failure"}),{
         status:503,headers:{"Content-Type":"application/json"}});
+    if(mode==="rate-limited")
+      return new Response(JSON.stringify({
+        code:"source_rate_limited",upstreamStatus:429}),{
+        status:429,headers:{"Content-Type":"application/json"}});
     if(mode==="station-missing"&&u.includes("540385"))
       return {ok:true,json:async()=>({
         format:"StormTrackerBomRecentRiverHistoryV1",
@@ -92,7 +98,9 @@ assert.ok(statuses.some(s=>s.kind==="warning"&&s.screeningIncomplete===1),
   "Failure should warn about unscreened rising gauges");
 const renderedAfterFailure=renderCalls;
 await layer.refresh({force:true});
-assert.equal(historyCalls,1,"Do not retry during the shared 15-minute cooldown");
+assert.equal(historyCalls,1,"Do not retry the failed station during its own 15-minute cooldown");
+assert.equal(layer.diagnostics.recentHistory.blockedUntil,0,
+ "A lone 503 must NEVER pause checking the other BoM gauges");
 assert.ok(renderCalls>renderedAfterFailure,"Current bulletins keep refreshing");
 mode="recovered";
 clock+=16*minute;
@@ -150,4 +158,39 @@ assert.equal(isolatedLayer.diagnostics.recentHistory.loaded,3);
 assert.ok(isolatedLayer.diagnostics.historyScreeningIncomplete>=1,
   "Genuine oversized station data must stay unscreened rather than safe");
 
-console.log("River history recovery checks passed: source failure cooldown and retry, current map independence, truthful screening gap, restored verified signal, and station-specific no-data.");
+// Real-world outage regression: a 503 on one station must not prevent
+// successful reference/history checks on the other three stations.
+clock+=16*minute;
+mode="one-503";
+const mixedLayer=createRiverGaugeLayer({
+  viewer,fetchImpl,now:()=>clock,visible:false,
+  storage:{getItem:()=>null,setItem:()=>{}},
+  CesiumRef:{CustomDataSource:Source,
+    Cartesian3:{fromDegrees:(...parts)=>parts},
+    VerticalOrigin:{CENTER:0},HeightReference:{CLAMP_TO_GROUND:1}}
+});
+await mixedLayer.refresh();
+await waitHistory(()=>mixedLayer.diagnostics?.recentHistory?.failed===1);
+assert.equal(mixedLayer.recentHistoryRequestCount,4,
+ "A single transport error cannot skip the remaining stations");
+assert.equal(mixedLayer.diagnostics.recentHistory.loaded,3,
+ "The other stations must still load even when one station gives 503");
+assert.equal(mixedLayer.diagnostics.recentHistory.blockedUntil,0,
+ "A transient single-station 503 is NOT a whole-BoM outage");
+// An actual 429 is explicit provider rate limiting; this is the ONE source
+// error for which the shared cooldown still applies.
+mode="rate-limited";
+clock+=16*minute;
+const limitedLayer=createRiverGaugeLayer({
+  viewer,fetchImpl,now:()=>clock,visible:false,
+  storage:{getItem:()=>null,setItem:()=>{}},
+  CesiumRef:{CustomDataSource:Source,
+    Cartesian3:{fromDegrees:(...parts)=>parts},
+    VerticalOrigin:{CENTER:0},HeightReference:{CLAMP_TO_GROUND:1}}
+});
+await limitedLayer.refresh();
+await waitHistory(()=>limitedLayer.diagnostics?.recentHistory?.failed>=1);
+assert(limitedLayer.diagnostics.recentHistory.blockedUntil>clock,
+ "A confirmed upstream 429 must still pause source requests");
+
+console.log("River history recovery checks passed: station-isolated transport errors, continued successful gauges, explicit 429 cooldown, retained 10-minute map independence and history recovery.");

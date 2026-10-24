@@ -53,7 +53,8 @@ const gauges=[
 const model=buildNotableFloodGaugeReport(gauges,reference,now);
 assert.equal(model.total,5,
  "Fresh major/moderate, and three crossing-only matches; stale and mismatched stations excluded");
-assert.deepEqual(model.groups.map(g=>g.rows.length),[1,1,3]);
+assert.deepEqual(model.groups.map(g=>g.rows.length),[2,1,2],
+ "Mudgeeraba 4.80m is above its ACTUAL BoM 4.10m major stage as well as 4.60m bridge; appear once under major");
 assert.equal(model.crossedCount,3);
 const entry=model.groups[2].rows.find(x=>x.id==="bom:540291");
 assert.equal(entry.crossing.name,"Clagiraba Road Causeway");

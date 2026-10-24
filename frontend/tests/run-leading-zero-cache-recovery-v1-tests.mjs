@@ -76,8 +76,11 @@ assert.equal(layer.features.length,1,
  "Synthetic verified rapid rise must preserve the original BLUE gauge marker");
 assert.equal(layer.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
 assert.equal(layer.features[0].properties.STORMTRACKER_RAPID_RISE,true);
-assert.equal(layer.features[0].properties.STORMTRACKER_CROSSING_NAME,
- "Bingeegang Weir published source");
+assert.equal(layer.sourceFeatures[0].properties.STORMTRACKER_PLOT_CROSSING.crossingName,
+ "Bingeegang Weir published source",
+ "Previous station-specific BoM crossing/header cache must survive ID canonicalisation");
+assert.equal(layer.features[0].properties.STORMTRACKER_CROSSING_NAME,undefined,
+ "A weir-level is not a road/bridge crossing and must not be portrayed as one");
 assert.equal(Object.keys(JSON.parse(stored[OFFICIAL_FLOOD_STORAGE_KEY])).length,0,
  "A below-minor current reading must clear previously cached false moderate");
 console.log("PASS canonical BoM history/crossing migration preserves blue rapid-rise marker and report shows loaded observations before redraw.");

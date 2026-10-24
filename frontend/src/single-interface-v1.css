@@ -342,16 +342,14 @@ body.simple-ui #cycloneForecastQaPanel {
  .rainfall-report-entry strong{font-size:12px;}
 }
 
-/* Compact flood report button: one small line under the existing flood legend.
-   The report opens within a responsive modal, never over the Cesium marker layer. */
-.flood-report-actions{min-width:0;margin:3px 0 6px 22px;}
-.flood-report-actions button{
- width:100%;min-height:32px;padding:6px 8px;border:1px solid #597d93;
- border-radius:6px;background:#163346;color:#dcf4ff;
- font-size:11px;font-weight:650;text-align:center;cursor:pointer;
- white-space:normal;line-height:1.2;
+/* Inline report button preserves the accepted single-line flood controls. */
+body.simple-ui #controlSidebar #openFloodGaugeReport{
+ flex:0 0 auto;min-height:27px;padding:3px 6px;
+ border:1px solid #597d93;border-radius:6px;
+ background:#163346;color:#dcf4ff;font-size:11px;font-weight:650;
+ line-height:1.2;white-space:nowrap;cursor:pointer;
 }
-.flood-report-actions button:hover{background:#25516a;}
+body.simple-ui #controlSidebar #openFloodGaugeReport:hover{background:#25516a;}
 .flood-gauge-report .rainfall-report-meta{overflow-wrap:anywhere;}
 .flood-gauge-report .flood-report-crossing{
  padding:4px 0 0;color:#f4cf9c;font-size:11px;

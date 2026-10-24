@@ -144,12 +144,14 @@ function addDetailRow(
 // flood category from the map. Its blue arrow is never a separate warning
 // colour; rate-only tidal change does not qualify for that modifier.
 export function riverGaugePanelAppearance(summary) {
-  const state=["minor","moderate","major","unverified","elevated"].includes(summary?.displayState)
+  const state=["minor","moderate","major","crossing","unverified","elevated"].includes(summary?.displayState)
     ? summary.displayState:"rapid-rise";
   const rise=Boolean(summary?.rapidRise) || state==="rapid-rise";
   const reached=Boolean(summary?.crossingReached);
   const category=state==="rapid-rise"
     ? "RAPID RISE BELOW MINOR · SCREENING"
+    : state==="crossing"
+      ? "PUBLISHED CROSSING HEIGHT REACHED · ROAD STATUS UNCONFIRMED"
     : state==="elevated"
       ? (reached?"PUBLISHED CROSSING LEVEL REACHED · MONITORING":
          "POST-RISE ELEVATED WATER · MONITORING")
@@ -405,6 +407,8 @@ function showRiverGaugeInfo(
   addDetailRow(rows,"Interpretation",
     appearance.state==="rapid-rise"
       ? "Measured rapid-rise screening only. Potential flash flooding is not an official BoM warning."
+      : appearance.state==="crossing"
+        ? "Fresh measured water has reached the same station's published bridge/road/causeway reference. Road inundation or closure is NOT confirmed; check QLDTraffic and local authorities."
       : appearance.state==="elevated"
         ? "Post-rise water remains under observation until two distinct current readings return near this gauge\u0027s pre-rise reference. Not an official minor flood level."
       : summary.classificationUnverified

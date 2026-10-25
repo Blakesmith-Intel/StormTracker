@@ -9,10 +9,10 @@ try{
   deviceScaleFactor:2,isMobile:true,hasTouch:true});
  const errors=[],badRequests=[];
  page.on("pageerror",err=>errors.push(String(err)));
- page.on("response",r=>{if(r.status()>=400&&/\\.js(?:\\?|$)/.test(r.url()))
+ page.on("response",r=>{if(r.status()>=400&&r.url().includes(".js"))
   badRequests.push({status:r.status(),url:r.url()})});
  let didInstrument=false;
- await page.route(/\\/src\\/live3d-operational-v9\\.js(?:\\?|$)/,async route=>{
+ await page.route("**/src/live3d-operational-v9.js*",async route=>{
   const response=await route.fetch();
   const script=await response.text();
   const anchor="const scene = viewer.scene;";

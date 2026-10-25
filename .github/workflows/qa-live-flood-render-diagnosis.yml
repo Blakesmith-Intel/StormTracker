@@ -1,0 +1,21 @@
+name: Audit actual live flood marker sizes without production changes
+on:
+  push:
+    branches: ["investigate/flood-live-pixel-audit-20261025"]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Instrument LIVE published StormTracker map and measure real Cesium billboards
+        run: node scripts/qa-live-flood-render-diagnosis.mjs

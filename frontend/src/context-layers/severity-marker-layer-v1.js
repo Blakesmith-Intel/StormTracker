@@ -76,6 +76,7 @@ export function createSeverityMarkerLayers({viewer,CesiumRef,owner,priorities,vi
      options.sizeInMeters=false;
      delete options.scaleByDistance;
     }
+    // Never replace original BoM longitude/latitude with a screen offset.
     // Preserve exact source station position and original picking entity.
     // Rainfall's attached AEP label and source rendering remain unchanged.
     registry.billboards.get(entry.rank).add(options);

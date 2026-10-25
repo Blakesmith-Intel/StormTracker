@@ -216,7 +216,7 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   const level=Object.hasOwn(FLOOD_MARKER_COLORS,state)?state:"rapid-rise";
   const colour=FLOOD_MARKER_COLORS[level];
   const arrow=rapidRise || level==="rapid-rise";
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 88">
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="88" viewBox="0 0 80 88">
     <path d="M35 5 C16 5 6 19 6 35 C6 54 19 65 35 80 C51 65 64 54 64 35 C64 19 54 5 35 5Z"
       fill="${colour}" stroke="#132337" stroke-width="2.6" stroke-linejoin="round"/>
     ${level==="crossing"?`<!-- Bridge deck and supports with blue water overtopping the roadway. -->
@@ -240,7 +240,7 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
-import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.20";
+import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.21-final-pixel-size";
 
 // Every flood map pin is exactly the same screen size, regardless of stage,
 // crossing status or measured rapid rise. Keep legend sizing independent.

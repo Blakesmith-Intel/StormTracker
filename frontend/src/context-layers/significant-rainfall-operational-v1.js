@@ -1,5 +1,5 @@
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
-import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.20";
+import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.21-final-pixel-size";
 import {classifyRainfallAep,ifdCellKey,ifdCellSupportsDuration,
  rainfallWindowMinutes,IFD_LOOKUP_CONCURRENCY,
  loadPersistedIfdCells,persistVerifiedIfdCell,verifiedPersistentIfdCell} from "./rainfall-ifd-aep-v1.js?v=20261022-v10-2-8-verified-ifd-persistence-short-v10.2.18";

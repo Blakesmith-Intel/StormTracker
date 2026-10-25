@@ -4,6 +4,8 @@
 // receives its own scene primitive collection. Draw lower ranks first and
 // higher rarity over them; geographically fixed symbols stay selectable.
 const byViewer=new WeakMap();
+// One GPU-facing pixel contract for ALL flood states, including blue monitoring.
+export const FLOOD_PRIMITIVE_MARKER_SIZE=Object.freeze({width:38,height:42});
 export const FLOOD_ICON_PRIORITY=Object.freeze({unverified:0,"rapid-rise":1,elevated:1,crossing:1,minor:2,moderate:4,major:6});
 export const floodIconPriority=state=>FLOOD_ICON_PRIORITY[String(state)]??0;
 export function rainfallIconPriority(aep){
@@ -64,8 +66,18 @@ export function createSeverityMarkerLayers({viewer,CesiumRef,owner,priorities,vi
      const value=resolve(graphics[key],time);
      if(value!==undefined&&value!==null)options[key]=value;
     }
-    // Never replace original BoM longitude/latitude with a screen offset.
-    // The icon and its AEP text are one immutable SVG image.
+    if(entry.owner==="flood"){
+     // Enforce the approved size on the FINAL Cesium BillboardCollection,
+     // including blue elevated monitoring, not just on source config.
+     // Prevent browser/terrain distance scaling; rainfall stays unchanged.
+     options.width=FLOOD_PRIMITIVE_MARKER_SIZE.width;
+     options.height=FLOOD_PRIMITIVE_MARKER_SIZE.height;
+     options.scale=1;
+     options.sizeInMeters=false;
+     delete options.scaleByDistance;
+    }
+    // Preserve exact source station position and original picking entity.
+    // Rainfall's attached AEP label and source rendering remain unchanged.
     registry.billboards.get(entry.rank).add(options);
    }
   }

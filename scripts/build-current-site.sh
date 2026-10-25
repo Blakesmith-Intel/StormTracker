@@ -70,7 +70,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15-flood-map-marker-size-v10.2.16-uniform-flood-map-markers-v10.2.17-source-ifd-v10.2.18-map-icons-match-legend-v10.2.19-single-flood-path-v10.2.20-final-pixel-contract-v10.2.21"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15-flood-map-marker-size-v10.2.16-uniform-flood-map-markers-v10.2.17-source-ifd-v10.2.18-map-icons-match-legend-v10.2.19-single-flood-path-v10.2.20-final-pixel-contract-v10.2.21-safari-bitmap-v10.2.22"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -356,6 +356,10 @@ assert "const urgent=" not in map_marker
 assert "width: mapMarkerDimensions.width" in map_marker
 assert "height: mapMarkerDimensions.height" in map_marker
 assert "entity.stormTrackerFloodBillboard = {" in map_marker
+assert "createRiverGaugeMapMarkerBitmap(state,rapidRise)" in map_marker
+assert 'canvas.width=160;canvas.height=176;' in map_marker
+assert 'canvas.toDataURL("image/png")' in map_marker
+assert "markerImages.set(key,createRiverGaugeMapMarkerBitmap(state,rapidRise))" in map_marker
 gpu_source=(layers / "severity-marker-layer-v1.js").read_text()
 assert "FLOOD_PRIMITIVE_MARKER_SIZE=Object.freeze({width:38,height:42})" in gpu_source
 assert 'options.sizeInMeters=false;' in gpu_source
@@ -367,7 +371,7 @@ assert "width: 38" not in map_marker
 panel=(layers / "river-gauges-operational-v1.js").read_text()
 assert "riverGaugePanelAppearance(summary)" in panel
 assert 'icon.src=createRiverGaugeMarkerImage(state,rapid)' in panel
-assert 'uniform-v10.2.21' in panel, 'Published mobile flood icon module must have the latest cache key'
+assert 'uniform-v10.2.22-safari-bitmap' in panel, 'Published mobile flood icon module must have the latest cache key'
 assert 'data-flood-legend-state="crossing"' in html
 assert 'flood-legend-grid' in html
 assert 'flood-legend-grid' in style_source

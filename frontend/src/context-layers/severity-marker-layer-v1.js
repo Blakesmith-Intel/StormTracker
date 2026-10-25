@@ -50,12 +50,14 @@ export function createSeverityMarkerLayers({viewer,CesiumRef,owner,priorities,vi
   const time=viewer.clock?.currentTime??CesiumRef.JulianDate?.now();
   for(const entry of layers){
    for(const entity of entry.source.entities.values){
-    const graphics=entity.billboard;
+    // Flood: exactly one primitive renderer, station entity retained for picking.
+    // Rainfall keeps the existing BillboardGraphics behaviour unchanged.
+    const direct=entry.owner==="flood"?entity.stormTrackerFloodBillboard:null;
+    const graphics=direct??entity.billboard;
     if(!graphics)continue;
     const position=resolve(entity.position,time);
     const image=resolve(graphics.image,time);
-    // Keep the source entity for existing picking and station identity.
-    graphics.show=false;
+    if(!direct)graphics.show=false;
     if(!entry.source.show||!position||!image)continue;
     const options={id:entity,position,image};
     for(const key of BILLBOARD_OPTIONS){

@@ -69,7 +69,14 @@ const ranks=[
 ];
 for(const [id,rank,longitude,latitude] of ranks)
  add(rainfall,rank,id,longitude,latitude);
-const major=add(flood,6,"major-flood",151.7,-25.67);
+const major=flood.sourceFor(6).entities.add({
+ id:"major-flood",position:Object.freeze({longitude:151.7,latitude:-25.67})
+});
+major.stormTrackerRiverGaugeId="major-flood";
+major.stormTrackerFloodBillboard={
+ image:"water-pin:major-flood",width:38,height:42,
+ disableDepthTestDistance:Infinity
+};
 assert.deepEqual([20,10,5,2,1].map(x=>
  rainfallIconPriority({aepDesignThreshold:x})),[2,3,4,5,6]);
 assert.equal(rainfallIconPriority({classification:"below-20pct-aep"}),1);
@@ -94,7 +101,13 @@ for(const [id,rank,longitude,latitude] of ranks){
  assert.equal(rendered.id.stormTrackerRainGaugeId,id,"Original picking identity retained");
  assert.equal(rendered.disableDepthTestDistance,Infinity);
 }
-assert.equal(major.stormTrackerRainGaugeId,"major-flood");
+assert.equal(major.stormTrackerRiverGaugeId,"major-flood");
+assert.equal(major.billboard,undefined,"No second Cesium entity billboard for flood");
+const renderedFlood=all().find(x=>x.id===major);
+assert.ok(renderedFlood,"Single flood primitive must render");
+assert.equal(renderedFlood.image,"water-pin:major-flood");
+assert.deepEqual([renderedFlood.width,renderedFlood.height],[38,42],
+ "Use original approved uniform map footprint");
 rainfall.setVisible(false);
 assert.deepEqual(all().map(x=>x.id.id),["major-flood"],
  "Turning off rainfall cannot erase river/flood gauges");

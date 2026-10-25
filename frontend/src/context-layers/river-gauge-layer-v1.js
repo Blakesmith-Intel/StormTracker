@@ -240,12 +240,12 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
-import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1";
+import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.20";
 
 // Every flood map pin is exactly the same screen size, regardless of stage,
 // crossing status or measured rapid rise. Keep legend sizing independent.
 // The artwork still uses its source-native 80:88 pin aspect ratio.
-export const RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:24,height:27});
+export const RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:38,height:42});
 export function riverGaugeMapMarkerDimensions(){
   return RIVER_GAUGE_MAP_MARKER_SIZE;
 }
@@ -657,30 +657,18 @@ export function createRiverGaugeLayer({
                   0
                 ),
 
-            billboard: {
-              image:
-                markerImage(
-                  summary.displayState,summary.rapidRise
-                ),
 
-              width: mapMarkerDimensions.width,
-              height: mapMarkerDimensions.height,
-
-              verticalOrigin:
-                CesiumRef
-                  .VerticalOrigin
-                  ?.CENTER,
-
-              heightReference:
-                CesiumRef
-                  .HeightReference
-                  ?.CLAMP_TO_GROUND,
-
-              disableDepthTestDistance:
-                Number
-                  .POSITIVE_INFINITY
-            }
           });
+
+      // One map renderer: the BoM-ID source entity has NO BillboardGraphics.
+      entity.stormTrackerFloodBillboard = {
+        image: markerImage(summary.displayState,summary.rapidRise),
+        width: mapMarkerDimensions.width,
+        height: mapMarkerDimensions.height,
+        verticalOrigin: CesiumRef.VerticalOrigin?.CENTER,
+        heightReference: CesiumRef.HeightReference?.CLAMP_TO_GROUND,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      };
 
       entity
         .stormTrackerRiverGaugeId =

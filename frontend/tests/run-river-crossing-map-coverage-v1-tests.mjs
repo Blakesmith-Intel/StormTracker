@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import {parseBoMStationCrossingHeader,publishedCrossingForFeature,CROSSING_SCHEMA}
  from "../src/context-layers/river-crossing-state-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
-import {createRiverGaugeMarkerImage,riverGaugeMapMarkerDimensions} from "../src/context-layers/river-gauge-layer-v1.js";
+import {createRiverGaugeMarkerImage,createRiverGaugeMapMarkerBitmap,riverGaugeMapMarkerDimensions} from "../src/context-layers/river-gauge-layer-v1.js";
 import {riverGaugePanelAppearance} from "../src/context-layers/river-gauges-operational-v1.js";
 import {floodIconPriority} from "../src/context-layers/severity-marker-layer-v1.js";
 import {buildNotableFloodGaugeReport} from "../src/context-layers/river-gauge-notable-report-v1.js";
@@ -54,6 +54,48 @@ assert.equal(floodIconPriority("crossing"),1,
 // Every map pin MUST have exactly the same screen dimensions, including
 // official categories, bridge/causeway and the measured-rise arrow variant.
 const fixedSize={width:38,height:42};
+// Pixel-level contract: the map must use a fixed 160x176 PNG surface for
+// EVERY state; legend/popup SVG is intentionally unchanged.
+class TestPath2D{
+ constructor(d){this.path=d;}
+}
+for(const state of ["rapid-rise","elevated","unverified","crossing",
+                     "minor","moderate","major"]){
+ for(const rapid of [false,true]){
+  let output=null,canvas=null;
+  const painted=[];
+  const ctx={
+   scale(x,y){painted.push(["scale",x,y]);},
+   beginPath(){painted.push(["beginPath"]);},
+   arc(...v){painted.push(["arc",...v]);},
+   fill(path){painted.push(["fill",this.fillStyle,path?.path??"arc"]);},
+   stroke(path){painted.push(["stroke",this.strokeStyle,path?.path??"arc"]);}
+  };
+  const makeCanvas=()=>{canvas={
+   width:0,height:0,getContext(){return ctx;},
+   toDataURL(type){assert.equal(type,"image/png");
+    output="data:image/png;base64,cG5n";return output;}
+  };return canvas;};
+  const bitmap=createRiverGaugeMapMarkerBitmap(
+   state,rapid,makeCanvas,TestPath2D);
+  assert.equal(bitmap,output,`${state} must use a raster PNG map icon`);
+  assert.deepEqual([canvas.width,canvas.height],[160,176],
+   `${state}: every bitmap uses one identical fixed pixel surface`);
+  assert.ok(painted.some(x=>x[0]==="scale"&&x[1]===2&&x[2]===2));
+  const pin=painted.find(x=>x[0]==="fill");
+  assert.equal(pin[1],({
+   "rapid-rise":"#1269e8",elevated:"#1269e8",unverified:"#8292a2",
+   crossing:"#f5a21b",minor:"#2db76f",moderate:"#ffd43b",
+   major:"#e53935"
+  })[state],`${state}: map PNG must preserve exact icon palette`);
+  assert.ok(painted.some(x=>x[0]==="stroke"),
+   `${state}: map PNG must retain water waves / bridge artwork`);
+  assert.equal(painted.some(x=>x[0]==="arc"&&x[1]===61),
+   rapid||state==="rapid-rise",
+   `${state}: only measured rise may add the blue up-arrow`);
+ }
+}
+
 const fixedSourceSvg=decodeURIComponent(
  createRiverGaugeMarkerImage("elevated",false).split(",")[1]);
 assert.match(fixedSourceSvg,/width="80" height="88" viewBox="0 0 80 88"/,

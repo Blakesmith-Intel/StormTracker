@@ -240,6 +240,64 @@ export function createRiverGaugeMarkerImage(state,rapidRise=false){
   return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
+
+// Cesium on iOS Safari must receive a REAL, uniformly rasterised bitmap.
+// Supplying a mixture of SVG data-URL textures allowed visually different
+// pin footprints despite identical BillboardCollection width/height values.
+// Share the existing EXACT colours and SVG path coordinates; icon/alert logic
+// and the SVG used in the legend/information card remain untouched.
+// 2x antialiasing is downsampled by Cesium into the SAME 38x42 map footprint.
+export function createRiverGaugeMapMarkerBitmap(
+ state,rapidRise=false,
+ canvasFactory=()=>globalThis.document?.createElement?.("canvas"),
+ Path2DRef=globalThis.Path2D
+){
+ const fallback=()=>createRiverGaugeMarkerImage(state,rapidRise);
+ const level=Object.hasOwn(FLOOD_MARKER_COLORS,state)?state:"rapid-rise";
+ if(typeof Path2DRef!=="function"||typeof canvasFactory!=="function")
+  return fallback();
+ try{
+  const canvas=canvasFactory();
+  if(!canvas?.getContext||!canvas?.toDataURL)return fallback();
+  canvas.width=160;canvas.height=176;
+  const ctx=canvas.getContext("2d");
+  if(!ctx)return fallback();
+  ctx.scale(2,2);
+  const path=d=>new Path2DRef(d);
+  const draw=(d,fill,stroke,weight=0,linecap="butt")=>{
+   const p=path(d);
+   if(fill){ctx.fillStyle=fill;ctx.fill(p);}
+   if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=weight;
+    ctx.lineCap=linecap;ctx.lineJoin="round";ctx.stroke(p);}
+  };
+  draw("M35 5 C16 5 6 19 6 35 C6 54 19 65 35 80 C51 65 64 54 64 35 C64 19 54 5 35 5Z",
+   FLOOD_MARKER_COLORS[level],"#132337",2.6);
+  if(level==="crossing"){
+   draw("M18 26 H52 M21 26 V47 M49 26 V47 M21 47 Q35 33 49 47",
+    null,"#ffffff",4.4,"round");
+   draw("M16 31 Q21 26 26 31 T36 31 T46 31 T56 31 M16 39 Q21 34 26 39 T36 39 T46 39 T56 39",
+    null,"#1269e8",4.2,"round");
+  }else{
+   ctx.beginPath();ctx.arc(35,34,21,0,2*Math.PI);
+   ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+   draw("M20 30 Q25 35 30 30 T40 30 T50 30 M20 39 Q25 44 30 39 T40 39 T50 39",
+    null,"#fff",3.8,"round");
+  }
+  if(rapidRise||level==="rapid-rise"){
+   ctx.beginPath();ctx.arc(61,16,14,0,2*Math.PI);
+   ctx.fillStyle="#1269e8";ctx.fill();
+   ctx.strokeStyle="#ffffff";ctx.lineWidth=3;ctx.stroke();
+   draw("M61 6 L52.5 17 H57.5 V25 H64.5 V17 H69.5Z","#fff");
+  }
+  const png=canvas.toDataURL("image/png");
+  return typeof png==="string"&&png.startsWith("data:image/png;base64,")
+   ?png:fallback();
+ }catch{
+  // Do not sacrifice an operational BoM flood marker if browser canvas fails.
+  return fallback();
+ }
+}
+
 import {createSeverityMarkerLayers,floodIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.21-final-pixel-size";
 
 // Every flood map pin is exactly the same screen size, regardless of stage,
@@ -603,7 +661,7 @@ export function createRiverGaugeLayer({
   function markerImage(state,rapidRise=false){
     const key=state+":"+(rapidRise?"rising":"normal");
     if(!markerImages.has(key))
-      markerImages.set(key,createRiverGaugeMarkerImage(state,rapidRise));
+      markerImages.set(key,createRiverGaugeMapMarkerBitmap(state,rapidRise));
     return markerImages.get(key);
   }
 

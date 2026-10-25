@@ -53,7 +53,7 @@ assert.equal(floodIconPriority("crossing"),1,
  "New crossing icon uses existing source/drawing tier without shifting geography");
 // Every map pin MUST have exactly the same screen dimensions, including
 // official categories, bridge/causeway and the measured-rise arrow variant.
-const fixedSize={width:24,height:27};
+const fixedSize={width:38,height:42};
 const legendCss=readFileSync(new URL("../src/single-interface-v1.css",import.meta.url),"utf8");
 const legendIconStyles=legendCss.match(/#riverGaugeSeverityLegend \.flood-legend-entry img,[\s\S]*?object-fit:contain;/);
 assert.ok(legendIconStyles,"Flood legend icon CSS must exist");

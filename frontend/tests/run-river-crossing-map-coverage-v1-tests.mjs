@@ -54,6 +54,12 @@ assert.equal(floodIconPriority("crossing"),1,
 // Every map pin MUST have exactly the same screen dimensions, including
 // official categories, bridge/causeway and the measured-rise arrow variant.
 const fixedSize={width:38,height:42};
+const fixedSourceSvg=decodeURIComponent(
+ createRiverGaugeMarkerImage("elevated",false).split(",")[1]);
+assert.match(fixedSourceSvg,/width="80" height="88" viewBox="0 0 80 88"/,
+ "Safari SVG raster dimensions must not be ambiguous");
+assert.doesNotMatch(fixedSourceSvg,/cx="61"/,
+ "Blue elevated monitoring icon must have no rapid-rise arrow");
 const legendCss=readFileSync(new URL("../src/single-interface-v1.css",import.meta.url),"utf8");
 const legendIconStyles=legendCss.match(/#riverGaugeSeverityLegend \.flood-legend-entry img,[\s\S]*?object-fit:contain;/);
 assert.ok(legendIconStyles,"Flood legend icon CSS must exist");

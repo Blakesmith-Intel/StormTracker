@@ -118,6 +118,9 @@ try{
     recoveryMarginMetres:0.1,recoveryCount:0,lastRecoveryAt:null}}));
  },chosen);
  await page.reload({waitUntil:"domcontentloaded",timeout:60000});
+ // Production defaults layers OFF on reload: turn the flood layer ON before
+ // inspecting scene primitives, matching the user's checked checkbox.
+ await page.locator("#showRiverGauges").check({timeout:45000});
  await page.waitForFunction(()=>window.__stormtrackerFloodDiagnostics?.().loadedAt>0,
   null,{timeout:120000});
  const persisted=await page.evaluate(id=>{

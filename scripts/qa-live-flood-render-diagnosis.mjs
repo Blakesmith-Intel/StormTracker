@@ -75,7 +75,7 @@ try{
  if(sanity.sourceCount===0)throw Error("No live BoM flood gauge icons available at test time");
  if(sanity.directRenderedCount===0)throw Error("No actual flood primitives in scene");
  console.log("LIVE_FLOOD_AUDIT_COMPLETED",
- JSON.stringify({source:decodeURIComponent(location.href),sourceCount:sanity.sourceCount,
+ JSON.stringify({source:page.url(),sourceCount:sanity.sourceCount,
  renderedCount:sanity.directRenderedCount,sizeGroups:sanity.sizes}));
 }finally{
  await browser.close();

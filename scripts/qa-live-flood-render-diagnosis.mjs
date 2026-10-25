@@ -92,7 +92,7 @@ try{
   const source=layer.sourceFeatures??[];
   const candidates=source.filter(f=>{
    const p=f.properties??{};
-   return /^bom:\\d{6}$/.test(f.id) &&
+   return /^bom:[0-9]{6}$/.test(f.id) &&
      stationFloodLevels(f)?.minor==null &&
      Number.isFinite(p.STORMTRACKER_HEIGHT_METRES) &&
      p.STORMTRACKER_HEIGHT_METRES>0 &&

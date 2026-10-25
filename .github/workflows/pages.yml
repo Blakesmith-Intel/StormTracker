@@ -1155,7 +1155,7 @@ jobs:
           release_sha="$GITHUB_SHA"
           tag="v10.2.19"
           restore="restore/v10.2.19"
-          grep -Fq 'RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:24,height:27})' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'RIVER_GAUGE_MAP_MARKER_SIZE=Object.freeze({width:38,height:42})' frontend/src/context-layers/river-gauge-layer-v1.js
           grep -Fq 'const mapMarkerDimensions=riverGaugeMapMarkerDimensions();' frontend/src/context-layers/river-gauge-layer-v1.js
           grep -Fq -- '-map-icons-match-legend-v10.2.19' scripts/build-current-site.sh
           node frontend/tests/run-river-crossing-map-coverage-v1-tests.mjs

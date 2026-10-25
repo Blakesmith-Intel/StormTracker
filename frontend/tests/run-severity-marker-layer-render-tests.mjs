@@ -115,6 +115,8 @@ rainfall.setVisible(true);
 assert.equal(all().length,7,"Every measured station must return without needing zoom");
 flood.clear();flood.finish();
 assert.deepEqual(all().map(x=>x.id.id),ranks.map(x=>x[0]));
+// Rainfall already passed its independent checks; isolate flood-only billboards.
+rainfall.setVisible(false);
 // Check the ACTUAL primitive options for every flood icon and both rising states.
 // Deliberately put incorrect dimensions on the incoming blue monitoring entity;
 // a regression back to that size must fail this test.

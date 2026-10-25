@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority}
+import {createSeverityMarkerLayers,rainfallIconPriority,floodIconPriority,FLOOD_PRIMITIVE_MARKER_SIZE}
  from "../src/context-layers/severity-marker-layer-v1.js";
 
 const rainfallSource=readFileSync(new URL(
@@ -115,4 +115,48 @@ rainfall.setVisible(true);
 assert.equal(all().length,7,"Every measured station must return without needing zoom");
 flood.clear();flood.finish();
 assert.deepEqual(all().map(x=>x.id.id),ranks.map(x=>x[0]));
-console.log("PASS geographic accuracy, all AEP marker/label pairs, priority draw order, pick IDs and toggles");
+// Check the ACTUAL primitive options for every flood icon and both rising states.
+// Deliberately put incorrect dimensions on the incoming blue monitoring entity;
+// a regression back to that size must fail this test.
+const allFloodStates=["rapid-rise","elevated","unverified","crossing",
+ "minor","moderate","major"];
+const allFloodVariants=[];
+for(const state of allFloodStates){
+ for(const rapid of [false,true]){
+  const id=state+(rapid?":rapid":":normal");
+  const entity=flood.sourceFor(floodIconPriority(state)).entities.add({
+   id,position:Object.freeze({longitude:151.6,latitude:-25.7})
+  });
+  entity.stormTrackerRiverGaugeId=id;
+  entity.stormTrackerFloodBillboard={
+   image:"flood-svg:"+id,
+   width:state==="elevated"?114:14,
+   height:state==="elevated"?126:17,
+   scale:state==="elevated"?3:.2,
+   scaleByDistance:{near:1,nearValue:1,far:500000,farValue:.2},
+   heightReference:"CLAMP_TO_GROUND",
+   disableDepthTestDistance:Infinity
+  };
+  allFloodVariants.push(entity);
+ }
+}
+flood.finish();
+assert.equal(all().length,allFloodVariants.length);
+for(const entity of allFloodVariants){
+ const pin=all().find(item=>item.id===entity);
+ assert.ok(pin,"Missing rendered flood gauge "+entity.id);
+ assert.deepEqual([pin.width,pin.height],
+  [FLOOD_PRIMITIVE_MARKER_SIZE.width,FLOOD_PRIMITIVE_MARKER_SIZE.height],
+  "Final GPU dimensions inconsistent for "+entity.id);
+ assert.equal(pin.scale,1,"Flood scale must be one: "+entity.id);
+ assert.equal(pin.sizeInMeters,false,"Pin size must be in pixels: "+entity.id);
+ assert.equal(pin.scaleByDistance,undefined,"No distance shrinking: "+entity.id);
+ assert.deepEqual(pin.position,entity.position,"Source coordinate moved: "+entity.id);
+ assert.equal(pin.image,"flood-svg:"+entity.id,"Original icon art changed");
+ assert.equal(pin.id.stormTrackerRiverGaugeId,entity.id);
+}
+flood.setVisible(false);assert.deepEqual(all(),[]);
+flood.setVisible(true);
+assert.equal(all().length,allFloodVariants.length,
+ "Toggling must not restore a differently sized monitoring icon");
+console.log("PASS 14 final flood billboard states/variants identical pixel sizes and scales, rainfall preserved");

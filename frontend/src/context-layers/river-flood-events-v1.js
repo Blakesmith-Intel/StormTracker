@@ -109,19 +109,23 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   const observation=observationTime(feature,now);
   const height=p.STORMTRACKER_HEIGHT_METRES;
   const isFresh=fresh(observation,now)&&isNumber(height);
-  const noMinor=stationFloodLevels(feature)?.minor==null;
-  const crossing=publishedCrossingForFeature(feature,crossingCatalogue);
-  // Only a fresh SAME-station current river height can confirm a crossing.
+  // Any designated BoM flood stage outranks a separate crossing reference,
+  // including when the bridge is ABOVE minor/moderate/major. A missing minor
+  // level alone does not make a classified gauge a "crossing-only" site.
+  const hasFloodLevels=Boolean(stationFloodLevels(feature));
+  const crossing=hasFloodLevels?null:
+    publishedCrossingForFeature(feature,crossingCatalogue);
+  // A crossing-only marker requires a fresh SAME-station observation.
   const crossingReached=Boolean(isFresh&&crossing&&height>=crossing.heightMetres);
   const tidal=isObservedTidalGauge(feature,history[id]??[],now);
   let event=prior[id];
   // Never carry a rate-only alert through published flood-stage gauges,
   // the tidal screen, or an authoritative current flood class.
-  if(!noMinor||tidal||officialStates.has(decision.state)||
+  if(hasFloodLevels||tidal||officialStates.has(decision.state)||
      p.STORMTRACKER_IDENTITY_WARNING||
      p.STORMTRACKER_STATION_TABLE_CONFLICT)event=null;
   const newlyRapid=decision.show&&decision.state==="rapid-rise"&&
-    Boolean(decision.rapidRise)&&!tidal&&noMinor&&isFresh;
+    Boolean(decision.rapidRise)&&!tidal&&!hasFloodLevels&&isFresh;
   if(newlyRapid){
    if(!event){
     const reference=preRiseReference(history[id],now);

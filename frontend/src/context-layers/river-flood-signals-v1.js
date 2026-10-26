@@ -173,27 +173,53 @@ function recentTidalReversal(samples,nowMs=Date.now()){
 export const REVIEWED_NON_TIDAL_BOM_STATIONS=Object.freeze({
   "bom:540529":"Laidley Creek at Warrego Highway — 26 Oct 2026 BoM 14-day plot"
 });
-export function isVerifiedNonTidalGauge(feature){
+// Use explicit BoM station metadata for ALL gauges, not a blanket coastal
+// classification. Missing metadata remains unverified, not "non-tidal".
+function sourceStationMatches(feature){
   const id=String(feature?.id??"");
   const p=feature?.properties??{};
-  if(!Object.hasOwn(REVIEWED_NON_TIDAL_BOM_STATIONS,id)||
-      p.STORMTRACKER_IDENTITY_WARNING)return false;
-  const number=String(p.bom_stn_num??"").trim();
-  if(number&&(!/^\d{1,6}$/.test(number)||
-      number.padStart(6,"0")!==id.slice(4)))return false;
-  // An explicit official tidal site tag wins over an earlier manual review.
-  return !/tide gauge|tidal|estuar(?:y|ine)|sea level/i.test(
-    String(p.location_types??""));
+  if(!/^bom:\d{6}$/.test(id)||p.STORMTRACKER_IDENTITY_WARNING)return false;
+  const station=String(p.bom_stn_num??"").trim();
+  return !station || (/^\d{1,6}$/.test(station)&&station.padStart(6,"0")===id.slice(4));
 }
-
-export function isObservedTidalGauge(feature,samples=[],nowMs=Date.now()){
+function tidalTags(feature){
+  // Strip explicit "non-tidal" before matching "tidal"; if BOTH separate
+  // labels appear, treat tidal as authoritative and suppress false alerts.
   const types=String(feature?.properties?.location_types??"").toLowerCase();
-  // Verified source tidal metadata takes precedence over non-tidal review.
-  if(/tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types))return true;
-  // Repeated storm-wave reversals must not turn a positively reviewed
-  // non-tidal freshwater gauge into an assumed tidal station.
+  return /tide gauge|\btidal\b|estuar(?:y|ine)|sea level/.test(
+    types.replace(/\bnon[\s-]?tidal\b/g,""));
+}
+function nonTidalTags(feature){
+  return /\bnon[\s-]?tidal\b/i.test(String(feature?.properties?.location_types??""));
+}
+export function isVerifiedNonTidalGauge(feature){
+  if(!sourceStationMatches(feature)||tidalTags(feature))return false;
+  return nonTidalTags(feature)||
+    Object.hasOwn(REVIEWED_NON_TIDAL_BOM_STATIONS,String(feature.id));
+}
+export function isObservedTidalGauge(feature,samples=[],nowMs=Date.now()){
+  if(tidalTags(feature))return true;
   if(isVerifiedNonTidalGauge(feature))return false;
   return observedTidalOscillation(samples,nowMs);
+}
+
+// Assess EVERY valid gauge inside the existing 125 km coastal screening
+// buffer using already-loaded official metadata and same-station history.
+// Unknown remains conservative, never silently counted as verified tidal.
+export function coastalGaugeTidalCoverage(features,history={},nowMs=Date.now()){
+  const count={coastal:0,verifiedNonTidal:0,verifiedTidal:0,
+    observedTidalPattern:0,unverified:0};
+  for(const f of features??[]){
+    if(gaugeRiseScreeningZone(f).zone!=="coastal-uncertain")continue;
+    count.coastal++;
+    const samples=history[String(f?.id??"")]??[];
+    if(!sourceStationMatches(f))count.unverified++;
+    else if(tidalTags(f))count.verifiedTidal++;
+    else if(isVerifiedNonTidalGauge(f))count.verifiedNonTidal++;
+    else if(observedTidalOscillation(samples,nowMs))count.observedTidalPattern++;
+    else count.unverified++;
+  }
+  return count;
 }
 
 // Retain longer history only for officially tidal gauges or gauged water

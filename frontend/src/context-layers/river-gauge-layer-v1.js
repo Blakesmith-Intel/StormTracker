@@ -16,7 +16,8 @@ import {
   appendGaugeObservation,
   cleanFloodSignalHistory,
   compactFloodHistory,
-  filterOperationalFloodGauges
+  filterOperationalFloodGauges,
+  coastalGaugeTidalCoverage
 } from "./river-flood-signals-v1.js?v=9.13.2";
 
 import {
@@ -571,7 +572,8 @@ export function createRiverGaugeLayer({
         floodEvents=signals.events;
         persistEventState();
         render({type:"FeatureCollection",features:signals.features});
-        diagnostics={...(diagnostics??{}),floodSignalCounts:signals.counts};
+        diagnostics={...(diagnostics??{}),floodSignalCounts:signals.counts,
+          coastalTidalCoverage:coastalGaugeTidalCoverage(latestSourceFeatures,history,now())};
       }
       const coverage=recentHistoryCoverage();
       diagnostics={...(diagnostics??{}),
@@ -840,7 +842,8 @@ export function createRiverGaugeLayer({
         );
         floodEvents=alerts.events;
         persistEventState();
-        diagnostics = {...result, floodSignalCounts:alerts.counts};
+        diagnostics = {...result, floodSignalCounts:alerts.counts,
+          coastalTidalCoverage:coastalGaugeTidalCoverage(retained.features,history,observedAt)};
         // Report listeners run synchronously during render().
         lastLoadedAt = observedAt;
         render({type:"FeatureCollection",features:alerts.features});

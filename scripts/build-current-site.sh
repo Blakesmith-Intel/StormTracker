@@ -172,7 +172,7 @@ version_once("src/context-layers/power-outage-suburb-explorer-v1.js",
     "outage-lga-spatial-v2.js?v=outage-geometry-lga-20261020-v1")
 # Invalidate ONLY the published flood-gauge module import chain after the
 # measured history/rate fix. All other assets retain their approved cache keys.
-gauge_cache_suffix="-bom-gauge-history-30to120-20261026-station-table-current-height-v2"
+gauge_cache_suffix="-bom-gauge-history-30to120-20261026-station-table-current-height-v2-informational-stale-rate-v1"
 for relative,needle in (
     ("index.html","-jasper-alfred-v1"+suffix),
     ("live3d-operational-v9.html","-jasper-alfred-archive-v1"+suffix),
@@ -359,7 +359,7 @@ assert "sameMappedRuralPlace(" in (
     site / "src/context-layers/qld-town-label-declutter-v1.js").read_text()
 assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
-assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "if(explicitlyTidal && !classified && !lastConfirmed && !crossingReached)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(!classified && !inland && !crossingReached)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "FLOOD_SIGNAL_MAX_INTERVAL_MS = 120 * 60 * 1000" in (layers / "river-flood-signals-v1.js").read_text()
 assert "Rate unavailable — insufficient recent observations" in (layers / "river-gauges-operational-v1.js").read_text()

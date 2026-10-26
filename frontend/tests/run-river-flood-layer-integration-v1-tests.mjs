@@ -11,7 +11,7 @@ const features=[
   {id:"bom:040124",properties:{bom_stn_num:"040124",awrc_stateid:"QLD-2",name:"Coastal tide",state:"QLD",location_types:"water level gauge;tide gauge;",lat:-27.4,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.4]}},
   {id:"bom:040125",properties:{bom_stn_num:"040125",awrc_stateid:"QLD-3",name:"Moderate flood",state:"QLD",location_types:"water level gauge;",lat:-27.6,long:153.1},geometry:{type:"Point",coordinates:[153.1,-27.6]}}
 ];
-const reportedTime=()=>step===0?"6:15 pm Thu 08/10/2026":"7:00 pm Thu 08/10/2026";
+const reportedTime=()=>step===0?"6:15 pm Thu 08/10/2026":"6:45 pm Thu 08/10/2026";
 const latest=()=>[
   {stationName:"Upper river",stationId:"040123",heightMetres:step===0?1.0:2.2,
    tendency:"rising",floodClass:"minor",observedText:reportedTime()},
@@ -73,7 +73,7 @@ assert.ok(layer.severityDataSources.flatMap(s=>s.entities.values)
  .some(e=>e.stormTrackerRiverGaugeId==="bom:040125"));
 assert.equal(layer.severityDataSources[2].entities.values.length,1,"Minor tier");
 assert.equal(layer.severityDataSources[3].entities.values.length,1,"Moderate above minor");
-now+=45*60000;
+now+=30*60000;
 step=1;
 await layer.refresh({force:true});
 assert.equal(layer.features.length,2,

@@ -7,7 +7,7 @@ const gauge={id:"bom:540384",type:"Feature",geometry:{type:"Point",coordinates:[
  forecast_site_classification:"Qualitative"}};
 let upstreamHistoryCalls=0;
 const historyPoints=[
- {time:Date.UTC(2026,9,8,7,15),height:0.5},
+ {time:Date.UTC(2026,9,8,7,45),height:0.5},
  {time:Date.UTC(2026,9,8,8,15),height:2.25}
 ];
 const fetchImpl=async url=>{
@@ -75,4 +75,4 @@ assert.equal(dataSources.flatMap(source=>source.entities.values).length,1,
  "Exactly one flood marker is rendered across the severity strata");
 await layer.refresh({force:true});
 assert.equal(upstreamHistoryCalls,1,"Do not refetch recent station tables during routine bulletin refresh");
-console.log("BoM historical cold-start integration passed: first real bulletin identifies candidate, bounded existing-relay request supplies 60-min evidence, map rapidly shows only qualifying signal without waiting 15-minute polls.");
+console.log("BoM historical cold-start integration passed: first real bulletin identifies candidate, bounded existing-relay request supplies 30-min evidence, map rapidly shows only qualifying signal without waiting 15-minute polls.");

@@ -31,16 +31,13 @@ export function preRiseReference(samples,now=Date.now()){
  const sorted=(Array.isArray(samples)?samples:[]).filter(p=>
    isNumber(p?.time)&&isNumber(p?.height)).sort((a,b)=>a.time-b.time);
  const latest=sorted.findLast(p=>p.time===rise.observedAt);
- const before=[...sorted].reverse().find(p=>
-   p.time<rise.observedAt &&
-   rise.observedAt-p.time>=30*60000 &&
-   rise.observedAt-p.time<=120*60000);
- if(!latest||!before||latest.height<=before.height)return null;
- // Avoid arbitrary absolute river levels; guard sensor jitter relative to
- // the actual measured event amplitude.
+ // Persist the same interpolated 30-minute pre-rise height used to trigger
+ // the alert. A different 30–120-minute reference would distort recovery.
+ const baseline=rise.baselineHeight;
+ if(!latest||!isNumber(baseline)||latest.height<=baseline)return null;
  const margin=Math.max(0.05,Math.min(0.20,
-   Math.round((latest.height-before.height)*0.1*100)/100));
- return {baselineHeight:before.height,peakHeight:latest.height,
+   Math.round((latest.height-baseline)*0.1*100)/100));
+ return {baselineHeight:baseline,peakHeight:latest.height,
    recoveryMarginMetres:margin,observedAt:latest.time};
 }
 function validRecord(record,now){
@@ -193,6 +190,16 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
     });
   }
   if(!kept)continue;
+  // Present a measured rise OR fall on every visible gauge, including amber
+  // crossing and blue post-rise markers. Display evidence is independent of
+  // the severity/rapid-rise alert decision, but must match the current BoM
+  // observation for this exact station and must not be stale.
+  const measuredRate=isFresh?latestRiseRate(history[id]??[],now):null;
+  const alignedRate=measuredRate&&Math.abs(measuredRate.observedAt-observation)<=10*60000
+    ?measuredRate:null;
+  kept={...kept,properties:{...kept.properties,
+   STORMTRACKER_RISE_RATE_M_PER_H:alignedRate?.rateMetresPerHour??null,
+   STORMTRACKER_RATE_INTERVAL_MINUTES:alignedRate?.intervalMinutes??null}};
   if(crossing){
    kept={...kept,properties:{...kept.properties,
     STORMTRACKER_CROSSING_LEVEL_METRES:crossing.heightMetres,

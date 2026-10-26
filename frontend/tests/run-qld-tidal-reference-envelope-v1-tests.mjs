@@ -36,7 +36,7 @@ const make=(id,level,tidal=false)=>({
 const decide=(level,rate,tidal=false)=>{
   const f=make("bom:60050",level,tidal);
   return evaluateFloodSignal(f,{[f.id]:[
-    {time:now-75*minute,height:2.5-rate},
+    {time:now-45*minute,height:2.5-rate*0.5},
     {time:now-15*minute,height:2.5}
   ]},now);
 };

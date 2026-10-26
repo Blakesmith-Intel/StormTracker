@@ -1,4 +1,5 @@
 import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
+import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
 import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
 
 // BoM publishes recent tabular readings alongside each public .plt.shtml
@@ -92,7 +93,7 @@ export function inspectBomRecentWaterLevelTable(html,options={}) {
 // downloading their often huge history tables consumes relay capacity for no
 // operational gain. Do recover inland below-minor rivers: a modest rise here
 // is precisely the Adavale-type signal previously missed by the old filter.
-export function recentFloodHistoryGap(feature,history={},nowMs=Date.now()) {
+export function recentFloodHistoryGap(feature,history={},nowMs=Date.now(),crossingCatalogue=null) {
   const p=feature?.properties??{};
   const types=String(p.location_types??"").toLowerCase();
   const explicitlyTidal=/tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types);
@@ -100,7 +101,14 @@ export function recentFloodHistoryGap(feature,history={},nowMs=Date.now()) {
   const flood=String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase();
   const inland=gaugeRiseScreeningZone(feature).zone==="inland";
   const classified=["minor","moderate","major"].includes(flood);
-  if(!classified && !inland)return null;
+  const crossing=publishedCrossingForFeature(feature,crossingCatalogue);
+  const crossingReached=Boolean(crossing&&
+    typeof p.STORMTRACKER_HEIGHT_METRES==="number"&&
+    Number.isFinite(p.STORMTRACKER_HEIGHT_METRES)&&
+    p.STORMTRACKER_HEIGHT_METRES>=crossing.heightMetres);
+  // Visible coastal crossing markers need their own station history as much
+  // as flood-classified gauges do; don't download ordinary coastal stations.
+  if(!classified && !inland && !crossingReached)return null;
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
   if(observed===null || nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS ||
     observed>nowMs+5*60000)return null;
@@ -158,7 +166,7 @@ export function planBoMStationTableLookups(features,{
        !Number.isFinite(p.STORMTRACKER_HEIGHT_METRES))continue;
     const target=officialRecentTableTarget(p.STORMTRACKER_RECENT_DATA_HREF);
     if(!target||target.station!==id.slice(4))continue;
-    const historyGap=recentFloodHistoryGap(feature,history,nowMs);
+    const historyGap=recentFloodHistoryGap(feature,history,nowMs,crossingCatalogue);
     const needsHistory=Boolean(historyGap?.target);
     const needsCrossing=!Object.hasOwn(plotCrossings,id);
     if(!needsHistory&&!needsCrossing)continue;

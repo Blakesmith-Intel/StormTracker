@@ -22,7 +22,7 @@ const measure=(id,observedAt,height,trend="falling",klass="",tidal=false)=>({
   STORMTRACKER_FLOOD_CLASS:klass}
 });
 const id="bom:999991",first=measure(id,ts(-15),2.4,"rising");
-let history={[id]:[{time:ts(-75),height:1.0},{time:ts(-15),height:2.4}]};
+let history={[id]:[{time:ts(-45),height:1.0},{time:ts(-15),height:2.4}]};
 const ref=preRiseReference(history[id],base);
 assert.equal(ref.baselineHeight,1.0);
 assert.equal(ref.peakHeight,2.4);
@@ -85,7 +85,7 @@ assert.equal(reconcileFloodEvents([
 ],{}, {},base).features.length,0);
 // Tidal level changes never create a threshold-free flash-rise event.
 const tidal="bom:999993";
-const tideHistory={[tidal]:[{time:ts(-75),height:1},
+const tideHistory={[tidal]:[{time:ts(-45),height:1},
  {time:ts(-15),height:2.5}]};
 const tide=reconcileFloodEvents([
  measure(tidal,ts(-15),2.5,"rising","",true)

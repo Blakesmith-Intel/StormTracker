@@ -141,7 +141,7 @@ const risingTheresa=make("535162",2.77,now-8*MIN,{
  STORMTRACKER_PLOT_CROSSING:crossing,STORMTRACKER_TENDENCY:"rising"
 });
 const risingHistory={"bom:535162":[
- {time:now-68*MIN,height:1.85},{time:now-8*MIN,height:2.77}]};
+ {time:now-38*MIN,height:1.85},{time:now-8*MIN,height:2.77}]};
 const risingAlert=reconcileFloodEvents([risingTheresa],risingHistory,{},now);
 assert.equal(risingAlert.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
 assert.equal(risingAlert.features[0].properties.STORMTRACKER_RAPID_RISE,true,
@@ -155,13 +155,31 @@ const settledCrossing=make("535162",2.80,now+52*MIN,{
 });
 const crossingAfter=reconcileFloodEvents([settledCrossing],{
  "bom:535162":[...risingHistory["bom:535162"],
-   {time:now+52*MIN,height:2.80}]
+   {time:now+22*MIN,height:2.78},{time:now+52*MIN,height:2.80}]
 },{},now+60*MIN);
 assert.equal(crossingAfter.features.length,1,"Crossing marker persists");
 assert.equal(crossingAfter.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
 assert.equal(crossingAfter.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
 assert.equal(crossingAfter.features[0].properties.STORMTRACKER_RAPID_RISE,false,
  "Arrow disappears without hiding the water-over-crossing marker");
+assert.ok(Math.abs(crossingAfter.features[0].properties.STORMTRACKER_RISE_RATE_M_PER_H-0.04)<1e-8,
+ "A crossing must retain a slow positive 30-minute measured rate without a blue arrow");
+assert.equal(crossingAfter.features[0].properties.STORMTRACKER_RATE_INTERVAL_MINUTES,30);
+const fallingCrossing=make("535162",2.65,now+82*MIN,{
+ STORMTRACKER_PLOT_CROSSING:crossing,
+ STORMTRACKER_TENDENCY:"falling"
+});
+const fallingRate=reconcileFloodEvents([fallingCrossing],{
+ "bom:535162":[...risingHistory["bom:535162"],
+  {time:now+22*MIN,height:2.78},{time:now+52*MIN,height:2.80},
+  {time:now+82*MIN,height:2.65}]
+},{},now+90*MIN);
+assert.equal(fallingRate.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
+assert.ok(Math.abs(fallingRate.features[0].properties.STORMTRACKER_RISE_RATE_M_PER_H+0.30)<1e-8,
+ "Negative measured rate must reach the information panel on amber crossing");
+assert.equal(fallingRate.features[0].properties.STORMTRACKER_RAPID_RISE,false);
+assert.equal(alerts.features[0].properties.STORMTRACKER_RISE_RATE_M_PER_H,null,
+ "A crossing with no rate history is marked unavailable, never zero");
 assert.equal(crossingAfter.features[0].properties.STORMTRACKER_TENDENCY,"rising",
  "Published BoM tendency remains unchanged for the existing popup");
 assert.doesNotMatch(decodeURIComponent(createRiverGaugeMarkerImage(

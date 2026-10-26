@@ -75,7 +75,7 @@ assert.ok(compacted[tideRiver.id].length>=40,
 // station nearby has tides. Identity and history are always station-ID-scoped.
 const river=fixture("bom:533178","below-minor");
 const riverHistory=[
- point(now-75*60000,0.35),point(now-15*60000,1.95)
+ point(now-45*60000,0.35),point(now-15*60000,1.95)
 ];
 const mixed={...history,[river.id]:riverHistory};
 assert.equal(isObservedTidalGauge(river,riverHistory,now),false);
@@ -90,7 +90,7 @@ const stableFlood={...river,properties:{...river.properties,
   STORMTRACKER_HEIGHT_METRES:2.1}};
 
 const slowHistory={...mixed,[river.id]:[
- point(now-75*60000,2.05),point(now-15*60000,2.1)
+ point(now-45*60000,2.05),point(now-15*60000,2.1)
 ]};
 const slow=evaluateFloodSignal(stableFlood,slowHistory,now);
 assert.equal(slow.state,"minor");

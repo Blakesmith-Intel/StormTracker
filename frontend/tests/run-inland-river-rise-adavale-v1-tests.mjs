@@ -21,7 +21,7 @@ const make=(id,coords,level="below-minor",types="water level gauge;")=>({
   }
 });
 const observation=(f,rate)=>({[f.id]:[
-  {time:now-1.25*H,height:1.5-rate},
+  {time:now-.75*H,height:1.5-rate*.5},
   {time:now-.25*H,height:1.5}
 ]});
 const evaluate=(f,rate)=>evaluateFloodSignal(f,observation(f,rate),now);

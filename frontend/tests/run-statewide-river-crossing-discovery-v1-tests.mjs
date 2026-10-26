@@ -41,7 +41,7 @@ assert(cached.some(x=>x.id==="bom:535162" && x.needsHistory && !x.needsCrossing)
  "Already-checked crossing needs no recheck, but missing same-station rise history still qualifies");
 assert.equal(cached.length,5);
 const historyLoaded=find({plotCrossings:{"bom:535162":{crossing:null,checkedAt:NOW}},
- history:{"bom:535162":[{time:NOW-mins(71),height:2.75},
+ history:{"bom:535162":[{time:NOW-mins(41),height:2.75},
    {time:NOW-mins(11),height:2.77}]}});
 assert(!historyLoaded.some(x=>x.id==="bom:535162"),
  "Do not refetch station table once its crossing and valid recent rise history are both cached");

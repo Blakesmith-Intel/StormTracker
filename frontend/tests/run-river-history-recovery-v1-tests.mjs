@@ -55,7 +55,7 @@ const fetchImpl=async url=>{
       format:"StormTrackerBomRecentRiverHistoryV1",
       product:"IDQ65388",station:new URL(u).searchParams.get("station"),
       samples:[
-        {time:clock-75*minute,height:0.6},
+        {time:clock-45*minute,height:0.6},
         {time:clock-15*minute,height:2.25}
       ]
     })};

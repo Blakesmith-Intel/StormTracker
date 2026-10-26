@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {evaluateFloodSignal,filterOperationalFloodGauges,
   FLOOD_SIGNAL_MAX_AGE_MS,NON_TIDAL_RAPID_RISE_M_PER_H,
   parseQueenslandObservationTime,latestRiseRate,latestMeasuredRiseRate,
-  isVerifiedNonTidalGauge,isObservedTidalGauge} from "../src/context-layers/river-flood-signals-v1.js";
+  isVerifiedNonTidalGauge,isObservedTidalGauge,coastalGaugeTidalCoverage} from "../src/context-layers/river-flood-signals-v1.js";
 import {reconcileFloodEvents,cleanFloodEvents,
   FLOOD_EVENTS_STORAGE_KEY} from "../src/context-layers/river-flood-events-v1.js";
 
@@ -158,6 +158,37 @@ assert.equal(isVerifiedNonTidalGauge(mismatchedStation),false,
 assert.equal(screen(mismatchedStation,warregoHistory).rapidRise,false,
   "Conflicting station ID does not inherit the lower non-tidal threshold");
 
+// Statewide coastal verification uses official station metadata wherever it
+// exists, not only the single reviewed Warrego site. Unknown stays conservative.
+const taggedNonTidal=make("bom:999995","minor","rising");
+taggedNonTidal.geometry.coordinates=[152.389,-27.553];
+taggedNonTidal.properties.location_types="water level gauge;non-tidal;";
+taggedNonTidal.properties.STORMTRACKER_HEIGHT_METRES=4.94;
+const taggedHistory={
+ [taggedNonTidal.id]:[{time:now-45*MIN,height:4.74},{time:now-15*MIN,height:4.94}]
+};
+assert.equal(isVerifiedNonTidalGauge(taggedNonTidal),true,
+  "Any exact-ID station explicitly labelled non-tidal qualifies");
+const taggedResult=screen(taggedNonTidal,taggedHistory);
+assert.equal(taggedResult.rapidRise,true,
+  "Coastal source-verified non-tidal gauges use existing 0.30 m/h threshold");
+assert.equal(taggedResult.screeningThresholdMetresPerHour,0.30);
+const contradictoryTags=structuredClone(taggedNonTidal);
+contradictoryTags.properties.location_types="non-tidal;tide gauge;";
+assert.equal(isVerifiedNonTidalGauge(contradictoryTags),false,
+  "Explicit tidal source evidence must override contradictory non-tidal tags");
+assert.equal(screen(contradictoryTags,taggedHistory).rapidRise,false);
+const wrongTaggedIdentity=structuredClone(taggedNonTidal);
+wrongTaggedIdentity.properties.bom_stn_num="999994";
+assert.equal(isVerifiedNonTidalGauge(wrongTaggedIdentity),false,
+  "Wrong BoM ID cannot inherit the source's non-tidal verification");
+const coverage=coastalGaugeTidalCoverage(
+  [warrego,uncertainCoastal,taggedNonTidal,declaredTidal],{
+   ...warregoHistory,...uncertainHistory,...taggedHistory
+  },now);
+assert.deepEqual(coverage,{coastal:4,verifiedNonTidal:2,verifiedTidal:1,
+  observedTidalPattern:0,unverified:1},
+  "Every near-coast gauge is assessed; unverified is not falsely called tidal");
 const minor=screen(recent,measured);
 const blue=screen(below,measured);
 assert.equal(minor.state,"minor");

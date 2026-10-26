@@ -47,7 +47,42 @@ assert.equal(minor.state,"minor");
 assert.equal(minor.rapidRise,true);
 assert.equal(blue.state,"rapid-rise");
 assert.equal(blue.rapidRise,true);
-assert.equal(screen(make(below.id,"below-minor","falling"),measured).show,false);
+// BoM tendency is retained as information, never used to gate a measured rate.
+for(const tendency of ["rising","steady","falling",""]){
+ const source=make(below.id,"below-minor",tendency);
+ const result=screen(source,measured);
+ assert.equal(result.rapidRise,true,
+   "Measured fast rise triggers without BoM tendency approval: "+tendency);
+ const selected=reconcileFloodEvents([source],measured,{},now);
+ assert.equal(selected.features[0].properties.STORMTRACKER_TENDENCY,tendency,
+   "Existing source tendency is retained for the information panel");
+}
+// Once the measured rate slows, no rapid-rise arrow remains, even if BoM
+// continues to say 'rising'. Severity colours and post-rise monitoring persist.
+const later=now+60*MIN, laterText="7:15 pm Thu 08/10/2026";
+for(const level of ["minor","moderate","major"]){
+ const stillFlooding=make(recent.id,level,"rising","information",laterText);
+ stillFlooding.properties.STORMTRACKER_HEIGHT_METRES=2.55;
+ const selected=reconcileFloodEvents([stillFlooding],{
+  [recent.id]:[...measured[recent.id],{time:now+45*MIN,height:2.55}]
+ },{},later);
+ assert.equal(selected.features.length,1,level+" base flood marker persists");
+ assert.equal(selected.features[0].properties.STORMTRACKER_DISPLAY_STATE,level);
+ assert.equal(selected.features[0].properties.STORMTRACKER_RAPID_RISE,false,
+   level+" blue arrow clears when the measured rate slows");
+ assert.equal(selected.features[0].properties.STORMTRACKER_TENDENCY,"rising",
+   "BoM tendency remains published separately from the measured rate");
+}
+const firstBelow=reconcileFloodEvents([below],measured,{},now);
+const stillElevated=make(below.id,"below-minor","rising","information",laterText);
+stillElevated.properties.STORMTRACKER_HEIGHT_METRES=2.55;
+const followUp=reconcileFloodEvents([stillElevated],{
+ [below.id]:[...measured[below.id],{time:now+45*MIN,height:2.55}]
+},firstBelow.events,later);
+assert.equal(followUp.features.length,1,"Post-rise monitoring marker persists");
+assert.equal(followUp.features[0].properties.STORMTRACKER_DISPLAY_STATE,"elevated");
+assert.equal(followUp.features[0].properties.STORMTRACKER_RAPID_RISE,false,
+ "Post-rise monitoring icon sheds the blue rapid-rise arrow");
 for(const level of ["minor","moderate","major"]){
   const f=make(recent.id,level,"rising");
   assert.equal(screen(f,measured).rapidRise,true,

@@ -159,6 +159,27 @@ const sameMinute=reconcileOfficialBoMTableHeight({...sandy,properties:{
 }},sandySamples,recoveryNow);
 assert.equal(sameMinute.properties.STORMTRACKER_HEIGHT_METRES,0.04,
   "Table measurement must correct a contradicting bulletin at the same timestamp");
+// Live 26 Oct source investigation: cached 16.05 m/08:34 was NEWER only
+// according to its misleading weekday-only timestamp. The BoM live bulletin
+// and exact station table BOTH confirm 0.00 m/05:36. Do not present major or
+// declare the current crossing safe; show an unverified neutral marker.
+const sandyPublished={...sandy,properties:{...sandy.properties,
+  STORMTRACKER_HEIGHT_METRES:0,STORMTRACKER_FLOOD_CLASS:"",
+  STORMTRACKER_OBSERVED_TEXT:"05.36AM Mon 26/10/2026"}};
+const bulletinTime=Date.UTC(2026,9,25,19,36); // 05:36 Monday AEST
+const historySameStation=[{time:bulletinTime-3600000,height:0},
+  {time:bulletinTime,height:0}];
+const supported=reconcileOfficialBoMTableHeight(
+  sandy,historySameStation,recoveryNow,sandyPublished);
+assert.equal(supported.properties.STORMTRACKER_HEIGHT_METRES,0);
+assert.equal(supported.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT,bulletinTime);
+assert.equal(supported.properties.STORMTRACKER_FLOOD_CLASS,"below-minor");
+assert.match(supported.properties.STORMTRACKER_STATION_TABLE_CONFLICT,/Unverified/);
+const unsupported=reconcileOfficialBoMTableHeight(sandy,historySameStation,
+  recoveryNow,{...sandyPublished,properties:{...sandyPublished.properties,
+    STORMTRACKER_HEIGHT_METRES:2.2}});
+assert.equal(unsupported,sandy,
+  "Conflicting or absent bulletin corroboration must not discard a newer reading");
 const coulson={...sandy,id:"bom:540510",properties:{
  ...sandy.properties,bom_stn_num:"540510",
  STORMTRACKER_RECENT_DATA_HREF:

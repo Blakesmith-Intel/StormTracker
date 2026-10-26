@@ -101,7 +101,9 @@ export function inspectBomRecentWaterLevelTable(html,options={}) {
 // Previously it was used only for the rate/bridge lookup, leaving a stale or
 // contradictory bulletin height visible even after newer source data arrived.
 // Never promote another station, a future timestamp, or an older table reading.
-export function reconcileOfficialBoMTableHeight(feature,samples,nowMs=Date.now()){
+export function reconcileOfficialBoMTableHeight(
+  feature,samples,nowMs=Date.now(),publishedFeature=null
+){
   const id=String(feature?.id??""),p=feature?.properties??{};
   if(!/^bom:\d{6}$/.test(id)||String(p.bom_stn_num??"").padStart(6,"0")!==id.slice(4)||
       !Array.isArray(samples)||!samples.length)return feature;
@@ -112,7 +114,23 @@ export function reconcileOfficialBoMTableHeight(feature,samples,nowMs=Date.now()
   const stored=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
   const fromBulletin=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
   const prior=Number.isFinite(stored)&&stored>0 ? stored:fromBulletin;
-  if(Number.isFinite(prior)&&latest.time<prior)return feature;
+  const levels=stationFloodLevels(feature);
+  const priorFlood=levels?observedFloodClass(p.STORMTRACKER_HEIGHT_METRES,levels):undefined;
+  const tableFlood=levels?observedFloodClass(latest.height,levels):undefined;
+  const published=publishedFeature?.id===id?publishedFeature.properties??{}:null;
+  const publishedAt=published?parseQueenslandObservationTime(
+    published.STORMTRACKER_OBSERVED_TEXT,nowMs):null;
+  // A prior bulletin from a previous Monday can be wrongly interpreted as
+  // THIS Monday when BoM's bulletin lacks a full date. Do not roll back a
+  // valid newer reading on one older source alone. Require BOTH live bulletin
+  // and independent same-station table to agree on date and height, a stale
+  // contradictory cached observation, and a discrepancy across minor stage.
+  const confirmedCacheConflict=Number.isFinite(prior)&&
+    nowMs-prior>FLOOD_SIGNAL_MAX_AGE_MS&&latest.time<prior&&
+    latest.time===publishedAt &&
+    Math.abs(Number(published?.STORMTRACKER_HEIGHT_METRES)-latest.height)<0.011 &&
+    ["minor","moderate","major"].includes(priorFlood)&&tableFlood===null;
+  if(Number.isFinite(prior)&&latest.time<prior&&!confirmedCacheConflict)return feature;
   if(latest.time===prior&&latest.height===p.STORMTRACKER_HEIGHT_METRES)return feature;
   const local=new Date(latest.time+10*3600000);
   const pad=v=>String(v).padStart(2,"0");
@@ -122,15 +140,22 @@ export function reconcileOfficialBoMTableHeight(feature,samples,nowMs=Date.now()
     ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][local.getUTCDay()]+" "+
     pad(local.getUTCDate())+"/"+pad(local.getUTCMonth()+1)+"/"+
     local.getUTCFullYear();
-  const stages=stationFloodLevels(feature);
-  const calculated=stages?observedFloodClass(latest.height,stages):undefined;
+  const calculated=tableFlood;
   return {...feature,properties:{...p,
     STORMTRACKER_HEIGHT_METRES:latest.height,
     STORMTRACKER_OBSERVED_TEXT:observedText,
     STORMTRACKER_OFFICIAL_OBSERVED_AT:latest.time,
     // Recalculate classification only against published exact-station levels.
     // Without those levels, never preserve an obsolete major claim as current.
-    STORMTRACKER_FLOOD_CLASS:calculated===undefined?"":(calculated??"below-minor")
+    STORMTRACKER_FLOOD_CLASS:calculated===undefined?"":(calculated??"below-minor"),
+    ...(confirmedCacheConflict?{
+      STORMTRACKER_STATION_TABLE_CONFLICT:
+        "Unverified: discarded an uncorroborated cached flood reading ("+
+        Number(p.STORMTRACKER_HEIGHT_METRES).toFixed(2)+
+        " m). BoM's current bulletin and exact-station history both last "+
+        "confirm "+latest.height.toFixed(2)+" m at "+observedText+
+        "; the present level is not verified."
+    }:{})
   }};
 }
 

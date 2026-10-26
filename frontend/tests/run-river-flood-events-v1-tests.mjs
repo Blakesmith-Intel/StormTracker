@@ -34,8 +34,10 @@ for(const level of ["minor","moderate","major"]){
   assert.equal(x.features[0].properties.STORMTRACKER_RAPID_RISE,false);
  }
 }
-const cleared=query("below-minor","falling");
-assert.equal(cleared.features.length,0);
+const measuredDespiteFalling=query("below-minor","falling");
+assert.equal(measuredDespiteFalling.features.length,1,
+ "BoM falling tendency cannot hide independently measured rapid rise");
+assert.equal(measuredDespiteFalling.features[0].properties.STORMTRACKER_RAPID_RISE,true);
 const risingBelow=query("below-minor","rising");
 assert.equal(risingBelow.features.length,1);
 assert.equal(risingBelow.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");

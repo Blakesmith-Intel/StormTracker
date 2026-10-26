@@ -203,6 +203,54 @@ const moderate=reconcileFloodEvents([official],{}, {},now);
 assert.equal(moderate.features[0].properties.STORMTRACKER_DISPLAY_STATE,
  "moderate","Amber bridge must never replace verified yellow moderate flooding");
 assert.equal(moderate.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
+
+// REAL BoM station 540158 — Showground Weir at Laidley Creek: weir 4.15m,
+// minor 6.00m, moderate 7.00m and major 7.80m. Amber MUST be shown in
+// 4.15–5.99m gap, but never override the 2026 official severity colours.
+const laidleyCrossing={type:"C",heightMetres:4.15,
+ crossingName:"BoM station weir level",source:"Exact BoM station table"};
+const laidley=height=>make("540158",height,now-8*MIN,{
+ STORMTRACKER_PLOT_CROSSING:laidleyCrossing
+});
+for(const [height,expected] of [
+ [4.14,null],[4.15,"crossing"],[5.99,"crossing"],
+ [6.00,"minor"],[6.99,"minor"],[7.00,"moderate"],[7.80,"major"],
+ [5.90,"crossing"],[4.10,null]
+]){
+ const outcome=reconcileFloodEvents([laidley(height)],{}, {},now);
+ assert.equal(outcome.features[0]?.properties.STORMTRACKER_DISPLAY_STATE??null,
+   expected,"Laidley 540158 correct marker at "+height+"m");
+ if(["minor","moderate","major"].includes(expected)){
+  assert.equal(outcome.features[0].properties.STORMTRACKER_CROSSING_REACHED,true,
+   "Crossing metadata must remain factual even when flood icon has priority");
+ }
+}
+// REAL BoM station 540510 — Coulson Crossing: bridge 3.51m is ABOVE the
+// first minor-flood stage 3.00m. No amber may replace green/yellow/red.
+const coulsonBridge={type:"B",heightMetres:3.51,
+ crossingName:"BoM station bridge level",source:"Exact BoM station table"};
+const coulson=height=>make("540510",height,now-8*MIN,{
+ STORMTRACKER_PLOT_CROSSING:coulsonBridge
+});
+for(const [height,expected] of [
+ [2.99,null],[3.00,"minor"],[3.49,"minor"],[3.50,"moderate"],
+ [3.51,"moderate"],[4.49,"moderate"],[4.50,"major"],
+ [3.20,"minor"],[2.80,null]
+]){
+ const outcome=reconcileFloodEvents([coulson(height)],{}, {},now);
+ assert.equal(outcome.features[0]?.properties.STORMTRACKER_DISPLAY_STATE??null,
+  expected,"Coulson 540510 official severity outranks bridge at "+height+"m");
+}
+// Both kinds of crossing must retain the rapid-rise arrow only if its
+// independently measured alert criteria are satisfied; geometry unchanged.
+const laidleyFast=laidley(5.20);
+const fastHistory={"bom:540158":[
+ {time:now-38*MIN,height:4.2},{time:now-8*MIN,height:5.2}
+]};
+const fastBelowMinor=reconcileFloodEvents([laidleyFast],fastHistory,{},now);
+assert.equal(fastBelowMinor.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
+assert.equal(fastBelowMinor.features[0].properties.STORMTRACKER_RAPID_RISE,true);
+
 assert.equal(reconcileFloodEvents([
  make("535162",1.70,now-8*MIN,{STORMTRACKER_PLOT_CROSSING:crossing})
 ],{}, {},now).features.length,0,"Below an exact published crossing without rapid rise is excluded");

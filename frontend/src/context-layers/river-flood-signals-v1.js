@@ -8,6 +8,10 @@ import {stationFloodLevels,observedFloodClass}
 export const FLOOD_SIGNAL_STORAGE_KEY = "stormtracker.qld-flood-observations.v1";
 export const FLOOD_SIGNAL_HISTORY_MS = 48 * 60 * 60 * 1000;
 export const FLOOD_SIGNAL_MAX_AGE_MS = 90 * 60 * 1000;
+// Maximum age for a flood marker supported only by the last BoM observation.
+// Manual/event-only gauges may stop publishing after a flood recedes. Expired
+// evidence removes the icon, but NEVER establishes that the water is safe.
+export const FLOOD_STAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 // Compare genuine readings separated by 30–120 minutes. The actual elapsed
 // time determines the hourly rate; never invent or interpolate observations.
 export const FLOOD_SIGNAL_MIN_INTERVAL_MS = 30 * 60 * 1000;
@@ -281,15 +285,23 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const timely=observed!==null && Number.isFinite(observed) &&
     nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
     observed<=nowMs+5*60000;
+  // No persistent flood, bridge or uncertainty marker without a correctly
+  // identified station and independently time-bounded source observation.
+  // A years-old or days-old "major" is historical context, not a map alert.
+  if(p.STORMTRACKER_IDENTITY_WARNING)
+    return {show:false,reason:"Conflicting BoM and mapped station IDs"};
+  if(!Number.isFinite(observed)||observed<=0||
+      observed>nowMs+5*60000||
+      nowMs-observed>FLOOD_STAGE_MAX_AGE_MS)
+    return {show:false,reason:"Flood observation expired; latest level unknown"};
+  // Both exact-station BoM sources disproved a cached flood reading.
+  // Retire its map marker instead of showing a lingering neutral symbol.
+  if(p.STORMTRACKER_STATION_TABLE_CONFLICT)
+    return {show:false,reason:"Cached flood observation contradicted by BoM station sources"};
   // A stale apparent flood height contradicted by BOTH the current BoM
   // bulletin and the exact-station history must never remain a red confirmed
   // flood, nor be silently presented as safe after an older 0 m reading.
-  if(p.STORMTRACKER_STATION_TABLE_CONFLICT){
-    return {show:true,state:"unverified",source:"bom-uncorroborated-cache",
-      reason:String(p.STORMTRACKER_STATION_TABLE_CONFLICT),
-      rapidRise:false,tidalScreened:tidal,rise:null,stale:true,
-      classificationUnverified:true,lastObservedAt:observed};
-  }
+
   const classAt=Number(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT)||0;
   // Only a genuine timestamped observation can supersede an older flood
   // bulletin. Missing thresholds keep the last-confirmed caution intact.

@@ -8,8 +8,12 @@ import {stationFloodLevels,observedFloodClass}
 export const FLOOD_SIGNAL_STORAGE_KEY = "stormtracker.qld-flood-observations.v1";
 export const FLOOD_SIGNAL_HISTORY_MS = 48 * 60 * 60 * 1000;
 export const FLOOD_SIGNAL_MAX_AGE_MS = 90 * 60 * 1000;
-export const FLOOD_SIGNAL_MAX_INTERVAL_MS = 120 * 60 * 1000;
+// The operational rate is always the latest 30-minute change, never a
+// variable 30–120-minute comparison. Bracketing observations must be close
+// enough to the target time to avoid fabricating a 30-minute rate.
 export const FLOOD_SIGNAL_MIN_INTERVAL_MS = 30 * 60 * 1000;
+export const FLOOD_SIGNAL_MAX_INTERVAL_MS = FLOOD_SIGNAL_MIN_INTERVAL_MS;
+const RATE_BRACKET_MAX_OFFSET_MS = 15 * 60 * 1000;
 // MSQ 2026 tidal planes describe COASTAL reference rates, not inland floods.
 // Preserve conservative screening for *coastal-uncertain* and unlocated sites.
 // Far-inland stations are demonstrably outside the mapped 125 km tidal-risk
@@ -195,15 +199,20 @@ export function latestRiseRate(samples, nowMs=Date.now()) {
   if(sorted.length<2)return null;
   const latest=sorted.at(-1);
   if(latest.time>nowMs+5*60000 || nowMs-latest.time>FLOOD_SIGNAL_MAX_AGE_MS)return null;
-  const previous=[...sorted].reverse().slice(1).find(p=>
-    latest.time-p.time >= FLOOD_SIGNAL_MIN_INTERVAL_MS &&
-    latest.time-p.time <= FLOOD_SIGNAL_MAX_INTERVAL_MS
-  );
-  if(!previous)return null;
-  const durationHours=(latest.time-previous.time)/3600000;
-  return {rateMetresPerHour:(latest.height-previous.height)/durationHours,
-    changeMetres:latest.height-previous.height,intervalMinutes:durationHours*60,
-    observedAt:latest.time};
+  const target=latest.time-FLOOD_SIGNAL_MIN_INTERVAL_MS;
+  const earlier=[...sorted].reverse().find(p=>p.time<=target);
+  const later=sorted.find(p=>p.time>=target);
+  // A true 30-minute comparison requires an observed level at that time,
+  // or interpolation between readings within 15 minutes on either side.
+  // Never extrapolate from a sparse 60–120-minute record.
+  if(!earlier||!later||target-earlier.time>RATE_BRACKET_MAX_OFFSET_MS||
+      later.time-target>RATE_BRACKET_MAX_OFFSET_MS)return null;
+  const baselineHeight=earlier.time===later.time?earlier.height:
+    earlier.height+(later.height-earlier.height)*
+      (target-earlier.time)/(later.time-earlier.time);
+  const changeMetres=latest.height-baselineHeight;
+  return {rateMetresPerHour:changeMetres/(FLOOD_SIGNAL_MIN_INTERVAL_MS/3600000),
+    changeMetres,intervalMinutes:30,observedAt:latest.time,baselineHeight};
 }
 
 function percentile(values,fraction) {

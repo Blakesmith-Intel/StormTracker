@@ -44,6 +44,18 @@ assert.deepEqual(parsed,[
  {time:Date.UTC(2026,9,8,7,45),height:1.5}
 ]);
 assert.equal(parseBomRecentWaterLevels(table([["07/10/2026 10:00","-0.31"]]),{nowMs:now}).at(0).height,-0.31);
+const sourceClockVariants=parseBomRecentWaterLevels(table([
+  ["Thu 08/10/2026 5:30 pm AEST","1.20"],
+  ["08/10/2026 18:15 (AEST)","1.80"],
+  ["Thu 08/10/2026 18:00","1.50"]
+]),{nowMs:now});
+assert.deepEqual(sourceClockVariants.map(p=>p.height),[1.20,1.50,1.80],
+  "Official weekday, AEST and AM/PM time notations must survive same-station history parsing");
+assert.equal(parseBomRecentWaterLevels(table([
+  ["08/10/2026 13:00 PM","1.80"]
+]),{nowMs:now}).length,0,
+  "Invalid 12-hour clock values must not be guessed");
+
 assert.equal(parseBomRecentWaterLevels("<table><tr><td>wrong</td></tr></table>",{nowMs:now}).length,0);
 assert.equal(parseBomRecentWaterLevels(table([["06/10/2026 16:15","1.3"]]),{nowMs:now,maxAgeHours:4}).length,0);
 assert.deepEqual(inspectBomRecentWaterLevelTable(table([]),{nowMs:now}).samples,[]);

@@ -432,7 +432,7 @@ jobs:
           grep -Fq 'doppler-png-502-cooldown-v1-20261018' <<< "$live_engine"
           history_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/bom-recent-river-history-v1.js")"
           grep -Fq 'if(explicitlyTidal)return null' <<< "$history_source"
-          grep -Fq 'if(!classified && !inland)return null' <<< "$history_source"
+          grep -Fq 'if(!classified && !inland && !crossingReached)return null' <<< "$history_source"
           gauge_source="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-gauge-layer-v1.js")"
           grep -Fq '.slice(0,64)' <<< "$gauge_source"
           grep -Fq 'TERRAIN-SAFE OUTAGE POLYGONS 2026-10-18' <<< "$root"

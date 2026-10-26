@@ -253,6 +253,15 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   const timely=observed!==null && Number.isFinite(observed) &&
     nowMs-observed<=FLOOD_SIGNAL_MAX_AGE_MS &&
     observed<=nowMs+5*60000;
+  // A stale apparent flood height contradicted by BOTH the current BoM
+  // bulletin and the exact-station history must never remain a red confirmed
+  // flood, nor be silently presented as safe after an older 0 m reading.
+  if(p.STORMTRACKER_STATION_TABLE_CONFLICT){
+    return {show:true,state:"unverified",source:"bom-uncorroborated-cache",
+      reason:String(p.STORMTRACKER_STATION_TABLE_CONFLICT),
+      rapidRise:false,tidalScreened:tidal,rise:null,stale:true,
+      classificationUnverified:true,lastObservedAt:observed};
+  }
   const classAt=Number(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_AT)||0;
   // Only a genuine timestamped observation can supersede an older flood
   // bulletin. Missing thresholds keep the last-confirmed caution intact.

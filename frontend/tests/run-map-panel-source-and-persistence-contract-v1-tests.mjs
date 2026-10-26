@@ -23,7 +23,9 @@ assert.match(gauge,/Event state/);
 assert.match(layer,/reconcileFloodEvents\(/);
 assert.match(layer,/FLOOD_EVENTS_STORAGE_KEY/);
 assert.match(layer,/persistEventState\(/);
-assert.match(events,/RECOVERY_MIN_GAP_MS=15\*60000/);
+assert.match(events,/FLOOD_EVENT_RECOVERY_COUNT=1/);
+assert.match(events,/belowCrossing/);
+assert.match(events,/backToPreRise/);
 for(const panel of ["riverGaugeInfoRows","powerOutageInfoRows","floodRoadClosureInfoRows"])
  assert.ok(css.includes("#"+panel+" > a"),
    `Clickable ${panel} source URLs must receive legible styling`);

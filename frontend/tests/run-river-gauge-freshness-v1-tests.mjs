@@ -7,6 +7,8 @@ import {
   OFFICIAL_FLOOD_STORAGE_KEY,cleanConfirmedFloodStations,
   retainConfirmedFloodStations
 } from "../src/context-layers/river-official-flood-persistence-v1.js";
+import {FLOOD_STAGE_MAX_AGE_MS} from "../src/context-layers/river-flood-signals-v1.js";
+import {cleanFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
 import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
 import {DEFAULT_RIVER_GAUGE_REFRESH_MS} from "../src/context-layers/river-gauges-v1.js";
 import {withStationFloodLevels} from "../src/context-layers/river-flood-thresholds-v1.js";
@@ -83,4 +85,67 @@ const cleared=retainConfirmedFloodStations([recovered],classState.cache,now);
 assert.equal(cleared.cache["bom:535142"],undefined);
 assert.equal(cleared.features[0].properties.STORMTRACKER_HEIGHT_METRES,0.20);
 assert.equal(cleared.features[0].properties.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS,undefined);
+
+// 26 Oct 2026 Nerada (032165): BoM last actual readings ~0.94–1.04 m on
+// 21 Oct; relay confirms no recent observations. StormTracker had an
+// unsupported cached 19.59 m "major" five days later. It must disappear.
+const eventNow=Date.UTC(2026,9,26,4,46); // Mon 14:46 AEST
+const nerada=station("032165","North Johnstone River at Nerada",19.59,
+  "01.53PM Wed 21/10/2026","major","rising");
+const lastVerified=Date.UTC(2026,9,21,3,53);
+assert.equal(FLOOD_STAGE_MAX_AGE_MS,24*3600000);
+const discardedLatest=retainLatestGaugeObservations([nerada],{},eventNow);
+assert.equal(discardedLatest.cache["bom:032165"],undefined,
+  "Old unsupported heights MUST NOT persist in the browser cache");
+const discardedConfirmed=retainConfirmedFloodStations([nerada],{
+  "bom:032165":{observedAt:lastVerified,feature:nerada}
+},eventNow);
+assert.equal(discardedConfirmed.cache["bom:032165"],undefined,
+  "Last-confirmed major flood must expire when no current BoM evidence exists");
+assert.equal(reconcileFloodEvents(
+  withStationFloodLevels(discardedConfirmed.features),{},{},eventNow
+).features.length,0,"Nerada unsupported 19.59 m must have no flood icon");
+const vanishedEvent=cleanFloodEvents({"bom:032165":{
+ type:"rapid-rise",activatedAt:lastVerified-60*60000,
+ lastObservedAt:lastVerified,lastHeight:19.59,baselineHeight:0.94,
+ peakHeight:19.59,recoveryMarginMetres:0.1,
+ recoveryCount:0,lastRecoveryAt:null
+}},eventNow);
+assert.equal(Object.keys(vanishedEvent).length,0,
+ "Post-rise events must not resurrect a days-old flood icon");
+
+// The exact station-ID mismatch seen in Nerada's popup is an INTEGRITY
+// rejection, not merely a grey icon or warning while showing a red flood.
+const mismatch=station("032165","Nerada",19.59,
+  "02.35PM Mon 26/10/2026","major","rising");
+mismatch.properties.bom_stn_num="032164";
+const mismatched=withStationFloodLevels([mismatch])[0];
+assert.ok(mismatched.properties.STORMTRACKER_IDENTITY_WARNING);
+assert.equal(reconcileFloodEvents([mismatched],{},{},eventNow).features.length,0,
+ "A mismatched station ID must NEVER map any severity");
+assert.equal(retainConfirmedFloodStations([mismatched],{
+ "bom:032165":{observedAt:eventNow-60*60000,feature:nerada}
+},eventNow).cache["bom:032165"],undefined,
+ "Cached major cannot override current ID-integrity failure");
+
+// Genuine manual or event-driven flood records remain available in the
+// short missing-telemetry window, but must disappear after 24 hours.
+const manual=station("540510","Teviot Brook Coulson Crossing",4.65,
+  "11.58AM Mon 26/10/2026","major","steady");
+const manualNow=Date.UTC(2026,9,26,4,46);
+const manualHeld=retainConfirmedFloodStations([manual],{},manualNow);
+assert.ok(manualHeld.cache["bom:540510"],
+  "Do not prematurely retire a several-hour-old manual major reading");
+assert.equal(reconcileFloodEvents(
+  withStationFloodLevels(manualHeld.features),{},{},manualNow
+).features.length,1);
+const expiredAt=Date.UTC(2026,9,27,2,0); // >24 h from 11:58 26 Oct AEST?
+const actualExpire=Date.UTC(2026,9,27,2,0);
+assert.ok(actualExpire-Date.UTC(2026,9,26,1,58)>FLOOD_STAGE_MAX_AGE_MS);
+const manualExpired=retainConfirmedFloodStations([],manualHeld.cache,actualExpire);
+assert.equal(manualExpired.features.length,0);
+assert.equal(Object.keys(manualExpired.cache).length,0);
+assert.equal(reconcileFloodEvents(
+  withStationFloodLevels([manual]),{},{},actualExpire
+).features.length,0,"Manual observations must expire without an update");
 console.log("PASS real Tarana/Panorama source timestamps, independent current heights and flood class, replay resistance and 10-minute refresh.");

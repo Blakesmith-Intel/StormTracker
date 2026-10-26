@@ -188,7 +188,7 @@ assert.equal(sameMinute.properties.STORMTRACKER_HEIGHT_METRES,0.04,
 // Live 26 Oct source investigation: cached 16.05 m/08:34 was NEWER only
 // according to its misleading weekday-only timestamp. The BoM live bulletin
 // and exact station table BOTH confirm 0.00 m/05:36. Do not present major or
-// declare the current crossing safe; show an unverified neutral marker.
+// declare the current crossing safe; retire its unsupported map marker.
 const sandyPublished={...sandy,properties:{...sandy.properties,
   STORMTRACKER_HEIGHT_METRES:0,STORMTRACKER_FLOOD_CLASS:"",
   STORMTRACKER_OBSERVED_TEXT:"05.36AM Mon 26/10/2026"}};
@@ -210,9 +210,8 @@ assert.equal(recoveredMajor.cache["bom:540386"],undefined,
   "Two corroborating exact station sources must clear unverified cached major");
 assert.equal(recoveredMajor.features[0].properties.STORMTRACKER_HEIGHT_METRES,0);
 const mapState=reconcileFloodEvents(recoveredMajor.features,{}, {},recoveryNow);
-assert.equal(mapState.features[0]?.properties.STORMTRACKER_DISPLAY_STATE,"unverified",
-  "Show uncertain source discrepancy, not falsely confirmed major or safe");
-assert.equal(mapState.features[0]?.properties.STORMTRACKER_RAPID_RISE,false);
+assert.equal(mapState.features.length,0,
+  "Discard an uncorroborated cached flood icon; absence is NOT a declaration of safe conditions");
 const unsupported=reconcileOfficialBoMTableHeight(sandy,historySameStation,
   recoveryNow,{...sandyPublished,properties:{...sandyPublished.properties,
     STORMTRACKER_HEIGHT_METRES:2.2}});

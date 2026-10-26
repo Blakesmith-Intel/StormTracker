@@ -1,11 +1,15 @@
 // Offline/browser-only persistence of source-CONFIRMED flood-class stations.
 // Never match by site name. Any newer BoM below-minor observation clears its
 // own exact station ID. A stale missing observation is NOT proof of recovery.
-import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=20261018-inland-rise";
+import {parseQueenslandObservationTime,FLOOD_STAGE_MAX_AGE_MS} from "./river-flood-signals-v1.js?v=20261018-inland-rise";
 import {stationFloodLevels,observedFloodClass}
   from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
 export const OFFICIAL_FLOOD_STORAGE_KEY="stormtracker.qld-confirmed-flood-stations.v1";
+// The absence of new telemetry must NOT preserve a flood classification
+// indefinitely. After 24 h without a source-observed flood level, retire
+// the map record without asserting that the crossing is safe.
+export const FLOOD_CONFIRMATION_MAX_AGE_MS=FLOOD_STAGE_MAX_AGE_MS;
 const officialLevels=new Set(["minor","moderate","major"]);
 const normalised=value=>String(value??"").trim().toLowerCase();
 const stationId=id=>/^(bom|awrc):[a-z0-9_-]+$/i.test(String(id??""));
@@ -28,7 +32,10 @@ function safeRecord(id,record,now){
   if(!stationId(id)||String(f?.id)!==String(id)||!validPoint(f) ||
       !officialLevels.has(normalised(f?.properties?.STORMTRACKER_FLOOD_CLASS))||
       !Number.isFinite(observedAt)||observedAt<=0||
-      observedAt>now+5*60000)return null;
+      observedAt>now+5*60000||
+      now-observedAt>FLOOD_CONFIRMATION_MAX_AGE_MS||
+      f.properties?.STORMTRACKER_IDENTITY_WARNING||
+      f.properties?.STORMTRACKER_STATION_TABLE_CONFLICT)return null;
   const latest=record?.latestFeature;
   const latestAt=Number(record?.latestObservedAt);
   const verifiedLatest=latest && String(latest.id)===id && validPoint(latest) &&
@@ -59,6 +66,14 @@ export function retainConfirmedFloodStations(features,previous={},now=Date.now()
   for(const incoming of features??[]){
     const id=String(incoming?.id??"");
     if(!stationId(id)||!validPoint(incoming))continue;
+    // A mapped/source station-ID contradiction cannot support a flood stage.
+    // Do not let a mismatched live bulletin resurrect an old cached major.
+    if(incoming.properties?.STORMTRACKER_IDENTITY_WARNING||
+       incoming.properties?.STORMTRACKER_STATION_TABLE_CONFLICT){
+      delete cache[id];
+      current.set(id,incoming);
+      continue;
+    }
     const at=confirmedObservationAt(incoming,now);
     // The bulletin and exact-station BoM table independently disproved a
     // falsely newer cached flood height (e.g. Sandy Creek 540386 on 26 Oct).
@@ -72,7 +87,8 @@ export function retainConfirmedFloodStations(features,previous={},now=Date.now()
     // confirmed flood classification, not INSTEAD of it.
     const latestAt=prior?.latestObservedAt??priorAt;
     const latest=prior?.latestFeature??prior?.feature;
-    const validAt=Number.isFinite(at)&&at>0&&at<=now+5*60000;
+    const validAt=Number.isFinite(at)&&at>0&&at<=now+5*60000 &&
+      now-at<=FLOOD_CONFIRMATION_MAX_AGE_MS;
     const isEarlier=validAt&&at<latestAt;
     const observation=isEarlier && latest ? latest:incoming;
     const observationAt=isEarlier?latestAt:at;
@@ -98,7 +114,7 @@ export function retainConfirmedFloodStations(features,previous={},now=Date.now()
       }
     }
     const confirmed=cache[id];
-    if(confirmed && !officialLevels.has(currentClass) &&
+    if(confirmed && validAt && !officialLevels.has(currentClass) &&
        currentClass!=="below-minor"){
       const props={...(observation.properties??{}),
         STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS:

@@ -3,15 +3,14 @@
 // invented from neighbouring gauges or inferred using rainfall.
 import {
  evaluateFloodSignal,parseQueenslandObservationTime,
- latestRiseRate,latestMeasuredRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS
+ latestRiseRate,latestMeasuredRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS,FLOOD_STAGE_MAX_AGE_MS
 } from "./river-flood-signals-v1.js?v=9.13.2";
 import {stationFloodLevels} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
 
 export const FLOOD_EVENTS_STORAGE_KEY="stormtracker.qld-flood-events.v1";
-export const FLOOD_EVENT_RECOVERY_COUNT=2;
-const RECOVERY_MIN_GAP_MS=15*60000;
-const EVENT_STALE_LIMIT_MS=48*3600000;
+export const FLOOD_EVENT_RECOVERY_COUNT=1;
+const EVENT_STALE_LIMIT_MS=FLOOD_STAGE_MAX_AGE_MS;
 const eventId=id=>/^(bom|awrc):[a-z0-9_-]+$/i.test(String(id??""));
 const isNumber=x=>typeof x==="number"&&Number.isFinite(x);
 const officialStates=new Set(["minor","moderate","major"]);
@@ -94,9 +93,10 @@ function showFeature(feature,decision,{state=decision.state,
 }
 // A BoM stage remains on-screen while at/above minor; a fresh BELOW-minor
 // verified height removes the stage even if an earlier flood class lingers.
-// A threshold-free event stays visible while above its original measured
-// pre-rise reference, including steady or falling water; only two fresh,
-// distinct observations at the reference confirm recovery.
+// A threshold-free event stays visible only while the current height remains
+// above its own verified pre-rise range / an exact published crossing level.
+// One NEW, fresh same-station reading below that reference ends monitoring;
+// waiting for further manual observations can leave an irrelevant pin forever.
 export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.now(),crossingCatalogue=null){
  const prior=cleanFloodEvents(oldEvents,now),events={};
  const selected=[],counts={minor:0,moderate:0,major:0,rapidRise:0,tidalAnomaly:0};
@@ -117,7 +117,9 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   let event=prior[id];
   // Never carry a rate-only alert through published flood-stage gauges,
   // the tidal screen, or an authoritative current flood class.
-  if(!noMinor||tidal||officialStates.has(decision.state))event=null;
+  if(!noMinor||tidal||officialStates.has(decision.state)||
+     p.STORMTRACKER_IDENTITY_WARNING||
+     p.STORMTRACKER_STATION_TABLE_CONFLICT)event=null;
   const newlyRapid=decision.show&&decision.state==="rapid-rise"&&
     Boolean(decision.rapidRise)&&!tidal&&noMinor&&isFresh;
   if(newlyRapid){
@@ -138,36 +140,32 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   }
   let kept=decision.show?showFeature(feature,decision):null;
   if(event){
-   if(isFresh && observation>event.lastObservedAt){
-    const reached=height<=event.baselineHeight+event.recoveryMarginMetres &&
-      !decision.rapidRise &&
-      String(p.STORMTRACKER_TENDENCY??"").toLowerCase()!=="rising";
-    const confirming=reached &&
-      (event.lastRecoveryAt===null||
-       observation-event.lastRecoveryAt>=RECOVERY_MIN_GAP_MS);
-    const recoveryCount=confirming?event.recoveryCount+1:
-      reached?event.recoveryCount:0;
-    if(recoveryCount>=FLOOD_EVENT_RECOVERY_COUNT){
-     // Two separate, current source readings back at the pre-rise level:
-     // terminate the event and remove the marker, not a stale warning.
+   // Recovery is a measured SAME-STATION fact, not BoM's separate
+   // rising/falling/steady tendency. A station can return to normal with
+   // only one new manual observation and then stop publishing altogether.
+   const newer=isFresh && observation>event.lastObservedAt &&
+     !p.STORMTRACKER_IDENTITY_WARNING &&
+     !p.STORMTRACKER_STATION_TABLE_CONFLICT;
+   const backToPreRise=height<=event.baselineHeight+event.recoveryMarginMetres;
+   const belowCrossing=Boolean(crossing&&height<crossing.heightMetres);
+   if(newer && !newlyRapid && !decision.rapidRise &&
+       (backToPreRise||belowCrossing)){
      event=null;
      if(!decision.show)kept=null;
-    }else event={...event,lastObservedAt:observation,lastHeight:height,
-      peakHeight:Math.max(event.peakHeight,height),
-      recoveryCount,lastRecoveryAt:confirming?observation:
-        reached?event.lastRecoveryAt:null};
+   }else if(newer){
+     event={...event,lastObservedAt:observation,lastHeight:height,
+       peakHeight:Math.max(event.peakHeight,height),recoveryCount:0,
+       lastRecoveryAt:null};
    }
    if(event){
     if(!newlyRapid && !officialStates.has(decision.state)){
      const stale=!isFresh;
-     const pendingRecovery=event.recoveryCount>0;
      kept=showFeature(feature,decision,{
       state:"elevated",rapidRise:false,stale,persisted:true,
-      recoveryCount:event.recoveryCount,baseline:event.baselineHeight,
+      recoveryCount:0,baseline:event.baselineHeight,
       source:"measured-pre-rise-reference",
       reason:"Water remains under post-rise observation relative to this gauge's measured pre-rise level "+
        event.baselineHeight.toFixed(2)+" m"+
-       (pendingRecovery?"; recovery confirmation "+event.recoveryCount+"/2":"")+
        (stale?"; latest height is stale, recovery not verified":"")+
        ". Not an official BoM flood threshold."
      });

@@ -260,7 +260,12 @@ export function planBoMStationTableLookups(features,{
     const noPublishedCrossing=!knownSection5[id];
     // Priority is ONLY the order in which to CHECK an official source.
     // A high current height cannot invent a bridge or flood classification.
-    const priority=needsHistory&&fresh?0:
+    // Recover stale classified gauges first: their previously displayed
+    // flood stage is unverified until current station history corroborates it.
+    const staleFlood=needsHistory&&!fresh&&
+      ["minor","moderate","major"].includes(
+        String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase());
+    const priority=staleFlood?-1:needsHistory&&fresh?0:
       needsCrossing&&fresh&&noStage&&noPublishedCrossing&&tendency==="rising"?1:
       needsCrossing&&fresh&&noStage&&noPublishedCrossing&&
         p.STORMTRACKER_HEIGHT_METRES>=1.5?2:

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import {retainConfirmedFloodStations} from "../src/context-layers/river-official-flood-persistence-v1.js";
+import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
+
 import {
   officialRecentTableTarget,
   parseBomRecentWaterLevels,
   inspectBomRecentWaterLevelTable,
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
+  reconcileOfficialBoMTableHeight,
   classifyBoMRecentHistoryFailure,
   fetchBoMRecentHistory
 } from "../src/context-layers/bom-recent-river-history-v1.js";
@@ -120,6 +124,92 @@ const staleExisting={"bom:540384":[
 ]};
 assert.ok(recentFloodHistoryGap(feature(false,"minor"),staleExisting,now),
   "A rise predating the latest bulletin must still be marked unassessed");
+
+// Regression for 26 Oct 2026: Sandy Creek Road was incorrectly displayed
+// as 16.05 m major when its same-station BoM plot/table stayed near zero.
+const recoveryNow=Date.UTC(2026,9,26,3,54); // 13:54 AEST
+const oldSandy=Date.UTC(2026,9,25,22,34); // 08:34 AEST
+const sandy={id:"bom:540386",type:"Feature",
+  geometry:{type:"Point",coordinates:[152.4,-27.5]},
+  properties:{bom_stn_num:"540386",location_types:"water level gauge;",
+    STORMTRACKER_HEIGHT_METRES:16.05,
+    STORMTRACKER_OBSERVED_TEXT:"08.34AM Mon 26/10/2026",
+    STORMTRACKER_FLOOD_CLASS:"major",
+    STORMTRACKER_RECENT_DATA_HREF:
+      "/fwo/IDQ65389/IDQ65389.540386.plt.shtml"}};
+assert.ok(recentFloodHistoryGap(sandy,{},recoveryNow)?.target,
+  "A stale MAJOR station must still query its own official table");
+const sandySamples=[
+ {time:Date.UTC(2026,9,26,2,38),height:0.03},
+ {time:Date.UTC(2026,9,26,3,38),height:0.04}
+];
+const sandyRecovered=reconcileOfficialBoMTableHeight(sandy,sandySamples,recoveryNow);
+assert.equal(sandyRecovered.properties.STORMTRACKER_HEIGHT_METRES,0.04);
+assert.equal(sandyRecovered.properties.STORMTRACKER_FLOOD_CLASS,"below-minor");
+assert.equal(sandyRecovered.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT,
+  Date.UTC(2026,9,26,3,38));
+assert.equal(sandyRecovered.properties.STORMTRACKER_OBSERVED_TEXT,
+  "01:38pm Mon 26/10/2026");
+assert.equal(reconcileOfficialBoMTableHeight(sandy,
+  [{time:oldSandy-3600000,height:0.02}],recoveryNow),sandy,
+  "Older table readings must NEVER override newer official observations");
+assert.equal(reconcileOfficialBoMTableHeight({...sandy,id:"bom:999999"},
+  sandySamples,recoveryNow).properties.STORMTRACKER_HEIGHT_METRES,16.05,
+  "No cross-station borrowing");
+const sameMinute=reconcileOfficialBoMTableHeight({...sandy,properties:{
+  ...sandy.properties,STORMTRACKER_OBSERVED_TEXT:"01:38pm Mon 26/10/2026",
+  STORMTRACKER_HEIGHT_METRES:16.05
+}},sandySamples,recoveryNow);
+assert.equal(sameMinute.properties.STORMTRACKER_HEIGHT_METRES,0.04,
+  "Table measurement must correct a contradicting bulletin at the same timestamp");
+// Live 26 Oct source investigation: cached 16.05 m/08:34 was NEWER only
+// according to its misleading weekday-only timestamp. The BoM live bulletin
+// and exact station table BOTH confirm 0.00 m/05:36. Do not present major or
+// declare the current crossing safe; show an unverified neutral marker.
+const sandyPublished={...sandy,properties:{...sandy.properties,
+  STORMTRACKER_HEIGHT_METRES:0,STORMTRACKER_FLOOD_CLASS:"",
+  STORMTRACKER_OBSERVED_TEXT:"05.36AM Mon 26/10/2026"}};
+const bulletinTime=Date.UTC(2026,9,25,19,36); // 05:36 Monday AEST
+const historySameStation=[{time:bulletinTime-3600000,height:0},
+  {time:bulletinTime,height:0}];
+const supported=reconcileOfficialBoMTableHeight(
+  sandy,historySameStation,recoveryNow,sandyPublished);
+assert.equal(supported.properties.STORMTRACKER_HEIGHT_METRES,0);
+assert.equal(supported.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT,bulletinTime);
+assert.equal(supported.properties.STORMTRACKER_FLOOD_CLASS,"below-minor");
+assert.match(supported.properties.STORMTRACKER_STATION_TABLE_CONFLICT,/Unverified/);
+const cachedMajor=retainConfirmedFloodStations([sandy],{},recoveryNow);
+assert.ok(cachedMajor.cache["bom:540386"],
+  "Regression fixture must reproduce the stale cached major");
+const recoveredMajor=retainConfirmedFloodStations(
+  [supported],cachedMajor.cache,recoveryNow);
+assert.equal(recoveredMajor.cache["bom:540386"],undefined,
+  "Two corroborating exact station sources must clear unverified cached major");
+assert.equal(recoveredMajor.features[0].properties.STORMTRACKER_HEIGHT_METRES,0);
+const mapState=reconcileFloodEvents(recoveredMajor.features,{}, {},recoveryNow);
+assert.equal(mapState.features[0]?.properties.STORMTRACKER_DISPLAY_STATE,"unverified",
+  "Show uncertain source discrepancy, not falsely confirmed major or safe");
+assert.equal(mapState.features[0]?.properties.STORMTRACKER_RAPID_RISE,false);
+const unsupported=reconcileOfficialBoMTableHeight(sandy,historySameStation,
+  recoveryNow,{...sandyPublished,properties:{...sandyPublished.properties,
+    STORMTRACKER_HEIGHT_METRES:2.2}});
+assert.equal(unsupported,sandy,
+  "Conflicting or absent bulletin corroboration must not discard a newer reading");
+const coulson={...sandy,id:"bom:540510",properties:{
+ ...sandy.properties,bom_stn_num:"540510",
+ STORMTRACKER_RECENT_DATA_HREF:
+ "/fwo/IDQ65388/IDQ65388.540510.plt.shtml",
+ STORMTRACKER_HEIGHT_METRES:4.65,
+ STORMTRACKER_OBSERVED_TEXT:"11.58AM Mon 26/10/2026"
+}};
+assert.ok(recentFloodHistoryGap(coulson,{},recoveryNow)?.target,
+  "Coulson Crossing needs table history despite stale bulletin");
+const coulsonUpdated=reconcileOfficialBoMTableHeight(coulson,[
+ {time:Date.UTC(2026,9,26,2,38),height:4.50},
+ {time:Date.UTC(2026,9,26,3,38),height:4.70}
+],recoveryNow);
+assert.equal(coulsonUpdated.properties.STORMTRACKER_HEIGHT_METRES,4.70);
+assert.equal(coulsonUpdated.properties.STORMTRACKER_FLOOD_CLASS,"major");
 
 const target=officialRecentTableTarget("/fwo/IDQ65388/IDQ65388.540384.plt.shtml");
 for(const [status,code,scope] of [

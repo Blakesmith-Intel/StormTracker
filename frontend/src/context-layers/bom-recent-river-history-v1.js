@@ -1,6 +1,7 @@
 import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
 import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
 import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
+import {stationFloodLevels, observedFloodClass} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
 // BoM publishes recent tabular readings alongside each public .plt.shtml
 // gauge plot. Parse only the first date/water-level table; never infer data
@@ -96,6 +97,68 @@ export function inspectBomRecentWaterLevelTable(html,options={}) {
     dataRows:Math.max(0,rows.length-1)};
 }
 
+// The same verified station table also carries the latest measured HEIGHT.
+// Previously it was used only for the rate/bridge lookup, leaving a stale or
+// contradictory bulletin height visible even after newer source data arrived.
+// Never promote another station, a future timestamp, or an older table reading.
+export function reconcileOfficialBoMTableHeight(
+  feature,samples,nowMs=Date.now(),publishedFeature=null
+){
+  const id=String(feature?.id??""),p=feature?.properties??{};
+  if(!/^bom:\d{6}$/.test(id)||String(p.bom_stn_num??"").padStart(6,"0")!==id.slice(4)||
+      !Array.isArray(samples)||!samples.length)return feature;
+  const latest=samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height)&&
+      x.time<=nowMs+5*60000&&x.time>=nowMs-48*3600000)
+    .sort((a,b)=>a.time-b.time).at(-1);
+  if(!latest)return feature;
+  const stored=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
+  const fromBulletin=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
+  const prior=Number.isFinite(stored)&&stored>0 ? stored:fromBulletin;
+  const levels=stationFloodLevels(feature);
+  const priorFlood=levels?observedFloodClass(p.STORMTRACKER_HEIGHT_METRES,levels):undefined;
+  const tableFlood=levels?observedFloodClass(latest.height,levels):undefined;
+  const published=publishedFeature?.id===id?publishedFeature.properties??{}:null;
+  const publishedAt=published?parseQueenslandObservationTime(
+    published.STORMTRACKER_OBSERVED_TEXT,nowMs):null;
+  // A prior bulletin from a previous Monday can be wrongly interpreted as
+  // THIS Monday when BoM's bulletin lacks a full date. Do not roll back a
+  // valid newer reading on one older source alone. Require BOTH live bulletin
+  // and independent same-station table to agree on date and height, a stale
+  // contradictory cached observation, and a discrepancy across minor stage.
+  const confirmedCacheConflict=Number.isFinite(prior)&&
+    nowMs-prior>FLOOD_SIGNAL_MAX_AGE_MS&&latest.time<prior&&
+    latest.time===publishedAt &&
+    Math.abs(Number(published?.STORMTRACKER_HEIGHT_METRES)-latest.height)<0.011 &&
+    ["minor","moderate","major"].includes(priorFlood)&&tableFlood===null;
+  if(Number.isFinite(prior)&&latest.time<prior&&!confirmedCacheConflict)return feature;
+  if(latest.time===prior&&latest.height===p.STORMTRACKER_HEIGHT_METRES)return feature;
+  const local=new Date(latest.time+10*3600000);
+  const pad=v=>String(v).padStart(2,"0");
+  const hour=local.getUTCHours();
+  const observedText=pad(hour%12||12)+":"+pad(local.getUTCMinutes())+
+    (hour>=12?"pm ":"am ")+
+    ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][local.getUTCDay()]+" "+
+    pad(local.getUTCDate())+"/"+pad(local.getUTCMonth()+1)+"/"+
+    local.getUTCFullYear();
+  const calculated=tableFlood;
+  return {...feature,properties:{...p,
+    STORMTRACKER_HEIGHT_METRES:latest.height,
+    STORMTRACKER_OBSERVED_TEXT:observedText,
+    STORMTRACKER_OFFICIAL_OBSERVED_AT:latest.time,
+    // Recalculate classification only against published exact-station levels.
+    // Without those levels, never preserve an obsolete major claim as current.
+    STORMTRACKER_FLOOD_CLASS:calculated===undefined?"":(calculated??"below-minor"),
+    ...(confirmedCacheConflict?{
+      STORMTRACKER_STATION_TABLE_CONFLICT:
+        "Unverified: discarded an uncorroborated cached flood reading ("+
+        Number(p.STORMTRACKER_HEIGHT_METRES).toFixed(2)+
+        " m). BoM's current bulletin and exact-station history both last "+
+        "confirm "+latest.height.toFixed(2)+" m at "+observedText+
+        "; the present level is not verified."
+    }:{})
+  }};
+}
+
 // A gap also exists when BoM supplies no valid table link. Do not silently
 // treat an unscreenable rising gauge as a negative rapid-rise result.
 // Only recover OPTIONAL history when it can affect the displayed flash-rise
@@ -121,8 +184,14 @@ export function recentFloodHistoryGap(feature,history={},nowMs=Date.now(),crossi
   // as flood-classified gauges do; don't download ordinary coastal stations.
   if(!classified && !inland && !crossingReached)return null;
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
-  if(observed===null || nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS ||
-    observed>nowMs+5*60000)return null;
+  // A stale classified/crossing gauge especially needs a fresh BoM table:
+  // previously this early return prevented recovery from stale major readings.
+  // Keep ordinary below-minor inland probes fresh-only to bound source traffic.
+  if(observed===null || observed>nowMs+5*60000)return null;
+  if(nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS &&
+      !classified && !crossingReached &&
+      !["minor","moderate","major"].includes(
+        String(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??"").toLowerCase()))return null;
   const sample=history[String(feature?.id??"")]??[];
   const valid=Array.isArray(sample)?sample.filter(x=>
     Number.isFinite(x?.time)&&Number.isFinite(x?.height)):[];
@@ -191,7 +260,12 @@ export function planBoMStationTableLookups(features,{
     const noPublishedCrossing=!knownSection5[id];
     // Priority is ONLY the order in which to CHECK an official source.
     // A high current height cannot invent a bridge or flood classification.
-    const priority=needsHistory&&fresh?0:
+    // Recover stale classified gauges first: their previously displayed
+    // flood stage is unverified until current station history corroborates it.
+    const staleFlood=needsHistory&&!fresh&&
+      ["minor","moderate","major"].includes(
+        String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase());
+    const priority=staleFlood?-1:needsHistory&&fresh?0:
       needsCrossing&&fresh&&noStage&&noPublishedCrossing&&tendency==="rising"?1:
       needsCrossing&&fresh&&noStage&&noPublishedCrossing&&
         p.STORMTRACKER_HEIGHT_METRES>=1.5?2:

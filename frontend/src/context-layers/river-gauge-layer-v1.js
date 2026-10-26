@@ -39,6 +39,7 @@ import {
   planBoMStationTableLookups,
   classifyBoMRecentHistoryFailure,
   fetchBoMRecentHistoryDetail,
+  reconcileOfficialBoMTableHeight,
   officialRecentTableTarget
 } from "./bom-recent-river-history-v1.js?v=9.13.1";
 
@@ -430,6 +431,9 @@ export function createRiverGaugeLayer({
   // the core radar map when an upstream 403/429/502/503/504 occurs.
   let recentRelayBlockedUntil = 0;
   let latestSourceFeatures = [];
+  // Uncached source bulletin observations, kept only for corroboration of
+  // conflicting cached heights against the independent BoM station table.
+  let latestPublishedById=new Map();
   let lastBulletinsPartial = false;
 
   function persistHistory(){
@@ -469,6 +473,7 @@ export function createRiverGaugeLayer({
     }
     recentLoading=(async()=>{
       let success=0,failures=0,noData=0,lastFailureScope=null;
+      const tableHeightUpdates=new Map();
       // Four simultaneous reads on the EXISTING BoM relay, rather than
       // 64 serial waits. Keep four simultaneous requests, 64 stations/pass.
       for(let i=0;i<candidates.length;i+=4){
@@ -500,10 +505,18 @@ export function createRiverGaugeLayer({
           const existing=new Map((history[target.id]??[])
             .map(x=>[x.time,x.height]));
           for(const obs of observations){
-            if(!existing.has(obs.time))existing.set(obs.time,obs.height);
+            // Station table is the canonical measurement at its own timestamp.
+            // Correct an erroneous earlier bulletin value on the same minute.
+            existing.set(obs.time,obs.height);
           }
           history[target.id]=[...existing].sort((a,b)=>a[0]-b[0])
             .map(([time,height])=>({time,height}));
+          const current=latestSourceFeatures.find(f=>f.id===target.id);
+          if(current){
+            const verified=reconcileOfficialBoMTableHeight(
+              current,observations,now(),latestPublishedById.get(target.id));
+            if(verified!==current)tableHeightUpdates.set(target.id,verified);
+          }
           success++;
         }catch(error){
           failures++;
@@ -528,6 +541,25 @@ export function createRiverGaugeLayer({
        }));
       }
       if(success||candidates.some(item=>plotCrossings[item.id])){
+        if(tableHeightUpdates.size){
+          latestSourceFeatures=latestSourceFeatures.map(f=>
+            tableHeightUpdates.get(f.id)??f);
+          // Update the SAME browser caches as a bulletin refresh so an older
+          // CDN bulletin cannot resurrect a false flood stage ten minutes later.
+          for(const [id,feature] of tableHeightUpdates){
+            latestHeightCache[id]={
+              observedAt:feature.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT,
+              feature
+            };
+          }
+          try{storage?.setItem(LATEST_RIVER_GAUGE_STORAGE_KEY,
+            JSON.stringify(latestHeightCache));}catch{}
+          const retained=retainConfirmedFloodStations(
+            latestSourceFeatures,confirmedFloodCache,now());
+          latestSourceFeatures=retained.features;
+          confirmedFloodCache=retained.cache;
+          persistConfirmedFloods();
+        }
         latestSourceFeatures=attachPlotCrossings(latestSourceFeatures);
         history=compactFloodHistory(history,latestSourceFeatures,now());
         persistHistory();
@@ -774,6 +806,7 @@ export function createRiverGaugeLayer({
           await loadRiverGaugeOperationalSnapshot({
             fetchImpl,force
           });
+        latestPublishedById=new Map(result.payload.features.map(f=>[f.id,f]));
         const newest=retainLatestGaugeObservations(
           result.payload.features,latestHeightCache,now());
         latestHeightCache=newest.cache;

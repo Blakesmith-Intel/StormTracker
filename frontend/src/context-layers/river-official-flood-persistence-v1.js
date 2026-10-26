@@ -60,6 +60,10 @@ export function retainConfirmedFloodStations(features,previous={},now=Date.now()
     const id=String(incoming?.id??"");
     if(!stationId(id)||!validPoint(incoming))continue;
     const at=confirmedObservationAt(incoming,now);
+    // The bulletin and exact-station BoM table independently disproved a
+    // falsely newer cached flood height (e.g. Sandy Creek 540386 on 26 Oct).
+    // Drop ONLY that contradicted local record, never an unrelated station.
+    if(incoming.properties?.STORMTRACKER_STATION_TABLE_CONFLICT)delete cache[id];
     const prior=cache[id];
     const priorAt=prior?.observedAt??-Infinity;
     const flood=normalised(incoming.properties?.STORMTRACKER_FLOOD_CLASS);

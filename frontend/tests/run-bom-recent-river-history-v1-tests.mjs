@@ -82,6 +82,15 @@ for(const tendency of ["steady","falling",""]){
 const coastal={...west,geometry:{type:"Point",coordinates:[153.432,-27.95]}};
 assert.equal(recentFloodHistoryCandidate(coastal,{},now),null,
   "Avoid large below-minor history downloads for ordinary coastal rise");
+const coastalCrossing={...coastal,properties:{...coastal.properties,
+  STORMTRACKER_HEIGHT_METRES:2.3,
+  STORMTRACKER_PLOT_CROSSING:{type:"B",heightMetres:2.0,
+    crossingName:"Exact station bridge"}}};
+assert.ok(recentFloodHistoryGap(coastalCrossing,{},now),
+  "Visible coastal crossing must fetch same-station measured history");
+assert.equal(recentFloodHistoryGap({...coastalCrossing,properties:{
+  ...coastalCrossing.properties,STORMTRACKER_HEIGHT_METRES:1.9
+}}, {},now),null,"Below-crossing coastal station does not create extra scans");
 const existing={"bom:540384":[
  {time:now-45*60000,height:1.0},{time:now-15*60000,height:1.6}
 ]};

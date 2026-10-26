@@ -32,7 +32,7 @@ assert.equal(state.features.length,1);
 assert.equal(state.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
 assert.equal(state.features[0].properties.STORMTRACKER_RAPID_RISE,true);
 assert.equal(state.events[id].baselineHeight,1.0,"Baseline is the same station's pre-rise level");
-assert.equal(FLOOD_EVENT_RECOVERY_COUNT,2);
+assert.equal(FLOOD_EVENT_RECOVERY_COUNT,1);
 const next=(at,height,tendency="falling")=>{
  history[id]=[...history[id],{time:at,height}];
  state=reconcileFloodEvents([measure(id,at,height,tendency)],history,
@@ -50,20 +50,27 @@ const appearance=riverGaugePanelAppearance({displayState:"elevated",rapidRise:fa
 assert.equal(appearance.rapidRise,false);
 assert.match(appearance.category,/POST-RISE ELEVATED/);
 assert.equal(floodIconPriority("elevated"),floodIconPriority("rapid-rise"));
-p=next(ts(45),1.12);
-assert.equal(p.STORMTRACKER_DISPLAY_STATE,"elevated");
-assert.equal(p.STORMTRACKER_RECOVERY_READINGS,1);
-assert.equal(state.events[id].recoveryCount,1);
-// Replaying the same source timestamp must not count as a second reading.
-let repeated=reconcileFloodEvents(
- [measure(id,ts(45),1.12)],history,state.events,ts(65));
-assert.equal(repeated.events[id].recoveryCount,1);
-assert.equal(repeated.features.length,1);
-state=repeated;
-p=next(ts(75),1.1);
-assert.equal(p,null,"Remove once TWO distinct readings return to pre-rise level");
+const risingStatusDoesNotBlockRecovery=next(ts(45),1.12,"rising");
+assert.equal(risingStatusDoesNotBlockRecovery,null,
+  "Remove on first new measured return to pre-rise range, even if BoM tendency says rising");
 assert.equal(state.events[id],undefined);
 assert.equal(state.features.length,0);
+
+// Replayed old source reading is not a fresh recovery. It cannot silently
+// remove an elevated marker when the event was awaiting a NEW observation.
+const oldEvent={
+ type:"rapid-rise",activatedAt:ts(-15),lastObservedAt:ts(15),
+ lastHeight:1.6,peakHeight:2.4,baselineHeight:1,
+ recoveryMarginMetres:0.14,recoveryCount:0,lastRecoveryAt:null
+};
+const repeated=reconcileFloodEvents([
+ measure(id,ts(15),1.6,"falling")
+],{[id]:[{time:ts(-45),height:1},{time:ts(-15),height:2.4},
+  {time:ts(15),height:1.6}]},{[id]:oldEvent},ts(65));
+assert.equal(repeated.features.length,1);
+assert.equal(repeated.features[0].properties.STORMTRACKER_DISPLAY_STATE,"elevated");
+assert.equal(repeated.events[id].lastObservedAt,ts(15),
+ "Replayed same timestamp cannot fabricate a new recovery");
 assert.deepEqual(cleanFloodEvents({[id]:{
  type:"rapid-rise",activatedAt:ts(-15),lastObservedAt:ts(-15),
  lastHeight:2.4,peakHeight:2.4,baselineHeight:1,
@@ -83,6 +90,53 @@ assert.equal(recovered.events[stage],undefined);
 assert.equal(reconcileFloodEvents([
  measure("bom:999992",ts(-15),1.6,"steady")
 ],{}, {},base).features.length,0);
+// Threshold-free crossing still has a road reference. When the current
+// observation drops BELOW its published crossing, clear post-rise monitoring
+// even if it has not yet reached the old pre-rise baseline.
+const crossingId="bom:999994";
+const crossingProp={type:"B",heightMetres:1.5,
+ crossingName:"BoM station bridge level",source:"Exact BoM station table"};
+const crossingFeature=(at,height,trend="steady")=>{
+ const f=measure(crossingId,at,height,trend);
+ f.properties.STORMTRACKER_PLOT_CROSSING=crossingProp;
+ return f;
+};
+const crossingHistory={[crossingId]:[
+ {time:ts(-45),height:1},
+ {time:ts(-15),height:2.4}
+]};
+let crossingState=reconcileFloodEvents(
+ [crossingFeature(ts(-15),2.4,"rising")],crossingHistory,{},base);
+assert.equal(crossingState.features[0].properties.STORMTRACKER_DISPLAY_STATE,
+ "crossing");
+assert.ok(crossingState.events[crossingId]);
+crossingHistory[crossingId].push({time:ts(15),height:1.8});
+crossingState=reconcileFloodEvents(
+ [crossingFeature(ts(15),1.8,"steady")],crossingHistory,
+ crossingState.events,ts(30));
+assert.equal(crossingState.features.length,1,
+ "Crossing still above published road height stays mapped");
+assert.equal(crossingState.features[0].properties.STORMTRACKER_DISPLAY_STATE,
+ "crossing");
+assert.ok(crossingState.events[crossingId]);
+crossingHistory[crossingId].push({time:ts(45),height:1.4});
+crossingState=reconcileFloodEvents(
+ [crossingFeature(ts(45),1.4,"rising")],crossingHistory,
+ crossingState.events,ts(60));
+assert.equal(crossingState.features.length,0,
+ "Crossing level has fallen below threshold: remove monitor icon immediately");
+assert.deepEqual(crossingState.events,{},
+ "Removed crossing must not resurrect from an old event cache");
+
+// Source-ID contradictions are never allowed to fall back to a lingering
+// monitoring icon, even if one previously existed for that same map ID.
+const mismatched=measure(id,ts(15),1.6,"steady");
+mismatched.properties.STORMTRACKER_IDENTITY_WARNING="Station mismatch";
+assert.equal(reconcileFloodEvents([mismatched],
+  {[id]:[{time:ts(-45),height:1},{time:ts(-15),height:2.4}]},
+  {[id]:oldEvent},ts(30)).features.length,0,
+ "Source identity conflict must not be displayed as a monitoring marker");
+
 // Tidal level changes never create a threshold-free flash-rise event.
 const tidal="bom:999993";
 const tideHistory={[tidal]:[{time:ts(-45),height:1},

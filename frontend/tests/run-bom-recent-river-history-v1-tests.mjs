@@ -83,7 +83,7 @@ const coastal={...west,geometry:{type:"Point",coordinates:[153.432,-27.95]}};
 assert.equal(recentFloodHistoryCandidate(coastal,{},now),null,
   "Avoid large below-minor history downloads for ordinary coastal rise");
 const existing={"bom:540384":[
- {time:now-60*60000,height:1.0},{time:now-15*60000,height:1.6}
+ {time:now-45*60000,height:1.0},{time:now-15*60000,height:1.6}
 ]};
 assert.equal(recentFloodHistoryCandidate(feature(false,"minor"),existing,now),null);
 // A missing official table URL is a genuine screening gap, not a negative

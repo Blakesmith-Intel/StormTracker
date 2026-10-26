@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import {retainConfirmedFloodStations} from "../src/context-layers/river-official-flood-persistence-v1.js";
+import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.js";
+
 import {
   officialRecentTableTarget,
   parseBomRecentWaterLevels,
@@ -175,6 +178,18 @@ assert.equal(supported.properties.STORMTRACKER_HEIGHT_METRES,0);
 assert.equal(supported.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT,bulletinTime);
 assert.equal(supported.properties.STORMTRACKER_FLOOD_CLASS,"below-minor");
 assert.match(supported.properties.STORMTRACKER_STATION_TABLE_CONFLICT,/Unverified/);
+const cachedMajor=retainConfirmedFloodStations([sandy],{},recoveryNow);
+assert.ok(cachedMajor.cache["bom:540386"],
+  "Regression fixture must reproduce the stale cached major");
+const recoveredMajor=retainConfirmedFloodStations(
+  [supported],cachedMajor.cache,recoveryNow);
+assert.equal(recoveredMajor.cache["bom:540386"],undefined,
+  "Two corroborating exact station sources must clear unverified cached major");
+assert.equal(recoveredMajor.features[0].properties.STORMTRACKER_HEIGHT_METRES,0);
+const mapState=reconcileFloodEvents(recoveredMajor.features,{}, {},recoveryNow);
+assert.equal(mapState.features[0]?.properties.STORMTRACKER_DISPLAY_STATE,"unverified",
+  "Show uncertain source discrepancy, not falsely confirmed major or safe");
+assert.equal(mapState.features[0]?.properties.STORMTRACKER_RAPID_RISE,false);
 const unsupported=reconcileOfficialBoMTableHeight(sandy,historySameStation,
   recoveryNow,{...sandyPublished,properties:{...sandyPublished.properties,
     STORMTRACKER_HEIGHT_METRES:2.2}});

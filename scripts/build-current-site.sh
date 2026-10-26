@@ -170,6 +170,31 @@ version_once("src/context-layers/power-outages-operational-v1.js",
     "power-outage-suburb-explorer-v1.js?v=council-customers-20261017-v1")
 version_once("src/context-layers/power-outage-suburb-explorer-v1.js",
     "outage-lga-spatial-v2.js?v=outage-geometry-lga-20261020-v1")
+# Invalidate ONLY the published flood-gauge module import chain after the
+# measured history/rate fix. All other assets retain their approved cache keys.
+gauge_cache_suffix="-bom-gauge-history-30to120-20261026"
+for relative,needle in (
+    ("index.html","-jasper-alfred-v1"+suffix),
+    ("live3d-operational-v9.html","-jasper-alfred-archive-v1"+suffix),
+    ("src/live3d-operational-v9.js",
+        "river-gauges-operational-v1.js?v=9.18.11-gauge-green-yellow-red-v2"+suffix),
+    ("src/context-layers/river-gauges-operational-v1.js",
+        "river-gauge-layer-v1.js?v=9.18.11-flood-colour-20261015"+suffix),
+    ("src/context-layers/river-gauge-layer-v1.js",
+        "bom-recent-river-history-v1.js?v=9.13.1"+suffix),
+    ("src/context-layers/river-gauge-layer-v1.js",
+        "river-flood-signals-v1.js?v=9.13.2"+suffix),
+    ("src/context-layers/river-flood-events-v1.js",
+        "river-flood-signals-v1.js?v=9.13.2"+suffix),
+    ("src/context-layers/bom-recent-river-history-v1.js",
+        "river-flood-signals-v1.js?v=9.13.0")
+):
+    path=site/relative
+    data=path.read_text(encoding="utf-8")
+    assert data.count(needle)==1, f"Expected one gauge source import: {relative}"
+    path.write_text(data.replace(needle,needle+gauge_cache_suffix,1),
+                    encoding="utf-8")
+
 # Ensure the V10 pinned HTML uses the patched operational geometry modules.
 # Both genuine closure lines and Energex outage polygons otherwise resolve to
 # the obsolete, cached modules even after changes reach GitHub main.
@@ -334,7 +359,7 @@ assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "if(!classified && !inland && !crossingReached)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
-assert "RATE_BRACKET_MAX_OFFSET_MS" in (layers / "river-flood-signals-v1.js").read_text()
+assert "FLOOD_SIGNAL_MAX_INTERVAL_MS = 120 * 60 * 1000" in (layers / "river-flood-signals-v1.js").read_text()
 assert "Rate unavailable — insufficient recent observations" in (layers / "river-gauges-operational-v1.js").read_text()
 assert "const measuredRate=isFresh?latestRiseRate(" in (layers / "river-flood-events-v1.js").read_text()
 assert ".slice(0,64)" in (layers / "river-gauge-layer-v1.js").read_text()

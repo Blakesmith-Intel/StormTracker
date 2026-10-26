@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import {evaluateFloodSignal,filterOperationalFloodGauges,
   FLOOD_SIGNAL_MAX_AGE_MS,NON_TIDAL_RAPID_RISE_M_PER_H,
-  parseQueenslandObservationTime,latestRiseRate,latestMeasuredRiseRate} from "../src/context-layers/river-flood-signals-v1.js";
+  parseQueenslandObservationTime,latestRiseRate,latestMeasuredRiseRate,
+  isVerifiedNonTidalGauge,isObservedTidalGauge} from "../src/context-layers/river-flood-signals-v1.js";
 import {reconcileFloodEvents,cleanFloodEvents,
   FLOOD_EVENTS_STORAGE_KEY} from "../src/context-layers/river-flood-events-v1.js";
 
@@ -116,6 +117,47 @@ const measured={
  [below.id]:[{time:now-45*MIN,height:1.0},{time:now-15*MIN,height:2.5}]
 };
 assert.ok(NON_TIDAL_RAPID_RISE_M_PER_H>0);
+// Exact-ID BoM-reviewed non-tidal station near the coast: genuine +0.40 m/h
+// must qualify without lowering the existing 1.40 m/h rule elsewhere.
+// Source: Laidley Creek at Warrego Highway, station 540529.
+const warrego=make("bom:540529","minor","rising");
+warrego.geometry.coordinates=[152.389,-27.553];
+warrego.properties.STORMTRACKER_HEIGHT_METRES=4.94;
+const warregoHistory={
+ [warrego.id]:[{time:now-45*MIN,height:4.74},{time:now-15*MIN,height:4.94}]
+};
+assert.equal(isVerifiedNonTidalGauge(warrego),true,
+  "Only a positively reviewed exact-ID station can override coastal uncertainty");
+const warregoDecision=screen(warrego,warregoHistory);
+assert.equal(warregoDecision.state,"minor");
+assert.equal(warregoDecision.rapidRise,true,
+  "A genuine +0.40 m/hour at reviewed non-tidal Warrego Highway adds blue arrow");
+assert.equal(warregoDecision.riseScreeningZone,"verified-non-tidal");
+assert.equal(warregoDecision.screeningThresholdMetresPerHour,0.30);
+const uncertainCoastal=make("bom:999996","minor","rising");
+uncertainCoastal.geometry.coordinates=[152.389,-27.553];
+uncertainCoastal.properties.STORMTRACKER_HEIGHT_METRES=4.94;
+const uncertainHistory={
+ [uncertainCoastal.id]:warregoHistory[warrego.id]
+};
+assert.equal(isVerifiedNonTidalGauge(uncertainCoastal),false);
+assert.equal(screen(uncertainCoastal,uncertainHistory).rapidRise,false,
+  "Unreviewed coastal gauges retain conservative 1.40 m/hour screening");
+assert.equal(screen(uncertainCoastal,uncertainHistory).screeningThresholdMetresPerHour,1.40);
+const declaredTidal=structuredClone(warrego);
+declaredTidal.properties.location_types="water level gauge;tide gauge;";
+assert.equal(isVerifiedNonTidalGauge(declaredTidal),false,
+  "Official tidal metadata overrides a prior non-tidal review");
+assert.equal(isObservedTidalGauge(declaredTidal,warregoHistory[warrego.id],now),true);
+assert.equal(screen(declaredTidal,warregoHistory).rapidRise,false,
+  "Verified tidal gauges remain protected against tide-based blue arrows");
+const mismatchedStation=structuredClone(warrego);
+mismatchedStation.properties.bom_stn_num="540528";
+assert.equal(isVerifiedNonTidalGauge(mismatchedStation),false,
+  "Never apply reviewed non-tidal screening to a different source station ID");
+assert.equal(screen(mismatchedStation,warregoHistory).rapidRise,false,
+  "Conflicting station ID does not inherit the lower non-tidal threshold");
+
 const minor=screen(recent,measured);
 const blue=screen(below,measured);
 assert.equal(minor.state,"minor");

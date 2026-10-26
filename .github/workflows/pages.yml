@@ -409,7 +409,7 @@ jobs:
           grep -Fq '!(timely && measured===null)' <<< "$flood_levels"
           flood_events="$(curl --fail --silent --show-error --location --retry 7 --retry-delay 2 --retry-all-errors "$base/src/context-layers/river-flood-events-v1.js")"
           grep -Fq 'preRiseReference' <<< "$flood_events"
-          grep -Fq 'FLOOD_EVENT_RECOVERY_COUNT=2' <<< "$flood_events"
+          grep -Fq 'FLOOD_EVENT_RECOVERY_COUNT=1' <<< "$flood_events"
           grep -Fq 'state:"elevated"' <<< "$flood_events"
           grep -Fq 'STORMTRACKER_RECOVERY_BASELINE_METRES' <<< "$flood_events"
           grep -Fq 'elevated:"#1269e8"' <<< "$flood_layer"

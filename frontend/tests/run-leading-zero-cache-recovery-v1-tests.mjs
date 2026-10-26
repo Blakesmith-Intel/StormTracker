@@ -8,7 +8,7 @@ import {reconcileFloodEvents} from "../src/context-layers/river-flood-events-v1.
 import {OFFICIAL_FLOOD_STORAGE_KEY}
  from "../src/context-layers/river-official-flood-persistence-v1.js";
 
-const NOW=Date.UTC(2026,9,24,12,20),PREVIOUS=NOW-70*60000;
+const NOW=Date.UTC(2026,9,24,12,20),PREVIOUS=NOW-40*60000;
 const SOURCE_ID="035295",OLD_ID="bom:35295",CURRENT_ID="bom:035295";
 const oldFeature={id:OLD_ID,type:"Feature",
  geometry:{type:"Point",coordinates:[149.7,-23.3]},

@@ -431,6 +431,9 @@ export function createRiverGaugeLayer({
   // the core radar map when an upstream 403/429/502/503/504 occurs.
   let recentRelayBlockedUntil = 0;
   let latestSourceFeatures = [];
+  // Uncached source bulletin observations, kept only for corroboration of
+  // conflicting cached heights against the independent BoM station table.
+  let latestPublishedById=new Map();
   let lastBulletinsPartial = false;
 
   function persistHistory(){
@@ -510,7 +513,8 @@ export function createRiverGaugeLayer({
             .map(([time,height])=>({time,height}));
           const current=latestSourceFeatures.find(f=>f.id===target.id);
           if(current){
-            const verified=reconcileOfficialBoMTableHeight(current,observations,now());
+            const verified=reconcileOfficialBoMTableHeight(
+              current,observations,now(),latestPublishedById.get(target.id));
             if(verified!==current)tableHeightUpdates.set(target.id,verified);
           }
           success++;
@@ -802,6 +806,7 @@ export function createRiverGaugeLayer({
           await loadRiverGaugeOperationalSnapshot({
             fetchImpl,force
           });
+        latestPublishedById=new Map(result.payload.features.map(f=>[f.id,f]));
         const newest=retainLatestGaugeObservations(
           result.payload.features,latestHeightCache,now());
         latestHeightCache=newest.cache;

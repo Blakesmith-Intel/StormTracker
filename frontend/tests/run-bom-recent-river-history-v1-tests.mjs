@@ -5,6 +5,7 @@ import {
   inspectBomRecentWaterLevelTable,
   recentFloodHistoryCandidate,
   recentFloodHistoryGap,
+  reconcileOfficialBoMTableHeight,
   classifyBoMRecentHistoryFailure,
   fetchBoMRecentHistory
 } from "../src/context-layers/bom-recent-river-history-v1.js";
@@ -120,6 +121,59 @@ const staleExisting={"bom:540384":[
 ]};
 assert.ok(recentFloodHistoryGap(feature(false,"minor"),staleExisting,now),
   "A rise predating the latest bulletin must still be marked unassessed");
+
+// Regression for 26 Oct 2026: Sandy Creek Road was incorrectly displayed
+// as 16.05 m major when its same-station BoM plot/table stayed near zero.
+const recoveryNow=Date.UTC(2026,9,26,3,54); // 13:54 AEST
+const oldSandy=Date.UTC(2026,9,25,22,34); // 08:34 AEST
+const sandy={id:"bom:540386",type:"Feature",
+  geometry:{type:"Point",coordinates:[152.4,-27.5]},
+  properties:{bom_stn_num:"540386",location_types:"water level gauge;",
+    STORMTRACKER_HEIGHT_METRES:16.05,
+    STORMTRACKER_OBSERVED_TEXT:"08.34AM Mon 26/10/2026",
+    STORMTRACKER_FLOOD_CLASS:"major",
+    STORMTRACKER_RECENT_DATA_HREF:
+      "/fwo/IDQ65389/IDQ65389.540386.plt.shtml"}};
+assert.ok(recentFloodHistoryGap(sandy,{},recoveryNow)?.target,
+  "A stale MAJOR station must still query its own official table");
+const sandySamples=[
+ {time:Date.UTC(2026,9,26,2,38),height:0.03},
+ {time:Date.UTC(2026,9,26,3,38),height:0.04}
+];
+const sandyRecovered=reconcileOfficialBoMTableHeight(sandy,sandySamples,recoveryNow);
+assert.equal(sandyRecovered.properties.STORMTRACKER_HEIGHT_METRES,0.04);
+assert.equal(sandyRecovered.properties.STORMTRACKER_FLOOD_CLASS,"below-minor");
+assert.equal(sandyRecovered.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT,
+  Date.UTC(2026,9,26,3,38));
+assert.equal(sandyRecovered.properties.STORMTRACKER_OBSERVED_TEXT,
+  "01:38pm Mon 26/10/2026");
+assert.equal(reconcileOfficialBoMTableHeight(sandy,
+  [{time:oldSandy-3600000,height:0.02}],recoveryNow),sandy,
+  "Older table readings must NEVER override newer official observations");
+assert.equal(reconcileOfficialBoMTableHeight({...sandy,id:"bom:999999"},
+  sandySamples,recoveryNow).properties.STORMTRACKER_HEIGHT_METRES,16.05,
+  "No cross-station borrowing");
+const sameMinute=reconcileOfficialBoMTableHeight({...sandy,properties:{
+  ...sandy.properties,STORMTRACKER_OBSERVED_TEXT:"01:38pm Mon 26/10/2026",
+  STORMTRACKER_HEIGHT_METRES:16.05
+}},sandySamples,recoveryNow);
+assert.equal(sameMinute.properties.STORMTRACKER_HEIGHT_METRES,0.04,
+  "Table measurement must correct a contradicting bulletin at the same timestamp");
+const coulson={...sandy,id:"bom:540510",properties:{
+ ...sandy.properties,bom_stn_num:"540510",
+ STORMTRACKER_RECENT_DATA_HREF:
+ "/fwo/IDQ65388/IDQ65388.540510.plt.shtml",
+ STORMTRACKER_HEIGHT_METRES:4.65,
+ STORMTRACKER_OBSERVED_TEXT:"11.58AM Mon 26/10/2026"
+}};
+assert.ok(recentFloodHistoryGap(coulson,{},recoveryNow)?.target,
+  "Coulson Crossing needs table history despite stale bulletin");
+const coulsonUpdated=reconcileOfficialBoMTableHeight(coulson,[
+ {time:Date.UTC(2026,9,26,2,38),height:4.50},
+ {time:Date.UTC(2026,9,26,3,38),height:4.70}
+],recoveryNow);
+assert.equal(coulsonUpdated.properties.STORMTRACKER_HEIGHT_METRES,4.70);
+assert.equal(coulsonUpdated.properties.STORMTRACKER_FLOOD_CLASS,"major");
 
 const target=officialRecentTableTarget("/fwo/IDQ65388/IDQ65388.540384.plt.shtml");
 for(const [status,code,scope] of [

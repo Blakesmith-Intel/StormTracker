@@ -1200,3 +1200,53 @@ jobs:
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha"
 
+      - name: Seal operator-accepted V10.2.23 composite after public verification
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.23"
+          restore="restore/v10.2.23"
+          test -f docs/RELEASE_NOTES_V10.2.23.md
+          grep -Fq 'Edition:** 26 October 2026' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'Tidal screening, statewide' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'coastalGaugeTidalCoverage' frontend/src/context-layers/river-flood-signals-v1.js
+          grep -Fq 'coastalTidalCoverage' frontend/src/context-layers/river-gauge-layer-v1.js
+          grep -Fq 'href="https://github.com/Blakesmith-Intel/StormTracker/blob/main/docs/OPERATOR_GUIDE_CURRENT.md"' frontend/live3d-operational-v9.html
+          # Confirm the newly accepted tidal-screening source is on the actual
+          # published GitHub Pages site, not merely present in a green PR build.
+          base="https://blakesmith-intel.github.io/StormTracker"
+          verified=false
+          for attempt in $(seq 1 12); do
+            live_source="$(curl --fail --silent --show-error --location --max-time 15 "$base/src/context-layers/river-flood-signals-v1.js?release=$release_sha&check=$attempt" || true)"
+            live_layer="$(curl --fail --silent --show-error --location --max-time 15 "$base/src/context-layers/river-gauge-layer-v1.js?release=$release_sha&check=$attempt" || true)"
+            if grep -Fq 'coastalGaugeTidalCoverage' <<< "$live_source" &&
+               grep -Fq 'coastalTidalCoverage' <<< "$live_layer"; then
+              verified=true
+              break
+            fi
+            sleep 3
+          done
+          test "$verified" = true || { echo 'Refusing to tag: new coastal flood screening not verified on public Pages'; exit 1; }
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          # Existing references are immutable. NEVER alter a previous release.
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.23 — operator-approved composite production freeze, 26 October 2026; final statewide tidal screening, flood recovery, crossing and AEP; linked guide updated" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag and $restore at $release_sha; public flood code verified"

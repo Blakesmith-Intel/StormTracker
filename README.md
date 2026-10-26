@@ -1,6 +1,6 @@
 # StormTracker — V10.2.0 cyclone-interface production release
 
-> **Current operator and developer documentation (20 October 2026):** [Plain-English operator guide](docs/OPERATOR_GUIDE_CURRENT.md) · [Complete development and operational handover](docs/DEVELOPMENT_HANDOVER_CURRENT.md). These supersede the older numbered user/handover guides for the **current composite production** (sealed V10.2.0 source plus accepted maintenance overlays). Older release notes and pins remain valid historical references.
+> **Current operator and developer documentation (26 October 2026):** [Plain-English operator guide](docs/OPERATOR_GUIDE_CURRENT.md) · [Complete development and operational handover](docs/DEVELOPMENT_HANDOVER_CURRENT.md). These supersede the older numbered user/handover guides for the **current composite production** (sealed V10.2.0 source plus accepted maintenance overlays). Older release notes and pins remain valid historical references.
 
 
 StormTracker is a **browser-only Queensland and southern NSW border BoM radar situational-awareness viewer**. It is **not** an official warning service or an emergency decision-making tool. Original source radar reflectivity is in **dBZ**, native Doppler is radial velocity, and vertical 3-D structures and storm cones are explicitly **empirical/inferred**, not measured 3-D weather radar.
@@ -8,6 +8,8 @@ StormTracker is a **browser-only Queensland and southern NSW border BoM radar si
 ## Current stable app
 
 **https://blakesmith-intel.github.io/StormTracker/**
+
+**Operator-accepted composite freeze (26 October 2026): V10.2.23.** [Current operator guide](docs/OPERATOR_GUIDE_CURRENT.md) · [release notes, QA and restore rules](docs/RELEASE_NOTES_V10.2.23.md). This is the existing sealed V10.2.0 radar/science base plus approved later maintenance overlays, including final statewide coastal flood-gauge tidal screening and October 26 flood marker reliability corrections. Keep future changes on isolated new release branches; do not overwrite `v10.2.23` or `restore/v10.2.23` after seal.
 
 - **V10.2.0:** Opt-in BoM source-authentic cyclone forecast-map display and historical Jasper/Alfred reference overlays, no invented uncertainty polygons, explicit live-source validity and BoM's 'Currently no tropical cyclone warnings' text only after a successfully verified empty source check. An offline FTP retrieval audit and authentic historical Fina GML decode passed. The public site's automatic live data bridge is **not operational**, so it must instead state the feed cannot be verified when unavailable. Original V10.1.1 radar/Doppler functions and recovery references remain preserved. Pinned cyclone UI source `047b3bd1c66b0ed5f070d2298202f46d0cd8dae2`; see `docs/CURRENT_ACCEPTED_BASELINE.md` for rollout verification.
 - **V10.1.1:** Single simplified interface with correctly expanding full-screen map on Hide controls, rain-style synchronised native multi-site Doppler with a primary source clock, genuine per-site ±8-minute matching, Brewarrina IDR93I, plus operator-accepted continuous QLD/NSW satellite basemap, high-quality persistent 3-D on primary and additional radar sites, original full-resolution BoM data, bounded caches/CPU performance optimisations, viewport-fit diagnostics. Pin/tag/restore SHA is in `docs/CURRENT_ACCEPTED_BASELINE.md` after CI cutover.
@@ -32,7 +34,7 @@ StormTracker is a **browser-only Queensland and southern NSW border BoM radar si
 - `frontend/` static Cesium browser runtime, source-science helpers and regression tests.
 - `relay/` existing CORS transport-only Cloudflare Worker.
 - `scripts/build-current-site.sh` production from pinned immutable source SHA, isolated QA previews.
-- `docs/RELEASE_NOTES_V10.1.1.md`, `docs/USER_GUIDE_V10.1.1.md`, `docs/HANDOVER_V10.1.1.md` current release instructions.
+- `docs/RELEASE_NOTES_V10.2.23.md`, `docs/OPERATOR_GUIDE_CURRENT.md`, `docs/DEVELOPMENT_HANDOVER_CURRENT.md` are current; numbered V10.1.1 instructions are historical.
 - `docs/NON_NEGOTIABLE_VISUAL_FIDELITY.md`, `docs/SCIENTIFIC_CONTRACT.md`, `docs/CURRENT_ACCEPTED_BASELINE.md`, `docs/BASELINE_RESTORE.md` release invariants.
 - `docs/V10_OFFICIAL_WARNING_DATA_PLAN.md`, `docs/ACTIVE_WISHLIST.md` current next work.
 

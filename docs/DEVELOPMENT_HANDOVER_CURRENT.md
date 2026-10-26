@@ -1,5 +1,7 @@
 # StormTracker — current development and operational handover
 
+> **Operator-accepted V10.2.23 composite freeze (26 October 2026):** Current reference: [release notes](RELEASE_NOTES_V10.2.23.md), linked [operator guide](OPERATOR_GUIDE_CURRENT.md), and post-deployment annotated `v10.2.23`/`restore/v10.2.23` references. The underlying sealed radar-science pin remains V10.2.0; all later October 24–26 flood/crossing/rapid-rise/tidal screening fixes are controlled maintenance overlays. The dated V10.2.5 entry below remains historical, not the newest accepted release.
+
 > **Frozen V10.2.5 production overlay (20 October 2026):** Adds automated, exact-cell authoritative BoM IFD lookup for qualifying ≥50 mm rainfall and replaces the rainfall popup's broad BoM publication-source region with coordinate-checked official BoM river basin catchments where available. The V10.2.0 radar/cyclone science pin remains unchanged. Do not alter this release while awaiting operator feedback. See [RELEASE_NOTES_V10.2.5.md](RELEASE_NOTES_V10.2.5.md).
 **Baseline prepared:** 20 October 2026 (Australia/Brisbane)  
 **Application:** https://blakesmith-intel.github.io/StormTracker/  
@@ -330,3 +332,8 @@ Do not claim the IFD catalogue is geographically **complete** merely because the
 ## Final severity overlay priority — accepted 20 October 2026
 
 Overlapping BoM flood icons and significant rainfall rarity icons now use separate Cesium CustomDataSource draw tiers ordered across **both layers** through `context-layers/severity-marker-layer-v1.js` and `dataSources.raiseToTop`. Flood priority: unverified, rapid rise, minor, moderate, major. Rainfall priority: Unrated, Less rare, Notable, Unusual, Rare, Very rare, Exceptional. Within matching rainfall rarity, larger measured totals are added later. This corrects actual Cesium billboard overlap without unsupported z-index or changes to station data, thresholds, marker geometry, controls or refresh. Covered by `run-severity-marker-layer-v1-tests.mjs` and revised flood integration suite. Freeze recovery ref: `restore/production-severity-2026-10-20` after CI verification.
+
+
+## 26 October 2026 — latest operator-accepted composite freeze V10.2.23
+
+The operator confirmed the current flood gauges and requested no further feature development. This release includes all accepted AEP/rainfall, radar, incident, flood-marker, crossing and tidal-screening overlays from the GitHub main branch at the new release reference. The unmodified sealed V10.2.0 science source remains the public composite's underlying pin. See [RELEASE_NOTES_V10.2.23.md](RELEASE_NOTES_V10.2.23.md) for the exact scope, source-quality obligations and restoration rules. The site's existing **Operator guide ↗** link opens [OPERATOR_GUIDE_CURRENT.md](OPERATOR_GUIDE_CURRENT.md), updated for 26 October, with no new UI. **Wait for the Pages deploy job and public-asset checks to pass before creating the annotated `v10.2.23` tag and `restore/v10.2.23` recovery branch.** Check that both point to the release commit. Do not rewrite previous annotated tags or frozen branches, and do not infer the status of the independent Cloudflare relay or data branch from GitHub Pages alone.

@@ -172,7 +172,7 @@ version_once("src/context-layers/power-outage-suburb-explorer-v1.js",
     "outage-lga-spatial-v2.js?v=outage-geometry-lga-20261020-v1")
 # Invalidate ONLY the published flood-gauge module import chain after the
 # measured history/rate fix. All other assets retain their approved cache keys.
-gauge_cache_suffix="-bom-gauge-history-30to120-20261026-station-table-current-height-v2-informational-stale-rate-v1"
+gauge_cache_suffix="-bom-gauge-history-30to120-20261026-station-table-current-height-v2-informational-stale-rate-v1-source-evidence-expiry-v1"
 for relative,needle in (
     ("index.html","-jasper-alfred-v1"+suffix),
     ("live3d-operational-v9.html","-jasper-alfred-archive-v1"+suffix),
@@ -186,6 +186,12 @@ for relative,needle in (
         "river-flood-signals-v1.js?v=9.13.2"+suffix),
     ("src/context-layers/river-gauge-layer-v1.js",
         "river-official-flood-persistence-v1.js?v=20261018-stage-persistence"+suffix),
+    ("src/context-layers/river-gauge-layer-v1.js",
+        "river-gauge-latest-v1.js?v=20261019-fresh-observation-v1"+suffix),
+    ("src/context-layers/river-official-flood-persistence-v1.js",
+        "river-flood-signals-v1.js?v=20261018-inland-rise"),
+    ("src/context-layers/river-gauge-latest-v1.js",
+        "river-flood-signals-v1.js?v=9.13.2"),
     ("src/context-layers/river-flood-events-v1.js",
         "river-flood-signals-v1.js?v=9.13.2"+suffix),
     ("src/context-layers/bom-recent-river-history-v1.js",

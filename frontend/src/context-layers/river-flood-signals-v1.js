@@ -179,7 +179,7 @@ export function isVerifiedNonTidalGauge(feature){
   if(!Object.hasOwn(REVIEWED_NON_TIDAL_BOM_STATIONS,id)||
       p.STORMTRACKER_IDENTITY_WARNING)return false;
   const number=String(p.bom_stn_num??"").trim();
-  if(number&&(!/^\\d{1,6}$/.test(number)||
+  if(number&&(!/^\d{1,6}$/.test(number)||
       number.padStart(6,"0")!==id.slice(4)))return false;
   // An explicit official tidal site tag wins over an earlier manual review.
   return !/tide gauge|tidal|estuar(?:y|ine)|sea level/i.test(

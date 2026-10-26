@@ -16,29 +16,42 @@ const make=(id,level,trend="steady",klass="information",time=observed,tidal=fals
     location_types:tidal?"water level gauge;tide gauge;":"water level gauge;"}
 });
 const screen=(f,h={})=>evaluateFloodSignal(f,h,now);
-// A true rolling 30-minute comparison reports positive, negative and zero
-// changes, without presenting an hour-long trend as a 30-minute rate.
-assert.equal(latestRiseRate([
- {time:now-45*MIN,height:1.0},{time:now-15*MIN,height:1.3}],now)
- .rateMetresPerHour.toFixed(2),"0.60");
-assert.equal(latestRiseRate([
- {time:now-45*MIN,height:2.0},{time:now-15*MIN,height:1.7}],now)
- .rateMetresPerHour.toFixed(2),"-0.60");
-assert.equal(latestRiseRate([
- {time:now-45*MIN,height:1.7},{time:now-15*MIN,height:1.7}],now)
- .rateMetresPerHour,0);
-assert.equal(latestRiseRate([
- {time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now),null,
- "Sparse 60-minute separation must not be presented as 30 minutes");
-const interpolated=latestRiseRate([
- {time:now-55*MIN,height:1.0},{time:now-35*MIN,height:1.4},
+// Rates use actual SAME-STATION observation separation (30–120 minutes),
+// including the sparse BoM telemetry that previously disappeared from panels.
+for (const [minutes,start,end,expected] of [
+  [30,1.0,1.3,0.60],
+  [60,1.0,2.0,1.00],
+  [90,2.0,1.1,-0.60],
+  [120,1.2,1.2,0]
+]) {
+  const rate=latestRiseRate([
+    {time:now-(15+minutes)*MIN,height:start},
+    {time:now-15*MIN,height:end}
+  ],now);
+  assert.ok(rate,minutes+"-minute authentic records must supply a measured rate");
+  assert.equal(rate.intervalMinutes,minutes);
+  assert.equal(Number(rate.rateMetresPerHour.toFixed(2)),expected);
+  assert.equal(rate.baselineHeight,start);
+}
+const sparse=latestRiseRate([
+ {time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now);
+assert.equal(sparse.rateMetresPerHour,1);
+assert.equal(sparse.intervalMinutes,60);
+const nearest=latestRiseRate([
+ {time:now-115*MIN,height:0.2},
+ {time:now-55*MIN,height:1.0},
+ {time:now-35*MIN,height:1.4},
  {time:now-15*MIN,height:1.8}],now);
-assert.ok(interpolated);
-assert.ok(Math.abs(interpolated.baselineHeight-1.2)<1e-9);
-assert.ok(Math.abs(interpolated.rateMetresPerHour-1.2)<1e-9);
-assert.equal(interpolated.intervalMinutes,30);
+assert.equal(nearest.intervalMinutes,40,
+  "Use the nearest eligible older measurement rather than interpolating 30 minutes");
+assert.equal(nearest.baselineHeight,1.0);
+assert.ok(Math.abs(nearest.rateMetresPerHour-1.2)<1e-9);
 assert.equal(latestRiseRate([
- {time:now-80*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now),null);
+ {time:now-140*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now),null,
+ "125-minute gap must not be silently accepted");
+assert.equal(latestRiseRate([
+ {time:now-40*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now),null,
+ "25-minute gap must not trigger rapid rise");
 assert.equal(latestRiseRate([
  {time:now-150*MIN,height:1.0},{time:now-100*MIN,height:2.0}],now),null,
  "Stale gauges must not supply a current rate");

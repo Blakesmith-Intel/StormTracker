@@ -24,9 +24,20 @@ function cleanCell(text) {
     .replace(/\s+/g," ").trim();
 }
 function parseTableDate(value) {
-  const m=String(value??"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
+  // BoM tables can prefix a weekday or suffix AEST / AM/PM to the same
+  // Queensland station timestamp. Accept these explicit source notations
+  // without guessing dates, stations or time zones.
+  const input=String(value??"").trim()
+    .replace(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:day|sday|nesday|rsday|urday)?[,]?\s+/i,"")
+    .replace(/\s*\(?AEST\)?$/i,"").trim();
+  const m=input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?:\s*(am|pm))?$/i);
   if(!m)return null;
-  const [d,mo,y,h,mi]=m.slice(1).map(Number);
+  let [d,mo,y,h,mi]=m.slice(1,6).map(Number);
+  const meridiem=String(m[6]??"").toLowerCase();
+  if(meridiem){
+    if(h<1||h>12)return null;
+    h=h%12+(meridiem==="pm"?12:0);
+  }
   if(h>23||mi>59)return null;
   const check=new Date(Date.UTC(y,mo-1,d));
   if(check.getUTCDate()!==d||check.getUTCMonth()!==mo-1||check.getUTCFullYear()!==y)return null;

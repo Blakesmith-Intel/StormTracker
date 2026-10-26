@@ -481,7 +481,8 @@ export function createRiverGaugeLayer({
         recentNextAttemptAt.set(target.id,now()+15*60*1000);
         try{
           const detail=await fetchBoMRecentHistoryDetail(target,{
-            fetchImpl,timeoutMs:10000
+            // The relay's upstream deadline is 12 s; leave time to deliver JSON.
+            fetchImpl,timeoutMs:18000
           });
           const observations=detail.samples;
           // The Worker reads this from the same BoM table already fetched.

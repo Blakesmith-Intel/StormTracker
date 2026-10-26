@@ -1,0 +1,41 @@
+name: TEMP BoM gauge observation relay diagnostic (26 Oct 2026)
+on:
+  push:
+    branches: [fix/verify-current-gauge-from-bom-table-20261026]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe live BoM and StormTracker relay for exact gauge IDs
+        run: |
+          node --input-type=module <<'NODE'
+          const samples=[
+            ["Sandy Creek Road","IDQ65389","540386"],
+            ["Coulson Crossing","IDQ65388","540510"],
+            ["Existing relay sanity","IDQ65388","540576"]
+          ];
+          for(const [name,product,station] of samples){
+            const paths=[
+              "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/river-recent-history?"+new URLSearchParams({product,station}),
+              "https://www.bom.gov.au/fwo/"+product+"/"+product+"."+station+".tbl.shtml"
+            ];
+            for(const path of paths){
+              try{
+                const r=await fetch(path,{signal:AbortSignal.timeout(18000),
+                  headers:{Origin:"https://blakesmith-intel.github.io",Accept:"application/json,text/html"}});
+                const body=await r.text();
+                let parsed=null;
+                try{parsed=JSON.parse(body)}catch{}
+                console.log(JSON.stringify({name,station,source:path.includes("workers.dev")?"relay":"bom",
+                  status:r.status,bytes:body.length,err:parsed?.code,
+                  availability:parsed?.availability,count:parsed?.samples?.length,
+                  first:parsed?.samples?.[0],last:parsed?.samples?.at(-1),
+                  containsTable:body.includes("tableStyle1"),
+                  snippet:body.slice(0,180).replace(/\\s+/g," ")}));
+              }catch(e){console.log(JSON.stringify({name,station,path,error:String(e)}))}
+            }
+          }
+          NODE

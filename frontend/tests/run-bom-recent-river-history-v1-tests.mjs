@@ -79,11 +79,34 @@ const feature=(tidal=true,flood="")=>({id:"bom:540384",properties:{
 }});
 assert.equal(recentFloodHistoryCandidate(feature(),{},now),null,
   "Known tidal gauges must not make pointless massive history requests");
-assert.equal(recentFloodHistoryGap(feature(true,"major"),{},now),null,
-  "A confirmed tide can never generate a rate-only flash rise arrow");
+assert.ok(recentFloodHistoryGap(feature(true,"major"),{},now)?.target,
+  "Classified tide gauges still need the information-panel measured rise/fall history; tidal alert screening remains separate");
 assert.equal(recentFloodHistoryCandidate(feature(false,"below-minor"),{},now),null,
   "Unlocated below-minor gauges need conservative source screening");
 assert.ok(recentFloodHistoryCandidate(feature(false,"minor"),{},now));
+// Source freshness must not prevent historical measured-rate retrieval at
+// a visible gauge (Laidley 540158 at 12:34 vs 14:26 AEST).
+const laidley=feature(false,"major");
+laidley.id="bom:540158";
+laidley.properties={...laidley.properties,bom_stn_num:"540158",
+  STORMTRACKER_HEIGHT_METRES:8.66,
+  STORMTRACKER_OBSERVED_TEXT:"12.34PM Mon 26/10/2026",
+  STORMTRACKER_RECENT_DATA_HREF:"/fwo/IDQ65389/IDQ65389.540158.plt.shtml"};
+const laidleyNow=Date.UTC(2026,9,26,4,26);
+const priority=recentFloodHistoryCandidate(laidley,{},laidleyNow);
+assert.deepEqual({product:priority?.product,station:priority?.station},
+  {product:"IDQ65389",station:"540158"},
+  "Stale classified Laidley gauge MUST fetch source observations");
+const noTime={...laidley,properties:{...laidley.properties,
+  STORMTRACKER_OBSERVED_TEXT:"unavailable"}};
+assert.ok(recentFloodHistoryCandidate(noTime,{},laidleyNow),
+  "Missing bulletin timestamps should not prevent exact-station history recovery for a classified gauge");
+const priorClass={...noTime,properties:{...noTime.properties,
+  STORMTRACKER_FLOOD_CLASS:"",
+  STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS:"major"}};
+assert.ok(recentFloodHistoryCandidate(priorClass,{},laidleyNow),
+  "Last-confirmed stale flood gauges must still recover their own station history");
+
 const west={...feature(false,"below-minor"),
   geometry:{type:"Point",coordinates:[144.6005,-25.9108]}};
 assert.ok(recentFloodHistoryCandidate(west,{},now),

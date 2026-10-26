@@ -3,7 +3,7 @@
 // invented from neighbouring gauges or inferred using rainfall.
 import {
  evaluateFloodSignal,parseQueenslandObservationTime,
- latestRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS
+ latestRiseRate,latestMeasuredRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS
 } from "./river-flood-signals-v1.js?v=9.13.2";
 import {stationFloodLevels} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
@@ -194,7 +194,10 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   // crossing and blue post-rise markers. Display evidence is independent of
   // the severity/rapid-rise alert decision, but must match the current BoM
   // observation for this exact station and must not be stale.
-  const measuredRate=isFresh?latestRiseRate(history[id]??[],now):null;
+  // Historical measured change is informational even when BoM has not
+  // published a newer reading within the alert freshness window.
+  // The live rapid-rise decision above remains freshness/threshold-gated.
+  const measuredRate=latestMeasuredRiseRate(history[id]??[],now);
   const alignedRate=measuredRate&&Math.abs(measuredRate.observedAt-observation)<=10*60000
     ?measuredRate:null;
   kept={...kept,properties:{...kept.properties,

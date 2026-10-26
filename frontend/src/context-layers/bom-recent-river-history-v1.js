@@ -171,10 +171,11 @@ export function recentFloodHistoryGap(feature,history={},nowMs=Date.now(),crossi
   const p=feature?.properties??{};
   const types=String(p.location_types??"").toLowerCase();
   const explicitlyTidal=/tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types);
-  if(explicitlyTidal)return null;
   const flood=String(p.STORMTRACKER_FLOOD_CLASS??"").toLowerCase();
   const inland=gaugeRiseScreeningZone(feature).zone==="inland";
   const classified=["minor","moderate","major"].includes(flood);
+  const lastConfirmed=["minor","moderate","major"].includes(
+    String(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??"").toLowerCase());
   const crossing=publishedCrossingForFeature(feature,crossingCatalogue);
   const crossingReached=Boolean(crossing&&
     typeof p.STORMTRACKER_HEIGHT_METRES==="number"&&
@@ -182,16 +183,17 @@ export function recentFloodHistoryGap(feature,history={},nowMs=Date.now(),crossi
     p.STORMTRACKER_HEIGHT_METRES>=crossing.heightMetres);
   // Visible coastal crossing markers need their own station history as much
   // as flood-classified gauges do; don't download ordinary coastal stations.
-  if(!classified && !inland && !crossingReached)return null;
+  if(!classified && !lastConfirmed && !inland && !crossingReached)return null;
+  // Tide gauges still need historic RISE/FALL information if they have a
+  // classified/crossing marker; tidal rapid-rise alerts remain forbidden.
+  if(explicitlyTidal && !classified && !lastConfirmed && !crossingReached)return null;
   const observed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
   // A stale classified/crossing gauge especially needs a fresh BoM table:
   // previously this early return prevented recovery from stale major readings.
   // Keep ordinary below-minor inland probes fresh-only to bound source traffic.
-  if(observed===null || observed>nowMs+5*60000)return null;
-  if(nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS &&
-      !classified && !crossingReached &&
-      !["minor","moderate","major"].includes(
-        String(p.STORMTRACKER_LAST_CONFIRMED_FLOOD_CLASS??"").toLowerCase()))return null;
+  if(observed!==null && observed>nowMs+5*60000)return null;
+  if((observed===null || nowMs-observed>FLOOD_SIGNAL_MAX_AGE_MS) &&
+      !classified && !lastConfirmed && !crossingReached)return null;
   const sample=history[String(feature?.id??"")]??[];
   const valid=Array.isArray(sample)?sample.filter(x=>
     Number.isFinite(x?.time)&&Number.isFinite(x?.height)):[];

@@ -172,7 +172,7 @@ version_once("src/context-layers/power-outage-suburb-explorer-v1.js",
     "outage-lga-spatial-v2.js?v=outage-geometry-lga-20261020-v1")
 # Invalidate ONLY the published flood-gauge module import chain after the
 # measured history/rate fix. All other assets retain their approved cache keys.
-gauge_cache_suffix="-bom-gauge-history-30to120-20261026-station-table-current-height-v2"
+gauge_cache_suffix="-bom-gauge-history-30to120-20261026-station-table-current-height-v2-informational-stale-rate-v1"
 for relative,needle in (
     ("index.html","-jasper-alfred-v1"+suffix),
     ("live3d-operational-v9.html","-jasper-alfred-archive-v1"+suffix),
@@ -359,11 +359,11 @@ assert "sameMappedRuralPlace(" in (
     site / "src/context-layers/qld-town-label-declutter-v1.js").read_text()
 assert "75000" in (site / "src/bom-doppler-intake-v3.js").read_text()
 assert "recentFloodHistoryGap" in (layers / "bom-recent-river-history-v1.js").read_text()
-assert "if(explicitlyTidal)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
-assert "if(!classified && !inland && !crossingReached)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "if(explicitlyTidal && !classified && !lastConfirmed && !crossingReached)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
+assert "if(!classified && !lastConfirmed && !inland && !crossingReached)return null" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "FLOOD_SIGNAL_MAX_INTERVAL_MS = 120 * 60 * 1000" in (layers / "river-flood-signals-v1.js").read_text()
 assert "Rate unavailable — insufficient recent observations" in (layers / "river-gauges-operational-v1.js").read_text()
-assert "const measuredRate=isFresh?latestRiseRate(" in (layers / "river-flood-events-v1.js").read_text()
+assert "const measuredRate=latestMeasuredRiseRate(" in (layers / "river-flood-events-v1.js").read_text()
 assert ".slice(0,64)" in (layers / "river-gauge-layer-v1.js").read_text()
 assert "inspectBomRecentWaterLevelTable" in (layers / "bom-recent-river-history-v1.js").read_text()
 assert "noData" in (layers / "river-gauge-layer-v1.js").read_text()
@@ -496,8 +496,8 @@ grep -Fq 'DOPPLER HISTORICAL PNG 502 RETRY COOLDOWN 75 SECONDS' _site/BUILD.txt
 grep -Fq 'createDopplerFrameFailureCooldown' _site/src/bom-doppler-intake-v3.js
 grep -Fq 'doppler-png-502-cooldown-v1-20261018' _site/src/live3d-operational-v9.js
 grep -Fq 'OPTIONAL RIVER HISTORY 503 MITIGATION 2026-10-18' _site/BUILD.txt
-grep -Fq 'if(explicitlyTidal)return null' _site/src/context-layers/bom-recent-river-history-v1.js
-grep -Fq 'if(!classified && !inland && !crossingReached)return null' _site/src/context-layers/bom-recent-river-history-v1.js
+grep -Fq 'if(explicitlyTidal && !classified && !lastConfirmed && !crossingReached)return null' _site/src/context-layers/bom-recent-river-history-v1.js
+grep -Fq 'if(!classified && !lastConfirmed && !inland && !crossingReached)return null' _site/src/context-layers/bom-recent-river-history-v1.js
 grep -Fq '.slice(0,64)' _site/src/context-layers/river-gauge-layer-v1.js
 grep -Fq 'id="refreshRiverGaugesButton"' _site/live3d-operational-v9.html
 grep -Fq '#refreshRiverGaugesButton' _site/src/single-interface-v1.css

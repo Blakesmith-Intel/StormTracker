@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {evaluateFloodSignal,filterOperationalFloodGauges,
   FLOOD_SIGNAL_MAX_AGE_MS,NON_TIDAL_RAPID_RISE_M_PER_H,
-  parseQueenslandObservationTime,latestRiseRate} from "../src/context-layers/river-flood-signals-v1.js";
+  parseQueenslandObservationTime,latestRiseRate,latestMeasuredRiseRate} from "../src/context-layers/river-flood-signals-v1.js";
 import {reconcileFloodEvents,cleanFloodEvents,
   FLOOD_EVENTS_STORAGE_KEY} from "../src/context-layers/river-flood-events-v1.js";
 
@@ -55,6 +55,42 @@ assert.equal(latestRiseRate([
 assert.equal(latestRiseRate([
  {time:now-150*MIN,height:1.0},{time:now-100*MIN,height:2.0}],now),null,
  "Stale gauges must not supply a current rate");
+// Live Laidley Creek at Showground Weir (BoM 540158), 26 Oct 2026:
+// the last valid reading at 12:34 AEST was older than the 90-minute ALERT
+// freshness deadline, but 225 true station observations were available.
+const laidleyNow=Date.UTC(2026,9,26,4,26); // 14:26 AEST
+const laidleySamples=[
+ {time:Date.UTC(2026,9,26,1,39),height:8.92}, // 11:39 AEST
+ {time:Date.UTC(2026,9,26,2,34),height:8.66}  // 12:34 AEST
+];
+assert.equal(latestRiseRate(laidleySamples,laidleyNow),null,
+  "Stale BoM history MUST NOT trigger a live rapid-rise arrow");
+const historic=latestMeasuredRiseRate(laidleySamples,laidleyNow);
+assert.ok(historic,"Informational rise/fall survives the 90-minute alert cutoff");
+assert.equal(historic.intervalMinutes,55);
+assert.equal(Number(historic.rateMetresPerHour.toFixed(2)),-0.28);
+assert.equal(historic.observedAt,Date.UTC(2026,9,26,2,34));
+
+// A station reporting its next reading 27 minutes later (Coulson Crossing)
+// can still show a truthful measured trend. The blue rapid-rise alert itself
+// remains restricted to confirmed 30–120-minute observation comparisons.
+const coulsonSamples=[
+ {time:Date.UTC(2026,9,26,1,58),height:4.65},
+ {time:Date.UTC(2026,9,26,3,35),height:4.65},
+ {time:Date.UTC(2026,9,26,4,2),height:4.60}
+];
+assert.equal(latestRiseRate(coulsonSamples,laidleyNow),null,
+  "27-minute latest gap and 124-minute older gap must not trigger rapid rise");
+const coulsonRate=latestMeasuredRiseRate(coulsonSamples,laidleyNow);
+assert.equal(coulsonRate.intervalMinutes,27);
+assert.equal(Number(coulsonRate.rateMetresPerHour.toFixed(2)),-0.11);
+assert.equal(latestMeasuredRiseRate([coulsonSamples[2]],laidleyNow),null,
+  "Never fabricate a comparison from only one timestamp");
+assert.equal(latestMeasuredRiseRate([
+ {time:laidleyNow-10*60000,height:1},
+ {time:laidleyNow-10*60000,height:2}],laidleyNow),null,
+ "Duplicate timestamps must not create a divided-by-zero rate");
+
 for(const klass of ["data","information","official","",null]){
   for(const level of ["minor","moderate","major"]){
     for(const trend of ["rising","steady","falling"]){

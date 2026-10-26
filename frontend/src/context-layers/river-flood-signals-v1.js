@@ -212,6 +212,34 @@ export function latestRiseRate(samples, nowMs=Date.now()) {
     baselineHeight:earlier.height};
 }
 
+// Display-only measured trend. The BoM may stop reporting for >90 minutes
+// while leaving a valid timestamped history (Laidley Creek 540158).
+// A historical rate is still informative, but NEVER authorises a live blue
+// rapid-rise modifier. Its actual observation interval is always preserved.
+export function latestMeasuredRiseRate(samples,nowMs=Date.now()) {
+  const sorted=(Array.isArray(samples)?samples:[]).filter(p=>
+    finite(p?.time)&&finite(p?.height)&&p.time<=nowMs+5*60000&&
+    p.time>=nowMs-FLOOD_SIGNAL_HISTORY_MS).sort((a,b)=>a.time-b.time);
+  if(sorted.length<2)return null;
+  const latest=sorted.at(-1);
+  // Prefer the previously approved 30–120-minute reference interval.
+  // If telemetry falls just outside it, report the real measured interval
+  // instead of claiming "insufficient observations" (but do not alert on it).
+  const eligible=[...sorted].reverse().find(p=>{
+    const elapsed=latest.time-p.time;
+    return elapsed>=FLOOD_SIGNAL_MIN_INTERVAL_MS &&
+      elapsed<=FLOOD_SIGNAL_MAX_INTERVAL_MS;
+  });
+  const earlier=eligible??[...sorted].reverse().find(p=>p.time<latest.time);
+  if(!earlier)return null;
+  const intervalMinutes=(latest.time-earlier.time)/60000;
+  if(intervalMinutes<=0)return null;
+  const changeMetres=latest.height-earlier.height;
+  return {rateMetresPerHour:changeMetres/(intervalMinutes/60),
+    changeMetres,intervalMinutes,observedAt:latest.time,
+    baselineHeight:earlier.height};
+}
+
 function percentile(values,fraction) {
   const s=[...values].sort((a,b)=>a-b);
   if(!s.length)return null;

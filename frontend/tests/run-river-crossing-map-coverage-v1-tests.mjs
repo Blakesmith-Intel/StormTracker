@@ -146,6 +146,27 @@ const risingAlert=reconcileFloodEvents([risingTheresa],risingHistory,{},now);
 assert.equal(risingAlert.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
 assert.equal(risingAlert.features[0].properties.STORMTRACKER_RAPID_RISE,true,
  "Bridge marker retains blue arrow if and only if measured rise criteria met");
+// A gauge still above its published crossing height keeps its amber bridge,
+// but must drop the rapid-rise arrow as soon as the measured rate slows.
+const settledCrossing=make("535162",2.80,now+52*MIN,{
+ STORMTRACKER_PLOT_CROSSING:crossing,
+ STORMTRACKER_OBSERVED_TEXT:"22:00 24/10/2026",
+ STORMTRACKER_TENDENCY:"rising"
+});
+const crossingAfter=reconcileFloodEvents([settledCrossing],{
+ "bom:535162":[...risingHistory["bom:535162"],
+   {time:now+52*MIN,height:2.80}]
+},{},now+60*MIN);
+assert.equal(crossingAfter.features.length,1,"Crossing marker persists");
+assert.equal(crossingAfter.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
+assert.equal(crossingAfter.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
+assert.equal(crossingAfter.features[0].properties.STORMTRACKER_RAPID_RISE,false,
+ "Arrow disappears without hiding the water-over-crossing marker");
+assert.equal(crossingAfter.features[0].properties.STORMTRACKER_TENDENCY,"rising",
+ "Published BoM tendency remains unchanged for the existing popup");
+assert.doesNotMatch(decodeURIComponent(createRiverGaugeMarkerImage(
+ "crossing",crossingAfter.features[0].properties.STORMTRACKER_RAPID_RISE
+).split(",")[1]),/cx="61"/,"The displayed crossing symbol has no residual arrow");
 const arrowSvg=decodeURIComponent(
  createRiverGaugeMarkerImage("crossing",true).split(",")[1]);
 assert(arrowSvg.includes('cx="61"'),"Badge is shown over the bridge pin");

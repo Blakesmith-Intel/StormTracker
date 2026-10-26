@@ -89,7 +89,10 @@ const stableFlood={...river,properties:{...river.properties,
   STORMTRACKER_TENDENCY:"falling",STORMTRACKER_FLOOD_CLASS:"minor",
   STORMTRACKER_HEIGHT_METRES:2.1}};
 
-const slow=evaluateFloodSignal(stableFlood,mixed,now);
+const slowHistory={...mixed,[river.id]:[
+ point(now-75*60000,2.05),point(now-15*60000,2.1)
+]};
+const slow=evaluateFloodSignal(stableFlood,slowHistory,now);
 assert.equal(slow.state,"minor");
 assert.equal(slow.rapidRise,false);
 assert.equal(observedTidalOscillation(riverHistory,now),false,

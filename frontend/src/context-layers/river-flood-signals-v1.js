@@ -239,7 +239,6 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   let level=String(p.STORMTRACKER_FLOOD_CLASS??"").trim().toLowerCase();
   const samples=history[String(feature?.id??"")]??[];
   const tidal=isObservedTidalGauge(feature,samples,nowMs);
-  const tendency=String(p.STORMTRACKER_TENDENCY??"").toLowerCase();
   const recent=latestRiseRate(samples,nowMs);
   const parsed=parseQueenslandObservationTime(p.STORMTRACKER_OBSERVED_TEXT,nowMs);
   const stored=Number(p.STORMTRACKER_OFFICIAL_OBSERVED_AT);
@@ -303,7 +302,8 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
       lastObservedAt:observed};
   }
   if(!timely)return {show:false,reason:"Missing or stale current BoM flood observation"};
-  const rateMatches=recent && tendency==="rising" &&
+  // BoM tendency remains informational; measured height and time govern rise.
+  const rateMatches=recent &&
     Math.abs(recent.observedAt-observed)<=10*60000;
   // A flood or flash-flood signature cannot be diagnosed from a normal
   // incoming tide. For source-tagged or observation-confirmed tidal sites,

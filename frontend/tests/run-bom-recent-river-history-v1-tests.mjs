@@ -74,9 +74,11 @@ assert.ok(recentFloodHistoryCandidate(west,{},now),
   "Inland below-minor rising gauge must obtain initial genuine history");
 assert.ok(recentFloodHistoryGap(west,{},now),
   "Missing inland rapid-rise evidence must remain explicitly incomplete");
-assert.equal(recentFloodHistoryCandidate({...west,properties:{...west.properties,
-  STORMTRACKER_TENDENCY:"falling"}},{},now),null,
-  "Only rising gauges may consume optional history capacity");
+for(const tendency of ["steady","falling",""]){
+ assert.ok(recentFloodHistoryCandidate({...west,properties:{...west.properties,
+   STORMTRACKER_TENDENCY:tendency}},{},now),
+   "Historical measured-rate lookup must not require BoM rising tendency: "+tendency);
+}
 const coastal={...west,geometry:{type:"Point",coordinates:[153.432,-27.95]}};
 assert.equal(recentFloodHistoryCandidate(coastal,{},now),null,
   "Avoid large below-minor history downloads for ordinary coastal rise");

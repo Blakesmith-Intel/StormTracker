@@ -34,13 +34,16 @@ for(const level of ["minor","moderate","major"]){
   assert.equal(x.features[0].properties.STORMTRACKER_RAPID_RISE,false);
  }
 }
-const cleared=query("below-minor","falling");
-assert.equal(cleared.features.length,0);
+const measuredDespiteFalling=query("below-minor","falling");
+assert.equal(measuredDespiteFalling.features.length,1,
+ "BoM falling tendency cannot hide independently measured rapid rise");
+assert.equal(measuredDespiteFalling.features[0].properties.STORMTRACKER_RAPID_RISE,true);
 const risingBelow=query("below-minor","rising");
 assert.equal(risingBelow.features.length,1);
 assert.equal(risingBelow.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
 assert.equal(risingBelow.features[0].properties.STORMTRACKER_RAPID_RISE,true);
-assert.equal(query("below-minor","steady").features.length,0);
+assert.equal(query("below-minor","steady").features.length,1,
+ "A measured rise is recognised independently of the BoM tendency");
 assert.equal(query("minor","steady",{}).features.length,1,
  "Missing optional history cannot remove BoM-classified flooding");
 assert.equal(reconcileFloodEvents([datum("minor","steady",

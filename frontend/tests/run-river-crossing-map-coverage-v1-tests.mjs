@@ -141,7 +141,7 @@ const risingTheresa=make("535162",2.77,now-8*MIN,{
  STORMTRACKER_PLOT_CROSSING:crossing,STORMTRACKER_TENDENCY:"rising"
 });
 const risingHistory={"bom:535162":[
- {time:now-68*MIN,height:1.85},{time:now-8*MIN,height:2.77}]};
+ {time:now-38*MIN,height:1.85},{time:now-8*MIN,height:2.77}]};
 const risingAlert=reconcileFloodEvents([risingTheresa],risingHistory,{},now);
 assert.equal(risingAlert.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");
 assert.equal(risingAlert.features[0].properties.STORMTRACKER_RAPID_RISE,true,
@@ -155,7 +155,7 @@ const settledCrossing=make("535162",2.80,now+52*MIN,{
 });
 const crossingAfter=reconcileFloodEvents([settledCrossing],{
  "bom:535162":[...risingHistory["bom:535162"],
-   {time:now+52*MIN,height:2.80}]
+   {time:now+22*MIN,height:2.78},{time:now+52*MIN,height:2.80}]
 },{},now+60*MIN);
 assert.equal(crossingAfter.features.length,1,"Crossing marker persists");
 assert.equal(crossingAfter.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing");

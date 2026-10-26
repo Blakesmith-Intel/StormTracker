@@ -54,10 +54,11 @@ assert.equal(cache["bom:533142"].observedAt,at);
 assert.deepEqual(features.map(f=>f.id),["bom:533142"]);
 assert.equal(reconcileFloodEvents(features,{}, {},now+2*3600000).features.length,1);
 ({features,cache}=retainConfirmedFloodStations([],cache,now+72*3600000));
-assert.equal(features.length,1,"Missing data is NOT a new below-minor observation");
-assert.equal(reconcileFloodEvents(features,{}, {},now+72*3600000).features[0]
-  .properties.STORMTRACKER_OBSERVATION_STALE,true);
-assert.equal(Object.keys(cleanConfirmedFloodStations(cache,now+72*3600000)).length,1);
+assert.equal(features.length,0,
+  "Three-day-old observation is no longer evidence of CURRENT flooding; hide the old icon");
+assert.equal(reconcileFloodEvents(features,{}, {},now+72*3600000).features.length,0);
+assert.equal(Object.keys(cleanConfirmedFloodStations(cache,now+72*3600000)).length,0,
+  "Expired manual-gauge stage cannot reappear from browser storage");
 
 const below={...walkerston,properties:{...walkerston.properties,
   STORMTRACKER_HEIGHT_METRES:0.9,

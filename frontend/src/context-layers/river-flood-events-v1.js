@@ -109,14 +109,22 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   const observation=observationTime(feature,now);
   const height=p.STORMTRACKER_HEIGHT_METRES;
   const isFresh=fresh(observation,now)&&isNumber(height);
-  // Any designated BoM flood stage outranks a separate crossing reference,
-  // including when the bridge is ABOVE minor/moderate/major. A missing minor
-  // level alone does not make a classified gauge a "crossing-only" site.
-  const hasFloodLevels=Boolean(stationFloodLevels(feature));
-  const crossing=hasFloodLevels?null:
-    publishedCrossingForFeature(feature,crossingCatalogue);
-  // A crossing-only marker requires a fresh SAME-station observation.
+  // Official flood levels ALWAYS outrank a bridge/causeway on the map.
+  // A crossing below the first designated flood stage must still show amber
+  // in the BELOW-flood interval (e.g. Laidley Weir 4.15m / minor 6.00m).
+  // If the bridge is at or above that first stage, it cannot take over the
+  // official minor/moderate/major icon (e.g. Coulson 3.51m / minor 3.00m).
+  const floodLevels=stationFloodLevels(feature);
+  const hasFloodLevels=Boolean(floodLevels);
+  const firstFloodLevel=hasFloodLevels?Math.min(...[
+    floodLevels.minor,floodLevels.moderate,floodLevels.major
+  ].filter(Number.isFinite)):Infinity;
+  const crossing=publishedCrossingForFeature(feature,crossingCatalogue);
+  // Keep exact-station crossing metadata for the popup when flooding, but
+  // reserve the amber pin for the gap below the first flood classification.
   const crossingReached=Boolean(isFresh&&crossing&&height>=crossing.heightMetres);
+  const crossingMarkerEligible=Boolean(crossingReached &&
+    height<firstFloodLevel && crossing.heightMetres<firstFloodLevel);
   const tidal=isObservedTidalGauge(feature,history[id]??[],now);
   let event=prior[id];
   // Never carry a rate-only alert through published flood-stage gauges,
@@ -177,9 +185,9 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
     events[id]=event;
    }
   }
-  // Amber bridge marker only for fresh exact-station crossing exceedance.
-  // Verified minor/moderate/major retain their own severity colour.
-  if(crossingReached&&(!kept||
+  // Amber bridge marker only for a fresh crossing exceedance BELOW the
+  // first official flood stage; any verified flood stage retains its colour.
+  if(crossingMarkerEligible&&(!kept||
       !officialStates.has(kept.properties.STORMTRACKER_DISPLAY_STATE))){
     kept=showFeature(feature,decision,{
       state:"crossing",rapidRise:Boolean(decision.rapidRise)&&!tidal,

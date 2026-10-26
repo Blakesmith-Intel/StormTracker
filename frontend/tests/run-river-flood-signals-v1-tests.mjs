@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {evaluateFloodSignal,filterOperationalFloodGauges,
   FLOOD_SIGNAL_MAX_AGE_MS,NON_TIDAL_RAPID_RISE_M_PER_H,
-  parseQueenslandObservationTime} from "../src/context-layers/river-flood-signals-v1.js";
+  parseQueenslandObservationTime,latestRiseRate} from "../src/context-layers/river-flood-signals-v1.js";
 import {reconcileFloodEvents,cleanFloodEvents,
   FLOOD_EVENTS_STORAGE_KEY} from "../src/context-layers/river-flood-events-v1.js";
 
@@ -16,6 +16,32 @@ const make=(id,level,trend="steady",klass="information",time=observed,tidal=fals
     location_types:tidal?"water level gauge;tide gauge;":"water level gauge;"}
 });
 const screen=(f,h={})=>evaluateFloodSignal(f,h,now);
+// A true rolling 30-minute comparison reports positive, negative and zero
+// changes, without presenting an hour-long trend as a 30-minute rate.
+assert.equal(latestRiseRate([
+ {time:now-45*MIN,height:1.0},{time:now-15*MIN,height:1.3}],now)
+ .rateMetresPerHour.toFixed(2),"0.60");
+assert.equal(latestRiseRate([
+ {time:now-45*MIN,height:2.0},{time:now-15*MIN,height:1.7}],now)
+ .rateMetresPerHour.toFixed(2),"-0.60");
+assert.equal(latestRiseRate([
+ {time:now-45*MIN,height:1.7},{time:now-15*MIN,height:1.7}],now)
+ .rateMetresPerHour,0);
+assert.equal(latestRiseRate([
+ {time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now),null,
+ "Sparse 60-minute separation must not be presented as 30 minutes");
+const interpolated=latestRiseRate([
+ {time:now-55*MIN,height:1.0},{time:now-35*MIN,height:1.4},
+ {time:now-15*MIN,height:1.8}],now);
+assert.ok(interpolated);
+assert.ok(Math.abs(interpolated.baselineHeight-1.2)<1e-9);
+assert.ok(Math.abs(interpolated.rateMetresPerHour-1.2)<1e-9);
+assert.equal(interpolated.intervalMinutes,30);
+assert.equal(latestRiseRate([
+ {time:now-80*MIN,height:1.0},{time:now-15*MIN,height:2.0}],now),null);
+assert.equal(latestRiseRate([
+ {time:now-150*MIN,height:1.0},{time:now-100*MIN,height:2.0}],now),null,
+ "Stale gauges must not supply a current rate");
 for(const klass of ["data","information","official","",null]){
   for(const level of ["minor","moderate","major"]){
     for(const trend of ["rising","steady","falling"]){
@@ -37,8 +63,8 @@ assert.equal(screen(make("bom:999997","minor","steady","information",
 const recent=make("bom:999997","minor","rising");
 const below=make("bom:999998","below-minor","rising");
 const measured={
- [recent.id]:[{time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.5}],
- [below.id]:[{time:now-75*MIN,height:1.0},{time:now-15*MIN,height:2.5}]
+ [recent.id]:[{time:now-45*MIN,height:1.0},{time:now-15*MIN,height:2.5}],
+ [below.id]:[{time:now-45*MIN,height:1.0},{time:now-15*MIN,height:2.5}]
 };
 assert.ok(NON_TIDAL_RAPID_RISE_M_PER_H>0);
 const minor=screen(recent,measured);
@@ -64,7 +90,7 @@ for(const level of ["minor","moderate","major"]){
  const stillFlooding=make(recent.id,level,"rising","information",laterText);
  stillFlooding.properties.STORMTRACKER_HEIGHT_METRES=2.55;
  const selected=reconcileFloodEvents([stillFlooding],{
-  [recent.id]:[...measured[recent.id],{time:now+45*MIN,height:2.55}]
+  [recent.id]:[...measured[recent.id],{time:now+15*MIN,height:2.52},{time:now+45*MIN,height:2.55}]
  },{},later);
  assert.equal(selected.features.length,1,level+" base flood marker persists");
  assert.equal(selected.features[0].properties.STORMTRACKER_DISPLAY_STATE,level);
@@ -77,7 +103,7 @@ const firstBelow=reconcileFloodEvents([below],measured,{},now);
 const stillElevated=make(below.id,"below-minor","rising","information",laterText);
 stillElevated.properties.STORMTRACKER_HEIGHT_METRES=2.55;
 const followUp=reconcileFloodEvents([stillElevated],{
- [below.id]:[...measured[below.id],{time:now+45*MIN,height:2.55}]
+ [below.id]:[...measured[below.id],{time:now+15*MIN,height:2.52},{time:now+45*MIN,height:2.55}]
 },firstBelow.events,later);
 assert.equal(followUp.features.length,1,"Post-rise monitoring marker persists");
 assert.equal(followUp.features[0].properties.STORMTRACKER_DISPLAY_STATE,"elevated");
@@ -110,8 +136,8 @@ recedingMinor.properties.STORMTRACKER_HEIGHT_METRES=2.55;
 recedingBelow.properties.STORMTRACKER_HEIGHT_METRES=2.55;
 const recovered=reconcileFloodEvents(
   [recedingMinor,recedingBelow],
-  {[recent.id]:[...measured[recent.id],{time:now+45*MIN,height:2.55}],
-   [below.id]:[...measured[below.id],{time:now+45*MIN,height:2.55}]},
+  {[recent.id]:[...measured[recent.id],{time:now+15*MIN,height:2.52},{time:now+45*MIN,height:2.55}],
+   [below.id]:[...measured[below.id],{time:now+15*MIN,height:2.52},{time:now+45*MIN,height:2.55}]},
   selected.events,later);
 assert.equal(recovered.features.length,2,
   "Official minor persists; threshold-free gauge stays monitored while still 1.5m above its own pre-rise level");

@@ -1,7 +1,7 @@
 // Offline/browser-only persistence of source-CONFIRMED flood-class stations.
 // Never match by site name. Any newer BoM below-minor observation clears its
 // own exact station ID. A stale missing observation is NOT proof of recovery.
-import {parseQueenslandObservationTime} from "./river-flood-signals-v1.js?v=20261018-inland-rise";
+import {parseQueenslandObservationTime,FLOOD_STAGE_MAX_AGE_MS} from "./river-flood-signals-v1.js?v=20261018-inland-rise";
 import {stationFloodLevels,observedFloodClass}
   from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
@@ -9,7 +9,7 @@ export const OFFICIAL_FLOOD_STORAGE_KEY="stormtracker.qld-confirmed-flood-statio
 // The absence of new telemetry must NOT preserve a flood classification
 // indefinitely. After 24 h without a source-observed flood level, retire
 // the map record without asserting that the crossing is safe.
-export const FLOOD_CONFIRMATION_MAX_AGE_MS=24*3600000;
+export const FLOOD_CONFIRMATION_MAX_AGE_MS=FLOOD_STAGE_MAX_AGE_MS;
 const officialLevels=new Set(["minor","moderate","major"]);
 const normalised=value=>String(value??"").trim().toLowerCase();
 const stationId=id=>/^(bom|awrc):[a-z0-9_-]+$/i.test(String(id??""));

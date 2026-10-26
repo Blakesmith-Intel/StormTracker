@@ -327,6 +327,8 @@ function showRiverGaugeInfo(
     "Flood class",
     summary.alertSource==="bom-station-threshold"?
       labelFloodClass(summary.displayState)+" (measured height)":
+    summary.alertSource==="bom-uncorroborated-cache"?
+      "Unverified — source history contradicts cached flood reading":
     summary.classificationUnverified
       ? "Not supplied with latest measured height"
       : labelFloodClass(summary.floodClass)

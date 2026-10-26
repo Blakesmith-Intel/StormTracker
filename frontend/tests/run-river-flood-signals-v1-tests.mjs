@@ -104,9 +104,15 @@ assert.equal(selected.events[below.id].baselineHeight,1.0);
 assert.equal(selected.counts.rapidRise,2);
 assert.equal(selected.features.find(f=>f.id==="bom:3").properties.STORMTRACKER_RAPID_RISE,false);
 assert.equal(selected.features.find(f=>f.id===below.id).properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
+const recedingMinor=make(recent.id,"minor","falling","information",laterText);
+const recedingBelow=make(below.id,"below-minor","falling","information",laterText);
+recedingMinor.properties.STORMTRACKER_HEIGHT_METRES=2.55;
+recedingBelow.properties.STORMTRACKER_HEIGHT_METRES=2.55;
 const recovered=reconcileFloodEvents(
-  [make(recent.id,"minor","falling"),make(below.id,"below-minor","falling")],
-  measured,selected.events,now);
+  [recedingMinor,recedingBelow],
+  {[recent.id]:[...measured[recent.id],{time:now+45*MIN,height:2.55}],
+   [below.id]:[...measured[below.id],{time:now+45*MIN,height:2.55}]},
+  selected.events,later);
 assert.equal(recovered.features.length,2,
   "Official minor persists; threshold-free gauge stays monitored while still 1.5m above its own pre-rise level");
 assert.equal(recovered.features.find(f=>f.id===recent.id).properties.STORMTRACKER_DISPLAY_STATE,"minor");

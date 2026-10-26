@@ -117,7 +117,9 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
   let event=prior[id];
   // Never carry a rate-only alert through published flood-stage gauges,
   // the tidal screen, or an authoritative current flood class.
-  if(!noMinor||tidal||officialStates.has(decision.state))event=null;
+  if(!noMinor||tidal||officialStates.has(decision.state)||
+     p.STORMTRACKER_IDENTITY_WARNING||
+     p.STORMTRACKER_STATION_TABLE_CONFLICT)event=null;
   const newlyRapid=decision.show&&decision.state==="rapid-rise"&&
     Boolean(decision.rapidRise)&&!tidal&&noMinor&&isFresh;
   if(newlyRapid){

@@ -438,7 +438,7 @@ export function createRiverGaugeLayer({
   }
 
   function recentHistoryCoverage(features=latestSourceFeatures,at=now()){
-    const gaps=features.map(feature=>recentFloodHistoryGap(feature,history,at))
+    const gaps=features.map(feature=>recentFloodHistoryGap(feature,history,at,crossingCatalogue))
       .filter(Boolean);
     return {
       incomplete:gaps.length,
@@ -551,7 +551,7 @@ export function createRiverGaugeLayer({
         const counts=diagnostics.floodSignalCounts??{};
         const count=currentFeatures.length;
         const incompleteText=coverage.incomplete
-          ? ` · rapid-rise screening incomplete for ${coverage.incomplete} rising gauge(s)`
+          ? ` · 30-minute rise screening incomplete for ${coverage.incomplete} gauge(s)`
           : "";
         const missingText=coverage.missingSource
           ? ` · ${coverage.missingSource} without a valid history link`
@@ -837,7 +837,7 @@ export function createRiverGaugeLayer({
               : "ok",
 
           message:
-            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${minor} minor · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${staleText}${partialText}${screening.incomplete ? ` · rapid-rise screening incomplete for ${screening.incomplete} rising gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
+            `${summaries.length} qualifying flood signal${summaries.length === 1 ? "" : "s"} · ${major} major · ${moderate} moderate · ${minor} minor · ${rapidRise} rapid above minor · ${tidalAnomaly} unusual tidal rise${staleText}${partialText}${screening.incomplete ? ` · 30-minute rise screening incomplete for ${screening.incomplete} gauge(s)` : ""}${screening.missingSource ? ` · ${screening.missingSource} without a valid history link` : ""} · screening only; follow BoM warnings`,
 
           count:
             summaries.length,
@@ -865,7 +865,7 @@ export function createRiverGaugeLayer({
             lastLoadedAt
         });
 
-        // Bootstrap only plausible rising stations asynchronously. Severe
+        // Bootstrap classified, inland, and active crossing stations asynchronously. Severe
         // BoM classifications render immediately without waiting for history.
         void backfillRecentBoMHistory(latestSourceFeatures).catch(error=>{
           console.warn("BoM history bootstrap skipped:",error);

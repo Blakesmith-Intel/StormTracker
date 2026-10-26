@@ -276,9 +276,13 @@ function showRiverGaugeInfo(
         `${summary.recoveryBaselineMetres.toFixed(2)} m · same gauge, not an official flood threshold`);
   }
 
-  addDetailRow(rows, "Measured rise",
-    summary.riseRateMetresPerHour === null ? "" :
-      `${summary.riseRateMetresPerHour.toFixed(2)} m/hour`);
+  // Every visible station reports a signed 30-minute change, or explains
+  // why it cannot be calculated. Never hide missing data or invent a rate.
+  const measuredRate=summary.riseRateMetresPerHour;
+  addDetailRow(rows, "Measured rise / fall",
+    typeof measuredRate==="number"&&Number.isFinite(measuredRate)
+      ? `${measuredRate>0?"+":""}${measuredRate.toFixed(2)} m/hour`
+      : "Rate unavailable — insufficient recent observations");
 
   addDetailRow(rows, "Rise interval",
     summary.rateIntervalMinutes === null ? "" :

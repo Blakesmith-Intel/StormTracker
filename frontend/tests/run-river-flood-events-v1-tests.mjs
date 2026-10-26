@@ -40,7 +40,8 @@ const risingBelow=query("below-minor","rising");
 assert.equal(risingBelow.features.length,1);
 assert.equal(risingBelow.features[0].properties.STORMTRACKER_DISPLAY_STATE,"rapid-rise");
 assert.equal(risingBelow.features[0].properties.STORMTRACKER_RAPID_RISE,true);
-assert.equal(query("below-minor","steady").features.length,0);
+assert.equal(query("below-minor","steady").features.length,1,
+ "A measured rise is recognised independently of the BoM tendency");
 assert.equal(query("minor","steady",{}).features.length,1,
  "Missing optional history cannot remove BoM-classified flooding");
 assert.equal(reconcileFloodEvents([datum("minor","steady",

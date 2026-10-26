@@ -163,12 +163,37 @@ function recentTidalReversal(samples,nowMs=Date.now()){
   return up&&down;
 }
 
+// Positive, exact-station-ID non-tidal evidence. Never infer non-tidal from
+// the absence of a 'tide gauge' label or from proximity to the coastline.
+// 540529: BoM 14-day Laidley Creek at Warrego Highway plot inspected
+// 26 Oct 2026, showing a stable non-cyclic pre-event level and distinct
+// rainfall/flood waves; operator-supplied source screenshot and matching
+// exact BoM station ID. Review an entry if new BoM evidence disputes it.
+// Add new stations ONLY after individual official-source/long-history review.
+export const REVIEWED_NON_TIDAL_BOM_STATIONS=Object.freeze({
+  "bom:540529":"Laidley Creek at Warrego Highway — 26 Oct 2026 BoM 14-day plot"
+});
+export function isVerifiedNonTidalGauge(feature){
+  const id=String(feature?.id??"");
+  const p=feature?.properties??{};
+  if(!Object.hasOwn(REVIEWED_NON_TIDAL_BOM_STATIONS,id)||
+      p.STORMTRACKER_IDENTITY_WARNING)return false;
+  const number=String(p.bom_stn_num??"").trim();
+  if(number&&(!/^\\d{1,6}$/.test(number)||
+      number.padStart(6,"0")!==id.slice(4)))return false;
+  // An explicit official tidal site tag wins over an earlier manual review.
+  return !/tide gauge|tidal|estuar(?:y|ine)|sea level/i.test(
+    String(p.location_types??""));
+}
+
 export function isObservedTidalGauge(feature,samples=[],nowMs=Date.now()){
   const types=String(feature?.properties?.location_types??"").toLowerCase();
-  // Source metadata "tide gauge" is decisive; observed tidal oscillation
-  // catches river-level stations that are tide affected but not tagged.
-  return /tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types) ||
-    observedTidalOscillation(samples,nowMs);
+  // Verified source tidal metadata takes precedence over non-tidal review.
+  if(/tide gauge|tidal|estuar(?:y|ine)|sea level/.test(types))return true;
+  // Repeated storm-wave reversals must not turn a positively reviewed
+  // non-tidal freshwater gauge into an assumed tidal station.
+  if(isVerifiedNonTidalGauge(feature))return false;
+  return observedTidalOscillation(samples,nowMs);
 }
 
 // Retain longer history only for officially tidal gauges or gauged water
@@ -365,9 +390,15 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
   // suppress this independent rate-only modifier entirely. Original BoM
   // minor/moderate/major classifications still display without restriction.
   const geographicScreen=gaugeRiseScreeningZone(feature);
-  const screeningThresholdMetresPerHour=geographicScreen.zone==="inland"
-    ? NON_TIDAL_RAPID_RISE_M_PER_H
-    : COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H;
+  // Station-specific positive non-tidal evidence overrides the coarse
+  // 125 km coastal uncertainty buffer. Unknown near-coast stations remain
+  // conservative; verified tidal sites remain excluded above.
+  const reviewedNonTidal=isVerifiedNonTidalGauge(feature);
+  const screeningZone=reviewedNonTidal?"verified-non-tidal":geographicScreen.zone;
+  const screeningThresholdMetresPerHour=
+    reviewedNonTidal || geographicScreen.zone==="inland"
+      ? NON_TIDAL_RAPID_RISE_M_PER_H
+      : COASTAL_UNCERTAIN_RAPID_RISE_M_PER_H;
   const rapidlyRising=Boolean(rateMatches && !tidal &&
     recent.rateMetresPerHour>=screeningThresholdMetresPerHour);
   const tidalBaseline=tidal?tidalRiseBaseline(samples,nowMs):null;
@@ -380,7 +411,7 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
         level+" flood classification (BoM)")+
         (rapidlyRising?"; measured rapid rise — potential flash-flooding behaviour":""),
       rapidRise:rapidlyRising,tidalScreened:tidal,rise:recent,
-      riseScreeningZone:geographicScreen.zone,
+      riseScreeningZone:screeningZone,
       screeningThresholdMetresPerHour,
       tidalBaselineMetresPerHour:tidalBaseline};
   }
@@ -388,7 +419,7 @@ export function evaluateFloodSignal(feature,history={},nowMs=Date.now()){
     return {show:true,state:"rapid-rise",rapidRise:true,
       source:"local-rate-screen",
       reason:"Measured rapid rise below minor; potential flash flooding, not a confirmed BoM flash-flood warning",
-      rise:recent,riseScreeningZone:geographicScreen.zone,
+      rise:recent,riseScreeningZone:screeningZone,
       screeningThresholdMetresPerHour,
       tidalBaselineMetresPerHour:tidalBaseline};
   }

@@ -52,7 +52,8 @@ export function formatAgencyTimestamp(value,agency="bom-gauge"){
   if(name==="bom-gauge"||name==="bom-rainfall")
     return p.hour+":"+p.minute+" "+dateNumeric+" AEST";
   if(name==="bom-issued")
-    return ampm.replace(/(am|pm)$/,(match)=>" "+match.toUpperCase())+
+    return String(Number(p.hour)%12||12).padStart(2,"0")+":"+p.minute+
+      (Number(p.hour)>=12?" PM":" AM")+
       " AEST "+p.weekday+" "+d+" "+long+" "+year;
   if(name==="energex"||name==="ergon")
     return d+" "+long+" "+year+", "+ampm+" AEST";

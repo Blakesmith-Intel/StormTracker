@@ -217,6 +217,7 @@ export function reconcileFloodEvents(features,history={},oldEvents={},now=Date.n
    kept={...kept,properties:{...kept.properties,
     STORMTRACKER_CROSSING_LEVEL_METRES:crossing.heightMetres,
     STORMTRACKER_CROSSING_NAME:crossing.crossingName,
+    STORMTRACKER_CROSSING_TYPE:crossing.type,
     STORMTRACKER_CROSSING_SOURCE:crossing.source,
     STORMTRACKER_CROSSING_REACHED:crossingReached}};
   }

@@ -170,6 +170,35 @@ export function riverGaugePanelAppearance(summary) {
   };
 }
 
+// A published approaches reference is a road-height measurement, not a
+// bridge height or an official road closure. Keep the flood-stage marker
+// unchanged and show the measured excess independently in the gauge panel.
+export function riverGaugeRoadReferenceRows(summary){
+  const level=summary?.crossingLevelMetres;
+  if(typeof level!=="number"||!Number.isFinite(level))return [];
+  const approaches=summary?.crossingType==="A"||summary?.crossingType==="R";
+  const height=summary?.heightMetres;
+  const current=typeof height==="number"&&Number.isFinite(height)&&
+    !summary?.observationStale;
+  const reached=current&&summary?.crossingReached&&height>=level;
+  const status=summary?.observationStale
+    ? "Last measured height is stale — current exceedance unverified"
+    : reached
+      ? (height-level).toFixed(2)+
+        (approaches?" m over published approaches level":" m above published reference")+
+        " · NOT confirmation of road closure"
+      : approaches?"Approaches level not currently exceeded"
+        :"Published reference not currently exceeded";
+  return [
+    [approaches?"BoM published approaches level":"BoM published crossing level",
+      (summary.crossingName||(approaches?"Approaches":"Crossing"))+" · "+
+      level.toFixed(2)+" m"],
+    [approaches?"Approaches reference source":"Crossing reference source",
+      summary.crossingSource||"BoM crossing reference"],
+    [approaches?"Water over approaches":"Crossing status",status]
+  ];
+}
+
 function showRiverGaugeInfo(
   feature
 ) {
@@ -256,18 +285,8 @@ function showRiverGaugeInfo(
   );
 
   addDetailRow(rows, "Signal", summary.alertReason);
-  if(typeof summary.crossingLevelMetres==="number"){
-    addDetailRow(rows,"BoM published crossing level",
-      (summary.crossingName||"Crossing")+" · "+
-      summary.crossingLevelMetres.toFixed(2)+" m");
-    addDetailRow(rows,"Crossing reference source",
-      summary.crossingSource||"BoM crossing reference");
-    addDetailRow(rows,"Crossing status",
-      summary.crossingReached&&typeof summary.heightMetres==="number"
-        ? (summary.heightMetres-summary.crossingLevelMetres).toFixed(2)+
-          " m above published reference · NOT confirmation of road closure"
-        : "Published reference not currently exceeded");
-  }
+  for(const [label,value] of riverGaugeRoadReferenceRows(summary))
+    addDetailRow(rows,label,value);
   if(summary.alertPersisted){
     addDetailRow(rows,"Event state",
       `Monitoring · ${summary.recoveryReadings}/2 recovery observations confirmed`);

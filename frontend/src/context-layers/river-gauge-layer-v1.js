@@ -194,6 +194,7 @@ export function riverGaugeOperationalSummary(
     crossingLevelMetres:typeof properties.STORMTRACKER_CROSSING_LEVEL_METRES==="number"
       ?properties.STORMTRACKER_CROSSING_LEVEL_METRES:null,
     crossingName:String(properties.STORMTRACKER_CROSSING_NAME??""),
+    crossingType:String(properties.STORMTRACKER_CROSSING_TYPE??""),
     crossingSource:String(properties.STORMTRACKER_CROSSING_SOURCE??""),
     crossingReached:Boolean(properties.STORMTRACKER_CROSSING_REACHED),
     alertSource:String(properties.STORMTRACKER_ALERT_SOURCE??""),

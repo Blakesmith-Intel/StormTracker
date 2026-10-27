@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 27 October 2026 | **Applies to:** V10.2.25 opt-in BoM warning polygons + accepted V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
+**Edition:** 27 October 2026 | **Applies to:** V10.2.26 documentation-only freeze of the V10.2.25 warning feature and V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -126,6 +126,10 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 **Safety:** This is situational awareness, not a traffic-direction or road-safety clearance. An event classified as local/state-controlled can still be **closed to all traffic**. Verify the source incident and road conditions with QLDTraffic or the relevant authority. Failure to retrieve the supplemental road-classification reports does **not** remove otherwise valid closure markers.
 
 ## BoM severe thunderstorm and severe weather warning polygons
+
+**Current sealed documentation:** [V10.2.26 final freeze](RELEASE_NOTES_V10.2.26.md) and [V10.2.25 warning functionality](RELEASE_NOTES_V10.2.25.md). The feature works independently of the cyclone QA panel and does not alter native measured radar or other map layers. The operator has directed that cyclone map validation be deferred until a live cyclone exists.
+
+
 
 **This is an optional additional layer, off by default.** Open **Layers → BoM severe warnings** to request original-source Bureau warning polygons. Its warning-area fill appears on the terrain map **under** the measured radar imagery, so radar reflectivity remains visible as before. Select a warning polygon to read the official heading, hazard details, issue/expiry times and original BoM bulletin link.
 

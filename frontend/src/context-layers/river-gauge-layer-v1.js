@@ -361,13 +361,19 @@ export function createRiverGaugeLayer({
   const PLOT_CROSSING_CACHE_MS=24*3600000;
   let plotCrossings={};
   try{
+    // Preserve old verified station references while rechecking false-negative
+    // results from when approaches were excluded.
+    const currentCache=storage?.getItem(PLOT_CROSSING_CACHE_KEY);
+    const migrating=!currentCache;
     const saved=canonicaliseLegacyBoMStationCache(
-      JSON.parse(storage?.getItem(PLOT_CROSSING_CACHE_KEY)??"{}"));
+      JSON.parse(currentCache??storage?.getItem("stormtracker.qld-plot-crossings.v1")??"{}"));
     for(const [id,item] of Object.entries(saved??{}).slice(0,1800)){
       if(!/^bom:\d{6}$/.test(id)||!Number.isFinite(item?.checkedAt)||
          now()-item.checkedAt>PLOT_CROSSING_CACHE_MS)continue;
+      if(migrating&&!item?.crossing)continue;
       plotCrossings[id]=item;
     }
+    if(migrating)storePlotCrossings();
   }catch{plotCrossings={};}
   function storePlotCrossings(){
     try{storage?.setItem(PLOT_CROSSING_CACHE_KEY,JSON.stringify(plotCrossings));}

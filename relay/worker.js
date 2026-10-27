@@ -36,6 +36,7 @@ import {
 
 import {relayOfficialIfdPoint} from "./ifd-on-demand.js";
 import {relayQldCrossingHeights} from "./river-crossing-heights-v1.js";
+import {relayRoadOwnershipReports} from "./road-ownership-reports-v1.js";
 
 const BOM_WMTS =
   "https://api.bom.gov.au/apikey/v1/mapping/timeseries/wmts";
@@ -1724,6 +1725,9 @@ export default {
 
     if (incoming.pathname === "/flood-road-closures-v9-15") {
       return relayFloodRoadClosures(origin,true);
+    }
+    if (incoming.pathname === "/road-ownership-report") {
+      return relayRoadOwnershipReports(request,origin,corsHeaders,errorResponse);
     }
 
     if (incoming.pathname === "/essential-energy-outages") {

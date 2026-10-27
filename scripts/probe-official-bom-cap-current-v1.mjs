@@ -19,7 +19,21 @@ try{
    const content=await r.text();
    const valid=content.includes("<")&&/(?:<|:)alert[\s>]/i.test(content);
    if(valid)actualCap++;
+   const compact=key=>(content.match(new RegExp("<(?:[\\w-]+:)?"+key+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?"+key+">","i"))?.[1]??"").trim();
+   const sent=Date.parse(compact("sent")),expires=Date.parse(compact("expires"));
+   const context={issuerVerified:/bom\.gov\.au/i.test(compact("sender"))||
+     /Bureau of Meteorology/i.test(compact("senderName")),
+     statusActual:/^actual$/i.test(compact("status")),
+     msgTypeUpdateOrAlert:/^(update|alert)$/i.test(compact("msgType")),
+     eventThunderstorm:/severe\s+thunderstorm/i.test(compact("event")),
+     eventSevereWeather:/severe\s+weather/i.test(compact("event")),
+     issuedAgeHours:Number.isFinite(sent)?Math.round((nowMs-sent)/3600000):null,
+     expiryRemainingHours:Number.isFinite(expires)?Math.round((expires-nowMs)/3600000):null,
+     originalPolygonElements:(content.match(/<(?:[\w-]+:)?polygon[\s>]/gi)||[]).length,
+     hasSourceWeb:/bom\.gov\.au/i.test(compact("web")),
+     hasInfo:/(?:<|:)info[\s>]/i.test(content)};
    const accepted=valid?parseOfficialBomCap(content,{nowMs}):[];
+   console.log(JSON.stringify({candidate:checked,diagnostics:context}));
    activeGenuine+=accepted.length;
    console.log(JSON.stringify({candidate:checked,http:r.status,capFormat:valid,
      activeVerifiedPolygons:accepted.length,

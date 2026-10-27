@@ -1,3 +1,4 @@
+import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 import {addOfficialSourceRow,powerOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {createPowerOutageSuburbExplorer} from "./power-outage-suburb-explorer-v1.js?v=council-customers-20261017-v1";
 import {
@@ -27,65 +28,8 @@ function setPowerStatus({
     kind;
 }
 
-export function formatPowerOutageTime(
-  value,
-  provider = "Energex"
-) {
-  const numeric =
-    Number(value);
-
-  const parsed =
-    Number.isFinite(numeric)
-    && String(
-      value ?? ""
-    ).trim() !== ""
-      ? numeric
-      : Date.parse(
-          String(
-            value ?? ""
-          )
-        );
-
-  if (
-    !Number.isFinite(
-      parsed
-    )
-  ) {
-    return String(
-      value ?? ""
-    ).trim();
-  }
-
-  return new Intl
-    .DateTimeFormat(
-      "en-AU",
-      {
-        timeZone:
-          provider
-          === "Essential Energy"
-            ? "Australia/Sydney"
-            : "Australia/Brisbane",
-        day:
-          "2-digit",
-        month:
-          "short",
-        year:
-          "numeric",
-        hour:
-          "2-digit",
-        minute:
-          "2-digit",
-        hour12:
-          false,
-        timeZoneName:
-          "short"
-      }
-    )
-    .format(
-      new Date(
-        parsed
-      )
-    );
+export function formatPowerOutageTime(value,provider="Energex"){
+  return formatAgencyTimestamp(value,provider);
 }
 
 function addDetailRow(

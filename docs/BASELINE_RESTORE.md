@@ -1,5 +1,8 @@
 # StormTracker V10.2.0 — cyclone UI release and sealed rollback
 
+> **Most recent accepted composite restore point (27 October 2026):** See [V10.2.24 release notes](RELEASE_NOTES_V10.2.24.md) and the [live-linked operator guide](OPERATOR_GUIDE_CURRENT.md). After live Pages verification, the new annotated tag `v10.2.24` and branch `restore/v10.2.24` must both resolve to the exact current composite release commit (retaining the immutable V10.2.0 radar foundation). This captures the official QLDTraffic state/local road-type report and the accepted 27 October info-panel/flood-gauge changes. Older versioned refs are preserved; the Cloudflare Worker and upstream BoM/QLDTraffic feeds are separate services, not made immutable by a Pages tag.
+
+
 **Verified sealed release source:** `047b3bd1c66b0ed5f070d2298202f46d0cd8dae2` (17 October 2026), immutable annotated `v10.2.0` and `restore/v10.2.0` verified after deployment.
 
 **Previous sealed V10.1.1 source:** `711d65a72a483b319e80711a09cfeabe2f69bbcd` — preserved as the immediate fallback.

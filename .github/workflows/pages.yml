@@ -1200,7 +1200,10 @@ jobs:
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag at $release_sha"
 
-      - name: Seal operator-accepted V10.2.23 composite after public verification
+      # V10.2.23 was already sealed at its original historical commit. Preserve
+      # it unchanged: never try to re-seal that same tag at a newer main SHA.
+      - name: Preserve prior V10.2.23 seal (historic, intentionally skipped)
+        if: false
         env:
           GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
         run: |
@@ -1250,3 +1253,60 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag and $restore at $release_sha; public flood code verified"
+
+      - name: Seal V10.2.24 operator-approved live production restore point
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.24"
+          restore="restore/v10.2.24"
+          test -f docs/RELEASE_NOTES_V10.2.24.md
+          grep -Fq 'Edition:** 27 October 2026' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'Road types report' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'road-ownership-report-v1.js' scripts/build-current-site.sh
+          grep -Fq 'road-ownership-report' relay/worker.js
+          grep -Fq 'roadTypeReport' frontend/live3d-operational-v9.html
+          node frontend/tests/run-road-ownership-report-v1-tests.mjs
+          # The deploy job has already passed tests, published and independently
+          # verified Pages. Confirm the *actual served* current report modules,
+          # not merely the original source or immutable V10.2.0 BUILD marker.
+          base="https://blakesmith-intel.github.io/StormTracker"
+          verified=false
+          for attempt in $(seq 1 14); do
+            ui="$(curl -fsSL --max-time 15 "$base/live3d-operational-v9.html?seal=$release_sha&check=$attempt" || true)"
+            road="$(curl -fsSL --max-time 15 "$base/src/context-layers/road-ownership-report-v1.js?seal=$release_sha&check=$attempt" || true)"
+            menu="$(curl -fsSL --max-time 15 "$base/src/context-layers/road-closure-lga-explorer-v1.js?seal=$release_sha&check=$attempt" || true)"
+            if grep -Fq 'id="roadTypeReport"' <<< "$ui" &&
+               grep -Fq 'roadOwnershipClass' <<< "$road" &&
+               grep -Fq 'createRoadOwnershipReport' <<< "$menu"; then
+              verified=true
+              break
+            fi
+            sleep 4
+          done
+          test "$verified" = true || { echo 'Refusing freeze: road-types report is not verified on public Pages'; exit 1; }
+          old_tag="$(git ls-remote origin 'refs/tags/v10.2.23^{}' | cut -f1)"
+          old_branch="$(git ls-remote origin 'refs/heads/restore/v10.2.23' | cut -f1)"
+          test -n "$old_tag" && test "$old_tag" = "$old_branch"
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.24 — operator-approved 27 October 2026 live production with QLDTraffic state/local road-types report, official source times, flood approaches; fully documented" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$annotated"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag / $restore at $release_sha; verified live Pages; v10.2.23 unchanged"

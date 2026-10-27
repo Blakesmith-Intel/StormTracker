@@ -63,6 +63,38 @@ const warningKind=event=>/severe\s+thunderstorm\s+warning/i.test(event)?"severe-
  /severe\s+weather\s+warning/i.test(event)?"severe-weather":null;
 const qldCoordinates=ring=>ring.some(([lon,lat])=>lon>=137&&lon<=154.5&&lat>=-29.5&&lat<=-9);
 const nswCoordinates=ring=>ring.some(([lon,lat])=>lon>=141&&lon<=154.5&&lat>=-38&&lat<=-28);
+// CAP cancellation notices are authoritative even when no polygon is provided.
+// Separating the notice from shape validation prevents a completed, cancelled
+// warning from being misrepresented as an unavailable geometry lookup.
+export function parseBomCapProductNotice(xml,{nowMs=Date.now()}={}){
+ if(typeof xml!=="string"||xml.length>1500000||
+    !/<(?:[\w-]+:)?alert[\s>]/i.test(xml))
+  throw Error("Not an original CAP alert");
+ const sender=one(xml,"sender"),senderName=one(xml,"senderName"),source=one(xml,"source");
+ if(!(/bom\.gov\.au/i.test(sender)||/bureau of meteorology/i.test(senderName+" "+source)) ||
+    !/^actual$/i.test(one(xml,"status")))return null;
+ const identifier=one(xml,"identifier"),sent=one(xml,"sent");
+ const sentMs=strictTime(sent);
+ if(!identifier||sentMs===null||sentMs>nowMs+5*60000||
+    nowMs-sentMs>36*3600000)return null;
+ const infos=fields(xml,"info");
+ const matching=infos.find(info=>warningKind(one(info,"event")))??"";
+ const parameters=fields(matching,"parameter").map(p=>({
+   name:one(p,"valueName"),value:one(p,"value")
+ })).filter(p=>/^(?:product.?code|bom.?product.?id|warning.?product|product)$/i.test(p.name));
+ const product=codeFromOriginalBomCapMetadata({
+   identifier,web:one(matching,"web"),references:one(xml,"references"),parameters
+ });
+ if(!product||!matching||warningKind(one(matching,"event"))!==product.kind)return null;
+ const cancelled=/^cancel$/i.test(one(xml,"msgType"))||
+   /^cancellation of\b/i.test(one(matching,"headline"));
+ const exp=strictTime(one(matching,"expires"));
+ return {productCode:product.code,issuedUtc:new Date(sentMs).toISOString(),
+  status:cancelled?"cancelled":exp!==null&&exp<=nowMs?"expired":"issued",
+  geometryExpected:!cancelled&&exp!==null&&exp>nowMs,
+  originalIdentifier:identifier};
+}
+
 export function parseOfficialBomCap(xml,{nowMs=Date.now()}={}){
  if(typeof xml!=="string"||xml.length>1500000||!/<(?:[\w-]+:)?alert[\s>]/i.test(xml))
   throw Error("Not a CAP alert document");

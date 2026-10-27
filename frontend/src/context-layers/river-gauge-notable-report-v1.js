@@ -5,7 +5,7 @@ import {stationFloodLevels,observedFloodClass}
 import {parseQueenslandObservationTime,FLOOD_SIGNAL_MAX_AGE_MS}
  from "./river-flood-signals-v1.js?v=9.13.2";
 import {publishedCrossingForFeature}
- from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
+ from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1-approaches-v2";
 export const FLOOD_CROSSINGS_SCHEMA="StormTrackerBoMQldCrossingHeightsV1";
 const grades=new Set(["major","moderate"]);
 const finite=v=>typeof v==="number"&&Number.isFinite(v);

@@ -1,3 +1,4 @@
+import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 import {buildNotableFloodGaugeReport,FLOOD_CROSSINGS_SCHEMA}
  from "./river-gauge-notable-report-v1.js?v=20261024-notable-crossings-v1";
 import {addOfficialSourceRow,bomGaugePlotUrl,OFFICIAL_SOURCE_LINKS} from "./official-source-links-v1.js?v=9.13.2";
@@ -174,16 +175,8 @@ export function riverGaugePanelAppearance(summary) {
 // bridge height or an official road closure. Keep the flood-stage marker
 // unchanged and show the measured excess independently in the gauge panel.
 function formatRoadReferenceObservationTime(utcMs){
-  if(typeof utcMs!=="number"||!Number.isFinite(utcMs)||utcMs<=0)return "";
-  const at=new Date(utcMs);
-  if(!Number.isFinite(at.getTime()))return "";
-  const time=at.toLocaleTimeString("en-GB",{
-    timeZone:"Australia/Brisbane",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
-  });
-  const date=at.toLocaleDateString("en-GB",{
-    timeZone:"Australia/Brisbane",day:"2-digit",month:"2-digit",year:"numeric"
-  });
-  return time+" "+date+" AEST";
+  return typeof utcMs==="number"&&Number.isFinite(utcMs)&&utcMs>0
+    ?formatAgencyTimestamp(utcMs,"bom-gauge"):"";
 }
 
 export function riverGaugeRoadReferenceRows(summary){
@@ -383,9 +376,7 @@ function showRiverGaugeInfo(
   );
   if(summary.classificationUnverified){
     const confirmed=summary.lastConfirmedFloodAt
-      ? new Date(summary.lastConfirmedFloodAt).toLocaleString("en-AU",{
-          timeZone:"Australia/Brisbane",day:"2-digit",month:"short",
-          hour:"2-digit",minute:"2-digit",hour12:false})+" AEST" : "time unavailable";
+      ? formatAgencyTimestamp(summary.lastConfirmedFloodAt,"bom-gauge") : "time unavailable";
     addDetailRow(rows,"Last confirmed flood class",
       summary.lastConfirmedFloodClass.toUpperCase()+" · "+confirmed+
       " · NOT reconfirmed by current BoM bulletin");
@@ -409,7 +400,9 @@ function showRiverGaugeInfo(
   addDetailRow(
     rows,
     "Observed",
-    summary.observedText
+    summary.officialObservedAt
+      ?formatAgencyTimestamp(summary.officialObservedAt,"bom-gauge")
+      :summary.observedText
   );
 
   addDetailRow(
@@ -588,10 +581,7 @@ export function initialiseOperationalRiverGauges({
   const reportStatus=$("floodGaugeReportStatus");
   let crossingCatalogue=null,crossingLoading=null,crossingRetryAfter=0;
 
-  const timeAest=at=>at?new Date(at).toLocaleString("en-AU",{
-    timeZone:"Australia/Brisbane",day:"2-digit",month:"short",
-    hour:"2-digit",minute:"2-digit",hour12:false
-  })+" AEST":"unknown time";
+  const timeAest=at=>at?formatAgencyTimestamp(at,"bom-gauge"):"unknown time";
   function renderFloodGaugeReport(){
     if(!reportDialog?.open||!reportRows||!reportSummary||!reportStatus)return;
     const now=Date.now();

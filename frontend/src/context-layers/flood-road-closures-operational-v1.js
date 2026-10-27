@@ -1,3 +1,4 @@
+import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 import {QLD_TRAFFIC_OFFICIAL_CLOSED_ALL,qldTrafficRoadImpactIcon} from "./qldtraffic-official-closure-icons-v1.js?v=9.15.0";
 import {addOfficialSourceRow,roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
 import {createRoadClosureLgaExplorer} from "./road-closure-lga-explorer-v1.js?v=last-refresh-20261017-v1";
@@ -36,52 +37,8 @@ function setRoadStatus({
     kind;
 }
 
-function formatQldTime(value) {
-  const text =
-    String(
-      value ?? ""
-    ).trim();
-
-  if (!text) {
-    return "";
-  }
-
-  const parsed =
-    Date.parse(
-      text
-    );
-
-  if (
-    !Number.isFinite(
-      parsed
-    )
-  ) {
-    return text;
-  }
-
-  return new Intl.DateTimeFormat(
-    "en-AU",
-    {
-      timeZone:
-        "Australia/Brisbane",
-      day:
-        "2-digit",
-      month:
-        "short",
-      year:
-        "numeric",
-      hour:
-        "2-digit",
-      minute:
-        "2-digit",
-      hour12:
-        false,
-      timeZoneName:
-        "short"
-    }
-  ).format(
-    new Date(parsed)
-  );
+function formatQldTime(value){
+  return formatAgencyTimestamp(value,"qldtraffic");
 }
 
 function safeWebLink(value) {

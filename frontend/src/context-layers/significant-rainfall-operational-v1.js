@@ -1,3 +1,4 @@
+import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 import {qualifiesAepRainfallSnapshot,rainfallBand} from "./significant-rainfall-source-v1.js?v=aest-9am-rollover-20261020";
 import {createSeverityMarkerLayers,rainfallIconPriority} from "./severity-marker-layer-v1.js?v=20261024-flood-recovery-severity-v1-single-flood-path-v10.2.21-final-pixel-size";
 import {classifyRainfallAep,ifdCellKey,ifdCellSupportsDuration,
@@ -58,11 +59,8 @@ const marker=record=>"data:image/svg+xml;charset=utf-8,"+
  encodeURIComponent(rainfallMarkerSvg(record));
 
 function formatted(iso){
- if(!iso||!Number.isFinite(Date.parse(iso)))return "Unverified";
- return new Intl.DateTimeFormat("en-AU",{
-  timeZone:"Australia/Brisbane",day:"2-digit",month:"short",year:"numeric",
-  hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"
- }).format(new Date(iso));
+  return iso&&Number.isFinite(Date.parse(iso))
+    ?formatAgencyTimestamp(iso,"bom-issued"):"Unverified";
 }
 function detailRow(holder,label,value){
  const key=document.createElement("span"),val=document.createElement("strong");

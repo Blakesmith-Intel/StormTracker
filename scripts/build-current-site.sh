@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "agency-source-time-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js", "road-closure-lga-explorer-v1.js", "road-ownership-report-v1.js", "bom-warning-cap-source-v1.js", "bom-warning-terrain-imagery-v1.js", "bom-warning-operational-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "agency-source-time-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js", "road-closure-lga-explorer-v1.js", "road-ownership-report-v1.js", "bom-qld-warning-product-catalogue-v1.js", "bom-warning-cap-source-v1.js", "bom-warning-terrain-imagery-v1.js", "bom-warning-operational-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -85,6 +85,17 @@ assert document.count(base_label)==1 and document.count(base_panel)==1
 document=document.replace(base_label,ui+base_label,1)
 document=document.replace(base_panel,info+base_panel,1)
 document=document.replace('<dialog id="roadLgaExplorer"',styling+'\n<dialog id="roadLgaExplorer"',1)
+road_page.write_text(document,encoding="utf-8")
+
+# The on-screen affected LDMG/DDMG report belongs to the optional warning
+# panel; insert it separately, never into the road closures report fragment.
+document=road_page.read_text(encoding="utf-8")
+report_start='<dialog id="officialBomWarningGroupsReport"'
+report_end='<dialog id="detailsDialog"'
+assert source_page.count(report_start)==1 and source_page.count(report_end)==1
+assert document.count(report_start)==0 and document.count(report_end)==1
+fragment=source_page[source_page.index(report_start):source_page.index(report_end)]
+document=document.replace(report_end,fragment+report_end,1)
 road_page.write_text(document,encoding="utf-8")
 
 copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),

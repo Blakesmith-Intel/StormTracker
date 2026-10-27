@@ -173,22 +173,51 @@ export function riverGaugePanelAppearance(summary) {
 // A published approaches reference is a road-height measurement, not a
 // bridge height or an official road closure. Keep the flood-stage marker
 // unchanged and show the measured excess independently in the gauge panel.
+function formatRoadReferenceObservationTime(utcMs){
+  if(typeof utcMs!=="number"||!Number.isFinite(utcMs)||utcMs<=0)return "";
+  const at=new Date(utcMs);
+  if(!Number.isFinite(at.getTime()))return "";
+  const time=at.toLocaleTimeString("en-GB",{
+    timeZone:"Australia/Brisbane",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+  });
+  const date=at.toLocaleDateString("en-GB",{
+    timeZone:"Australia/Brisbane",day:"2-digit",month:"2-digit",year:"numeric"
+  });
+  return time+" "+date+" AEST";
+}
+
 export function riverGaugeRoadReferenceRows(summary){
   const level=summary?.crossingLevelMetres;
   if(typeof level!=="number"||!Number.isFinite(level))return [];
   const approaches=summary?.crossingType==="A"||summary?.crossingType==="R";
   const height=summary?.heightMetres;
-  const current=typeof height==="number"&&Number.isFinite(height)&&
-    !summary?.observationStale;
-  const reached=current&&summary?.crossingReached&&height>=level;
-  const status=summary?.observationStale
-    ? "Last measured height is stale — current exceedance unverified"
-    : reached
-      ? (height-level).toFixed(2)+
-        (approaches?" m over published approaches level":" m above published reference")+
-        " · NOT confirmation of road closure"
-      : approaches?"Approaches level not currently exceeded"
-        :"Published reference not currently exceeded";
+  const hasHeight=typeof height==="number"&&Number.isFinite(height);
+  const stale=Boolean(summary?.observationStale);
+  const observedAt=formatRoadReferenceObservationTime(summary?.officialObservedAt);
+  // A stale but valid observation still establishes the water depth AT THAT
+  // observation time. It does not establish the current level or a road closure.
+  // The live marker's crossingReached flag remains independently freshness-gated.
+  let status;
+  if(stale&&hasHeight){
+    const difference=height-level;
+    const measured=difference>=0
+      ?difference.toFixed(2)+
+        (approaches?" m over published approaches level":" m above published reference")
+      :Math.abs(difference).toFixed(2)+
+        (approaches?" m below published approaches level":" m below published reference");
+    status="Last measured "+measured+
+      (observedAt?" as at "+observedAt:" (observation time unavailable)")+
+      " · STALE — current level unverified · NOT confirmation of road closure";
+  }else if(stale){
+    status="Last valid height unavailable — current exceedance unverified";
+  }else if(hasHeight&&summary?.crossingReached&&height>=level){
+    status=(height-level).toFixed(2)+
+      (approaches?" m over published approaches level":" m above published reference")+
+      " · NOT confirmation of road closure";
+  }else{
+    status=approaches?"Approaches level not currently exceeded"
+      :"Published reference not currently exceeded";
+  }
   return [
     [approaches?"BoM published approaches level":"BoM published crossing level",
       (summary.crossingName||(approaches?"Approaches":"Crossing"))+" · "+

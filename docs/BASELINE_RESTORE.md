@@ -1,4 +1,18 @@
-# StormTracker V10.2.0 — cyclone UI release and sealed rollback
+# StormTracker — current V10.2.26 recovery and rollback reference
+
+> **Current accepted operator release:** V10.2.26 is a **documentation-only freeze** of the fully deployed and tested V10.2.25 warning feature. Its pages bundle retains immutable original V10.2.0 radar and storm-science source. [Final release notes](RELEASE_NOTES_V10.2.26.md) · [V10.2.25 functionality](RELEASE_NOTES_V10.2.25.md) · [operator guide](OPERATOR_GUIDE_CURRENT.md). Preserve all previous tags: especially `v10.2.25` / `restore/v10.2.25` at `d9620f6cbc411bfee029d9fa9d170752aa7c34f2`. Create `v10.2.26` and `restore/v10.2.26` at the exact **new documentation commit** only after website verification. Never retag a previously accepted SHA.
+
+## Operator-ready recovery approach
+
+1. The normal production URL is https://blakesmith-intel.github.io/StormTracker/. The direct current [user guide](OPERATOR_GUIDE_CURRENT.md) and [handover](DEVELOPMENT_HANDOVER_CURRENT.md) document the layer toggles, no-warning/unavailable distinction and all operational constraints.
+2. When rolling back to a previous accepted state, **make a new reviewed rollback/release commit from an immutable `restore/*` source**; do not force-push `main`, repoint existing tags or casually replace the V10.2.0 radar foundation.
+3. V10.2.25 introduced the only new operator-visible warning feature: BoM severe thunderstorm/severe weather polygons; `IDQ21035` detailed SEQ / `IDQ21033` regional QLD filters; LGA-backed LDMG and official district intersections of any size; source-true polygon fill below radar; official click-through; 15-minute/manual refresh; removal/replacement on source-corroborated cancellation/update. The warning layer is **off by default**, so switching it off restores the prior operator view without a rollback.
+4. The Cloudflare Worker `stormtracker-bom-relay` is **separate** from GitHub Pages and is not rolled back by a Pages tag. Verify the same external Worker after any rollback; preserve other routes for radar/IFD/river/crossings and any required CORS.
+5. A previous clean source scan with no genuine active warning polygon can return zero; a failed, partial, or ambiguous source scan must be reported **unavailable**, not a genuine BoM all-clear. Never inject synthetic warning areas. Live active-warning polygon capture remains the one honest limitation after these releases.
+
+---
+
+## Historic original V10.2.0 recovery record (preserved)
 
 > **Most recent accepted composite restore point (27 October 2026):** See [V10.2.24 release notes](RELEASE_NOTES_V10.2.24.md) and the [live-linked operator guide](OPERATOR_GUIDE_CURRENT.md). After live Pages verification, the new annotated tag `v10.2.24` and branch `restore/v10.2.24` must both resolve to the exact current composite release commit (retaining the immutable V10.2.0 radar foundation). This captures the official QLDTraffic state/local road-type report and the accepted 27 October info-panel/flood-gauge changes. Older versioned refs are preserved; the Cloudflare Worker and upstream BoM/QLDTraffic feeds are separate services, not made immutable by a Pages tag.
 

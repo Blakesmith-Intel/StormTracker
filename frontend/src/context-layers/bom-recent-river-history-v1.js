@@ -1,5 +1,5 @@
 import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
-import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
+import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1-approaches-v2";
 import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
 import {stationFloodLevels, observedFloodClass} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 
@@ -324,7 +324,7 @@ export async function fetchBoMRecentHistoryDetail(target,{
     const samples=payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
       .slice(-225);
     const crossing=payload.crossing;
-    const validCrossing=crossing&&["B","C","X"].includes(crossing.type)&&
+    const validCrossing=crossing&&["B","C","X","R","A"].includes(crossing.type)&&
       typeof crossing.heightMetres==="number"&&Number.isFinite(crossing.heightMetres)&&
       crossing.heightMetres>=-10&&crossing.heightMetres<=300;
     return {samples,crossing:validCrossing?crossing:null};

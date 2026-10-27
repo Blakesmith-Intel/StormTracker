@@ -17,6 +17,9 @@ const official=`<html><pre>
  540154 HARRISVILLE ALERT WARRILL CREEK 5.50 B Warrill Creek Bridge
  540119 ENOGGERA DAM ALERT ENOGGERA CREEK 74.40 S Dam
  540691 TAMBORINE ALERT ALBERT RIVER 15.40 B
+ 540692 TEST ROAD ALERT TEST CREEK 2.30 R Local Road Approaches
+ 540693 TEST TOWN ALERT TEST RIVER 1.25 A Town Approaches
+ 540694 TEST SPILLWAY ALERT TEST RIVER 1.25 S Dam Spillway
  </pre></html>`;
 const e=parseBomQueenslandCrossings(official);
 assert.equal(e["bom:540291"].heightMetres,-0.03);
@@ -24,6 +27,11 @@ assert.equal(e["bom:540291"].type,"C");
 assert.equal(e["bom:540254"].crossingName,"Pacific Highway Bridge");
 assert.equal(e["bom:540063"].type,"X");
 assert.equal(e["bom:540691"].crossingName,"Published bridge");
+assert.equal(e["bom:540692"].type,"R");
+assert.equal(e["bom:540692"].crossingName,"Local Road Approaches");
+assert.equal(e["bom:540693"].type,"A");
+assert.equal(e["bom:540693"].crossingName,"Town Approaches");
+assert.equal(e["bom:540694"],undefined,"Spillway must remain excluded");
 assert.equal(e["bom:540001"],undefined,"Tidal datum is NOT a road crossing");
 assert.equal(e["bom:540119"],undefined,"Dam/spillway isn't a causeway");
 assert.equal(QLD_CROSSING_SOURCE,"https://www.bom.gov.au/qld/flood/networks/section5.shtml");
@@ -56,6 +64,14 @@ assert.equal(model.total,5,
 assert.deepEqual(model.groups.map(g=>g.rows.length),[2,1,2],
  "Mudgeeraba 4.80m is above its ACTUAL BoM 4.10m major stage as well as 4.60m bridge; appear once under major");
 assert.equal(model.crossedCount,3);
+for(const [number,level] of [["540692",2.30],["540693",1.25]]){
+ const atLevel=buildNotableFloodGaugeReport([station(number,level)],reference,now);
+ assert.equal(atLevel.total,1,"Published approaches count at their exact threshold");
+ assert.equal(atLevel.crossedCount,1);
+ assert.equal(atLevel.groups[2].rows[0].crossing.levelMetres,level);
+ assert.equal(buildNotableFloodGaugeReport([station(number,level-0.01)],
+  reference,now).total,0,"Approaches below reference must remain off");
+}
 const entry=model.groups[2].rows.find(x=>x.id==="bom:540291");
 assert.equal(entry.crossing.name,"Clagiraba Road Causeway");
 assert.equal(entry.crossing.amountAboveMetres,0.13);

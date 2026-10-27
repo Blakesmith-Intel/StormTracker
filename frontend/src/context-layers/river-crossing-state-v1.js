@@ -1,11 +1,12 @@
 // Bridge/causeway/crossing references from exact BoM station IDs only.
 // Neither a crossing reference nor its exceedance is an official flood class.
 export const CROSSING_SCHEMA="StormTrackerBoMQldCrossingHeightsV1";
-const validType=new Set(["B","C","X"]);
+const validType=new Set(["B","C","X","R","A"]);
 const validHeight=n=>typeof n==="number"&&Number.isFinite(n)&&n>=-10&&n<=300;
 function cleanCrossing(value){
   if(!value||!validType.has(value.type)||!validHeight(value.heightMetres))return null;
-  const fallback={B:"Published bridge",C:"Published causeway",X:"Published crossing"};
+  const fallback={B:"Published bridge",C:"Published causeway",X:"Published crossing",
+    R:"Published road approaches",A:"Published approaches"};
   return {type:value.type,heightMetres:value.heightMetres,
     crossingName:String(value.crossingName||fallback[value.type]).slice(0,110),
     source:String(value.source||"BoM published crossing reference").slice(0,130)};
@@ -22,10 +23,11 @@ export function parseBoMStationCrossingHeader(raw,station){
   if(!label)return null;
   const tail=header.slice(label.index+label[0].length).split(/Data\s+from\s+the\s+previous|About\s+this\s+table/i)[0].slice(0,700);
   const values=[];
-  const pattern=/\b(Bridge|Causeway|Crossing)\s*:\s*(-?\d{1,3}(?:\.\d{1,2})?)\s*m\b/gi;
+  const pattern=/\b(Road\s+Approaches?|Approaches?|Bridge|Causeway|Crossing)\s*:\s*(-?\d{1,3}(?:\.\d{1,2})?)\s*m\b/gi;
   for(const match of tail.matchAll(pattern)){
     const heightMetres=Number(match[2]),kind=match[1].toLowerCase();
-    const type=kind==="bridge"?"B":kind==="causeway"?"C":"X";
+    const type=kind==="bridge"?"B":kind==="causeway"?"C":
+      kind.startsWith("road ")?"R":kind.startsWith("approach")?"A":"X";
     if(validHeight(heightMetres))values.push({type,heightMetres,
       crossingName:"BoM station "+kind+" level",source:"BoM station river-height table"});
   }

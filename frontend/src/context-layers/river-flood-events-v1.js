@@ -6,7 +6,7 @@ import {
  latestRiseRate,latestMeasuredRiseRate,isObservedTidalGauge,FLOOD_SIGNAL_MAX_AGE_MS,FLOOD_STAGE_MAX_AGE_MS
 } from "./river-flood-signals-v1.js?v=9.13.2";
 import {stationFloodLevels} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
-import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
+import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1-approaches-v2";
 
 export const FLOOD_EVENTS_STORAGE_KEY="stormtracker.qld-flood-events.v1";
 export const FLOOD_EVENT_RECOVERY_COUNT=1;

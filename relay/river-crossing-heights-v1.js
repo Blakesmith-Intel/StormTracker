@@ -1,6 +1,6 @@
 // Read-only official BoM Queensland Section 5 (5 January 2022).
-// Type B=bridge; C=causeway; X=road crossing. R=road approaches,
-// A=approaches, S=spillway, F=dam and T=tide are deliberately excluded.
+// Road-height types B=bridge, C=causeway, X=crossing, R=road approaches
+// and A=approaches qualify. S=spillway, F=dam and T=tide stay excluded.
 // This is a station-specific published reference, NOT a road-closure signal.
 export const QLD_CROSSING_SOURCE=
  "https://www.bom.gov.au/qld/flood/networks/section5.shtml";
@@ -22,13 +22,13 @@ export function parseBomQueenslandCrossings(html){
   const row=line.replace(/[\t ]+/g," ").trim();
   // Keep a source row intact; never join an unrelated wrapped station or
   // accept a height from the next station's line.
-  const m=row.match(/(?:^|\s)(\d{6})\s+(.{3,155}?)\s+(-?\d{1,3}(?:\.\d{1,2})?)\s+([BCX])(?:\s+(.{0,105}))?$/);
+  const m=row.match(/(?:^|\s)(\d{6})\s+(.{3,155}?)\s+(-?\d{1,3}(?:\.\d{1,2})?)\s+([BCXRA])(?:\s+(.{0,105}))?$/);
   if(!m)continue;
   const id="bom:"+m[1],height=Number(m[3]),type=m[4];
   if(!Number.isFinite(height)||height< -10||height>300)continue;
   const name=String(m[5]??"").trim().slice(0,100);
   const entry={heightMetres:height,type,
-    crossingName:name||({B:"Published bridge",C:"Published causeway",X:"Published crossing"})[type]};
+    crossingName:name||({B:"Published bridge",C:"Published causeway",X:"Published crossing",R:"Published road approaches",A:"Published approaches"})[type]};
   if(entries[id] && (entries[id].heightMetres!==height||entries[id].type!==type))
    conflicting.add(id);
   else entries[id]=entry;

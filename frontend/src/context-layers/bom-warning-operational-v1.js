@@ -53,7 +53,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    reportClose=$("closeOfficialBomWarningGroupsReport"),reportBody=$("officialBomWarningGroupsBody");
  if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
   return {destroy(){}};
- let warnings=[],imagery=null,loadedAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
+ let warnings=[],imagery=null,lastAttemptAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
  const canvas=viewer.scene.canvas;
  const report=(message,kind="normal")=>{
   state.textContent=message;state.dataset.kind=kind;
@@ -144,8 +144,9 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  async function refresh({force=false}={}){
   if(!toggle.checked||destroyed)return;
   if(pending)return pending;
-  if(!force&&loadedAt&&now()-loadedAt<INTERVAL_MS){trimExpired();return;}
+  if(!force&&lastAttemptAt&&now()-lastAttemptAt<INTERVAL_MS){trimExpired();return;}
   report("Checking issued Bureau of Meteorology warning polygons…","loading");
+  lastAttemptAt=now(); // Respect 15-minute cadence after timeouts as well.
   pending=(async()=>{
    try{
     const res=await fetchImpl(SOURCE,{cache:"no-store",signal:AbortSignal.timeout(27000)});
@@ -157,12 +158,12 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     warnings=data.warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
     sourceStatus=data.status;
     productStatuses=data.products??{};
-    loadedAt=now();display();renderGroupsReport();
+    display();renderGroupsReport();
     if(activeId)openInfo(warnings.find(w=>w.id===activeId)??null);
     showProductStatus();
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
-    warnings=[];loadedAt=0;sourceStatus="unavailable";productStatuses={};display();renderGroupsReport();openInfo(null);
+    warnings=[];sourceStatus="unavailable";productStatuses={};display();renderGroupsReport();openInfo(null);
     report("Warning polygons unavailable — "+String(error?.message??error).slice(0,120)+
        " · check official BoM warnings","error");
    }finally{pending=null;}
@@ -232,7 +233,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };
- const onRefresh=()=>{loadedAt=0;void refresh({force:true});};
+ const onRefresh=()=>{void refresh({force:true});};
  const onClose=()=>openInfo(null);
  let pointerStart=null;
  const down=e=>{
@@ -268,7 +269,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  dismiss.addEventListener("click",onClose);
  canvas.addEventListener("pointerdown",down);
  canvas.addEventListener("pointerup",up);
- timer=setInterval(()=>{trimExpired();if(toggle.checked&&now()-loadedAt>=INTERVAL_MS)void refresh();},60000);
+ timer=setInterval(()=>{trimExpired();if(toggle.checked&&now()-lastAttemptAt>=INTERVAL_MS)void refresh();},60000);
  report("BoM warning polygons off");
  return {refresh,destroy(){
   destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];openInfo(null);

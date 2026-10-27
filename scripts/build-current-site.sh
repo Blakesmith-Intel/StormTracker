@@ -41,7 +41,7 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "agency-source-time-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js", "road-closure-lga-explorer-v1.js", "road-ownership-report-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "agency-source-time-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js", "road-closure-lga-explorer-v1.js", "road-ownership-report-v1.js", "bom-qld-warning-product-catalogue-v1.js", "bom-warning-cap-source-v1.js", "bom-warning-terrain-imagery-v1.js", "bom-warning-operational-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
@@ -62,6 +62,42 @@ assert 'id="roadTypeReport"' not in document
 document=document.replace(old_button,old_button+"\n    "+button,1)
 document=document.replace(ending,fragment+ending,1)
 road_page.write_text(document,encoding="utf-8")
+
+# Opt-in official warning UI: append ONLY new controls, popup and compact styles
+# to the immutable foundation. Never replace other operator panels.
+source_page=Path("frontend/live3d-operational-v9.html").read_text(encoding="utf-8")
+road_page=site / "live3d-operational-v9.html"
+document=road_page.read_text(encoding="utf-8")
+label='<div class="layer-row official-bom-warnings-row">'
+label_end='<div class="layer-row basemap-row">'
+panel='<section id="officialBomWarningInfo"'
+panel_end='<section id="floodRoadClosureInfo"'
+css='<style>\n.official-bom-warnings-row'
+css_end='</style>'
+assert source_page.count(label)==1 and source_page.count(panel)==1 and source_page.count(css)==1
+assert document.count(label)==0 and document.count(panel)==0
+ui=source_page[source_page.index(label):source_page.index(label_end)]
+info=source_page[source_page.index(panel):source_page.index(panel_end)]
+styling=source_page[source_page.index(css):source_page.index(css_end,source_page.index(css))+len(css_end)]
+base_label='<div class="layer-row basemap-row">'
+base_panel='<section id="floodRoadClosureInfo"'
+assert document.count(base_label)==1 and document.count(base_panel)==1
+document=document.replace(base_label,ui+base_label,1)
+document=document.replace(base_panel,info+base_panel,1)
+document=document.replace('<dialog id="roadLgaExplorer"',styling+'\n<dialog id="roadLgaExplorer"',1)
+road_page.write_text(document,encoding="utf-8")
+
+# The on-screen affected LDMG/DDMG report belongs to the optional warning
+# panel; insert it separately, never into the road closures report fragment.
+document=road_page.read_text(encoding="utf-8")
+report_start='<dialog id="officialBomWarningGroupsReport"'
+report_end='<dialog id="detailsDialog"'
+assert source_page.count(report_start)==1 and source_page.count(report_end)==1
+assert document.count(report_start)==0 and document.count(report_end)==1
+fragment=source_page[source_page.index(report_start):source_page.index(report_end)]
+document=document.replace(report_end,fragment+report_end,1)
+road_page.write_text(document,encoding="utf-8")
+
 copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),
          site / "src/bom-doppler-intake-v3.js")
 # Production-only native Doppler handover stability overlay; sealed science,
@@ -87,7 +123,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15-flood-map-marker-size-v10.2.16-uniform-flood-map-markers-v10.2.17-source-ifd-v10.2.18-map-icons-match-legend-v10.2.19-single-flood-path-v10.2.20-final-pixel-contract-v10.2.21-safari-bitmap-v10.2.22-measured-rise-independent-tendency-v1-20261026-rolling-30min-measured-panel-v1-20261026-approaches-info-depth-20261027-v1-stale-road-depth-observation-20261027-v1-agency-time-formats-20261027-v1-road-ownership-report-20261027-v1"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15-flood-map-marker-size-v10.2.16-uniform-flood-map-markers-v10.2.17-source-ifd-v10.2.18-map-icons-match-legend-v10.2.19-single-flood-path-v10.2.20-final-pixel-contract-v10.2.21-safari-bitmap-v10.2.22-measured-rise-independent-tendency-v1-20261026-rolling-30min-measured-panel-v1-20261026-approaches-info-depth-20261027-v1-stale-road-depth-observation-20261027-v1-agency-time-formats-20261027-v1-road-ownership-report-20261027-v1-bom-warning-polygons-20261027-v1"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -136,6 +172,13 @@ assert rain_engine.count(rain_mount)==1
 mount_anchor='initialiseOperationalQfdTechnicalRescues({\n  viewer\n});'
 assert data.count(mount_anchor)==1
 data=data.replace(mount_anchor,mount_anchor+'\n'+rain_mount,1)
+
+# Warning imagery remains below measured radar and independent of storm science.
+warnings_import='import {initialiseOfficialBomWarningPolygons} from "./context-layers/bom-warning-operational-v1.js?v=20261027-bees-dick-v1";'
+assert 'initialiseOfficialBomWarningPolygons' not in data
+data=data.replace('import {\n  initialiseOperationalQfdTechnicalRescues\n}',warnings_import+'\nimport {\n  initialiseOperationalQfdTechnicalRescues\n}',1)
+data=data.replace(mount_anchor,mount_anchor+'\ninitialiseOfficialBomWarningPolygons({viewer,CesiumRef:Cesium});',1)
+
 # Only when the next selected UTC falls OUTSIDE the prior genuine site's
 # measured 8-minute hold, give the extra site a bounded opportunity to finish
 # its already warmed Cesium stage BEFORE committing the primary scan. This

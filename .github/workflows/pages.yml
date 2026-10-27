@@ -1254,7 +1254,9 @@ jobs:
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag and $restore at $release_sha; public flood code verified"
 
-      - name: Seal V10.2.24 operator-approved live production restore point
+      # Preserve the historically accepted release without moving its immutable tag.
+      - name: Preserve sealed V10.2.24 (historical; never reseal)
+        if: false
         env:
           GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
         run: |
@@ -1310,3 +1312,63 @@ jobs:
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag / $restore at $release_sha; verified live Pages; v10.2.23 unchanged"
+
+      - name: Seal verified V10.2.25 optional BoM warnings release
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.25"
+          restore="restore/v10.2.25"
+          test -f docs/RELEASE_NOTES_V10.2.25.md
+          grep -Fq 'V10.2.25 opt-in BoM warning polygons' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'INTERVAL_MS=15*60*1000' frontend/src/context-layers/bom-warning-operational-v1.js
+          grep -Fq '/bom-official-warning-polygons' relay/worker.js
+          node frontend/tests/run-official-bom-warning-polygons-bees-dick-v1-tests.mjs
+          node frontend/tests/run-bom-warning-product-cancel-refresh-v1-tests.mjs
+          # Validate the published HTML/module chain, not just the checkout.
+          # BoM does not need to have an active warning to pass this release:
+          # source unavailable/cancelled with zero polygons is an honest state.
+          base="https://blakesmith-intel.github.io/StormTracker"
+          relay="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons"
+          verified=false
+          for attempt in $(seq 1 16); do
+            page="$(curl -fsSL --max-time 18 "$base/live3d-operational-v9.html?check=$release_sha-$attempt" || true)"
+            module="$(curl -fsSL --max-time 18 "$base/src/context-layers/bom-warning-operational-v1.js?check=$release_sha-$attempt" || true)"
+            render="$(curl -fsSL --max-time 18 "$base/src/context-layers/bom-warning-terrain-imagery-v1.js?check=$release_sha-$attempt" || true)"
+            status="$(curl -fsSL --max-time 25 "$relay?check=$release_sha-$attempt" || true)"
+            if grep -Fq 'id="officialBomWarningProduct"' <<< "$page" &&
+               grep -Fq 'id="officialBomWarningGroupsReport"' <<< "$page" &&
+               grep -Fq 'INTERVAL_MS=15*60*1000' <<< "$module" &&
+               grep -Fq 'createWarningImageryProvider' <<< "$render" &&
+               grep -Fq 'StormTrackerOfficialBoMWarningPolygonsV1' <<< "$status"; then
+               verified=true
+               break
+            fi
+            sleep 4
+          done
+          test "$verified" = true || { echo 'Refusing V10.2.25 freeze: public warnings UI/relay not verified'; exit 1; }
+          old_tag="$(git ls-remote origin 'refs/tags/v10.2.24^{}' | cut -f1)"
+          old_branch="$(git ls-remote origin 'refs/heads/restore/v10.2.24' | cut -f1)"
+          test -n "$old_tag" && test "$old_tag" = "$old_branch"
+          prior_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          prior_branch="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          test -z "$prior_tag" || test "$prior_tag" = "$release_sha"
+          test -z "$prior_branch" || test "$prior_branch" = "$release_sha"
+          if [ -z "$prior_branch" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$prior_tag" ]; then
+            object="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.25 — operator-approved optional BoM warnings, detailed/regional filters, all intersecting LDMGs/DDMGs and 15-minute checks; historical releases preserved" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$object"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$object" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag and $restore at $release_sha; historical releases unchanged"

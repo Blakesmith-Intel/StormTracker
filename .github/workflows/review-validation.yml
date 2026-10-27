@@ -30,6 +30,10 @@ jobs:
         run: node --check relay/worker.js
       - name: Verify BoM authentic published crossing reference at source
         run: node scripts/probe-bom-qld-crossings-v1.mjs
+      - name: One-off verify genuine BoM severe-warning CAP polygon availability
+        if: github.head_ref == 'feature/bom-official-warning-polygons-bees-dick-20261027'
+        continue-on-error: true
+        run: node scripts/probe-official-bom-cap-current-v1.mjs
       - name: Verify genuine-product cyclone GML decoder contracts (offline)
         run: python3 scripts/test-bom-issued-cyclone-decoder.py
 

@@ -1,3 +1,4 @@
+import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 import {
   fetchQfdPublicIncidents,QFD_REFRESH_MS,QFD_MAX_SNAPSHOT_MS,
   QFD_PUBLIC_GROUPS,QFD_PUBLIC_GROUP_NAMES,qfdPublicGroupCounts
@@ -17,12 +18,8 @@ function setStatus({kind="normal",message=""}={}) {
   el.dataset.kind=kind;
   el.textContent=message;
 }
-function fmtDate(iso) {
-  if(!iso)return "";
-  return new Intl.DateTimeFormat("en-AU",{
-    timeZone:"Australia/Brisbane",day:"2-digit",month:"short",year:"numeric",
-    hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"
-  }).format(new Date(iso));
+function fmtDate(iso){
+  return formatAgencyTimestamp(iso,"qfd");
 }
 function detailRow(parent,label,value) {
   if(value==null || String(value).trim()==="")return;

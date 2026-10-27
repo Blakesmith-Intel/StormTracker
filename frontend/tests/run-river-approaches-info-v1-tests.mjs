@@ -63,9 +63,57 @@ assert.equal(major.state.STORMTRACKER_DISPLAY_STATE,"major",
  "BoM major red still outranks approaches reference");
 assert.match(major.rows["Water over approaches"],/^0\.90 m over published approaches level/);
 
-const stale=riverGaugeRoadReferenceRows({...moderate.summary,observationStale:true});
-assert.match(Object.fromEntries(stale)["Water over approaches"],/current exceedance unverified/);
-assert.doesNotMatch(Object.fromEntries(stale)["Water over approaches"],/0\.45 m over/);
+// The operator's 041472 source-table reading: 6.74m at 14:43 AEST
+// 27 October 2026, equal to 0.49m above the 6.25m approaches.
+const lastObserved=Date.UTC(2026,9,27,4,43);
+const oldGauge=sample(6.74);
+oldGauge.properties.STORMTRACKER_OFFICIAL_OBSERVED_AT=lastObserved;
+oldGauge.properties.STORMTRACKER_OBSERVED_TEXT="14:43 27/10/2026";
+const lastKnown=reconcileFloodEvents([oldGauge],{}, {},NOW);
+assert.equal(lastKnown.features.length,1,
+ "Stale official moderate must retain its existing last-confirmed marker");
+assert.equal(lastKnown.features[0].properties.STORMTRACKER_DISPLAY_STATE,"moderate",
+ "Approach over-height cannot override the published moderate flood category");
+assert.equal(lastKnown.features[0].properties.STORMTRACKER_CROSSING_REACHED,false,
+ "Stale water above approaches is informational, never a current crossing flag");
+const lastKnownSummary=riverGaugeOperationalSummary(lastKnown.features[0]);
+assert.equal(lastKnownSummary.observationStale,true);
+assert.equal(lastKnownSummary.officialObservedAt,lastObserved,
+ "The time must belong to the same station's actual source observation");
+const stale=Object.fromEntries(riverGaugeRoadReferenceRows(lastKnownSummary));
+assert.match(stale["Water over approaches"],
+ /^Last measured 0\.49 m over published approaches level as at 14:43 27\/10\/2026 AEST/);
+assert.match(stale["Water over approaches"],/STALE — current level unverified/);
+assert.match(stale["Water over approaches"],/NOT confirmation of road closure/);
+assert(!stale["Water over approaches"].includes("19:00"),
+ "Never substitute the current app refresh time for the source observation");
+
+// Bridge, causeway, road crossing and both approach types all retain depth
+// measured at the last observation without changing operational flood markers.
+for(const type of ["B","C","X","R","A"]){
+ const rows=Object.fromEntries(riverGaugeRoadReferenceRows({
+  crossingType:type,crossingLevelMetres:6.25,heightMetres:6.74,
+  crossingName:"BoM published road reference",crossingReached:false,
+  observationStale:true,officialObservedAt:lastObserved
+ }));
+ const value=rows[type==="A"||type==="R"?"Water over approaches":"Crossing status"];
+ assert.match(value,/0\.49 m (?:over published approaches level|above published reference) as at 14:43 27\/10\/2026 AEST/,
+  type+" must show the last observation's depth and timestamp");
+ assert.match(value,/current level unverified/);
+}
+const staleBelow=Object.fromEntries(riverGaugeRoadReferenceRows({
+ crossingType:"A",crossingLevelMetres:6.25,heightMetres:6.15,
+ observationStale:true,officialObservedAt:lastObserved}));
+assert.match(staleBelow["Water over approaches"],
+ /Last measured 0\.10 m below published approaches level as at 14:43 27\/10\/2026 AEST/,
+ "A below-approaches reading must not falsely claim water above the road");
+const unknownTime=Object.fromEntries(riverGaugeRoadReferenceRows({
+ crossingType:"B",crossingLevelMetres:6.25,heightMetres:6.74,
+ observationStale:true,officialObservedAt:null}));
+assert.match(unknownTime["Crossing status"],/0\.49 m above published reference/);
+assert.match(unknownTime["Crossing status"],/observation time unavailable/);
+assert.doesNotMatch(unknownTime["Crossing status"],/27\/10\/2026/,
+ "Do not invent an observation date when none is source-verified");
 const bridgeRows=Object.fromEntries(riverGaugeRoadReferenceRows({
  crossingType:"B",crossingLevelMetres:1.71,crossingName:"Bridge",
  crossingReached:true,heightMetres:2.00,observationStale:false}));
@@ -73,4 +121,4 @@ assert.equal(bridgeRows["Crossing status"],
  "0.29 m above published reference · NOT confirmation of road closure");
 assert.equal(bridgeRows["BoM published crossing level"],"Bridge · 1.71 m");
 
-console.log("PASS BoM 041472 approaches 6.25m AHD shown as water-over-approaches depth, current/stale reporting, unchanged 5/6/7m severity and old bridge labels");
+console.log("PASS 041472 stale 6.74m at 14:43 over 6.25m approaches, source-timestamped B/C/X/R/A depths, unchanged severity and map freshness");

@@ -1,7 +1,7 @@
 import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-terrain-imagery-v1.js";
 import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 const SOURCE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons";
-const SCHEMA="StormTrackerOfficialBoMWarningPolygonsV1",INTERVAL_MS=5*60*1000;
+const SCHEMA="StormTrackerOfficialBoMWarningPolygonsV1",INTERVAL_MS=15*60*1000;
 export const PRODUCT_FILTERS=Object.freeze(["all","IDQ21035","IDQ21033"]);
 export function filterOfficialWarnings(warnings,productCode="all"){
  if(!PRODUCT_FILTERS.includes(productCode))return [];

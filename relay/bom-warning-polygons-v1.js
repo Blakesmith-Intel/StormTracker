@@ -1,5 +1,7 @@
-import {bomCapRssLinks,parseOfficialBomCap}
+import {bomCapRssLinks,parseOfficialBomCap,parseBomCapProductNotice}
  from "../frontend/src/context-layers/bom-warning-cap-source-v1.js";
+import {reconcileLatestBoMWarnings}
+ from "./bom-warning-product-reconcile-v1.js";
 
 export const BOM_CAP_RSS="https://severeweather.wmo.int/v2/cap-alerts/au-bom-en/rss.xml";
 const LGA_URL="https://spatial-gis.information.qld.gov.au/arcgis/rest/services/Boundaries/AdministrativeBoundaries/MapServer/1/query";
@@ -71,21 +73,30 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
  try{
   const now=Date.now(),rss=await textResponse(BOM_CAP_RSS,3000000);
   const links=bomCapRssLinks(rss,{nowMs:now});
-  const found=await Promise.allSettled(links.map(url=>textResponse(url).then(xml=>
-   parseOfficialBomCap(xml,{nowMs:now}))));
+  const found=await Promise.allSettled(links.map(url=>textResponse(url).then(xml=>({
+   notice:parseBomCapProductNotice(xml,{nowMs:now}),
+   warnings:parseOfficialBomCap(xml,{nowMs:now})
+  }))));
   const sourceFailures=found.filter(x=>x.status==="rejected").length;
-  const all=found.flatMap(x=>x.status==="fulfilled"?x.value:[]);
-  const seen=new Set(),unique=all.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});
+  const messageRecords=found.map(x=>x.status==="fulfilled"?x.value:{failed:true});
+  const reconciled=reconcileLatestBoMWarnings(messageRecords,{
+    complete:sourceFailures===0,nowMs:now
+  });
   // NSW clipping against the TRUE installed radar coverage union is required
   // before independently publishing NSW warnings. Do not approximate it.
-  const qld=unique.filter(x=>x.state==="QLD");
+  const qld=reconciled.warnings.filter(x=>x.state==="QLD");
   const enriched=await Promise.all(qld.slice(0,14).map(enrichWarningBoundaries));
+  const products=reconciled.products;
+  // Never label incomplete CAP source scans as confirmed "no warnings".
+  const partial=sourceFailures>0||Object.values(products).some(p=>
+    p.status==="unavailable"||p.status==="geometry-unavailable");
   payload={schema:NAME,checkedAt:new Date(now).toISOString(),
-   status:sourceFailures?"partial-source-unavailable":
+   status:partial?"partial-source-unavailable":
      enriched.length?"active":"no-verified-current-polygons",
    source:"WMO registered Australian Bureau of Meteorology CAP authority",
    sourceUrl:BOM_CAP_RSS,sourceFailures,
-   nswWithheld:unique.filter(x=>x.state==="NSW").length,
+   products,sourceComplete:reconciled.sourceComplete,
+   nswWithheld:reconciled.warnings.filter(x=>x.state==="NSW").length,
    warnings:enriched};
  }catch(error){
   payload={schema:NAME,checkedAt:new Date().toISOString(),status:"unavailable",

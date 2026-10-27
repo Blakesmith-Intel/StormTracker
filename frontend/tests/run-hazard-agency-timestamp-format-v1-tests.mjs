@@ -8,7 +8,7 @@ const at=Date.UTC(2026,9,27,4,43); // 27 Oct 2026 14:43 AEST
 assert.equal(formatAgencyTimestamp(at,"bom-gauge"),"14:43 27/10/2026 AEST");
 assert.equal(formatAgencyTimestamp(at,"bom-rainfall"),"14:43 27/10/2026 AEST");
 assert.equal(formatAgencyTimestamp(at,"bom-issued"),
- "2:43 PM AEST Tuesday 27 October 2026");
+ "02:43 PM AEST Tuesday 27 October 2026");
 assert.equal(formatAgencyTimestamp(at,"energex"),"27 October 2026, 2:43pm AEST");
 assert.equal(formatAgencyTimestamp(at,"ergon"),"27 October 2026, 2:43pm AEST");
 assert.equal(formatPowerOutageTime(at,"Ergon"),"27 October 2026, 2:43pm AEST");

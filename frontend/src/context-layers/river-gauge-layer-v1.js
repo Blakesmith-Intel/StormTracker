@@ -357,7 +357,7 @@ export function createRiverGaugeLayer({
   // Bounded, same-station BoM table crossing metadata survives browser reloads.
   // Negative results are cached too, preventing repeated lookups for stations
   // whose official table does not publish a crossing level.
-  const PLOT_CROSSING_CACHE_KEY="stormtracker.qld-plot-crossings.v1";
+  const PLOT_CROSSING_CACHE_KEY="stormtracker.qld-plot-crossings.v2";
   const PLOT_CROSSING_CACHE_MS=24*3600000;
   let plotCrossings={};
   try{

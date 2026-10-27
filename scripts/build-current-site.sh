@@ -41,10 +41,27 @@ from shutil import copyfile
 site = Path("_site")
 source = Path("frontend/src/context-layers")
 layers = site / "src/context-layers"
-for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "agency-source-time-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js"):
+for filename in ("significant-rainfall-source-v1.js", "significant-rainfall-operational-v1.js", "significant-rainfall-report-v1.js", "river-gauge-notable-report-v1.js", "river-crossing-state-v1.js", "agency-source-time-v1.js", "severity-marker-layer-v1.js", "bom-recent-river-history-v1.js", "river-gauge-layer-v1.js", "river-gauge-latest-v1.js", "river-flood-thresholds-v1.js", "river-flood-stages-2026-full-v1.js", "river-gauges-operational-v1.js", "river-flood-signals-v1.js", "river-gauge-coastal-screen-v1.js", "river-official-flood-persistence-v1.js", "river-flood-events-v1.js", "river-gauges-v1.js", "river-gauge-observations-v1.js", "power-outages-v1.js", "power-outages-operational-v1.js", "power-outage-suburb-explorer-v1.js", "power-outage-suburb-model-v1.js", "outage-lga-spatial-v2.js", "outage-lga-geographic-fallback-v1.js", "incident-lga-model-v1.js", "flood-road-closures-v1.js", "flood-road-closure-filter-v1.js", "road-closure-lga-explorer-v1.js", "road-ownership-report-v1.js"):
     copyfile(source / filename, layers / filename)
 # Hotfix ONLY the Doppler source transport module, not the sealed playback
 # engine, 3-D renderer, site catalogue, timeline or Doppler science.
+# Extend ONLY the existing road explorer with a separate ownership report.
+# Use a verified fragment, not a replacement of the sealed dashboard HTML.
+road_page=site / "live3d-operational-v9.html"
+document=road_page.read_text(encoding="utf-8")
+source_page=Path("frontend/live3d-operational-v9.html").read_text(encoding="utf-8")
+button='<button id="openRoadTypeReport" type="button" aria-haspopup="dialog" aria-controls="roadTypeReport">Road types report</button>'
+opening='<style>\n#roadTypeReport:not([open])'
+ending='<dialog id="powerOutageExplorer"'
+assert source_page.count(button)==1 and source_page.count(opening)==1
+fragment=source_page[source_page.index(opening):source_page.index(ending)]
+assert fragment.count('id="roadTypeReport"')==1
+old_button='<button id="refreshRoadLgaExplorer" type="button">Refresh</button>'
+assert document.count(old_button)==1 and document.count(ending)==1
+assert 'id="roadTypeReport"' not in document
+document=document.replace(old_button,old_button+"\n    "+button,1)
+document=document.replace(ending,fragment+ending,1)
+road_page.write_text(document,encoding="utf-8")
 copyfile(Path("frontend/src/bom-doppler-intake-v3.js"),
          site / "src/bom-doppler-intake-v3.js")
 # Production-only native Doppler handover stability overlay; sealed science,
@@ -70,7 +87,7 @@ for relative in ("index.html","live3d-operational-v9.html"):
         '<head>\n<link rel="icon" type="image/svg+xml" href="./favicon.svg">',1),
         encoding="utf-8")
 
-suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15-flood-map-marker-size-v10.2.16-uniform-flood-map-markers-v10.2.17-source-ifd-v10.2.18-map-icons-match-legend-v10.2.19-single-flood-path-v10.2.20-final-pixel-contract-v10.2.21-safari-bitmap-v10.2.22-measured-rise-independent-tendency-v1-20261026-rolling-30min-measured-panel-v1-20261026-approaches-info-depth-20261027-v1-stale-road-depth-observation-20261027-v1-agency-time-formats-20261027-v1"
+suffix = "-river-history-nodata-v2-20261018-terrain-outline-v1-20261018-flood-gauge-refresh-v1-20261018-river-large-table-stream-v1-20261018-tidal-pattern-screen-v1-20261018-statewide-tidal-envelope-v1-20261018-inland-river-sensitive-v1-20261018-history-503-stream-deadline-v1-20261018-doppler-png-502-cooldown-v1-20261018-wmts-published-times-v1-20261018-walkerston-minor-persistence-v1-20261018-wmts-stale400-radar74-circuit-favicon-v1-20261018-qld-significant-rain-v1-20261018-richmond-real-palette-20261019-v3-wind-stability-20261019-v4-flood-freshness-20261019-10m-v1-flood-threshold-classification-20261020-v1-warilda-stage-all-gauges-v2-outage-geometry-lga-20261020-v1-bom-stage-1080-offline-v2-bom-2026-datum-verified-v1-safe-exact-station-2026-v2-datum-conflict-neutral-v1-official-2026-blank-cells-v1-single-source-2026-v1-new-beith-ahd-v2-severity-ordered-20261020-aep-keep-all-gauge-pairs-v2-20261021-flood-recovery-lifecycle-20261024-flood-crossings-station-20261024-v1-statewide-bridge-recovery-20261024-v2-crossing-report-completeness-v3-full-source-audit-v4-station-error-isolation-v5-flood-source-speed-64-v10.2.11-leading-zero-station-ids-v10.2.12-id-cache-recovery-v10.2.13-amber-theresa-bridge-v10.2.14-readable-legend-v10.2.15-flood-map-marker-size-v10.2.16-uniform-flood-map-markers-v10.2.17-source-ifd-v10.2.18-map-icons-match-legend-v10.2.19-single-flood-path-v10.2.20-final-pixel-contract-v10.2.21-safari-bitmap-v10.2.22-measured-rise-independent-tendency-v1-20261026-rolling-30min-measured-panel-v1-20261026-approaches-info-depth-20261027-v1-stale-road-depth-observation-20261027-v1-agency-time-formats-20261027-v1-road-ownership-report-20261027-v1"
 def version_once(relative, needle):
     path = site / relative
     data = path.read_text(encoding="utf-8")
@@ -162,6 +179,10 @@ version_once("src/context-layers/river-gauge-observations-v1.js",
     "river-gauges-v1.js?v=9.12.0")
 version_once("src/context-layers/river-gauges-operational-v1.js",
     "river-gauges-v1.js?v=9.12.0")
+version_once("src/live3d-operational-v9.js",
+    "flood-road-closures-operational-v1.js?v=sidebar-refresh-track-20261017-v1")
+version_once("src/context-layers/flood-road-closures-operational-v1.js",
+    "road-closure-lga-explorer-v1.js?v=last-refresh-20261017-v1")
 version_once("src/live3d-operational-v9.js",
     "power-outages-operational-v1.js?v=council-customers-20261017-v1")
 version_once("src/context-layers/power-outages-operational-v1.js",

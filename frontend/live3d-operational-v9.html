@@ -288,11 +288,39 @@
       <input id="roadLgaSearch" type="search" autocomplete="off" placeholder="Search QLDTraffic closures...">
     </label>
     <button id="refreshRoadLgaExplorer" type="button">Refresh</button>
+    <button id="openRoadTypeReport" type="button" aria-haspopup="dialog" aria-controls="roadTypeReport">Road types report</button>
   </div>
   <p id="roadLgaFeedStatus" class="outage-explorer-feed-status" role="status">Waiting for live closures…</p>
   <p id="roadLgaSummary" class="outage-explorer-count">Waiting for closures…</p>
   <div id="roadLgaResults" class="outage-explorer-results"></div>
   <p class="outage-explorer-footer">Tap a road to focus its published map location. Map markers and their existing information panels are unchanged.</p>
+</dialog>
+<style>
+#roadTypeReport:not([open]){display:none!important;}
+#roadTypeReport[open]{position:fixed;inset:0;margin:auto;display:flex;flex-direction:column;gap:0;
+  box-sizing:border-box;width:min(830px,calc(100vw - 22px));height:min(790px,calc(100dvh - 22px));
+  max-height:calc(100dvh - 22px);border:1px solid #6c94a7;border-radius:17px;
+  padding:0;background:#10202b;color:#ecf6fa;box-shadow:0 20px 65px #000d;overflow:hidden;}
+#roadTypeReport::backdrop{background:rgba(0,9,18,.74);}
+#roadTypeReport .outage-explorer-results{overflow:auto;min-height:0;flex:1;}
+</style>
+<dialog id="roadTypeReport" class="outage-explorer" aria-labelledby="roadTypeReportTitle">
+  <header class="outage-explorer-heading">
+    <div><strong id="roadTypeReportTitle">Road closures by road management</strong>
+    <p>Unplanned closures to all traffic only · verified against QLDTraffic event IDs</p></div>
+    <button id="closeRoadTypeReport" type="button">Close</button>
+  </header>
+  <div class="outage-explorer-toolbar">
+    <label for="roadTypeSearch">Find council, locality or road
+      <input id="roadTypeSearch" type="search" autocomplete="off" placeholder="Search reported closures...">
+    </label>
+    <button id="refreshRoadTypeReport" type="button">Refresh</button>
+    <button id="backRoadTypeReport" type="button">Council report</button>
+  </div>
+  <p id="roadTypeStatus" class="outage-explorer-feed-status" role="status">Official road-management classifications not yet checked.</p>
+  <p id="roadTypeSummary" class="outage-explorer-count">Waiting for closure information…</p>
+  <div id="roadTypeResults" class="outage-explorer-results"></div>
+  <p class="outage-explorer-footer">State-controlled category includes events flagged as affecting a state-controlled road and separately verified highways/motorways. Conflicts and unmatched event IDs remain unverified. This report does not change map icons or road closures.</p>
 </dialog>
 <dialog id="powerOutageExplorer" aria-labelledby="powerOutageExplorerTitle" aria-describedby="powerOutageExplorerHelp">
   <header class="outage-explorer-heading">

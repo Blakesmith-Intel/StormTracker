@@ -1,3 +1,5 @@
+> **Status update 27 October 2026:** This is a historical 16 October planning reference, NOT the active implementation order. Operator explicitly deferred live cyclone forecast mapping until a real cyclone is present. Opt-in BoM severe thunderstorm and severe weather polygon overlay, `IDQ21035` and `IDQ21033` product filtering and the exact-intersection LDMG/DDMG report were shipped in V10.2.25; V10.2.26 freezes documentation without code changes. Live-source active-warning polygon verification remains outstanding. Use the [current wishlist](ACTIVE_WISHLIST.md), [V10.2.25 release notes](RELEASE_NOTES_V10.2.25.md) and [final handover](DEVELOPMENT_HANDOVER_CURRENT.md) for current truth. The following plan is retained as historical design evidence.
+
 # StormTracker — Official Warning Geometry: Cyclones → Thunderstorms → V10
 
 **Priority confirmed by operator on 16 October 2026.** These are NEW separate development milestones following the *sealed* V9.20.2 satellite/quality/performance baseline. Never include unfinished warning data in a stable release.

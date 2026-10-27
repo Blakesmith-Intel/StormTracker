@@ -1,6 +1,7 @@
 import {formatIncidentRefreshTime} from "./incident-refreshed-time-v1.js?v=20261017-refresh-v1";
 import {groupRoadClosuresByLga,searchRoadCouncilGroups} from "./road-closure-lga-model-v1.js?v=roads-lga-20261017-v1";
 import {roadOfficialUrl} from "./official-source-links-v1.js?v=9.13.2";
+import {createRoadOwnershipReport} from "./road-ownership-report-v1.js?v=road-ownership-report-20261027-v1";
 export function createRoadClosureLgaExplorer({
  viewer,CesiumRef,mapCamera,refresh=()=>Promise.resolve(),getLoadedAt=()=>0,formatTime=()=>"",
 }={}){
@@ -17,6 +18,7 @@ export function createRoadClosureLgaExplorer({
   if(label!==undefined)node.textContent=String(label);
   return node;
  };
+ const ownershipReport=createRoadOwnershipReport({CesiumRef,mapCamera,councilDialog:dialog,refresh});
  let groups=[],feedStatus={kind:"loading",message:"Waiting for QLDTraffic…"},
    loaded=false,destroyed=false,busy=false;
  const openKeys=new Set();
@@ -127,7 +129,7 @@ export function createRoadClosureLgaExplorer({
     parent.append(inner);list.append(parent);
   }
  }
- function updateFeatures(features){groups=groupRoadClosuresByLga(features);loaded=true;updateSidebarCount();render();}
+ function updateFeatures(features){groups=groupRoadClosuresByLga(features);ownershipReport.updateFeatures(features);loaded=true;updateSidebarCount();render();}
  function updateStatus(next){
   if(next)feedStatus=next;
   const checkedAt=Number(feedStatus.loadedAt);
@@ -137,6 +139,7 @@ export function createRoadClosureLgaExplorer({
   if(feedStatus.kind==="error"&&/source expired|old closure markers removed/i.test(feedStatus.message||""))
    {loaded=false;groups=[];}
     updateSourceRefreshLabel();
+  ownershipReport.updateStatus(feedStatus);
   updateSidebarCount();
   render();
  }
@@ -156,7 +159,7 @@ export function createRoadClosureLgaExplorer({
  updateSourceRefreshLabel();
  updateSidebarCount();
  return {updateFeatures,updateStatus,destroy(){
-  destroyed=true;
+  destroyed=true;ownershipReport.destroy();
   openButton.removeEventListener("click",open);
   closeButton.removeEventListener("click",close);
   input.removeEventListener("input",search);

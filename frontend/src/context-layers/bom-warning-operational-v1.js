@@ -53,11 +53,34 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    reportClose=$("closeOfficialBomWarningGroupsReport"),reportBody=$("officialBomWarningGroupsBody");
  if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
   return {destroy(){}};
- let warnings=[],imagery=null,loadedAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable";
+ let warnings=[],imagery=null,loadedAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
  const canvas=viewer.scene.canvas;
  const report=(message,kind="normal")=>{
   state.textContent=message;state.dataset.kind=kind;
  };
+ const statusForProduct=(code)=>{
+  const status=productStatuses?.[code]?.status??"unavailable";
+  return status==="cancelled"?"Cancelled by BoM · no current polygons":
+    status==="no-active"?"0 current polygons verified":
+    status==="active"?"Active warning polygons":
+    status==="geometry-unavailable"?"Warning issued · original polygon unavailable":
+    "Warning verification unavailable";
+ };
+ function showProductStatus(){
+  if(!toggle.checked){report("BoM warning polygons off");return;}
+  const selected=filter.value,visible=filterOfficialWarnings(warnings,selected);
+  const summary=selected==="all"?"All BoM products":selected;
+  const detail=selected==="all"?
+    ["IDQ21035","IDQ21033"].map(code=>code+": "+statusForProduct(code)).join(" · "):
+    statusForProduct(selected);
+  const uncertain=sourceStatus==="partial-source-unavailable"||
+    sourceStatus==="unavailable"||
+    (selected==="all"?["IDQ21035","IDQ21033"].some(code=>
+      ["unavailable","geometry-unavailable"].includes(productStatuses?.[code]?.status)):
+      ["unavailable","geometry-unavailable"].includes(productStatuses?.[selected]?.status));
+  report(summary+" · "+visible.length+" active polygon(s) · "+detail+
+    " · automatic check every 15 min; manual refresh available",uncertain?"warning":"normal");
+ }
  const discard=()=>{
   if(imagery){
    viewer.imageryLayers.remove(imagery,true);imagery=null;
@@ -133,16 +156,13 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
       throw Error(data?.message||"Official CAP source unavailable");
     warnings=data.warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
     sourceStatus=data.status;
+    productStatuses=data.products??{};
     loadedAt=now();display();renderGroupsReport();
     if(activeId)openInfo(warnings.find(w=>w.id===activeId)??null);
-    report(warnings.length?
-       warnings.length+" current BoM warning polygon(s) · refreshed "+fmt(data.checkedAt)+
-        (data.sourceFailures?" · some CAP products unavailable":""):
-       "No currently verified BoM warning polygons in this source · check official BoM warnings",
-       data.sourceFailures?"warning":"normal");
+    showProductStatus();
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
-    warnings=[];loadedAt=0;sourceStatus="unavailable";display();renderGroupsReport();openInfo(null);
+    warnings=[];loadedAt=0;sourceStatus="unavailable";productStatuses={};display();renderGroupsReport();openInfo(null);
     report("Warning polygons unavailable — "+String(error?.message??error).slice(0,120)+
        " · check official BoM warnings","error");
    }finally{pending=null;}
@@ -161,12 +181,18 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
      filterOfficialWarnings(warnings,code);
    if(code==="other"&&!subset.length)continue;
    const result=warningProductAffectedGroups(subset);
+   const productStatus=productStatuses[code]?.status??"unavailable";
    const section=document.createElement("section");
    const heading=document.createElement("h3");heading.textContent=groupLabel(code);
    section.append(heading);
    const count=document.createElement("p");
-   count.textContent=sourceStatus==="unavailable"?"Warning source unavailable — coverage cannot be verified":
-     result.count+" active verified polygon"+(result.count===1?"":"s");
+   count.textContent=sourceStatus==="unavailable"||productStatus==="unavailable"?
+     "Warning verification unavailable — not an all-clear":
+     productStatus==="geometry-unavailable"?
+       "Warning issued, but genuine warning geometry unavailable":
+     productStatus==="cancelled"?
+       "Cancelled by BoM · 0 active polygons":
+       result.count+" active verified polygon"+(result.count===1?"":"s");
    section.append(count);
    for(const [label,items,complete] of [
      ["LDMGs — local council disaster-management groups",result.ldmgs,result.ldmgComplete],
@@ -190,7 +216,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   }
  }
  const onProductChange=()=>{
-  display();renderGroupsReport();
+  display();renderGroupsReport();showProductStatus();
   if(activeId){
    const match=filterOfficialWarnings(warnings,filter.value).find(w=>w.id===activeId);
    openInfo(match??null);
@@ -202,7 +228,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  const closeGroups=()=>reportDialog.close();
  const onToggle=()=>{
-  if(!toggle.checked){warnings=[];discard();openInfo(null);renderGroupsReport();
+  if(!toggle.checked){warnings=[];productStatuses={};sourceStatus="unavailable";discard();openInfo(null);renderGroupsReport();
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };

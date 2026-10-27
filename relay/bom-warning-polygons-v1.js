@@ -46,7 +46,7 @@ async function governmentIntersections(geometry,url,field){
 export async function enrichWarningBoundaries(warning){
  const [lga,ddmg]=await Promise.allSettled([
   governmentIntersections(warning.geometry,LGA_URL,"lga"),
-  governmentIntersections(warning.geometry,DDMG_URL,"DISTRICT")
+  governmentIntersections(warning.geometry,DDMG_URL,"District")
  ]);
  return {...warning,
   lgas:lga.status==="fulfilled"?lga.value:[],

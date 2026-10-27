@@ -2,6 +2,26 @@ import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-t
 import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 const SOURCE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons";
 const SCHEMA="StormTrackerOfficialBoMWarningPolygonsV1",INTERVAL_MS=5*60*1000;
+export const PRODUCT_FILTERS=Object.freeze(["all","IDQ21035","IDQ21033"]);
+export function filterOfficialWarnings(warnings,productCode="all"){
+ if(!PRODUCT_FILTERS.includes(productCode))return [];
+ return (Array.isArray(warnings)?warnings:[]).filter(w=>
+   productCode==="all"||w?.productCode===productCode);
+}
+export function warningProductAffectedGroups(warnings,productCode="all"){
+ const visible=filterOfficialWarnings(warnings,productCode);
+ const ldmgs=new Set(),ddmgs=new Set();
+ let ldmgComplete=true,ddmgComplete=true;
+ for(const w of visible){
+  if(w.ldmgStatus!=="verified")ldmgComplete=false;
+  if(w.ddmgStatus!=="verified")ddmgComplete=false;
+  for(const name of w.ldmgs??w.lgas??[])if(String(name).trim())ldmgs.add(String(name).trim());
+  for(const name of w.ddmgs??[])if(String(name).trim())ddmgs.add(String(name).trim());
+ }
+ return {count:visible.length,ldmgs:[...ldmgs].sort((a,b)=>a.localeCompare(b,"en-AU")),
+  ddmgs:[...ddmgs].sort((a,b)=>a.localeCompare(b,"en-AU")),
+  ldmgComplete,ddmgComplete};
+}
 const $=id=>document.getElementById(id);
 const fmt=iso=>iso?formatAgencyTimestamp(iso,"bom-issued"):"Not supplied";
 const officialUrl=x=>{
@@ -28,10 +48,12 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  const toggle=$("showOfficialBomWarnings"),state=$("officialBomWarningsStatus"),
    panel=$("officialBomWarningInfo"),content=$("officialBomWarningInfoRows"),
    title=$("officialBomWarningInfoTitle"),dismiss=$("closeOfficialBomWarningInfo"),
-   refreshBtn=$("refreshOfficialBomWarnings");
- if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn].every(Boolean))
+   refreshBtn=$("refreshOfficialBomWarnings"),filter=$("officialBomWarningProduct"),
+   reportButton=$("openOfficialBomWarningGroups"),reportDialog=$("officialBomWarningGroupsReport"),
+   reportClose=$("closeOfficialBomWarningGroupsReport"),reportBody=$("officialBomWarningGroupsBody");
+ if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
   return {destroy(){}};
- let warnings=[],imagery=null,loadedAt=0,pending=null,timer=null,activeId="",destroyed=false;
+ let warnings=[],imagery=null,loadedAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable";
  const canvas=viewer.scene.canvas;
  const report=(message,kind="normal")=>{
   state.textContent=message;state.dataset.kind=kind;
@@ -44,8 +66,9 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  function display(){
   discard();
-  if(!toggle.checked||!warnings.length)return;
-  imagery=new CesiumRef.ImageryLayer(createWarningImageryProvider(CesiumRef,warnings),{
+  const visible=filterOfficialWarnings(warnings,filter.value);
+  if(!toggle.checked||!visible.length)return;
+  imagery=new CesiumRef.ImageryLayer(createWarningImageryProvider(CesiumRef,visible),{
    alpha:1,show:true
   });
   // First terrain basemap is below us; radar surfaces dynamically rise to TOP.
@@ -59,21 +82,27 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   title.textContent=warning.headline||warning.event;
   content.replaceChildren();
   textRow(content,"Official warning",warning.event);
+  textRow(content,"BoM product",warning.productCode||"Not verified");
   textRow(content,"Product",warning.productType==="detailed"?
-   "Detailed BoM warning":"BoM warning area");
+   "Detailed SEQ thunderstorm (IDQ21035)":warning.productType==="regional"?
+   "Regional QLD thunderstorm (IDQ21033)":"BoM severe weather");
   textRow(content,"Issued",fmt(warning.issuedUtc));
   textRow(content,"Expires",fmt(warning.expiresUtc));
   textRow(content,"Severity / certainty",[warning.severity,warning.certainty].filter(Boolean).join(" · "));
   textRow(content,"Warning area",warning.areaDescription);
   textRow(content,"BoM warning details",warning.description);
   textRow(content,"Safety advice",warning.instruction);
+  textRow(content,"Affected LDMGs (by LGA)",warning.ldmgStatus==="verified"?
+   (warning.ldmgs??warning.lgas??[]).length?(warning.ldmgs??warning.lgas).join(" · "):
+    "None intersect the published polygon":
+   "Official boundary verification unavailable — not an all-clear");
   textRow(content,"Affected Queensland LGAs",warning.lgaStatus==="verified"?
    warning.lgas.length?warning.lgas.join(" · "):"None intersect the published polygon":
    "Official boundary verification unavailable — not an all-clear");
   textRow(content,"Affected disaster districts (DDMGs)",warning.ddmgStatus==="verified"?
    warning.ddmgs.length?warning.ddmgs.join(" · "):"None intersect the published polygon":
    "Official boundary verification unavailable — not an all-clear");
-  textRow(content,"Intersection rule","Every genuine intersecting LGA/DDMG, regardless of overlap size.");
+  textRow(content,"Intersection rule","Every genuine intersecting LDMG/LGA and DDMG, regardless of overlap size.");
   const link=document.createElement("a");
   link.href=officialUrl(warning.bulletinUrl);
   link.textContent="Read official BoM warning";link.target="_blank";link.rel="noopener noreferrer";
@@ -83,7 +112,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  function trimExpired(){
   const valid=warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
   if(valid.length!==warnings.length){
-   warnings=valid;display();
+   warnings=valid;display();renderGroupsReport();
    if(activeId&&!warnings.some(w=>w.id===activeId))openInfo(null);
    report(valid.length?valid.length+" active BoM warning area(s)":
      "Published warnings expired · no verified current warning polygons", "warning");
@@ -103,7 +132,8 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
       !["active","no-verified-current-polygons","partial-source-unavailable"].includes(data.status))
       throw Error(data?.message||"Official CAP source unavailable");
     warnings=data.warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
-    loadedAt=now();display();
+    sourceStatus=data.status;
+    loadedAt=now();display();renderGroupsReport();
     if(activeId)openInfo(warnings.find(w=>w.id===activeId)??null);
     report(warnings.length?
        warnings.length+" current BoM warning polygon(s) · refreshed "+fmt(data.checkedAt)+
@@ -112,15 +142,67 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
        data.sourceFailures?"warning":"normal");
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
-    warnings=[];loadedAt=0;display();openInfo(null);
+    warnings=[];loadedAt=0;sourceStatus="unavailable";display();renderGroupsReport();openInfo(null);
     report("Warning polygons unavailable — "+String(error?.message??error).slice(0,120)+
        " · check official BoM warnings","error");
    }finally{pending=null;}
   })();
   return pending;
  }
+ const groupLabel=code=>code==="IDQ21035"?
+    "IDQ21035 — Detailed SEQ thunderstorms":code==="IDQ21033"?
+    "IDQ21033 — Regional QLD thunderstorms":"Other BoM severe weather warnings";
+ function renderGroupsReport(){
+  reportBody.replaceChildren();
+  if(!reportDialog.open)return;
+  const codes=filter.value==="all"?["IDQ21035","IDQ21033","other"]:[filter.value];
+  for(const code of codes){
+   const subset=code==="other"?warnings.filter(w=>!["IDQ21035","IDQ21033"].includes(w.productCode)):
+     filterOfficialWarnings(warnings,code);
+   if(code==="other"&&!subset.length)continue;
+   const result=warningProductAffectedGroups(subset);
+   const section=document.createElement("section");
+   const heading=document.createElement("h3");heading.textContent=groupLabel(code);
+   section.append(heading);
+   const count=document.createElement("p");
+   count.textContent=sourceStatus==="unavailable"?"Warning source unavailable — coverage cannot be verified":
+     result.count+" active verified polygon"+(result.count===1?"":"s");
+   section.append(count);
+   for(const [label,items,complete] of [
+     ["LDMGs — local council disaster-management groups",result.ldmgs,result.ldmgComplete],
+     ["DDMGs — district disaster-management groups",result.ddmgs,result.ddmgComplete]]){
+    const title=document.createElement("h4");title.textContent=label;
+    section.append(title);
+    const info=document.createElement("p");
+    info.textContent=!complete?"Boundary verification incomplete — affected groups may be missing":
+       !result.count?"No currently verified polygon in this product":
+       !items.length?"No intersecting Queensland groups reported":"";
+    section.append(info);
+    if(items.length){
+     const list=document.createElement("ul");
+     for(const name of items){
+      const li=document.createElement("li");li.textContent=name;list.append(li);
+     }
+     section.append(list);
+    }
+   }
+   reportBody.append(section);
+  }
+ }
+ const onProductChange=()=>{
+  display();renderGroupsReport();
+  if(activeId){
+   const match=filterOfficialWarnings(warnings,filter.value).find(w=>w.id===activeId);
+   openInfo(match??null);
+  }
+ };
+ const openGroups=()=>{
+  if(!reportDialog.open)reportDialog.showModal();
+  renderGroupsReport();
+ };
+ const closeGroups=()=>reportDialog.close();
  const onToggle=()=>{
-  if(!toggle.checked){warnings=[];discard();openInfo(null);
+  if(!toggle.checked){warnings=[];discard();openInfo(null);renderGroupsReport();
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };
@@ -148,10 +230,14 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   if(!hit)return;
   const loc=CesiumRef.Cartographic.fromCartesian(hit),lng=CesiumRef.Math.toDegrees(loc.longitude),
     lat=CesiumRef.Math.toDegrees(loc.latitude);
-  const matching=warnings.filter(w=>warningContainsPoint(w.geometry,lng,lat));
+  const matching=filterOfficialWarnings(warnings,filter.value)
+    .filter(w=>warningContainsPoint(w.geometry,lng,lat));
   if(matching.length)openInfo(matching.at(-1));
  };
  toggle.addEventListener("change",onToggle);
+ filter.addEventListener("change",onProductChange);
+ reportButton.addEventListener("click",openGroups);
+ reportClose.addEventListener("click",closeGroups);
  refreshBtn.addEventListener("click",onRefresh);
  dismiss.addEventListener("click",onClose);
  canvas.addEventListener("pointerdown",down);
@@ -161,6 +247,10 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  return {refresh,destroy(){
   destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];openInfo(null);
   toggle.removeEventListener("change",onToggle);
+  filter.removeEventListener("change",onProductChange);
+  reportButton.removeEventListener("click",openGroups);
+  reportClose.removeEventListener("click",closeGroups);
+  if(reportDialog.open)reportDialog.close();
   refreshBtn.removeEventListener("click",onRefresh);
   dismiss.removeEventListener("click",onClose);
   canvas.removeEventListener("pointerdown",down);

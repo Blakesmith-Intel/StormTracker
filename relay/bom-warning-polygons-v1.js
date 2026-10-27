@@ -40,7 +40,8 @@ async function governmentIntersections(geometry,url,field){
  const raw=await res.json();
  if(raw?.error||raw?.exceededTransferLimit||!Array.isArray(raw?.features))
   throw Error("Incomplete official "+field+" intersection response");
- return [...new Set(raw.features.map(f=>String(f.attributes?.[field]??"").trim())
+ return [...new Set(raw.features.map(f=>String(Object.entries(f.attributes??{})
+    .find(([name])=>name.toLowerCase()===field.toLowerCase())?.[1]??"").trim())
   .filter(Boolean))].sort((a,b)=>a.localeCompare(b,"en-AU"));
 }
 export async function enrichWarningBoundaries(warning){
@@ -48,8 +49,15 @@ export async function enrichWarningBoundaries(warning){
   governmentIntersections(warning.geometry,LGA_URL,"lga"),
   governmentIntersections(warning.geometry,DDMG_URL,"District")
  ]);
+ const areas=lga.status==="fulfilled"?lga.value:[];
+ // Under Queensland's Disaster Management Act s29, LDMGs are established for
+ // local-government areas. These are intersecting LGA-based groups, not names
+ // inferred from BoM bulletin district text.
  return {...warning,
-  lgas:lga.status==="fulfilled"?lga.value:[],
+  lgas:areas,
+  ldmgs:areas,
+  ldmgBasis:"Queensland LGA boundary intersections (DMA 2003 s29)",
+  ldmgStatus:lga.status==="fulfilled"?"verified":"unavailable",
   ddmgs:ddmg.status==="fulfilled"?ddmg.value:[],
   lgaStatus:lga.status==="fulfilled"?"verified":"unavailable",
   ddmgStatus:ddmg.status==="fulfilled"?"verified":"unavailable",

@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 27 October 2026 | **Applies to:** operator-accepted V10.2.24 composite production (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
+**Edition:** 27 October 2026 | **Applies to:** V10.2.25 opt-in BoM warning polygons + accepted V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -124,6 +124,18 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 **Classification source and limits.** StormTracker joins the event's **exact QLDTraffic ID** to the official [Operational Status of Queensland Road Network report](https://data.qldtraffic.qld.gov.au/htmlreports/operationalstatus.html), specifically its **Affects state-controlled road** field, and to the [State Controlled Highways and Motorways report](https://data.qldtraffic.qld.gov.au/htmlreports/statehighways.html). A highway/motorway confirmed by the second report belongs to the state-controlled group. **Local government roads** have an explicit **No** to affecting a state-controlled road and are not independently confirmed by the highways report. A road's *name* or the *council* in which it lies never establishes which authority manages it. An unmatched event ID, conflicting official rows or unavailable source is placed in **Classification unverified**, not guessed as local. A single incident may affect several road segments; the categories describe the **reported incident**, not necessarily the legal ownership of each segment.
 
 **Safety:** This is situational awareness, not a traffic-direction or road-safety clearance. An event classified as local/state-controlled can still be **closed to all traffic**. Verify the source incident and road conditions with QLDTraffic or the relevant authority. Failure to retrieve the supplemental road-classification reports does **not** remove otherwise valid closure markers.
+
+## BoM severe thunderstorm and severe weather warning polygons
+
+**This is an optional additional layer, off by default.** Open **Layers → BoM severe warnings** to request original-source Bureau warning polygons. Its warning-area fill appears on the terrain map **under** the measured radar imagery, so radar reflectivity remains visible as before. Select a warning polygon to read the official heading, hazard details, issue/expiry times and original BoM bulletin link.
+
+**Filter by BoM product:** choose **All warnings**, **21035 — Detailed SEQ** (BoM `IDQ21035`) or **21033 — Regional QLD** (BoM `IDQ21033`). Detailed and regional are *independent original BoM product types*, not StormTracker classifications inferred from the polygon's area. The **LDMG/DDMG report** lists only the local and district disaster-management areas touched by the selected live warning product. **Any genuine intersection counts even if only a tiny sliver of an LGA or district is inside the polygon**; there is no minimum-percent threshold. LDMGs are identified by the corresponding official Queensland council area (LGA); if boundary verification fails, the report clearly says so.
+
+**Updates and cancellations:** With the warning layer enabled, StormTracker checks automatically every **15 minutes**, or immediately when you tap **↻ Refresh**. A confirmed newer BoM warning polygon replaces its old issue. A confirmed cancellation removes the affected product's polygon at the next successful check. Source expiry also clears old polygons. This does not change refresh frequencies for radar, gauges, rainfall, roads, power or any other layer.
+
+**Understanding zero polygons:** An actual, completed check can show **0 current polygons** if an original BoM warning is cancelled or there is no active issued polygon. A source timeout or broken/unverified polygon is displayed as **unavailable**, not zero warnings or all-clear. Access to the authentic active BoM warning geospatial products has not yet been end-to-end demonstrated during a live warning; never assume a blank map means BoM has issued no warning. [BoM IDQ21035 detailed bulletin](https://www.bom.gov.au/warning/severe-thunderstorm-warning/IDQ21035) and [BoM IDQ21033 regional bulletin](https://www.bom.gov.au/warning/severe-thunderstorm-warning/IDQ21033) remain authoritative.
+
+**Coverage:** Queensland warning polygons only in this release. NSW warnings remain withheld until verified source-exact clipping against the supported radar coverage union is available. See [release notes V10.2.25](RELEASE_NOTES_V10.2.25.md).
 
 ## Other information layers
 

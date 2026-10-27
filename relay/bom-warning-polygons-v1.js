@@ -73,6 +73,10 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
  try{
   const now=Date.now(),rss=await textResponse(BOM_CAP_RSS,3000000);
   const links=bomCapRssLinks(rss,{nowMs:now});
+  // RSS scanning is explicitly bounded (22 most recent matching alert links).
+  // When the bound is reached it is NOT a complete national BoM alert index.
+  // Never convert "not encountered in the sample" to an official all-clear.
+  const indexPossiblyTruncated=links.length>=22;
   const found=await Promise.allSettled(links.map(url=>textResponse(url).then(xml=>({
    notice:parseBomCapProductNotice(xml,{nowMs:now}),
    warnings:parseOfficialBomCap(xml,{nowMs:now})
@@ -80,7 +84,7 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
   const sourceFailures=found.filter(x=>x.status==="rejected").length;
   const messageRecords=found.map(x=>x.status==="fulfilled"?x.value:{failed:true});
   const reconciled=reconcileLatestBoMWarnings(messageRecords,{
-    complete:sourceFailures===0,nowMs:now
+    complete:sourceFailures===0&&!indexPossiblyTruncated,nowMs:now
   });
   // NSW clipping against the TRUE installed radar coverage union is required
   // before independently publishing NSW warnings. Do not approximate it.
@@ -88,7 +92,7 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
   const enriched=await Promise.all(qld.slice(0,14).map(enrichWarningBoundaries));
   const products=reconciled.products;
   // Never label incomplete CAP source scans as confirmed "no warnings".
-  const partial=sourceFailures>0||Object.values(products).some(p=>
+  const partial=sourceFailures>0||indexPossiblyTruncated||Object.values(products).some(p=>
     p.status==="unavailable"||p.status==="geometry-unavailable");
   payload={schema:NAME,checkedAt:new Date(now).toISOString(),
    status:partial?"partial-source-unavailable":

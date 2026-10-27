@@ -24,6 +24,25 @@ assert.equal(parseBoMStationCrossingHeader(html.replace("Bridge: 1.71 m","Dam sp
 const withMany=html.replace("Bridge: 1.71 m","Causeway: 1.52 m, Bridge: 1.71 m");
 assert.equal(parseBoMStationCrossingHeader(withMany,"535162").heightMetres,1.52,
  "Lowest published road crossing must win, not a dam or unrelated gauge");
+const roadApproaches=parseBoMStationCrossingHeader(
+ html.replace("Bridge: 1.71 m","Road Approaches: 1.71 m"),"535162");
+const approaches=parseBoMStationCrossingHeader(
+ html.replace("Bridge: 1.71 m","Approaches: 1.71 m"),"535162");
+assert.equal(roadApproaches.type,"R","Published road approaches are road-height references");
+assert.equal(approaches.type,"A","Published approaches are road-height references");
+assert.equal(roadApproaches.heightMetres,1.71);
+assert.equal(approaches.heightMetres,1.71);
+assert.equal(parseBoMStationCrossingHeader(
+ html.replace("Bridge: 1.71 m","Approaches: 1.71 m"),"535161"),null,
+ "Approach references may never transfer between stations");
+assert.equal(parseBoMStationCrossingHeader(
+ html.replace("Bridge: 1.71 m","Spillway: 1.71 m"),"535162"),null,
+ "Dam spillways remain excluded");
+const mixedApproaches=html.replace("Bridge: 1.71 m",
+ "Bridge: 1.71 m, Road Approaches: 1.45 m, Approaches: 1.55 m");
+assert.equal(parseBoMStationCrossingHeader(mixedApproaches,"535162").heightMetres,1.45,
+ "The lowest independently published road-height reference wins");
+
 const make=(number,height,at=now-8*MIN,extra={})=>({
  id:"bom:"+number,type:"Feature",geometry:{type:"Point",coordinates:[147.55,-22.85]},
  properties:{name:"Gauge "+number,bom_stn_num:number,location_types:"water level gauge;",
@@ -35,6 +54,22 @@ const make=(number,height,at=now-8*MIN,extra={})=>({
   ...extra}
 });
 const th=make("535162",2.80,now-8*MIN,{STORMTRACKER_PLOT_CROSSING:crossing});
+for(const reference of [roadApproaches,approaches]){
+ const above=make("999994",1.80,now-8*MIN,{STORMTRACKER_PLOT_CROSSING:reference});
+ const visible=reconcileFloodEvents([above],{}, {},now);
+ assert.equal(visible.features.length,1,"Approaches above road level must be visible");
+ assert.equal(visible.features[0].properties.STORMTRACKER_DISPLAY_STATE,"crossing",
+  "Approaches use the existing amber bridge/water marker");
+ assert.equal(visible.features[0].properties.STORMTRACKER_RAPID_RISE,false,
+  "Reaching approaches alone must not create an unmeasured rapid-rise arrow");
+ assert.equal(visible.features[0].properties.STORMTRACKER_CROSSING_REACHED,true);
+ assert.equal(buildNotableFloodGaugeReport([above],null,now).crossedCount,1,
+  "Approach exceedances belong in the existing flood gauge report");
+ const below=make("999994",1.70,now-8*MIN,{STORMTRACKER_PLOT_CROSSING:reference});
+ assert.equal(reconcileFloodEvents([below],{}, {},now).features.length,0,
+  "Return below the published approaches level must remove the amber marker");
+}
+
 const alerts=reconcileFloodEvents([th],{}, {},now);
 assert.equal(alerts.features.length,1,
  "535162 above BoM 1.71 m bridge must be mapped without a minor flood threshold or session history");

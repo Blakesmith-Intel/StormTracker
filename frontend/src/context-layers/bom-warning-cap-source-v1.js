@@ -1,3 +1,4 @@
+import {codeFromOriginalBomCapMetadata} from "./bom-qld-warning-product-catalogue-v1.js";
 // Exact CAP-AU warning polygons only: no district-shaped substitutes.
 export const BOM_WARNING_TYPES=Object.freeze(["severe-thunderstorm","severe-weather"]);
 function decodeEntities(x){
@@ -71,6 +72,7 @@ export function parseOfficialBomCap(xml,{nowMs=Date.now()}={}){
  if(!/^actual$/i.test(one(xml,"status"))||
    /^(cancel|error|test|ack)$/i.test(one(xml,"msgType")))return [];
  const id=one(xml,"identifier");
+ const references=one(xml,"references");
  const issued=one(xml,"sent"),issuedMs=strictTime(issued);
  if(!id||id.length>160||issuedMs===null||issuedMs>nowMs+300000||nowMs-issuedMs>18*3600000)
   return [];
@@ -78,6 +80,15 @@ export function parseOfficialBomCap(xml,{nowMs=Date.now()}={}){
  for(const info of fields(xml,"info")){
   const event=one(info,"event"),kind=warningKind(event);
   if(!kind)continue;
+  const parameters=fields(info,"parameter").map(p=>({
+    name:one(p,"valueName"),value:one(p,"value")
+  })).filter(p=>/^(?:product.?code|bom.?product.?id|warning.?product|product)$/i.test(p.name));
+  const product=codeFromOriginalBomCapMetadata({
+    identifier:id,references,web:one(info,"web"),parameters
+  });
+  // Never call IDQ21035 "regional" or IDQ21033 "detailed" by
+  // headline, shape size, or a generic CAP event string.
+  if(!product||product.kind!==kind)return [];
   const expires=one(info,"expires"),endMs=strictTime(expires);
   if(endMs===null||endMs<=nowMs||endMs-issuedMs>24*3600000)continue;
   const bulletin=bomUrl(one(info,"web")||one(xml,"web"));
@@ -94,9 +105,8 @@ export function parseOfficialBomCap(xml,{nowMs=Date.now()}={}){
    const state=polygons.some(p=>qldCoordinates(p[0]))?"QLD":"NSW";
    output.push({
     id:id+":"+areaIndex,issuer:"Bureau of Meteorology",type:kind,
-    event,productType:kind==="severe-weather"?"severe-weather":
-      /detailed|metropolitan|cell based/i.test(one(info,"headline")+" "+one(info,"description"))
-       ?"detailed":"regional-or-unspecified",
+    event,productCode:product.code,polygonProductCodes:product.polygonAxfs,
+    productType:product.productType,
     state,issuedUtc:new Date(issuedMs).toISOString(),expiresUtc:new Date(endMs).toISOString(),
     headline:one(info,"headline").slice(0,280),description:one(info,"description").slice(0,5000),
     instruction:one(info,"instruction").slice(0,2200),

@@ -1,6 +1,14 @@
-# StormTracker — frozen V10.2.5 composite production baseline (20 October 2026)
+# StormTracker — current accepted production V10.2.26 (27 October 2026)
 
-**Latest accepted maintenance release:** V10.2.5; the V10.2.0 radar/cyclone scientific source pin is unchanged. The production rainfall display automatically looks up an official local IFD reference when a gauge reaches 50 mm and its exact IFD cell is missing. Popup catchments use official BoM station IDs and coordinate-checked river basins. The release is tagged only after successful production deployment and verification; preserve `v10.2.5` and `restore/v10.2.5`, and await operator feedback before any further changes. See [V10.2.5 release notes](RELEASE_NOTES_V10.2.5.md).
+**Latest verified working code:** V10.2.25. **Final documentation-only seal:** V10.2.26. This document supersedes the earlier V10.2.5 header; older source-pin detail below is retained solely as historical engineering evidence.
+
+- The original native BoM radar, Doppler, tracking and inferred-3-D foundation is STILL pinned to immutable V10.2.0 `047b3bd1c66b0ed5f070d2298202f46d0cd8dae2`; its `_site/BUILD.txt` marker is **not** the moving composite release version.
+- All verified V10.2.24 floods, significant rainfall/IFD-AEP, road types, outage and operational map behaviours remain untouched.
+- The V10.2.25 opt-in BoM thunderstorm/severe-weather layer delivers original issued polygons under radar, `IDQ21035` (SEQ detailed) and `IDQ21033` (QLD regional) filters; interactive BoM bulletin/validity info; comprehensive official LGA-based LDMG and disaster district intersections without a minimum-area cutoff; 15-minute and manual refresh; cancellation and revised polygon lifecycle. **Live authentic source polygon appearance has not yet been proved against an actual active warning**. It must show unavailable on missing/failed feeds, not claim no warnings.
+- Latest documentation references: [V10.2.26 final freeze](RELEASE_NOTES_V10.2.26.md), [V10.2.25 functional release](RELEASE_NOTES_V10.2.25.md), [live-linked operator guide](OPERATOR_GUIDE_CURRENT.md), [development handover](DEVELOPMENT_HANDOVER_CURRENT.md), [rollback instructions](BASELINE_RESTORE.md).
+- The previous `v10.2.25`/`restore/v10.2.25` **must remain at exactly** `d9620f6cbc411bfee029d9fa9d170752aa7c34f2`. Seal the *new* `v10.2.26`/`restore/v10.2.26` only after full Pages QA/public verification. The existing Cloudflare relay is a separately deployed service; it is not frozen by a Git Pages tag.
+
+**Historical baseline notes follow and must not be confused with the latest accepted version.**
 
 ## Underlying immutable V10.2.0 scientific source baseline
 

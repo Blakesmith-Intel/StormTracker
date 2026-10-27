@@ -1,8 +1,8 @@
 # StormTracker V10.2.25 — opt-in official BoM severe-warning polygons
 
-**Operator-approved release direction:** 27 October 2026 (AEST).  
+**Operator-approved production release, successfully deployed and sealed:** 27 October 2026 (AEST).  
 **Base:** retain frozen V10.2.0 radar/science source and every accepted V10.2.24 maintenance overlay unchanged.  
-**Release:** New immutable annotated `v10.2.25` and `restore/v10.2.25` after successful production deployment and verified public-site assets. Do not repoint `v10.2.24` or earlier.  
+**Verified release:** Annotated `v10.2.25` and `restore/v10.2.25` both peel/resolve to exact release commit `d9620f6cbc411bfee029d9fa9d170752aa7c34f2`; the [Pages deployment](https://github.com/Blakesmith-Intel/StormTracker/actions/runs/40513984885) and [existing Cloudflare relay deployment](https://github.com/Blakesmith-Intel/StormTracker/actions/runs/40513984589) both completed successfully. Do not repoint this tag or older releases. Later V10.2.26 contains documentation-only completion; it is not a change to this accepted feature.  
 **Operator guide:** [OPERATOR_GUIDE_CURRENT.md](OPERATOR_GUIDE_CURRENT.md).
 
 ## Delivered as a new opt-in layer

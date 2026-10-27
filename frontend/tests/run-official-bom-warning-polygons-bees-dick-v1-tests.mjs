@@ -6,12 +6,14 @@ import {warningContainsPoint,createWarningImageryProvider}
  from "../src/context-layers/bom-warning-terrain-imagery-v1.js";
 import {boundaryIntersectionRequest,enrichWarningBoundaries}
  from "../../relay/bom-warning-polygons-v1.js";
-import {isVerifiedActiveBomWarning}
+import {isVerifiedActiveBomWarning,filterOfficialWarnings,warningProductAffectedGroups}
  from "../src/context-layers/bom-warning-operational-v1.js";
+import {QLD_WARNING_PRODUCTS,qldOfficialWarningProduct,codeFromOriginalBomCapMetadata}
+ from "../src/context-layers/bom-qld-warning-product-catalogue-v1.js";
 const now=Date.parse("2026-10-27T04:45:00Z"),future="2026-10-27T07:00:00Z";
 const polygon="-27.701,153.201 -27.701,153.202 -27.700,153.202 -27.700,153.201";
 function cap(x={}){
- return "<alert><identifier>IDQ21033-20261027</identifier>"+
+ return "<alert><identifier>"+(x.identifier||"IDQ21033-20261027")+"</identifier>"+
  "<sender>warning@"+(x.sender||"bom.gov.au")+"</sender>"+
  "<senderName>Bureau of Meteorology</senderName>"+
  "<status>"+(x.status||"Actual")+"</status>"+
@@ -29,6 +31,19 @@ function cap(x={}){
 const parsed=parseOfficialBomCap(cap(),{nowMs:now});
 assert.equal(parsed.length,1);
 const warning=parsed[0];
+assert.equal(warning.productCode,"IDQ21033");
+assert.equal(warning.productType,"regional");
+assert.deepEqual(warning.polygonProductCodes,["IDQ65654"]);
+assert.deepEqual(QLD_WARNING_PRODUCTS.IDQ21035.polygonAxfs,["IDQ65650"]);
+assert.deepEqual(QLD_WARNING_PRODUCTS.IDQ21035.otherAxfs,["IDQ65652"]);
+assert.equal(qldOfficialWarningProduct("IDQ21035").productType,"detailed");
+assert.equal(qldOfficialWarningProduct("IDQ21033").productType,"regional");
+assert.equal(codeFromOriginalBomCapMetadata({identifier:"no-product"}),null);
+assert.equal(codeFromOriginalBomCapMetadata({identifier:"IDQ21033",references:"IDQ21035"}),null);
+const detailed=parseOfficialBomCap(cap({identifier:"IDQ21035-20261027"}),{nowMs:now})[0];
+assert.equal(detailed.productCode,"IDQ21035");
+assert.equal(detailed.productType,"detailed");
+assert.equal(parseOfficialBomCap(cap({identifier:"UNKNOWN-20261027"}),{nowMs:now}).length,0);
 assert.equal(warning.issuer,"Bureau of Meteorology");
 assert.equal(warning.type,"severe-thunderstorm");
 assert.equal(warning.official,true);
@@ -43,7 +58,7 @@ for(const changed of [
  {polygon:"-50,40 -50,41 -49,41"},
  {polygon:"-27.7,153.2 -27.7,153.2 -27.7,153.2"}
 ]) assert.equal(parseOfficialBomCap(cap(changed),{nowMs:now}).length,0);
-assert.equal(parseOfficialBomCap(cap({event:"Severe Weather Warning"}),{nowMs:now})[0].type,"severe-weather");
+assert.equal(parseOfficialBomCap(cap({identifier:"IDQ21037-20261027",event:"Severe Weather Warning"}),{nowMs:now})[0].type,"severe-weather");
 assert.deepEqual(capPolygonCoordinates(polygon)[0],[153.201,-27.701]);
 assert(warningContainsPoint(warning.geometry,153.2015,-27.7005));
 assert(!warningContainsPoint(warning.geometry,153.25,-27.70));
@@ -59,16 +74,37 @@ assert(!/(?:minArea|minIntersection|percentThreshold|maxAllowableOffset)/i.test(
 const orig=globalThis.fetch;
 globalThis.fetch=async(url)=>({ok:true,async json(){
  return {features:url.includes("/240/")?
- [{attributes:{DISTRICT:"GOLD COAST"}},{attributes:{DISTRICT:"LOGAN"}}]:
+ [{attributes:{DISTRICT:"GOLD COAST"}},{attributes:{District:"LOGAN"}}]:
  [{attributes:{lga:"Gold Coast"}},{attributes:{lga:"Scenic Rim"}}]};
 }});
 try{
  const enriched=await enrichWarningBoundaries(warning);
  assert.deepEqual(enriched.lgas,["Gold Coast","Scenic Rim"]);
  assert.deepEqual(enriched.ddmgs,["GOLD COAST","LOGAN"]);
+ assert.deepEqual(enriched.ldmgs,["Gold Coast","Scenic Rim"]);
+ assert.equal(enriched.ldmgStatus,"verified");
  assert.equal(enriched.lgaStatus,"verified");
  assert.equal(enriched.ddmgStatus,"verified");
  assert.match(enriched.geometryIntersectionsMethod,/no minimum area/i);
+ const regional={...enriched,productCode:"IDQ21033"};
+ const detailedActive={...enriched,productCode:"IDQ21035",id:"detailed-1",
+   ldmgs:["Brisbane"],ddmgs:["BRISBANE"],ldmgStatus:"verified",ddmgStatus:"verified"};
+ const warnings=[regional,detailedActive];
+ assert.deepEqual(filterOfficialWarnings(warnings,"IDQ21035").map(x=>x.id),["detailed-1"]);
+ assert.equal(filterOfficialWarnings(warnings,"IDQ21033").length,1);
+ assert.equal(filterOfficialWarnings(warnings,"all").length,2);
+ assert.equal(filterOfficialWarnings(warnings,"IDQ99999").length,0);
+ const report=warningProductAffectedGroups(warnings,"IDQ21035");
+ assert.equal(report.count,1);
+ assert.deepEqual(report.ldmgs,["Brisbane"]);
+ assert.deepEqual(report.ddmgs,["BRISBANE"]);
+ const all=warningProductAffectedGroups(warnings);
+ assert.deepEqual(all.ldmgs,["Brisbane","Gold Coast","Scenic Rim"]);
+ assert.deepEqual(all.ddmgs,["BRISBANE","GOLD COAST","LOGAN"]);
+ assert.equal(all.ldmgComplete,true);
+ assert.equal(all.ddmgComplete,true);
+ assert.equal(warningProductAffectedGroups(
+  [{...detailedActive,ldmgStatus:"unavailable"}],"IDQ21035").ldmgComplete,false);
 }finally{globalThis.fetch=orig;}
 const rss="<rss><channel><item><title>Severe Thunderstorm Warning</title>"+
  "<pubDate>Tue, 27 Oct 2026 04:44:00 GMT</pubDate>"+
@@ -90,6 +126,9 @@ assert.equal(provider.maximumLevel,12);
 const root=new URL("../../",import.meta.url);
 const script=readFileSync(new URL("scripts/build-current-site.sh",root),"utf8");
 assert(script.includes('"bom-warning-operational-v1.js"'));
+assert(script.includes('"bom-qld-warning-product-catalogue-v1.js"'));
+assert(script.includes('officialBomWarningGroupsReport'));
+assert(script.includes('officialBomWarningProduct'));
 assert(script.includes("initialiseOfficialBomWarningPolygons({viewer"));
 assert(script.includes("official-bom-warnings-row"));
 const worker=readFileSync(new URL("relay/worker.js",root),"utf8");

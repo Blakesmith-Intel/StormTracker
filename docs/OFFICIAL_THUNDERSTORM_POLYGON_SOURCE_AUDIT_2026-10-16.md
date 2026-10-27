@@ -1,3 +1,5 @@
+> **Historical source audit dated 16 October 2026.** Do not interpret the earlier “NOT yet live” and V9.20.2 statements below as current production status. As of 27 October 2026, V10.2.25 **shipped an opt-in, fail-closed BoM CAP warning polygon layer** with detailed/regional filtering and official LDMG/DDMG intersection reporting. The publicly reachable feed has **not yet yielded a source-verified, currently active BoM severe-warning polygon in an end-to-end live display test**; this remains the acceptance gap. See [V10.2.25 release notes](RELEASE_NOTES_V10.2.25.md), [V10.2.26 documentation-only freeze](RELEASE_NOTES_V10.2.26.md), and [current operator guide](OPERATOR_GUIDE_CURRENT.md). The October 16 audit observations are retained unchanged for historical provenance.
+
 # Official Queensland and NSW Thunderstorm Polygon Sources — 16 October 2026 Audit
 
 ## Real anonymous source-availability check

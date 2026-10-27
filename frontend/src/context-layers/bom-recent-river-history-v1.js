@@ -324,7 +324,7 @@ export async function fetchBoMRecentHistoryDetail(target,{
     const samples=payload.samples.filter(x=>Number.isFinite(x?.time)&&Number.isFinite(x?.height))
       .slice(-225);
     const crossing=payload.crossing;
-    const validCrossing=crossing&&["B","C","X"].includes(crossing.type)&&
+    const validCrossing=crossing&&["B","C","X","R","A"].includes(crossing.type)&&
       typeof crossing.heightMetres==="number"&&Number.isFinite(crossing.heightMetres)&&
       crossing.heightMetres>=-10&&crossing.heightMetres<=300;
     return {samples,crossing:validCrossing?crossing:null};

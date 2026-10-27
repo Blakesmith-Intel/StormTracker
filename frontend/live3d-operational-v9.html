@@ -295,6 +295,15 @@
   <div id="roadLgaResults" class="outage-explorer-results"></div>
   <p class="outage-explorer-footer">Tap a road to focus its published map location. Map markers and their existing information panels are unchanged.</p>
 </dialog>
+<style>
+#roadTypeReport:not([open]){display:none!important;}
+#roadTypeReport[open]{position:fixed;inset:0;margin:auto;display:flex;flex-direction:column;gap:0;
+  box-sizing:border-box;width:min(830px,calc(100vw - 22px));height:min(790px,calc(100dvh - 22px));
+  max-height:calc(100dvh - 22px);border:1px solid #6c94a7;border-radius:17px;
+  padding:0;background:#10202b;color:#ecf6fa;box-shadow:0 20px 65px #000d;overflow:hidden;}
+#roadTypeReport::backdrop{background:rgba(0,9,18,.74);}
+#roadTypeReport .outage-explorer-results{overflow:auto;min-height:0;flex:1;}
+</style>
 <dialog id="roadTypeReport" class="outage-explorer" aria-labelledby="roadTypeReportTitle">
   <header class="outage-explorer-heading">
     <div><strong id="roadTypeReportTitle">Road closures by road management</strong>

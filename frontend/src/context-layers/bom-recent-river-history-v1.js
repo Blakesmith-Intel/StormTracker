@@ -1,5 +1,5 @@
 import {parseQueenslandObservationTime, FLOOD_SIGNAL_MAX_AGE_MS, latestRiseRate} from "./river-flood-signals-v1.js?v=9.13.0";
-import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1";
+import {publishedCrossingForFeature} from "./river-crossing-state-v1.js?v=20261024-crossing-coverage-v1-approaches-v2";
 import {gaugeRiseScreeningZone} from "./river-gauge-coastal-screen-v1.js?v=inland-coast-screen-20261018";
 import {stationFloodLevels, observedFloodClass} from "./river-flood-thresholds-v1.js?v=20261020-new-beith-ahd-v2";
 

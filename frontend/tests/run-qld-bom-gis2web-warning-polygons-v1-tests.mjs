@@ -22,7 +22,7 @@ const row=(product="IDQ65654",time=from,expiry=to,id=1)=>({
 });
 const collection={type:"FeatureCollection",features:[row(),row("IDQ65654",from,to,2),
  row("IDQ65650",from,to,3),row("IDQ65654",from-3600000,to,4),
- row("IDQ65654",from,to-1,5)]};
+ row("IDQ65654",from,to-3600000,5)]};
 const data=sourceExactQldBomWfsFeatures(collection,issue,{nowMs:now});
 assert.equal(data.length,2,"Only source-exact product issue expiry and valid polygon survive");
 assert.equal(data[0].productCode,"IDQ21033");

@@ -81,7 +81,7 @@ function sourceBoMWebIsAuthentic(value){
  if(!value)return true;
  try{
   const u=new URL(value);
-  return ["http:","https:"].includes(u.protocol)&&/(^|\\.)bom\\.gov\\.au$/.test(u.hostname);
+  return ["http:","https:"].includes(u.protocol)&&/(^|\.)bom\.gov\.au$/.test(u.hostname);
  }catch{return false;}
 }
 const productBulletinUrl=code=>{

@@ -24,8 +24,17 @@ Previously StormTracker required the CAP `event` to be literally `Severe Thunder
 - Retain 15-minute refresh and immediate manual refresh; preserve explicit cancellation and superseded issue handling. Unavailable sources remain visibly unavailable rather than claiming an all-clear.
 - Run the real-issue source probe, existing frontend regressions, and production-package dry-run before merge. Verify live published relay data and browser output after promotion.
 
+## Authenticated original BoM geometry — resolved using QDMA access
+
+The operator has confirmed StormTracker is used by a **QDMA registered team** directly working with BoM, and that the authorised government data access is permitted. A real-time source check found the public Queensland emergency-management **BoM Land Warnings RO** GIS2Web/WFS-derived feature service. Its official thunderstorm layer (FeatureServer layer 3) was returning four current genuine **`IDQ65654`** source polygons for bulletin **`IDQ21033`** with `validfrom_utc=2026-10-28T09:45:52Z` and `validto_utc=2026-10-28T12:45:52Z`, exactly matching the authentic active WMO-BoM CAP issue and expiry.
+
+StormTracker now queries this precise BoM-source geospatial product through its existing Cloudflare relay and joins each individual shape to the authenticated BoM CAP warning by **exact product ID and source issue/expiry time**, allowing a two-minute tolerance for source timing variations. Original geographic coordinates are preserved, not simplified to a district or fitted polygon. The real geometry is passed through the existing `esriSpatialRelIntersects` government LGA/DDMG queries so even tiny spatial overlaps are included. The detailed SEQ `IDQ65650` product has no current polygons in the verified source sample, which is distinct from regional `IDQ65654`.
+
+If the approved government spatial feed becomes unavailable, no artificial polygon is substituted and the official CAP text stays visible with a geometry-unavailable state. Original warning cancellations, superseded issue and 15-minute/manual refresh semantics are unchanged. The government WFS-derived mirror is explicitly identified as such and never represented as direct CAP polygon content.
+
+**Data scope:** BoM weather warnings only, restricted to the QDMA-appropriate government-published replica. No other GIS, storm-science, AEP or operational layers are modified.
+
 ## Remaining blocker
 
-BoM's publicly available WMO CAP document **does not carry the GIS polygon**. BoM's separate `IDQ65654` AXF source corresponds to the regional `IDQ21033` warning area, but its working unrestricted live geospatial delivery route was not established by this fix. This release repairs truthful feed detection and text metadata and does **not** claim live warning polygon or exact impacted LDMG/DDMG geographic verification.
+None for the demonstrated source-exact active `IDQ21033` warning; the live WFS-derived polygon service is accessible and matched to the issued BoM CAP product. Any future product without fresh geometry must still explicitly report the source limitation, and operators should retain BoM's source link for decisions.
 
-This limited fix should be used alongside the official BoM warning source until an authentic polygon feed can be connected and independently verified.

@@ -1,0 +1,17 @@
+name: One-off check authentic GIS2Web-derived QLD thunderstorm polygons
+on:
+  push:
+    branches:
+      - fix/live-idq21033-official-polygon-source-20261028
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/probe-bom-gis2web-public-derived-layer-once.mjs

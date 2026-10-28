@@ -7,6 +7,7 @@ on:
     paths:
       - "relay/worker.js"
       - "relay/bom-warning-polygons-v1.js"
+      - "relay/bom-warning-gis2web-replica-v1.js"
       - "relay/bom-warning-product-reconcile-v1.js"
       - "frontend/src/context-layers/bom-warning-cap-source-v1.js"
       - "relay/ifd-on-demand.js"

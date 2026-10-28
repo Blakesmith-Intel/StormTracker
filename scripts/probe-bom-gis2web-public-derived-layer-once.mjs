@@ -1,3 +1,7 @@
+import {bomCapRssLinks,parseBomCapProductNotice}
+ from "../frontend/src/context-layers/bom-warning-cap-source-v1.js";
+import {fetchQldBomWfsGeometry} from "../relay/bom-warning-gis2web-replica-v1.js";
+import {enrichWarningBoundaries} from "../relay/bom-warning-polygons-v1.js";
 // One-off verification: official BoM GIS2Web WFS is registered; find whether
 // QLD emergency services' publicly exposed ArcGIS replica has CURRENT
 // source-exact BoM severe storm polygons, not stale archived data.
@@ -55,4 +59,35 @@ if(item?.url){
        type:x.geometry?.type,rings:x.geometry?.coordinates?.length,points:x.geometry?.coordinates?.[0]?.[0]?.length,
        example:x.geometry?.coordinates?.[0]?.[0]?.slice(0,3)}))}));
   }
+}
+
+
+try{
+ const now=Date.now();
+ const resp=await fetch("https://severeweather.wmo.int/v2/cap-alerts/au-bom-en/rss.xml",
+  {signal:AbortSignal.timeout(18000)});
+ const xml=await resp.text(),urls=bomCapRssLinks(xml,{nowMs:now});
+ let notice=null;
+ for(const url of urls.slice(0,14)){
+  const cap=await (await fetch(url,{signal:AbortSignal.timeout(15000)})).text();
+  const candidate=parseBomCapProductNotice(cap,{nowMs:now});
+  if(candidate?.productCode==="IDQ21033"&&
+     (!notice||Date.parse(candidate.issuedUtc)>Date.parse(notice.issuedUtc)))notice=candidate;
+ }
+ if(notice){
+  const warnings=await fetchQldBomWfsGeometry(notice,{nowMs:now});
+  console.log("LIVE_JOIN",JSON.stringify({product:notice.productCode,
+    issuedUtc:notice.issuedUtc,expiresUtc:notice.expiresUtc,status:notice.status,
+    sourceExactPolygons:warnings.length,
+    sourceProducts:[...new Set(warnings.map(w=>w.sourceProduct))]}));
+  if(warnings.length){
+    const sample=await enrichWarningBoundaries(warnings[0]);
+    console.log("LIVE_GOV_INTERSECTS",JSON.stringify({
+      lgaStatus:sample.lgaStatus,ddmgStatus:sample.ddmgStatus,
+      lgaCount:sample.lgas.length,ddmgCount:sample.ddmgs.length,
+      ldmgs:sample.ldmgs,ddmgs:sample.ddmgs,method:sample.geometryIntersectionsMethod}));
+  }
+ }else console.log("LIVE_JOIN",JSON.stringify({status:"No current IDQ21033 in RSS sample; never infer active"}));
+}catch(e){
+ console.log("LIVE_JOIN_ERROR",JSON.stringify({error:String(e).slice(0,180)}));
 }

@@ -45,7 +45,12 @@ async function load(name,url,timeout=14000){
       sent:tag(xml,"sent"),expires:tag(xml,"expires"),
       events:texts.map(s=>compact(s,120)),polygonCount:(xml.match(/<(?:[\w-]+:)?polygon[\s>]/gi)||[]).length,
       circleCount:(xml.match(/<(?:[\w-]+:)?circle[\s>]/gi)||[]).length,
-      web:compact(tag(xml,"web"),160)}));
+      web:compact(tag(xml,"web"),160),
+      descriptionChars:tag(xml,"description").length,instructionChars:tag(xml,"instruction").length,
+      areaDescriptionCount:(xml.match(/<(?:[\\w-]+:)?areaDesc[\\s>]/gi)||[]).length,
+      geocodeTags:(xml.match(/<(?:[\\w-]+:)?geocode[\\s>]/gi)||[]).length,
+      resourceTags:(xml.match(/<(?:[\\w-]+:)?resource[\\s>]/gi)||[]).length,
+      codeRefs:(xml.match(/ID[QDNVSW]\\d{5}/gi)||[]).slice(0,14)}));
     }catch(e){console.log("CAP_ITEM_ERROR",JSON.stringify({index:i,error:String(e).slice(0,120)}));}
    }
   }

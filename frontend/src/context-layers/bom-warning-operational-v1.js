@@ -22,6 +22,52 @@ export function warningProductAffectedGroups(warnings,productCode="all"){
   ddmgs:[...ddmgs].sort((a,b)=>a.localeCompare(b,"en-AU")),
   ldmgComplete,ddmgComplete};
 }
+const WARNING_CODES=Object.freeze(["IDQ21035","IDQ21033","IDQ21037","IDQ21038"]);
+const THUNDERSTORM_CODES=Object.freeze(["IDQ21035","IDQ21033"]);
+const warningName=code=>code==="IDQ21035"?"IDQ21035 (Detailed SEQ)":
+ code==="IDQ21033"?"IDQ21033 (Regional QLD)":code;
+const isConfirmedClear=status=>status==="cancelled"||status==="no-active";
+// Pure operational-state presentation. A source failure must NEVER be
+// translated into "No current warnings"; a confirmed cancellation IS useful
+// negative reporting, even when unrelated products have not been verified.
+export function describeOfficialBomWarningState({products={},warnings=[],selected="all"}={}){
+ const codes=selected==="all"?WARNING_CODES:
+   PRODUCT_FILTERS.includes(selected)?[selected]:[];
+ const status=code=>products?.[code]?.status??"unavailable";
+ const total=filterOfficialWarnings(warnings,selected).length;
+ const active=codes.filter(code=>["active","geometry-unavailable"].includes(status(code)));
+ const uncertain=codes.filter(code=>!isConfirmedClear(status(code))&&
+   !["active","geometry-unavailable"].includes(status(code)));
+ const clear=codes.filter(code=>isConfirmedClear(status(code)));
+ const countFor=code=>filterOfficialWarnings(warnings,code).length;
+ if(!codes.length)return {message:"Warning product unavailable",kind:"warning"};
+ if(active.length){
+  const parts=active.map(code=>{
+   const count=countFor(code);
+   return warningName(code)+(status(code)==="geometry-unavailable"||!count?
+     " — active; polygon unavailable":" — active ("+count+" polygon"+(count===1?"":"s")+")");
+  });
+  const message="Active BoM warnings: "+parts.join(" · ")+
+    (selected==="all"&&clear.length?
+     " · "+clear.map(code=>code+": none current").join(" · "):"")+
+    (uncertain.length?" · Other products not verified":"");
+  return {message,kind:uncertain.length||
+    active.some(code=>status(code)==="geometry-unavailable"||!countFor(code))?"warning":"normal"};
+ }
+ if(selected!=="all"&&clear.length)
+  return {message:"No current warnings — "+warningName(selected),kind:"normal"};
+ if(selected==="all"&&clear.length===codes.length)
+  return {message:"No current warnings",kind:"normal"};
+ if(selected==="all"&&THUNDERSTORM_CODES.every(code=>isConfirmedClear(status(code))))
+  return {message:"No current thunderstorm warnings (IDQ21033 / IDQ21035)"+
+    (uncertain.length?" · Other severe weather not verified":""),kind:uncertain.length?"warning":"normal"};
+ if(uncertain.length)
+  return {message:selected==="all"?
+    "Unable to confirm current BoM warnings — tap refresh to retry":
+    warningName(selected)+" — unable to confirm current warnings",kind:"warning"};
+ // A reported active status with missing mapped polygons was handled above.
+ return {message:"Unable to verify current warnings",kind:"warning"};
+}
 const $=id=>document.getElementById(id);
 const fmt=iso=>iso?formatAgencyTimestamp(iso,"bom-issued"):"Not supplied";
 const officialUrl=x=>{
@@ -58,28 +104,12 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  const report=(message,kind="normal")=>{
   state.textContent=message;state.dataset.kind=kind;
  };
- const statusForProduct=(code)=>{
-  const status=productStatuses?.[code]?.status??"unavailable";
-  return status==="cancelled"?"Cancelled by BoM · no current polygons":
-    status==="no-active"?"0 current polygons verified":
-    status==="active"?"Active warning polygons":
-    status==="geometry-unavailable"?"ACTIVE BoM warning · original polygon unavailable":
-    "Warning verification unavailable";
- };
  function showProductStatus(){
   if(!toggle.checked){report("BoM warning polygons off");return;}
-  const selected=filter.value,visible=filterOfficialWarnings(warnings,selected);
-  const summary=selected==="all"?"All BoM products":selected;
-  const detail=selected==="all"?
-    ["IDQ21035","IDQ21033"].map(code=>code+": "+statusForProduct(code)).join(" · "):
-    statusForProduct(selected);
-  const uncertain=sourceStatus==="partial-source-unavailable"||
-    sourceStatus==="unavailable"||
-    (selected==="all"?["IDQ21035","IDQ21033"].some(code=>
-      ["unavailable","geometry-unavailable"].includes(productStatuses?.[code]?.status)):
-      ["unavailable","geometry-unavailable"].includes(productStatuses?.[selected]?.status));
-  report(summary+" · "+visible.length+" active polygon(s) · "+detail+
-    " · automatic check every 15 min; manual refresh available",uncertain?"warning":"normal");
+  const result=describeOfficialBomWarningState({
+    products:productStatuses,warnings,selected:filter.value
+  });
+  report(result.message,result.kind);
  }
  const discard=()=>{
   if(imagery){
@@ -137,8 +167,12 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   if(valid.length!==warnings.length){
    warnings=valid;display();renderGroupsReport();
    if(activeId&&!warnings.some(w=>w.id===activeId))openInfo(null);
-   report(valid.length?valid.length+" active BoM warning area(s)":
-     "Published warnings expired · no verified current warning polygons", "warning");
+   // Expiry is a source-published fact, not an inconclusive network check.
+   for(const [code,p] of Object.entries(productStatuses)){
+    if(p?.status==="active"&&p.expiresUtc&&Date.parse(p.expiresUtc)<=now())
+      productStatuses[code]={...p,status:"no-active",count:0};
+   }
+   showProductStatus();
   }
  }
  async function refresh({force=false}={}){
@@ -149,9 +183,20 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   lastAttemptAt=now(); // Respect 15-minute cadence after timeouts as well.
   pending=(async()=>{
    try{
-    const res=await fetchImpl(SOURCE,{cache:"no-store",signal:AbortSignal.timeout(27000)});
-    if(!res.ok)throw Error("Official warning transport HTTP "+res.status);
-    const data=await res.json();
+    const retrieve=async()=>{
+     const res=await fetchImpl(SOURCE,{cache:"no-store",signal:AbortSignal.timeout(27000)});
+     if(!res.ok)throw Error("Official warning transport HTTP "+res.status);
+     return res.json();
+    };
+    let data;
+    try{data=await retrieve();}
+    catch(firstError){
+     // iOS Safari can transiently return "Load failed" on mobile networks.
+     // Retry once, without changing the 15-minute automatic cadence.
+     if(!/load failed|failed to fetch|network|abort|timeout/i.test(String(
+       firstError?.message??firstError)))throw firstError;
+     data=await retrieve();
+    }
     if(data?.schema!==SCHEMA||!Array.isArray(data.warnings)||
       !["active","no-verified-current-polygons","partial-source-unavailable"].includes(data.status))
       throw Error(data?.message||"Official CAP source unavailable");
@@ -164,8 +209,9 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
     warnings=[];sourceStatus="unavailable";productStatuses={};display();renderGroupsReport();openInfo(null);
-    report("Warning polygons unavailable — "+String(error?.message??error).slice(0,120)+
-       " · check official BoM warnings","error");
+    // An unverified check is NOT a confirmed no-warning report.
+    // Keep a neutral operational advisory, rather than an alarming red error.
+    report("Unable to confirm current BoM warnings — try refresh or check BoM","warning");
    }finally{pending=null;}
   })();
   return pending;

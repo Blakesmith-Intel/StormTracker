@@ -6,7 +6,15 @@ import {QLD_WARNING_PRODUCTS} from "../frontend/src/context-layers/bom-qld-warni
 export const WATCHED_QLD_PRODUCT_CODES=Object.freeze(Object.keys(QLD_WARNING_PRODUCTS));
 const validMs=x=>typeof x==="string"&&Number.isFinite(Date.parse(x))?Date.parse(x):NaN;
 const stateRow=(status,notice=null,count=0)=>({
-  status,issuedUtc:notice?.issuedUtc??null,count
+  status,issuedUtc:notice?.issuedUtc??null,
+  expiresUtc:notice?.expiresUtc??null,count,
+  // CAP text remains useful if the original source supplies no geometry.
+  // These are official bulletin fields, not generated or geocoded polygons.
+  headline:notice?.headline??"",
+  description:notice?.description??"",
+  instruction:notice?.instruction??"",
+  areaDescription:notice?.areaDescription??"",
+  bulletinUrl:notice?.bulletinUrl??""
 });
 export function reconcileLatestBoMWarnings(messages,{complete=true,nowMs=Date.now()}={}){
   const candidates=new Map();

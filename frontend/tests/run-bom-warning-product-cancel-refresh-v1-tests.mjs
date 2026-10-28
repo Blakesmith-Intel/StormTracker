@@ -4,6 +4,8 @@ import {parseBomCapProductNotice}
  from "../src/context-layers/bom-warning-cap-source-v1.js";
 import {reconcileLatestBoMWarnings}
  from "../../relay/bom-warning-product-reconcile-v1.js";
+import {describeOfficialBomWarningState}
+ from "../src/context-layers/bom-warning-operational-v1.js";
 
 const now=Date.parse("2026-10-27T13:12:00Z");
 const official=code=>({
@@ -65,4 +67,37 @@ assert(code.includes('sourceStatus=data.status')&&code.includes("productStatuses
  "UI must consume status for each BoM warning product");
 assert(code.includes('showProductStatus();'),
  "Each automatic/manual response must update the displayed source status");
+// Negative reporting is desirable ONLY after source-confirmed cancellations
+// or verified no-active state, never after a timeout or absent product record.
+const none={IDQ21033:{status:"cancelled"},IDQ21035:{status:"no-active"},
+ IDQ21037:{status:"no-active"},IDQ21038:{status:"cancelled"}};
+assert.deepEqual(describeOfficialBomWarningState({products:none}).message,
+ "No current warnings");
+assert.match(describeOfficialBomWarningState({
+ products:none,selected:"IDQ21033"}).message,/^No current warnings.*IDQ21033/);
+assert.match(describeOfficialBomWarningState({
+ products:none,selected:"IDQ21035"}).message,/^No current warnings.*IDQ21035/);
+const noneThunder={IDQ21033:{status:"cancelled"},IDQ21035:{status:"cancelled"},
+ IDQ21037:{status:"unavailable"},IDQ21038:{status:"unavailable"}};
+const thunderEmpty=describeOfficialBomWarningState({products:noneThunder});
+assert.match(thunderEmpty.message,/No current thunderstorm warnings/);
+assert.match(thunderEmpty.message,/Other severe weather not verified/);
+assert.equal(thunderEmpty.kind,"warning");
+const allUnavailable=describeOfficialBomWarningState({products:{}});
+assert(!/^No current/.test(allUnavailable.message),"Network failure cannot mean all-clear");
+assert.equal(allUnavailable.kind,"warning");
+assert.match(describeOfficialBomWarningState({
+ products:{...noneThunder,IDQ21033:{status:"geometry-unavailable"}},
+ selected:"all"}).message,/Active BoM warnings: IDQ21033.*polygon unavailable/i);
+assert.match(describeOfficialBomWarningState({
+ products:{...noneThunder,IDQ21033:{status:"active",count:2}},
+ warnings:[official("IDQ21033"),{...official("IDQ21033"),id:"regional2"}]}).message,
+ /IDQ21033.*active \(2 polygons\).*IDQ21035: none current/i);
+assert.match(describeOfficialBomWarningState({
+ products:{...noneThunder,IDQ21035:{status:"active",count:1}},
+ warnings:[official("IDQ21035")]}).message,/IDQ21035.*active.*IDQ21033: none current/i);
+assert.match(describeOfficialBomWarningState({
+ products:{...noneThunder,IDQ21035:{status:"active"},IDQ21033:{status:"active"}},
+ warnings:[official("IDQ21035"),official("IDQ21033")]}).message,
+ /IDQ21035.*active.*IDQ21033.*active/i);
 console.log("PASS 15-minute automatic polling, manual refresh, cancellation removes product polygon, updates replace prior geometry, per-product verified empty/timeout distinction.");

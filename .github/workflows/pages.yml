@@ -1445,7 +1445,8 @@ jobs:
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           echo "SEALED $tag and $restore at $release_sha; historical releases unchanged"
 
-      - name: Seal verified V10.2.27 BoM warning live-source correction
+      - name: Preserve sealed V10.2.27 (historical only)
+        if: false
         env:
           GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
         run: |
@@ -1504,3 +1505,57 @@ jobs:
           test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
           test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
           echo "SEALED $tag / $restore at $release_sha; V10.2.26 and earlier references unchanged"
+
+      - name: Seal verified V10.2.28 clear operational BoM warning status
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          tag="v10.2.28"
+          restore="restore/v10.2.28"
+          test -f docs/RELEASE_NOTES_V10.2.28.md
+          grep -Fq 'Negative reporting is normal' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'bom-warning-clear-report-20261028-v1' scripts/build-current-site.sh
+          node frontend/tests/run-bom-warning-product-cancel-refresh-v1-tests.mjs
+          node frontend/tests/run-official-bom-warning-polygons-bees-dick-v1-tests.mjs
+          # No requirement for a currently active thunderstorm: verify the
+          # published status logic rather than invent a synthetic live polygon.
+          base="https://blakesmith-intel.github.io/StormTracker"
+          verified=false
+          for attempt in $(seq 1 15); do
+            ui="$(curl -fsSL --max-time 15 "$base/live3d-operational-v9.html?status=$release_sha-$attempt" || true)"
+            module="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-operational-v1.js?status=$release_sha-$attempt" || true)"
+            if grep -Fq 'id="officialBomWarningsStatus"' <<< "$ui" &&
+               grep -Fq 'export function describeOfficialBomWarningState' <<< "$module" &&
+               grep -Fq 'No current warnings' <<< "$module" &&
+               grep -Fq 'No current thunderstorm warnings' <<< "$module" &&
+               grep -Fq 'Unable to confirm current BoM warnings' <<< "$module"; then
+              verified=true; break
+            fi
+            sleep 4
+          done
+          test "$verified" = true || { echo "Refusing V10.2.28 seal: public status module not confirmed"; exit 1; }
+          old_tag="$(git ls-remote origin 'refs/tags/v10.2.27^{}' | cut -f1)"
+          old_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.27' | cut -f1)"
+          test -n "$old_tag" && test "$old_tag" = "$old_restore"
+          old_newtag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          old_newrestore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          test -z "$old_newtag" || test "$old_newtag" = "$release_sha"
+          test -z "$old_newrestore" || test "$old_newrestore" = "$release_sha"
+          if [ -z "$old_newrestore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$old_newtag" ]; then
+            object="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.28 — operator requested no-current-warnings reporting, independent IDQ21033/IDQ21035 status and safe mobile failure handling; prior layers preserved" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            test -n "$object"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$object" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          echo "SEALED V10.2.28 negative reporting; historical V10.2.27 unchanged"

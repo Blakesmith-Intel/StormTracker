@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 28 October 2026 | **Applies to:** V10.2.27 live BoM CAP warning-source correction on the V10.2.26 documentation-only freeze of the V10.2.25 warning feature and V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
+**Edition:** 28 October 2026 | **Applies to:** V10.2.28 clear BoM warning operational status on V10.2.27 live BoM CAP source correction on the V10.2.26 documentation-only freeze of the V10.2.25 warning feature and V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -136,6 +136,8 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 **This is an optional additional layer, off by default.** Open **Layers → BoM severe warnings** to request original-source Bureau warning polygons. Its warning-area fill appears on the terrain map **under** the measured radar imagery, so radar reflectivity remains visible as before. Select a warning polygon to read the official heading, hazard details, issue/expiry times and original BoM bulletin link.
 
 **Filter by BoM product:** choose **All warnings**, **21035 — Detailed SEQ** (BoM `IDQ21035`) or **21033 — Regional QLD** (BoM `IDQ21033`). Detailed and regional are *independent original BoM product types*, not StormTracker classifications inferred from the polygon's area. The **LDMG/DDMG report** lists only the local and district disaster-management areas touched by the selected live warning product. **Any genuine intersection counts even if only a tiny sliver of an LGA or district is inside the polygon**; there is no minimum-percent threshold. LDMGs are identified by the corresponding official Queensland council area (LGA); if boundary verification fails, the report clearly says so.
+
+**Negative reporting is normal:** After a successfully confirmed absence or cancellation, the layer displays **No current warnings** (or **No current thunderstorm warnings** when other warning types remain unverified). If only one thunderstorm product is active, it names the specific **IDQ21033** or **IDQ21035** product; a filtered cancelled product shows **No current warnings — [product]**. An interrupted mobile-data check is instead shown as **Unable to confirm current BoM warnings** with a retry option, never as a verified all-clear. Transient mobile network failures are automatically retried once. The source remains BoM, and the normal 15-minute refresh interval is unchanged.
 
 **Updates and cancellations:** With the warning layer enabled, StormTracker checks automatically every **15 minutes**, or immediately when you tap **↻ Refresh**. A confirmed newer BoM warning polygon replaces its old issue. A confirmed cancellation removes the affected product's polygon at the next successful check. Source expiry also clears old polygons. This does not change refresh frequencies for radar, gauges, rainfall, roads, power or any other layer.
 

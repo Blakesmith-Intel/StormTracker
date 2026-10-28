@@ -61,6 +61,24 @@ function bomUrl(value){
 }
 const warningKind=event=>/severe\s+thunderstorm\s+warning/i.test(event)?"severe-thunderstorm":
  /severe\s+weather\s+warning/i.test(event)?"severe-weather":null;
+function verifiedEventKind(event,headline,product){
+ const named=warningKind(event);
+ if(named)return named;
+ // WMO's *actual official BoM CAP* uses <event>Thunderstorm</event>.
+ // Only a separately verified specific severe-warning PRODUCT ID plus
+ // explicit severe warning headline permits this classification.
+ if(product?.kind==="severe-thunderstorm"&&/^Thunderstorm$/i.test(event)&&
+   /severe\s+thunderstorm\s+warning/i.test(headline))
+   return "severe-thunderstorm";
+ if(product?.kind==="severe-weather"&&/^Severe Weather$/i.test(event)&&
+   /severe\s+weather\s+warning/i.test(headline))
+   return "severe-weather";
+ return null;
+}
+const productBulletinUrl=code=>{
+ const kind=/^IDQ2103[35]$/.test(code)?"severe-thunderstorm-warning":"severe-weather-warning";
+ return "https://www.bom.gov.au/warning/"+kind+"/"+code;
+};
 const qldCoordinates=ring=>ring.some(([lon,lat])=>lon>=137&&lon<=154.5&&lat>=-29.5&&lat<=-9);
 const nswCoordinates=ring=>ring.some(([lon,lat])=>lon>=141&&lon<=154.5&&lat>=-38&&lat<=-28);
 // CAP cancellation notices are authoritative even when no polygon is provided.
@@ -78,18 +96,24 @@ export function parseBomCapProductNotice(xml,{nowMs=Date.now()}={}){
  if(!identifier||sentMs===null||sentMs>nowMs+5*60000||
     nowMs-sentMs>36*3600000)return null;
  const infos=fields(xml,"info");
- const matching=infos.find(info=>warningKind(one(info,"event")))??"";
+ const matching=infos.find(info=>/thunderstorm|severe weather/i.test(one(info,"event")+" "+one(info,"headline")))??"";
  const parameters=fields(matching,"parameter").map(p=>({
    name:one(p,"valueName"),value:one(p,"value")
  })).filter(p=>/^(?:product.?code|bom.?product.?id|warning.?product|product)$/i.test(p.name));
  const product=codeFromOriginalBomCapMetadata({
    identifier,web:one(matching,"web"),references:one(xml,"references"),parameters
  });
- if(!product||!matching||warningKind(one(matching,"event"))!==product.kind)return null;
+ if(!product||!matching||verifiedEventKind(one(matching,"event"),one(matching,"headline"),product)!==product.kind)return null;
  const cancelled=/^cancel$/i.test(one(xml,"msgType"))||
    /^cancellation of\b/i.test(one(matching,"headline"));
  const exp=strictTime(one(matching,"expires"));
  return {productCode:product.code,issuedUtc:new Date(sentMs).toISOString(),
+  expiresUtc:exp===null?null:new Date(exp).toISOString(),
+  headline:one(matching,"headline").slice(0,350),
+  description:one(matching,"description").slice(0,4500),
+  instruction:one(matching,"instruction").slice(0,2500),
+  areaDescription:fields(matching,"area").map(area=>one(area,"areaDesc")).filter(Boolean).join(" · ").slice(0,900),
+  bulletinUrl:productBulletinUrl(product.code),
   status:cancelled?"cancelled":exp!==null&&exp<=nowMs?"expired":"issued",
   geometryExpected:!cancelled&&exp!==null&&exp>nowMs,
   originalIdentifier:identifier};
@@ -110,21 +134,22 @@ export function parseOfficialBomCap(xml,{nowMs=Date.now()}={}){
   return [];
  const output=[];
  for(const info of fields(xml,"info")){
-  const event=one(info,"event"),kind=warningKind(event);
-  if(!kind)continue;
+  const event=one(info,"event");
   const parameters=fields(info,"parameter").map(p=>({
     name:one(p,"valueName"),value:one(p,"value")
   })).filter(p=>/^(?:product.?code|bom.?product.?id|warning.?product|product)$/i.test(p.name));
   const product=codeFromOriginalBomCapMetadata({
     identifier:id,references,web:one(info,"web"),parameters
   });
+  const kind=verifiedEventKind(event,one(info,"headline"),product);
   // Never call IDQ21035 "regional" or IDQ21033 "detailed" by
-  // headline, shape size, or a generic CAP event string.
-  if(!product||product.kind!==kind)return [];
+  // headline, shape size, or an unauthenticated generic CAP event.
+  if(!product||product.kind!==kind)continue;
   const expires=one(info,"expires"),endMs=strictTime(expires);
   if(endMs===null||endMs<=nowMs||endMs-issuedMs>24*3600000)continue;
-  const bulletin=bomUrl(one(info,"web")||one(xml,"web"));
-  if(!bulletin)continue;
+  // WMO CAP <web> is an HTTP national index, not a direct warning bulletin.
+  // Use the BoM's published product-specific HTTPS location for verified IDQ.
+  const bulletin=productBulletinUrl(product.code);
   for(const [areaIndex,area] of fields(info,"area").entries()){
    const polygons=[];
    for(const raw of fields(area,"polygon")){

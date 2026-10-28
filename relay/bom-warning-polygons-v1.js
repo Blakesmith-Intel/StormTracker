@@ -11,7 +11,7 @@ const DDMG_URL="https://spatial-gis.information.qld.gov.au/arcgis/rest/services/
 const NAME="StormTrackerOfficialBoMWarningPolygonsV1";
 async function textResponse(url,max=1500000){
  const res=await fetch(url,{headers:{Accept:"application/xml,text/xml,application/rss+xml"},
-  signal:AbortSignal.timeout(13500),redirect:"error",cf:{cacheEverything:true,cacheTtl:120}});
+  signal:AbortSignal.timeout(13500),redirect:"manual",cf:{cacheEverything:true,cacheTtl:120}});
  if(!res.ok)throw Error("WMO CAP HTTP "+res.status);
  const text=await res.text();
  if(text.length>max||text.length<50)throw Error("Unexpected CAP feed size");

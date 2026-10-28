@@ -63,7 +63,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   return status==="cancelled"?"Cancelled by BoM · no current polygons":
     status==="no-active"?"0 current polygons verified":
     status==="active"?"Active warning polygons":
-    status==="geometry-unavailable"?"Warning issued · original polygon unavailable":
+    status==="geometry-unavailable"?"ACTIVE BoM warning · original polygon unavailable":
     "Warning verification unavailable";
  };
  function showProductStatus(){
@@ -190,18 +190,43 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    count.textContent=sourceStatus==="unavailable"||productStatus==="unavailable"?
      "Warning verification unavailable — not an all-clear":
      productStatus==="geometry-unavailable"?
-       "Warning issued, but genuine warning geometry unavailable":
+       "ACTIVE BoM warning confirmed — genuine polygon geometry unavailable; LDMG/DDMG intersections cannot be calculated":
      productStatus==="cancelled"?
        "Cancelled by BoM · 0 active polygons":
        result.count+" active verified polygon"+(result.count===1?"":"s");
    section.append(count);
+   const official=productStatuses[code];
+   if(official?.headline){
+    const text=document.createElement("section");
+    text.className="official-bom-source-details";
+    const h=document.createElement("h4");h.textContent="Verified BoM warning bulletin";
+    text.append(h);
+    const issued=document.createElement("p");
+    issued.textContent="Issued "+fmt(official.issuedUtc)+
+      (official.expiresUtc?" · Expires "+fmt(official.expiresUtc):"");
+    text.append(issued);
+    for(const body of [official.headline,official.description,official.instruction]){
+     if(!String(body??"").trim())continue;
+     const p=document.createElement("p");p.textContent=body;
+     text.append(p);
+    }
+    const link=officialUrl(official.bulletinUrl);
+    if(link){
+     const a=document.createElement("a");
+     a.href=link;a.target="_blank";a.rel="noopener noreferrer";
+     a.textContent="Open this official BoM warning";
+     text.append(a);
+    }
+    section.append(text);
+   }
    for(const [label,items,complete] of [
      ["LDMGs — local council disaster-management groups",result.ldmgs,result.ldmgComplete],
      ["DDMGs — district disaster-management groups",result.ddmgs,result.ddmgComplete]]){
     const title=document.createElement("h4");title.textContent=label;
     section.append(title);
     const info=document.createElement("p");
-    info.textContent=!complete?"Boundary verification incomplete — affected groups may be missing":
+    info.textContent=productStatus==="geometry-unavailable"?"Original source has no warning coordinates — no affected LDMG/DDMG list can be verified":
+      !complete?"Boundary verification incomplete — affected groups may be missing":
        !result.count?"No currently verified polygon in this product":
        !items.length?"No intersecting Queensland groups reported":"";
     section.append(info);

@@ -2,6 +2,8 @@ import {bomCapRssLinks,parseOfficialBomCap,parseBomCapProductNotice}
  from "../frontend/src/context-layers/bom-warning-cap-source-v1.js";
 import {reconcileLatestBoMWarnings}
  from "./bom-warning-product-reconcile-v1.js";
+import {fetchQldBomWfsGeometry}
+ from "./bom-warning-gis2web-replica-v1.js";
 
 export const BOM_CAP_RSS="https://severeweather.wmo.int/v2/cap-alerts/au-bom-en/rss.xml";
 const LGA_URL="https://spatial-gis.information.qld.gov.au/arcgis/rest/services/Boundaries/AdministrativeBoundaries/MapServer/1/query";
@@ -83,6 +85,27 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
   }))));
   const sourceFailures=found.filter(x=>x.status==="rejected").length;
   const messageRecords=found.map(x=>x.status==="fulfilled"?x.value:{failed:true});
+  // Obtain source-exact genuine GIS2Web-derived warning polygons only for
+  // authenticated, active Bureau CAP issues, not arbitrary geographic guesses.
+  // A separate WFS outage never converts a live CAP warning to "no warning".
+  const latestIssued=new Map();
+  for(const row of messageRecords){
+   const n=row?.notice;
+   if(n?.status!=="issued"||!n.productCode)continue;
+   const prev=latestIssued.get(n.productCode);
+   if(!prev||Date.parse(n.issuedUtc)>Date.parse(prev.issuedUtc))
+    latestIssued.set(n.productCode,n);
+  }
+  const gisResults=await Promise.allSettled([...latestIssued.values()]
+   .map(notice=>fetchQldBomWfsGeometry(notice,{nowMs:now})));
+  let gisFailures=0;
+  [...latestIssued.values()].forEach((notice,i)=>{
+   const result=gisResults[i];
+   if(result.status==="rejected"){gisFailures++;return;}
+   const row=messageRecords.find(r=>r?.notice?.productCode===notice.productCode&&
+     r.notice.issuedUtc===notice.issuedUtc);
+   if(row)row.warnings=[...(row.warnings??[]),...result.value];
+  });
   const reconciled=reconcileLatestBoMWarnings(messageRecords,{
     complete:sourceFailures===0&&!indexPossiblyTruncated,nowMs:now
   });
@@ -92,13 +115,14 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
   const enriched=await Promise.all(qld.slice(0,14).map(enrichWarningBoundaries));
   const products=reconciled.products;
   // Never label incomplete CAP source scans as confirmed "no warnings".
-  const partial=sourceFailures>0||indexPossiblyTruncated||Object.values(products).some(p=>
+  const partial=sourceFailures>0||gisFailures>0||indexPossiblyTruncated||Object.values(products).some(p=>
     p.status==="unavailable"||p.status==="geometry-unavailable");
   payload={schema:NAME,checkedAt:new Date(now).toISOString(),
    status:partial?"partial-source-unavailable":
      enriched.length?"active":"no-verified-current-polygons",
    source:"WMO registered Australian Bureau of Meteorology CAP authority",
-   sourceUrl:BOM_CAP_RSS,sourceFailures,
+   sourceUrl:BOM_CAP_RSS,sourceFailures,gisFailures,
+   geospatialSource:"Queensland emergency-management WFS-derived Bureau GIS2Web warnings",
    products,sourceComplete:reconciled.sourceComplete,
    nswWithheld:reconciled.warnings.filter(x=>x.state==="NSW").length,
    warnings:enriched};

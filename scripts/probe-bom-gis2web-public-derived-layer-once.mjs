@@ -39,4 +39,20 @@ if(item?.url){
   const features=await query("layer-record-"+layer.id,u+"/"+layer.id+"/query?f=json&where=1%3D1&outFields=*&returnGeometry=false&resultRecordCount=3");
   console.log("FEATURES",JSON.stringify({layer:layer.id,attrs:features?.features?.slice(0,3).map(f=>f.attributes)}));
  }
+ 
+  const now=Date.now();
+  for(const [layer,product] of [[3,"IDQ65654"],[3,"IDQ65650"],[2,"IDQ65272"],[2,"IDQ65277"]]){
+   const geoUrl=u+"/"+layer+"/query?f=geojson&where="+encodeURIComponent("product='"+product+"'")+
+    "&outFields="+encodeURIComponent("product,validfrom_utc,validto_utc,phenomena,warning,FMETimestamp,OBJECTID")+
+    "&outSR=4326&returnGeometry=true&resultRecordCount=100";
+   const features=await query("geometry-"+product,geoUrl);
+   const list=features?.features??[];
+   console.log("PRODUCT_GEOMETRY",JSON.stringify({product,type:features?.type,count:list.length,
+      err:features?.error,geometryTypes:[...new Set(list.map(x=>x.geometry?.type))],
+      live:list.filter(x=>x.properties?.validto_utc>now&&x.properties?.validfrom_utc<=now).length,
+      bounds:list.map(x=>x.geometry?.coordinates?.[0]?.[0]?.[0]).slice(0,5),
+      details:list.slice(0,8).map(x=>({id:x.id,properties:x.properties,
+       type:x.geometry?.type,rings:x.geometry?.coordinates?.length,points:x.geometry?.coordinates?.[0]?.[0]?.length,
+       example:x.geometry?.coordinates?.[0]?.[0]?.slice(0,3)}))}));
+  }
 }

@@ -75,6 +75,15 @@ function verifiedEventKind(event,headline,product){
    return "severe-weather";
  return null;
 }
+function sourceBoMWebIsAuthentic(value){
+ // Genuine WMO-BoM CAP advertises HTTP http://www.bom.gov.au/australia/warnings;
+ // re-link to the authoritative per-product HTTPS page, never to non-BoM URLs.
+ if(!value)return true;
+ try{
+  const u=new URL(value);
+  return ["http:","https:"].includes(u.protocol)&&/(^|\\.)bom\\.gov\\.au$/.test(u.hostname);
+ }catch{return false;}
+}
 const productBulletinUrl=code=>{
  const kind=/^IDQ2103[35]$/.test(code)?"severe-thunderstorm-warning":"severe-weather-warning";
  return "https://www.bom.gov.au/warning/"+kind+"/"+code;
@@ -149,6 +158,7 @@ export function parseOfficialBomCap(xml,{nowMs=Date.now()}={}){
   if(endMs===null||endMs<=nowMs||endMs-issuedMs>24*3600000)continue;
   // WMO CAP <web> is an HTTP national index, not a direct warning bulletin.
   // Use the BoM's published product-specific HTTPS location for verified IDQ.
+  if(!sourceBoMWebIsAuthentic(one(info,"web")))continue;
   const bulletin=productBulletinUrl(product.code);
   for(const [areaIndex,area] of fields(info,"area").entries()){
    const polygons=[];

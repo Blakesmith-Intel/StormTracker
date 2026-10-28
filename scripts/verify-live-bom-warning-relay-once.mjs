@@ -1,3 +1,4 @@
+// One-off post-Cloudflare-hotfix public endpoint verification, 28 Oct 2026.
 const url="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons";
 let response=null;
 try{

@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 28 October 2026 | **Applies to:** V10.2.27 live BoM CAP warning-source correction on the V10.2.26 documentation-only freeze of the V10.2.25 warning feature and V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
+**Edition:** 28 October 2026 | **Applies to:** V10.2.28 clear BoM warning operational status on V10.2.27 live BoM CAP source correction on the V10.2.26 documentation-only freeze of the V10.2.25 warning feature and V10.2.24 maintenance composite (sealed V10.2.0 radar/science foundation + verified maintenance overlays)  
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 

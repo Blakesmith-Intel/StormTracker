@@ -1,3 +1,4 @@
+import {parseBomCapProductNotice,parseOfficialBomCap} from "../frontend/src/context-layers/bom-warning-cap-source-v1.js";
 // One-off direct government-source diagnostic. Logs only source shape,
 // canonical links, product identities and page asset paths, NOT warning text.
 const capRss="https://severeweather.wmo.int/v2/cap-alerts/au-bom-en/rss.xml";
@@ -39,6 +40,12 @@ async function load(name,url,timeout=14000){
      const resp=await fetch(link,{signal:AbortSignal.timeout(11000)});
      const xml=await resp.text();
      const texts=matches(xml,/<(?:[\w-]+:)?(?:event|headline|areaDesc)\b[^>]*>([^<]*)/gi,4);
+     const notice=parseBomCapProductNotice(xml,{nowMs:Date.now()});
+     const polygons=parseOfficialBomCap(xml,{nowMs:Date.now()});
+     console.log("CAP_MODEL",JSON.stringify({index:i,recognized:!!notice,
+       code:notice?.productCode,status:notice?.status,
+       headlineLength:notice?.headline?.length??0,adviceLength:notice?.instruction?.length??0,
+       bulletinUrl:notice?.bulletinUrl,originalPolygons:polygons.length}));
      console.log("CAP_ITEM",JSON.stringify({index:i,http:resp.status,length:xml.length,
       identifier:compact(tag(xml,"identifier"),130),sender:compact(tag(xml,"sender"),80),
       status:compact(tag(xml,"status"),45),msgType:compact(tag(xml,"msgType"),45),

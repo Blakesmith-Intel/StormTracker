@@ -1,0 +1,19 @@
+name: Investigate actual BoM IDQ21033 polygon source (one-off)
+on:
+  push:
+    branches:
+      - fix/live-idq21033-official-polygon-source-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Inspect current official warning source and CAP geometry
+        run: node scripts/probe-idq21033-live-source-v1.mjs

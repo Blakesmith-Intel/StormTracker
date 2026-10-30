@@ -1,0 +1,69 @@
+name: Verify public BoM warning layer visibility hotfix
+on:
+  push:
+    branches:
+      - fix/bom-warning-visible-above-satellite-locate-20261030
+    paths:
+      - .github/workflows/verify-published-warning-layer-order-20261030.yml
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check published camera locator, imagery stacking, active warning data
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          const paths=[
+            'index.html',
+            'live3d-operational-v9.html',
+            'src/live3d-operational-v9.js',
+            'src/context-layers/bom-warning-operational-v1.js'
+          ];
+          for(const path of paths){
+            const response=await fetch(root+path+'?stormtracker-visibility-check='+Date.now(),
+             {signal:AbortSignal.timeout(19000),cache:'no-store'});
+            const body=await response.text();
+            if(response.status!==200)throw Error('PUBLIC '+path+' HTTP '+response.status);
+            const required={
+              'index.html':['warning-visible-20261030-v1'],
+              'live3d-operational-v9.html':['id="locateOfficialBomWarnings"','warning-visible-20261030-v1'],
+              'src/live3d-operational-v9.js':['getRadarLayer:()=>surfaceLayer','bom-warning-operational-v1.js?v=20261030-visible-above-basemap-v1'],
+              'src/context-layers/bom-warning-operational-v1.js':[
+                'insertOfficialWarningImageryAboveBasemap(viewer.imageryLayers,imagery,getRadarLayer)',
+                'layers.add(layer);',
+                'layers.raiseToTop(radar)',
+                'viewer.camera.flyTo({destination:CesiumRef.Rectangle.fromDegrees('
+              ]
+            }[path];
+            const absent=required.filter(term=>!body.includes(term));
+            console.log('PUBLIC_RELEASE',JSON.stringify({path,status:response.status,
+              bytes:body.length,allPresent:absent.length===0,missing:absent}));
+            if(absent.length)throw Error('The published map is not rendering the corrected overlay');
+          }
+          const relay='https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons';
+          const response=await fetch(relay+'?check='+Date.now(),{
+            headers:{Origin:'https://blakesmith-intel.github.io'},
+            signal:AbortSignal.timeout(50000)});
+          const d=await response.json();
+          if(!response.ok||d.schema!=='StormTrackerOfficialBoMWarningPolygonsV1')
+            throw Error('Live BoM warning source unavailable');
+          const shapes=(d.warnings||[]).filter(w=>w.productCode==='IDQ21033');
+          const bounds=shapes.map(w=>{
+            const polygons=w.geometry?.type==='Polygon'?[w.geometry.coordinates]:
+              w.geometry?.type==='MultiPolygon'?w.geometry.coordinates:[];
+            const vertices=polygons.flat(2).filter(p=>Array.isArray(p)&&p.length>=2);
+            return {vertexCount:vertices.length,
+              west:Math.min(...vertices.map(p=>p[0])),
+              east:Math.max(...vertices.map(p=>p[0])),
+              south:Math.min(...vertices.map(p=>p[1])),
+              north:Math.max(...vertices.map(p=>p[1]))};
+          });
+          console.log('LIVE_WARNING_GEOGRAPHY',JSON.stringify({status:d.status,
+            product:d.products?.IDQ21033?.status,polygons:shapes.length,bounds,
+            sourceFailures:d.sourceFailures,gisFailures:d.gisFailures}));
+          console.log('PASS published warning layer ABOVE opaque satellite + locate original geometry');
+          NODE

@@ -75,7 +75,7 @@ jobs:
       - name: Build actual delivered radar refresh package and inspect
         run: |
           set -euo pipefail
-          bash -x scripts/build-current-site.sh
+          bash scripts/build-current-site.sh
           python scripts/apply-ftp-aep-release-v10.py
           python scripts/apply-radar-auto-refresh-v1.py
           node --check _site/src/live-loop-refresh-v1.js

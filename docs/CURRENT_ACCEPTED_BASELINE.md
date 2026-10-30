@@ -1,3 +1,10 @@
+# Current StormTracker V10.2.29 warning capability — 30 October 2026
+
+**Production warning polygon baseline (pending final public release seal):** See [V10.2.29 release notes](RELEASE_NOTES_V10.2.29.md), [operator guide](OPERATOR_GUIDE_CURRENT.md) and [active wishlist](ACTIVE_WISHLIST.md). Source-issued IDQ21033 regional, IDQ21035 detailed threat geometry, authentic geometry lifecycle, over-satellite/under-radar rendering, stateful camera-controller Locate, and tap-to-open existing LDMG/DDMG report are additive and do not alter the accepted V10.2.0 radar science and V10.2.24 hydrology/IFD stack. The separately designated official IDQ65652 detailed storm-location source is preconfigured with source-specific VERY DANGEROUS labels, but live IDQ65652 cells were not available at audit time; per-cell live acceptance remains open, not marked operationally proven. Every earlier sealed version remains unchanged.
+
+**Release discipline:** Create a NEW annotated `v10.2.29` tag and `restore/v10.2.29` branch only after the current GitHub Pages build and public source checks succeed. The existing V10.2.28 baseline points at the historical source commit and must not move.
+
+---
 # StormTracker — current accepted production V10.2.26 (27 October 2026)
 
 **Latest verified working code:** V10.2.25. **Final documentation-only seal:** V10.2.26. This document supersedes the earlier V10.2.5 header; older source-pin detail below is retained solely as historical engineering evidence.

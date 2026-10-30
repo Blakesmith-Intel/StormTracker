@@ -1,0 +1,129 @@
+name: Public acceptance V10.2.33 severe weather sidebar and inline Cyclones
+on:
+  push:
+    branches: [qa/v10.2.33-severe-weather-inline-live]
+    paths: [.github/workflows/qa-v10.2.33-public-menu.yml]
+permissions: {contents: read}
+jobs:
+  public-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify actual published production menu and CSS
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          async function get(path){
+            const r=await fetch(root+path+'?v1033='+Date.now(),
+              {cache:'no-store',signal:AbortSignal.timeout(19000)});
+            const text=await r.text();
+            if(r.status!==200||text.length<100)throw Error(path+' HTTP '+r.status);
+            return text;
+          }
+          let verified=false;
+          for(let attempt=1;attempt<=29;attempt++){
+            const [index,page,css,js]=await Promise.all([
+              get('index.html'),get('live3d-operational-v9.html'),
+              get('src/severe-weather-sidebar-v1.css'),get('src/live3d-operational-v9.js')]);
+            const start=page.indexOf('id="severeWeatherDetails"');
+            const end=page.indexOf('class="card layer-controls"');
+            const severe=start>0&&end>start?page.slice(start,end):'';
+            const general=end>0?page.slice(end,page.indexOf('</aside>',end)):'';
+            const expected={
+              cache:index.includes('severe-weather-sidebar-20261030-v1'),
+              singleMenu:(page.match(/id="severeWeatherDetails"/g)||[]).length===1,
+              topLevel:start>0&&end>start&&page.includes('◫ Situational Awareness Data'),
+              flood:severe.includes('id="showRiverGauges"')&&severe.includes('id="riverGaugeSeverityLegend"')&&severe.includes('id="openFloodGaugeReport"'),
+              warnings:severe.includes('BoM Severe Weather and Thunderstorm Warnings')&&severe.includes('id="officialBomWarningProduct"'),
+              cycloneInline:severe.includes('id="openCycloneForecastQa"')&&severe.includes('id="cycloneForecastQaPanel"')&&severe.includes('CURRENT BoM PRODUCTS ONLY'),
+              cycloneRuntime:js.includes('createOperationalCyclonePanel')&&js.includes('createInternalCycloneLiveQA'),
+              otherData:['showSignificantRainfall','showFloodRoadClosures','showPowerOutages','showQfdTechnicalRescues','basemapSelect'].every(id=>general.includes('id="'+id+'"')),
+              cssInline:css.includes('position:static!important')&&css.includes('#severeWeatherDetails'),
+              historicalAbsent:!page.includes('cycloneUseJasper')&&!page.includes('cycloneGmlFile'),
+              allUnique:['showRiverGauges','showOfficialBomWarnings','openCycloneForecastQa','cycloneForecastQaPanel','showSignificantRainfall'].every(id=>(page.match(new RegExp('id="'+id+'"','g'))||[]).length===1)
+            };
+            console.log('PUBLIC_LAYOUT',JSON.stringify({attempt,checks:expected}));
+            if(Object.values(expected).every(Boolean)){verified=true;break}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          assert(verified,'Refusing acceptance: public production has not published real inline menu');
+          console.log('PASS published V10.2.33 all five approved menu changes, unchanged original data controls, current-only inline Cyclones');
+          NODE
+  mobile-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install isolated browser test
+        run: |
+          mkdir -p /tmp/stormtracker-sidebar-browser
+          cd /tmp/stormtracker-sidebar-browser
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.57.0
+      - name: Test real iPhone-sized sidebar expansion and inline cyclone behaviour
+        run: |
+          cd /tmp/stormtracker-sidebar-browser
+          cat > check.mjs <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright-core';
+          const bin='/usr/bin/google-chrome';
+          const browser=await chromium.launch({
+           executablePath:bin,headless:true,
+           args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--disable-dev-shm-usage']
+          });
+          try{
+           const page=await browser.newPage({viewport:{width:430,height:900},
+             deviceScaleFactor:1,hasTouch:true,isMobile:true});
+           const errors=[];
+           page.on('pageerror',e=>errors.push(String(e).slice(0,150)));
+           await page.goto('https://blakesmith-intel.github.io/StormTracker/?v1033-mobile='+Date.now(),
+             {waitUntil:'domcontentloaded',timeout:40000});
+           const frame=page.frameLocator('#liveFrame');
+           const severe=frame.locator('#severeWeatherDetails');
+           await severe.waitFor({state:'attached',timeout:55000});
+           assert.equal(await severe.getAttribute('open'),null,'Severe Weather default is collapsed');
+           const structure=await severe.evaluate(e=>({
+             parent:e.parentElement?.id,
+             labels:[...e.querySelectorAll('.severe-weather-group')].map(x=>x.getAttribute('aria-label')),
+             controls:[...e.querySelectorAll('input[type="checkbox"]')].map(x=>({id:x.id,checked:x.checked}))
+           }));
+           console.log('MOBILE_STRUCTURE',JSON.stringify(structure));
+           assert.equal(structure.parent,'controlSidebar');
+           assert.deepEqual(structure.labels,
+            ['Flood gauges','BoM Severe Weather and Thunderstorm Warnings','Cyclones']);
+           assert(structure.controls.some(x=>x.id==='showRiverGauges'&&!x.checked));
+           assert(structure.controls.some(x=>x.id==='showOfficialBomWarnings'&&!x.checked));
+           await severe.locator('summary').click({force:true});
+           assert.notEqual(await severe.getAttribute('open'),null,'Severe Weather expands');
+           await frame.locator('#officialBomWarningProduct').waitFor({state:'visible',timeout:10000});
+           const cycloneButton=frame.locator('#openCycloneForecastQa');
+           await cycloneButton.waitFor({state:'visible',timeout:10000});
+           // App initialization must complete and attach its original handler.
+           await frame.locator('#internalCycloneLiveToggle').waitFor({state:'attached',timeout:55000});
+           assert.equal(await cycloneButton.getAttribute('aria-expanded'),'false');
+           await cycloneButton.click({force:true,timeout:10000});
+           const panel=frame.locator('#cycloneForecastQaPanel');
+           await panel.waitFor({state:'visible',timeout:12000});
+           const positioned=await panel.evaluate(x=>{
+             const box=x.getBoundingClientRect(),sidebar=document.getElementById('controlSidebar').getBoundingClientRect();
+             return {position:getComputedStyle(x).position,
+              within:box.left>=sidebar.left-2&&box.right<=sidebar.right+2,
+              insideSevere:!!x.closest('#severeWeatherDetails'),
+              toggled:document.getElementById('openCycloneForecastQa').getAttribute('aria-expanded'),
+              archived:!!document.getElementById('cycloneUseJasper'),
+              liveToggle:!!x.querySelector('#internalCycloneLiveToggle')};
+           });
+           console.log('INLINE_CYCLONE',JSON.stringify(positioned));
+           assert.equal(positioned.position,'static');
+           assert(positioned.within&&positioned.insideSevere&&positioned.liveToggle&&!positioned.archived);
+           assert.equal(positioned.toggled,'true');
+           assert.equal(await panel.locator('#internalCycloneLiveToggle').isChecked(),false);
+           await frame.locator('#cycloneOperationalClose').click({force:true});
+           assert.equal(await panel.isVisible(),false,'Cyclone panel collapses back into severe weather');
+           assert.notEqual(await severe.getAttribute('open'),null,'Closing Cyclones does not close the parent');
+           console.log('PASS mobile real DOM expandable Severe Weather, original controls, inline cyclone with live toggle and close; JS errors '+JSON.stringify(errors));
+          }finally{await browser.close();}
+          NODE
+          node check.mjs

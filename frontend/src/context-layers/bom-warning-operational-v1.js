@@ -389,10 +389,13 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     const title=document.createElement("h4");title.textContent=label;
     section.append(title);
     const info=document.createElement("p");
-    info.textContent=productStatus==="geometry-unavailable"?"Original source has no warning coordinates — no affected LDMG/DDMG list can be verified":
+    info.textContent=productStatus==="geometry-unavailable"||productStatus==="listed-active"?
+      "Current warning awaiting genuine polygon — affected LDMG/DDMG boundaries not yet available":
+      productStatus==="no-active"||productStatus==="cancelled"?
+      "No affected groups to list — no current warning in this product":
       !complete?"Boundary verification incomplete — affected groups may be missing":
-       !result.count?"No currently verified polygon in this product":
-       !items.length?"No intersecting Queensland groups reported":"";
+      !result.count?"No currently verified polygon in this product":
+      !items.length?"No intersecting Queensland groups reported":"";
     section.append(info);
     if(items.length){
      const list=document.createElement("ul");

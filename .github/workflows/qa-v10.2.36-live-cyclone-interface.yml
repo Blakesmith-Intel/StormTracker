@@ -1,0 +1,161 @@
+name: V10.2.36 deployed cyclone subsection and independent system map acceptance
+on:
+  push:
+    branches: [qa/v10.2.36-cyclone-ui-multiple-systems-live]
+    paths: [.github/workflows/qa-v10.2.36-live-cyclone-interface.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Confirm real production public files, one genuine live control and full cache update
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          async function get(path){
+            const r=await fetch(root+path+'?qa1036='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(19000)});
+            return {code:r.status,body:await r.text()};
+          }
+          let passed=false;
+          for(let i=0;i<36;i++){
+            const [index,page,ui,live,oper]=await Promise.all([
+              get('index.html'),get('live3d-operational-v9.html'),
+              get('src/cyclone-subsection-v1.css'),
+              get('src/internal-cyclone-live-qa-v1.js'),
+              get('src/operational-cyclone-panel-v1.js')]);
+            const checks={
+              cache:index.body.includes('multiple-systems-20261030-v1'),
+              page:page.code===200&&page.body.includes('id="cycloneCurrentOverview"'),
+              unique:(page.body.match(/id="openCycloneForecastQa"/g)||[]).length===1,
+              inline:page.body.indexOf('id="cycloneCurrentOverview"')<page.body.indexOf('id="cycloneForecastQaPanel"'),
+              style:ui.code===200&&ui.body.includes('#internalCycloneSystems'),
+              actualSource:live.code===200&&live.body.includes('systemCards.id="internalCycloneSystems"')&&
+               live.body.includes('for(const s of displayed)')&&
+               live.body.includes('not verified by this forecast source'),
+              realClose:oper.code===200&&oper.body.includes('Close cyclone details'),
+              sourceSafety:live.body.includes('Unable to verify current tropical cyclone warnings')&&
+               live.body.includes('Currently no tropical cyclone warnings'),
+              noArchive:!page.body.includes('cycloneUseJasper')&&!page.body.includes('cycloneGmlFile')
+            };
+            console.log('PUBLIC_1036',JSON.stringify({attempt:i+1,checks}));
+            if(Object.values(checks).every(Boolean)){passed=true;break;}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          assert(passed,'Published primary production cyclone UI/source was not completely updated');
+          console.log('PASS public V10.2.36 cyclone UI, original safe source and multiple independent issued track contracts');
+          NODE
+      - name: Install isolated Playwright core, using system Chrome rather than downloaded browser
+        run: |
+          test -x /usr/bin/google-chrome
+          mkdir -p /tmp/stormtracker-cyclones-1036
+          cd /tmp/stormtracker-cyclones-1036
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.57.0
+      - name: Check mobile and desktop original controls with TWO synthetic cyclone source systems
+        shell: bash
+        run: |
+          cd /tmp/stormtracker-cyclones-1036
+          cat > verify.mjs <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright-core';
+          const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,
+            args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader',
+              '--enable-webgl','--disable-dev-shm-usage']});
+          const issued=new Date(Date.now()-5*60*1000).toISOString();
+          const expiry=new Date(Date.now()+8*60*60*1000).toISOString();
+          const generated=new Date().toISOString();
+          function product(systemId,name,productId,coords){
+            return {
+              productId,systemId,name,sourceSha256:'a'.repeat(64),
+              sourceUrl:'ftp://ftp.bom.gov.au/anon/gen/fwo/'+productId+'.gml',
+              issueUtc:issued,expiresUtc:expiry,
+              forecast:{type:'FeatureCollection',properties:{
+                publisher:'Bureau of Meteorology',productId,
+                systemId,systemName:name,issuedUtc:issued,forecastBaseUtc:issued
+              },features:[{type:'Feature',properties:{role:'forecast_track'},
+                geometry:{type:'LineString',coordinates:coords}}]}
+            };
+          }
+          const mock={
+            schema:'stormtracker-internal-cyclone-source-v1',
+            status:'active',complete:true,generatedUtc:generated,
+            products:[
+              product('qa-cyclone-alpha','QA cyclone Alpha','IDQ65248',[[149,-23],[150,-23.5],[151,-24]]),
+              product('qa-cyclone-bravo','QA cyclone Bravo','IDQ65249',[[144,-16],[145,-16.5],[146,-17]])
+            ]
+          };
+          try{
+            for(const viewport of [{width:375,height:812},{width:430,height:900},{width:1366,height:850}]){
+              const page=await browser.newPage({viewport,isMobile:viewport.width<700,hasTouch:viewport.width<700});
+              const errors=[];
+              page.on('pageerror',e=>errors.push(String(e).slice(0,160)));
+              // QA-only isolated interception: no fabricated forecast is written
+              // to production and no claim is made that these are live cyclones.
+              await page.route('**/internal/cyclones.json',route=>
+                route.fulfill({status:200,contentType:'application/json',
+                  body:JSON.stringify(mock)}));
+              await page.goto('https://blakesmith-intel.github.io/StormTracker/?qa1036live='+Date.now(),
+                {waitUntil:'domcontentloaded',timeout:50000});
+              const frame=page.frameLocator('#liveFrame');
+              const severe=frame.locator('#severeWeatherDetails');
+              await severe.waitFor({state:'attached',timeout:65000});
+              assert.equal(await severe.getAttribute('open'),null);
+              await severe.locator('summary').first().click({force:true});
+              const toggle=frame.locator('#internalCycloneLiveToggle');
+              await toggle.waitFor({state:'visible',timeout:15000});
+              const status=frame.locator('#internalCycloneQaStatus');
+              assert(await status.isVisible(),'Cyclone verification status must be visible with original checkbox');
+              const detail=frame.locator('#openCycloneForecastQa');
+              assert(await detail.isVisible());
+              assert.equal((await detail.textContent()).trim(),'Details');
+              assert.equal(await frame.locator('#cycloneForecastQaPanel').isVisible(),false);
+              await toggle.check({force:true});
+              await status.filter({hasText:'2 original cyclone forecast(s)'}).waitFor({
+                state:'visible',timeout:25000});
+              await detail.click({force:true});
+              const panel=frame.locator('#cycloneForecastQaPanel');
+              await panel.waitFor({state:'visible',timeout:12000});
+              const cards=frame.locator('#internalCycloneSystems .cyclone-system-card');
+              assert.equal(await cards.count(),2);
+              const names=await cards.locator('strong').allTextContents();
+              assert.deepEqual(names,['QA cyclone Alpha','QA cyclone Bravo']);
+              const links=cards.locator('a');
+              assert.equal(await links.count(),2);
+              assert((await cards.allTextContents()).every(t=>
+                t.includes('not verified by this forecast source')));
+              assert.equal(await frame.locator('#internalCycloneSelectedSystem option').count(),2);
+              const switches=cards.locator('input[type="checkbox"]');
+              assert(await switches.nth(0).isChecked()&&await switches.nth(1).isChecked());
+              const stamp=frame.locator('#internalLiveCycloneMapStamp');
+              assert((await stamp.textContent()).includes('2 of 2 cyclone systems shown'));
+              await switches.nth(0).uncheck({force:true});
+              assert((await stamp.textContent()).includes('1 of 2 cyclone systems shown'));
+              assert(await switches.nth(1).isChecked());
+              await switches.nth(0).check({force:true});
+              assert((await stamp.textContent()).includes('2 of 2 cyclone systems shown'));
+              const focus=cards.nth(1).locator('button');
+              assert((await focus.textContent()).includes('QA cyclone Bravo'));
+              await focus.click({force:true});
+              assert(await panel.evaluate(el=>getComputedStyle(el).position)==='static');
+              await detail.click({force:true});
+              assert.equal(await panel.isVisible(),false);
+              assert(await toggle.isVisible(),'Closing cyclone details must not hide the live switch');
+              assert(await toggle.isChecked(),'Closing details must not stop live source checks');
+              await toggle.uncheck({force:true});
+              assert.equal(await cards.count(),0,'Turning source off clears all per-system map cards');
+              assert((await status.textContent()).includes('layer off'));
+              assert(!errors.length,'No JS runtime errors: '+errors.join('; '));
+              console.log('TWO_SYSTEM_BROWSER_PASS',JSON.stringify({
+                viewport,names,independentTracks:true,perSystemWarningsAreExplicitlyUnverified:true,
+                noArchivedFixtures:true,originalLayerTogglePreserved:true,errors
+              }));
+              await page.close();
+            }
+          }finally{await browser.close();}
+          NODE
+          node verify.mjs

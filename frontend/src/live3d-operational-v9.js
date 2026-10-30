@@ -140,7 +140,7 @@ import {
   automaticRefreshEndUtc,
   hasNewMatchedProducts,
   createLiveLoopRefresh
-} from "./live-loop-refresh-v1.js?v=9.9.0-4";
+} from "./live-loop-refresh-v1.js?v=20261031-radar-refresh-v1";
 import { createContinuousPlayback } from "./continuous-playback-v1.js?v=9.16.10";
 import { buildTrackThreatCone } from "./track-threat-cone-v1.js?v=v9-cone-observed-tip-v3";
 import {
@@ -789,9 +789,46 @@ let lastSourceDiscoveryTimes = [];
 let trackedThrough = null;
 const radarFrameCache = new Map();
 const radarResultCache = new Map();
+const radarAutoRefreshAudit = {
+  lastCheckUtc: null,
+  newestAcceptedUtc: null,
+  lastFailure: null,
+  lastOutcome: "not checked"
+};
+function recordRadarAutoRefreshAudit({
+  check = false, acceptedUtc = undefined,
+  failure = undefined, outcome = undefined
+} = {}) {
+  if (check) radarAutoRefreshAudit.lastCheckUtc = new Date().toISOString();
+  if (acceptedUtc !== undefined) radarAutoRefreshAudit.newestAcceptedUtc = acceptedUtc;
+  if (failure !== undefined) radarAutoRefreshAudit.lastFailure = failure;
+  if (outcome !== undefined) radarAutoRefreshAudit.lastOutcome = outcome;
+  const note = $("autoRefreshNote");
+  if (note) {
+    note.title = [
+      "Last automatic check: " + (radarAutoRefreshAudit.lastCheckUtc
+        ? formatProductTime(radarAutoRefreshAudit.lastCheckUtc) : "not yet"),
+      "Newest accepted radar observation: " + (radarAutoRefreshAudit.newestAcceptedUtc
+        ? formatProductTime(radarAutoRefreshAudit.newestAcceptedUtc) : "none yet"),
+      "Last failure: " + (radarAutoRefreshAudit.lastFailure || "none"),
+      "Refresh state: " + radarAutoRefreshAudit.lastOutcome
+    ].join("\n");
+  }
+}
+window.__stormtrackerRadarAutoRefreshAudit = () => ({ ...radarAutoRefreshAudit });
 const autoRefresh = createLiveLoopRefresh({
-  refresh: () => document.hidden ? undefined : runSourceLoad(() => loadHybridSequence(true), true),
-  onError: error => { $("autoRefreshNote").textContent = `Auto update retry: ${error.message}`; }
+  refresh: () => {
+    if (document.hidden) return undefined;
+    recordRadarAutoRefreshAudit({ check: true, outcome: "checking" });
+    return runSourceLoad(() => loadHybridSequence(true), true).then(result => {
+      if (result === false) recordRadarAutoRefreshAudit({ outcome: "busy: retry pending" });
+      return result;
+    });
+  },
+  onError: error => {
+    recordRadarAutoRefreshAudit({ failure: String(error?.message ?? error), outcome: "failed" });
+    $("autoRefreshNote").textContent = `Auto update retry: ${error.message}`;
+  }
 });
 
 // Opportunistically prepare the next two genuine source images while the
@@ -4268,8 +4305,7 @@ async function loadHybridSequence(automatic = false) {
   const sourceDiscovery =
     automatic
       ? (BOUNDED_RADAR_RECOVERY_QA
-          ? discoverBoundedBomReflectivityHistory(now,5,region)
-              .then(times=>times.slice(-1))
+          ? discoverBoundedBomReflectivityHistory(now,180,region)
           : findLatestBomReflectivityTime(now,region)
               .then(observedUtc=>[observedUtc]))
       : recentDiscovery
@@ -4294,6 +4330,10 @@ async function loadHybridSequence(automatic = false) {
     ? resolveSourceDiscovery({outcome:sourceResult,cachedFrames,automatic})
     : {times:sourceResult.times,keepCurrent:false,cachedOnly:false};
   if(resolvedSource.keepCurrent) {
+    if (automatic) recordRadarAutoRefreshAudit({
+      failure: String(sourceResult.error?.message ?? "BoM imagery unavailable"),
+      outcome: "source unavailable; retaining genuine imagery"
+    });
     $("autoRefreshNote").textContent =
       "BoM new imagery currently unavailable · retaining last genuine displayed radar scan";
     return;
@@ -4888,6 +4928,9 @@ async function loadHybridSequence(automatic = false) {
   );
   $("hybridPlayButton").disabled = hybridFrames.length < 2;
   await showHybridFrame(hybridFrameIndex);
+  if (automatic) recordRadarAutoRefreshAudit({
+    acceptedUtc: frames.at(-1).observedUtc, failure: null, outcome: "updated"
+  });
   if (resume) playback.play();
   // Bound decoded imagery and per-frame results while retaining worker tracks.
   // Playback references remain in hybridFrames and hybridResults. The extra
@@ -4931,7 +4974,7 @@ async function loadHybridSequence(automatic = false) {
 }
 
 async function runSourceLoad(loader, background = false) {
-  if (sequenceLoading || !model) return;
+  if (sequenceLoading || !model) return false;
   if (!background) motionTransition.cancel();
   sequenceLoading = true;
   $("loopDurationMinutes").disabled = true;
@@ -4944,8 +4987,12 @@ async function runSourceLoad(loader, background = false) {
   }
   try {
     await loader();
+    return true;
   } catch (error) {
     if (background) {
+      recordRadarAutoRefreshAudit({
+        failure: String(error?.message ?? error), outcome: "failed"
+      });
       const failedRadar = error.message.match(/Doppler (\d{2,3})/)?.[1];
       $("autoRefreshNote").textContent = failedRadar
         ? `Auto update: Doppler ${failedRadar} unavailable; retrying.`

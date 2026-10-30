@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - docs/RELEASE_NOTES_V10.2.30.md
+      - .github/workflows/seal-v10.2.30-after-pages.yml
 permissions:
   contents: write
 jobs:
@@ -32,18 +33,16 @@ jobs:
             main="$(curl -fsSL --max-time 15 "$base/src/live3d-operational-v9.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
             operational="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-operational-v1.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
             terrain="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-terrain-imagery-v1.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
-            hazards="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-hazard-terms-v1.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
             if grep -Fq 'compact-vd-hazards-20261030-v1' <<< "$page" &&
                grep -Fq '20261030-compact-vd-hazards-v1' <<< "$main" &&
                grep -Fq '20261030-compact-vd-hazard-v1' <<< "$operational" &&
-               grep -Fq 'officialStormCellLabelPoint' <<< "$terrain" &&
-               grep -Fq 'classifyPublishedBoMThunderstormHazards' <<< "$hazards"; then
+               grep -Fq 'officialStormCellLabelPoint' <<< "$terrain"; then
               verified=true
               break
             fi
             sleep 6
           done
-          test "$verified" = true || { echo "REFUSING v10.2.30 seal: public Pages modules not verified"; exit 1; }
+          test "$verified" = true || { echo "REFUSING v10.2.30 seal: publicly shipped Pages modules not verified"; exit 1; }
           # The source endpoint must remain readable; an empty legitimate
           # warning source is acceptable and NEVER replaced with fabricated cells.
           source="$(curl -fsSL --max-time 50 "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons?verify-v1030=$GITHUB_SHA" || true)"

@@ -260,3 +260,111 @@ body.simple-ui #mapPanel #nav #mapStyleDetails .basemap-row select {
     font-size:22px;
   }
 }
+
+/* V10.2.36 - Cyclones is a first-class Severe Weather subsection,
+   not an extra dialog nested inside another menu.
+   Preserve original source control IDs and their runtime bindings. */
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-cyclones > .cyclone-forecast-row,
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa,
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel > header {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-cyclones #cycloneForecastQaPanel {
+  display:block!important;
+  position:static!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+  overflow:visible!important;
+  width:100%!important;
+  max-height:none!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-cyclones #internalCycloneQa {
+  display:grid;
+  gap:7px;
+  min-width:0;
+  border:0!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+  font:12px/1.4 system-ui;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-inline-heading {
+  display:block;
+  color:#d2ecf7;
+  font-size:12px;
+  font-weight:750;
+  line-height:1.35;
+  padding:0;
+  margin:0!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > label {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:32px;
+  padding:0;
+  line-height:1.3;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > label input {
+  flex:0 0 auto;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > #internalCycloneQaStatus {
+  display:block;
+  min-width:0;
+  margin:1px 0 3px!important;
+  overflow-wrap:anywhere;
+  white-space:pre-wrap;
+  line-height:1.45;
+  color:#cfecf7;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails {
+  margin:4px 0 0;
+  padding:4px 9px;
+  border-radius:8px;
+  border:1px solid #36546b;
+  background:#112a39;
+  min-width:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails > summary {
+  display:list-item!important;
+  cursor:pointer;
+  min-height:30px;
+  color:#c1e1ee;
+  font-size:11px;
+  font-weight:700;
+  padding:5px 2px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails:not([open]) > :not(summary) {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails[open] > summary {
+  margin-bottom:7px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails > div {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:5px 0 9px!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails > label {
+  display:block;
+  margin-bottom:6px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails select {
+  display:block;
+  min-width:0;
+  max-width:100%;
+  width:100%;
+  box-sizing:border-box;
+  min-height:35px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails a,
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneSourceDetails p {
+  display:block;
+  margin:6px 0;
+  overflow-wrap:anywhere;
+}

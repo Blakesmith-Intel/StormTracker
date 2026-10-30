@@ -50,7 +50,7 @@ assert(ui.includes('stormCellSourceStatus==="source-verified"'));
 assert(img.includes('entry.veryDangerous===true&&level>=2'));
 assert(img.includes('entry.sourceProduct==="IDQ65652"'));
 
-const {createWarningImageryProvider}=await import("../src/context-layers/bom-warning-terrain-imagery-v1.js");
+const {createWarningImageryProvider,officialStormCellLabelPoint}=await import("../src/context-layers/bom-warning-terrain-imagery-v1.js");
 const oldDoc=globalThis.document;
 const drawn=[];
 globalThis.document={createElement(name){
@@ -74,8 +74,12 @@ try{
  [152.4,-27.7],[152.4,-27.6],[152.3,-27.6],[152.3,-27.7]]]};
  const cell={type:"severe-thunderstorm-cell",sourceProduct:"IDQ65652",
   geometry:cellGeometry,veryDangerous:true};
+ assert.deepEqual(officialStormCellLabelPoint(cellGeometry),[152.35,-27.65]);
  await createWarningImageryProvider(mockCesium,[cell]).requestImage(0,0,3);
- assert.deepEqual(drawn,["VERY DANGEROUS"]);
+ assert.deepEqual(drawn,["VD"],"Small zoom shows compact danger badge");
+ drawn.length=0;
+ await createWarningImageryProvider(mockCesium,[cell]).requestImage(0,0,6);
+ assert.deepEqual(drawn,["VERY DANGEROUS"],"Close zoom expands badge wording");
  drawn.length=0;
  await createWarningImageryProvider(mockCesium,[{...cell,
   sourceProduct:"IDQ65650"}]).requestImage(0,0,3);

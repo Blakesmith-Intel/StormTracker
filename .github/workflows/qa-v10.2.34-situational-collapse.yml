@@ -1,0 +1,110 @@
+name: V10.2.34 production collapsible Situational Awareness acceptance
+on:
+  push:
+    branches: [qa/v10.2.34-situational-awareness-public]
+    paths: [.github/workflows/qa-v10.2.34-situational-collapse.yml]
+permissions: {contents: read}
+jobs:
+  public-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Confirm published primary website and CSS
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          async function get(path){
+            const response=await fetch(root+path+'?verify-v1034='+Date.now(),
+              {cache:'no-store',signal:AbortSignal.timeout(20000)});
+            return {status:response.status,body:await response.text()};
+          }
+          let ready=false;
+          for(let attempt=1;attempt<=35;attempt++){
+            const [index,page,css]=await Promise.all([
+              get('index.html'),get('live3d-operational-v9.html'),
+              get('src/severe-weather-sidebar-v1.css')]);
+            const start=page.body.indexOf('id="situationalAwarenessDetails"');
+            const end=page.body.indexOf('    </details>\n  </aside>',start);
+            const general=start>0&&end>start?page.body.slice(start,end):'';
+            const checks={
+              indexCache:index.body.includes('situational-collapse-20261030-v1'),
+              css200:css.status===200&&css.body.includes('#situationalAwarenessDetails:not([open]) > :not(summary)'),
+              separate:page.body.includes('id="severeWeatherDetails"')&&start>0,
+              native:general.includes('<summary class="section-title">◫ Situational Awareness Data</summary>'),
+              unchanged:['basemapSelect','showSignificantRainfall','showFloodRoadClosures','showPowerOutages',
+                'showQfdTechnicalRescues','openRainfallTotalsReport','openRainfallAepReport'].every(id=>general.includes('id="'+id+'"')),
+              direct:general.includes('class="layer-row basemap-row"')&&general.includes('class="layer-row significant-rainfall-row"'),
+              once:(page.body.match(/id="situationalAwarenessDetails"/g)||[]).length===1,
+              before:page.body.indexOf('id="severeWeatherDetails"')<start
+            };
+            console.log('PUBLIC_V1034',JSON.stringify({attempt,checks}));
+            if(Object.values(checks).every(Boolean)){ready=true;break;}
+            await new Promise(r=>setTimeout(r,6000));
+          }
+          assert(ready,'V10.2.34 primary website failed to publish correct native accordion/CSS');
+          console.log('PASS primary URL serves independent Situational Awareness Data disclosure with all original controls');
+          NODE
+      - name: Set up isolated Playwright browser test
+        run: |
+          mkdir -p /tmp/stormtracker-v1034-browser
+          cd /tmp/stormtracker-v1034-browser
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.57.0
+      - name: Test native disclosures and non-destructive toggle on iPhone and desktop
+        run: |
+          cd /tmp/stormtracker-v1034-browser
+          cat > verify.mjs <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright-core';
+          const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',
+           headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader',
+             '--enable-webgl','--disable-dev-shm-usage']});
+          try{
+           for(const viewport of [{width:430,height:900},{width:1366,height:850}]){
+            const page=await browser.newPage({viewport,isMobile:viewport.width<700,hasTouch:viewport.width<700});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e).slice(0,160)));
+            await page.goto('https://blakesmith-intel.github.io/StormTracker/?v1034='+Date.now(),
+             {waitUntil:'domcontentloaded',timeout:40000});
+            const frame=page.frameLocator('#liveFrame');
+            const severe=frame.locator('#severeWeatherDetails');
+            const situational=frame.locator('#situationalAwarenessDetails');
+            await situational.waitFor({state:'attached',timeout:55000});
+            assert.equal(await situational.getAttribute('open'),null,'Situational section closed by default');
+            assert.equal(await severe.getAttribute('open'),null,'Separate Severe Weather closed by default');
+            const other=frame.locator('#showSignificantRainfall');
+            assert.equal(await other.isVisible(),false,'Underlying layers hidden when closed');
+            await situational.locator('summary').click({force:true});
+            assert.notEqual(await situational.getAttribute('open'),null,'Situational section expands');
+            assert.equal(await severe.getAttribute('open'),null,'Severe Weather unaffected');
+            await other.waitFor({state:'visible',timeout:10000});
+            const controls=await situational.evaluate(e=>({
+             labels:[...e.querySelectorAll('input[type="checkbox"]')].map(x=>({id:x.id,checked:x.checked})),
+             basemap:!!e.querySelector('#basemapSelect'),report:!!e.querySelector('#openRainfallTotalsReport')
+            }));
+            assert(controls.basemap&&controls.report);
+            assert(controls.labels.find(x=>x.id==='showSignificantRainfall')?.checked===false);
+            await other.check({force:true});
+            assert.equal(await other.isChecked(),true,'Selected layer is enabled');
+            await situational.locator('summary').click({force:true});
+            assert.equal(await situational.getAttribute('open'),null,'Section hides');
+            assert.equal(await other.isChecked(),true,'Collapsing menu must NOT switch off enabled layer');
+            assert.equal(await other.isVisible(),false,'Only UI hides');
+            await situational.locator('summary').click({force:true});
+            assert.equal(await other.isChecked(),true,'Enabled layer still on when menu reopened');
+            await other.uncheck({force:true});
+            await severe.locator('summary').click({force:true});
+            assert.notEqual(await severe.getAttribute('open'),null);
+            assert.notEqual(await situational.getAttribute('open'),null,'Separate sections can both remain open');
+            assert(await frame.locator('#showRiverGauges').isVisible());
+            assert(await frame.locator('#openCycloneForecastQa').isVisible());
+            console.log('REAL_BROWSER_PASS',JSON.stringify({viewport,controls:controls.labels.map(x=>x.id),
+             severeOpen:true,situationalOpen:true,checkedPreserved:true,scriptErrors:errors}));
+            await page.close();
+           }
+          }finally{await browser.close();}
+          NODE
+          node verify.mjs

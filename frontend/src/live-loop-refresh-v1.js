@@ -112,6 +112,7 @@ export function createLiveLoopRefresh({
   interval = LIVE_LOOP_REFRESH_MS, busyRetryMs = LIVE_LOOP_BUSY_RETRY_MS
 }) {
   let timer = null, busyTimer = null, active = false, pending = null;
+  let missedWhileLoading = false;
   function armPoll() {
     if (!active || timer != null) return;
     timer = schedule(() => {
@@ -131,7 +132,12 @@ export function createLiveLoopRefresh({
   }
   function check() {
     if (!active) return Promise.resolve();
-    if (pending) return pending;
+    if (pending) {
+      // A focus or timer event can occur during an existing load. Retain
+      // exactly one follow-up instead of silently losing that cycle.
+      missedWhileLoading = true;
+      return pending;
+    }
     if (busyTimer != null) {
       cancel(busyTimer);
       busyTimer = null;
@@ -142,6 +148,10 @@ export function createLiveLoopRefresh({
       if (result === false) armBusyRetry();
     }).catch(error => onError?.(error)).finally(() => {
       pending = null;
+      if (missedWhileLoading) {
+        missedWhileLoading = false;
+        armBusyRetry();
+      }
     });
     return pending;
   }
@@ -149,6 +159,7 @@ export function createLiveLoopRefresh({
     start() { if (!active) { active = true; armPoll(); } },
     stop() {
       active = false;
+      missedWhileLoading = false;
       if (timer != null) cancel(timer);
       if (busyTimer != null) cancel(busyTimer);
       timer = busyTimer = null;

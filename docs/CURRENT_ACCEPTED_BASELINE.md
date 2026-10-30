@@ -72,7 +72,7 @@ This additive warning-only maintenance fix uses the authoritative BoM Queensland
 
 - The historical Jasper/Alfred tracks remain **observed-only**, separate from original forecast-track GML. An original issued BoM GML file can still be imported in the cyclone panel.
 - Cyclone source-validated feed UI is opt-in and off by default; original 72/120-hour polygons only if genuinely present, not generated from observed tracks.
-- **No live BoM FTP-to-HTTPS bridge has been deployed** into this public GitHub Pages site. A source failure must display 'Unable to verify current tropical cyclone warnings' and link BoM.
+- **No live BoM FTP-to-HTTPS bridge has been deployed** into this public GitHub Pages site. A failed source check must say 'Cyclone forecast feed unavailable — warning status not checked' and link BoM; only a verified zero should read 'No current warnings'.
 - Only a **verified and current empty source check** can display **'Currently no tropical cyclone warnings'**. Do not show that text based on a failed request, expired data or a historical sample.
 - Real anonymous FTP access and authentic Fina GML decoding passed via a one-shot GitHub runner. Automatic advice `IDQ20023/26/29` matching to forecast GML is a later stage.
 

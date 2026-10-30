@@ -75,8 +75,10 @@ replace_once(
   await showHybridFrame(hybridFrameIndex);
   recordRadarAutoRefreshAudit({
     acceptedUtc: frames.at(-1).observedUtc,
-    failure: null,
-    outcome: automatic ? "updated" : "manual load complete"
+    failure: frameFailures.detail || null,
+    outcome: frameFailures.summary
+      ? "updated; some genuine source frames unavailable"
+      : automatic ? "updated" : "manual load complete"
   });
   if (resume) playback.play();'''
 )

@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 30 October 2026 | **Applies to:** V10.2.29 live official BoM polygon rendering, stable Locate and LDMG/DDMG polygon-tap report, on preserved V10.2.0 radar/science and verified maintenance layers.
+**Edition:** 30 October 2026 | **Applies to:** V10.2.30 high-end terms / compact cell markers on frozen V10.2.29 live official BoM polygon rendering, stable Locate and LDMG/DDMG polygon-tap report, on preserved V10.2.0 radar/science and verified maintenance layers.
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 

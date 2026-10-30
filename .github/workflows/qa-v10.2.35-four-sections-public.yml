@@ -1,0 +1,199 @@
+name: V10.2.35 public four-section menu and real mobile/desktop acceptance
+on:
+  push:
+    branches: [qa/v10.2.35-four-section-public-mobile-desktop]
+    paths: [.github/workflows/qa-v10.2.35-four-sections-public.yml]
+permissions: {contents: read}
+jobs:
+  public-mobile-desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Verify actual primary production URL has all accepted changes
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          async function get(path){
+            const response=await fetch(root+path+'?qa1035='+Date.now(),
+              {cache:'no-store',signal:AbortSignal.timeout(20000)});
+            return {status:response.status,body:await response.text()};
+          }
+          let ready=false;
+          for(let attempt=1;attempt<=32;attempt++){
+            const [index,page,css]=await Promise.all([
+              get('index.html'),get('live3d-operational-v9.html'),
+              get('src/four-section-menu-v1.css')]);
+            const ids=['radarStormAnalysisDetails','severeWeatherDetails',
+              'rainfallObservationsDetails','communityImpactsDetails'];
+            const positions=ids.map(x=>page.body.indexOf('id="'+x+'"'));
+            const nav=page.body.indexOf('id="nav"');
+            const mapStyle=page.body.indexOf('id="mapStyleDetails"');
+            const checks={
+              productionHtml:page.status===200,
+              newIndex:index.body.includes('four-operational-sections-20261030-v1'),
+              publishedCSS:css.status===200&&css.body.includes('#radarStormAnalysisDetails')&&css.body.includes('#mapStyleDetails'),
+              fourHeadings:positions.every(x=>x>0)&&positions.every((x,i)=>i===0||x>positions[i-1]),
+              noOldHeader:!page.body.includes('id="situationalAwarenessDetails"'),
+              warningFirst:page.body.indexOf('id="showOfficialBomWarnings"')<page.body.indexOf('id="showRiverGauges"'),
+              rainfall:page.body.includes('id="significantRainfallStatus"')&&page.body.includes('id="openRainfallAepReport"'),
+              mapStyle:nav>0&&mapStyle>nav&&page.body.indexOf('id="basemapSelect"')>mapStyle,
+              originalStatuses:page.body.includes('id="officialBomWarningsStatus"')&&page.body.includes('id="riverGaugeSeverityLegend"'),
+              cyclone:page.body.includes('id="cycloneForecastQaPanel"')&&page.body.includes('CURRENT BoM PRODUCTS ONLY'),
+              shortcuts:page.body.includes('id="openPowerOutageExplorer"')&&page.body.includes('id="openRoadLgaExplorer"'),
+              unique:ids.every(x=>(page.body.match(new RegExp('id="'+x+'"','g'))||[]).length===1),
+              noArchivedCyclone:!page.body.includes('cycloneUseJasper')&&!page.body.includes('cycloneGmlFile')
+            };
+            console.log('PUBLIC_1035',JSON.stringify({attempt,checks}));
+            if(Object.values(checks).every(Boolean)){ready=true;break}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          assert(ready,'Primary production site has not published V10.2.35 as one complete release');
+          console.log('PASS Primary normal URL publishes all four menus, original controls, map style and current-only cyclone');
+          NODE
+      - name: Install isolated browser harness using system Chrome
+        run: |
+          mkdir -p /tmp/stormtracker-v1035-qa
+          cd /tmp/stormtracker-v1035-qa
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.57.0
+      - name: Verify iPhone and desktop interactions on actual public page
+        run: |
+          cd /tmp/stormtracker-v1035-qa
+          cat > test.mjs <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright-core';
+          const browser=await chromium.launch({
+            executablePath:'/usr/bin/google-chrome',headless:true,
+            args:['--no-sandbox','--disable-dev-shm-usage',
+              '--use-gl=angle','--use-angle=swiftshader','--enable-webgl']
+          });
+          try {
+            for(const width of [430,1366]){
+              const mobile=width===430;
+              const page=await browser.newPage({viewport:{width,height:900},
+                 isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+              const errors=[];
+              page.on('pageerror',e=>errors.push(String(e).slice(0,180)));
+              await page.goto('https://blakesmith-intel.github.io/StormTracker/?verify-v1035='+Date.now(),
+                {waitUntil:'domcontentloaded',timeout:45000});
+              const frame=page.frameLocator('#liveFrame');
+              const menuIds=['radarStormAnalysisDetails','severeWeatherDetails',
+                'rainfallObservationsDetails','communityImpactsDetails'];
+              for(const id of menuIds){
+                const d=frame.locator('#'+id);
+                await d.waitFor({state:'attached',timeout:65000});
+                assert.equal(await d.getAttribute('open'),null,id+' must start collapsed');
+              }
+              const meta=await frame.locator('#controlSidebar').evaluate(root=>{
+                const ids=['radarStormAnalysisDetails','severeWeatherDetails',
+                  'rainfallObservationsDetails','communityImpactsDetails'];
+                return {
+                  ids:ids.map(id=>({id,exists:root.querySelectorAll('#'+id).length})),
+                  liveShortcuts:!!root.querySelector('#openRoadLgaExplorer')&&!!root.querySelector('#openPowerOutageExplorer'),
+                  scrollable:getComputedStyle(root).overflowY,
+                }
+              });
+              console.log('BROWSER_STRUCTURE',JSON.stringify({width,meta}));
+              assert(meta.ids.every(x=>x.exists===1)&&meta.liveShortcuts);
+              // One parent expansion directly exposes essential controls.
+              const radar=frame.locator('#radarStormAnalysisDetails');
+              await radar.locator('summary').first().click({force:true});
+              assert.notEqual(await radar.getAttribute('open'),null);
+              assert(await frame.locator('#loopDurationMinutes').isVisible());
+              assert(await frame.locator('#hybridFrameSlider').isVisible());
+              assert(await frame.locator('#showTrackLabels').isVisible());
+              assert(await frame.locator('#openDetailsButton').isVisible());
+              assert.equal(await frame.locator('#radarDisplayAppearanceDetails').getAttribute('open'),null);
+              await frame.locator('#radarDisplayAppearanceDetails > summary').click({force:true});
+              assert(await frame.locator('#radarOpacity').isVisible());
+              assert(await frame.locator('#volumeOpacity').isVisible());
+              await radar.locator('summary').first().click({force:true});
+              assert.equal(await radar.getAttribute('open'),null);
+              // Independent severe warnings retain all products and verified normal status.
+              const severe=frame.locator('#severeWeatherDetails');
+              await severe.locator('summary').first().click({force:true});
+              assert(await frame.locator('#officialBomWarningProduct').isVisible());
+              const ids=await frame.locator('#officialBomWarningProduct option').evaluateAll(
+                opts=>opts.map(x=>x.value));
+              assert.deepEqual(ids,['all','IDQ21035','IDQ21033','IDQ21037','IDQ21038']);
+              assert(await frame.locator('#openOfficialBomWarningGroups').isVisible());
+              assert(await frame.locator('#officialBomWarningsStatus').isVisible());
+              assert(await frame.locator('#openFloodGaugeReport').isVisible());
+              assert.equal(await frame.locator('#floodGaugeLegendDetails').getAttribute('open'),null);
+              await frame.locator('#floodGaugeLegendDetails > summary').click({force:true});
+              assert(await frame.locator('#riverGaugeSeverityLegend').isVisible());
+              const cyclone=frame.locator('#openCycloneForecastQa');
+              await cyclone.waitFor({state:'visible'});
+              await frame.locator('#internalCycloneLiveToggle').waitFor({state:'attached',timeout:60000});
+              await cyclone.click({force:true});
+              const cyclonePanel=frame.locator('#cycloneForecastQaPanel');
+              await cyclonePanel.waitFor({state:'visible'});
+              const cycloneLayout=await cyclonePanel.evaluate(x=>({
+                position:getComputedStyle(x).position,
+                inSidebar:!!x.closest('#controlSidebar'),
+                sourceToggle:!!x.querySelector('#internalCycloneLiveToggle')
+              }));
+              assert.equal(cycloneLayout.position,'static');
+              assert(cycloneLayout.inSidebar&&cycloneLayout.sourceToggle);
+              await frame.locator('#cycloneOperationalClose').click({force:true});
+              assert.equal(await cyclonePanel.isVisible(),false);
+              await severe.locator('summary').first().click({force:true});
+              // Rain reports stay immediately available; AEP legend folded.
+              const rain=frame.locator('#rainfallObservationsDetails');
+              await rain.locator('summary').first().click({force:true});
+              assert(await frame.locator('#showSignificantRainfall').isVisible());
+              assert(await frame.locator('#significantRainfallPeriod').isVisible());
+              assert(await frame.locator('#significantRainfallStatus').isVisible());
+              assert(await frame.locator('#openRainfallTotalsReport').isVisible());
+              assert(await frame.locator('#openRainfallAepReport').isVisible());
+              const rarity=frame.locator('.significant-rainfall-details');
+              assert.equal(await rarity.getAttribute('open'),null);
+              await rarity.locator('summary').first().click({force:true});
+              assert(await rarity.getAttribute('open')!==null);
+              await rain.locator('summary').first().click({force:true});
+              // Active impact layers must survive menu collapse.
+              const impacts=frame.locator('#communityImpactsDetails');
+              await impacts.locator('summary').first().click({force:true});
+              const roads=frame.locator('#showFloodRoadClosures');
+              assert(await roads.isVisible());
+              assert(await frame.locator('#showPowerOutages').isVisible());
+              assert(await frame.locator('#showQfdTechnicalRescues').isVisible());
+              assert(await frame.locator('#qfdIncidentLegendDetails').isVisible());
+              await roads.check({force:true});
+              assert.equal(await roads.isChecked(),true);
+              await impacts.locator('summary').first().click({force:true});
+              assert.equal(await roads.isChecked(),true,'Closing main menu must never disable road layer');
+              assert.equal(await roads.isVisible(),false,'Only controls should hide');
+              await impacts.locator('summary').first().click({force:true});
+              assert.equal(await roads.isChecked(),true);
+              await roads.uncheck({force:true});
+              // Existing basemap selected ID lives only in map toolbar.
+              const mapStyle=frame.locator('#mapStyleDetails');
+              assert.equal(await mapStyle.getAttribute('open'),null);
+              await mapStyle.locator('summary').first().click({force:true});
+              const basemap=frame.locator('#basemapSelect');
+              await basemap.waitFor({state:'visible',timeout:10000});
+              const options=await basemap.locator('option').evaluateAll(opts=>opts.map(o=>o.value));
+              assert(options.includes('street')&&options.includes('qld-imagery'));
+              assert.equal(await basemap.count(),1);
+              assert(await frame.locator('#radarSite').count()===1);
+              assert(await frame.locator('#multiRadarSelectButton').count()===1);
+              const toolLayout=await frame.locator('#mapStyleDetails').evaluate(el=>{
+                const p=el.getBoundingClientRect(),v=el.closest('#nav').getBoundingClientRect();
+                return {styleRight:p.right,toolbarRight:v.right,position:getComputedStyle(el).position};
+              });
+              assert(toolLayout.styleRight<=width+3,
+                'Map style button extends beyond visible phone/desktop viewport');
+              console.log('BROWSER_PASS',JSON.stringify({
+                width,menus:menuIds,productOptions:ids,basemapOptions:options,
+                impactLayerRetained:true,cycloneInline:cycloneLayout,toolbar:toolLayout,
+                observedPageErrors:errors
+              }));
+              await page.close();
+            }
+          }finally{await browser.close();}
+          NODE
+          node test.mjs

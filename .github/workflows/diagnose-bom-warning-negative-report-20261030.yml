@@ -18,6 +18,11 @@ jobs:
             from './relay/bom-warning-qld-current-index-v1.js';
           import {reconcileLatestBoMWarnings}
             from './relay/bom-warning-product-reconcile-v1.js';
+          const raw=await (await fetch('https://www.bom.gov.au/qld/warnings.shtml')).text();
+          for(const token of ['Warnings current:','This page was created at','Queensland Warnings Summary']){
+           const pos=raw.indexOf(token);
+           console.log('REAL_QDL_HTML',JSON.stringify({token,pos,near:pos>=0?raw.slice(Math.max(0,pos-160),pos+320):''}));
+          }
           const index=await fetchCurrentQldBoMWarningsIndex();
           const s=reconcileLatestBoMWarnings([],{complete:false,qldCurrentIndex:index});
           console.log('LIVE_CANDIDATE_OFFICIAL_INDEX',JSON.stringify({

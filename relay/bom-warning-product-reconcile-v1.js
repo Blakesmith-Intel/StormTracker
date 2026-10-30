@@ -21,7 +21,7 @@ const stateRow=(status,notice=null,count=0)=>({
   hazardAssessment:notice&&["IDQ21033","IDQ21035"].includes(notice.productCode)
    ?classifyPublishedBoMThunderstormHazards(notice):null
 });
-export function reconcileLatestBoMWarnings(messages,{complete=true,nowMs=Date.now()}={}){
+export function reconcileLatestBoMWarnings(messages,{complete=true,nowMs=Date.now(),qldCurrentIndex=null}={}){
   const candidates=new Map();
   let malformed=0;
   for(const message of messages??[]){
@@ -36,22 +36,28 @@ export function reconcileLatestBoMWarnings(messages,{complete=true,nowMs=Date.no
   }
   const products={},warnings=[];
   const allComplete=complete&&malformed===0;
+  const officialActive=qldCurrentIndex?.verified===true&&Array.isArray(qldCurrentIndex.activeCodes)?
+    new Set(qldCurrentIndex.activeCodes):null;
   for(const code of WATCHED_QLD_PRODUCT_CODES){
     const options=(candidates.get(code)??[]).sort((a,b)=>b.issued-a.issued||
       (a.notice.status==="cancelled"?-1:1));
     if(!options.length){
       // Only a completely fetched, parsed official index can show no active
       // warnings. A timeout or incomplete source never means "all clear".
-      products[code]=stateRow(allComplete?"no-active":"unavailable");
+      products[code]=stateRow(officialActive?
+        (officialActive.has(code)?"listed-active":"no-active"):
+        (allComplete?"no-active":"unavailable"));
       continue;
     }
     const latest=options[0],notice=latest.notice;
     if(notice.status==="cancelled"){
-      products[code]=stateRow("cancelled",notice);
+      // A later independent current-index confirmation takes precedence
+      // over an old CAP cancellation that the 22-link sample may not supersede.
+      products[code]=stateRow(officialActive?.has(code)?"listed-active":"cancelled",notice);
       continue;
     }
     if(notice.status==="expired"){
-      products[code]=stateRow("no-active",notice);
+      products[code]=stateRow(officialActive?.has(code)?"listed-active":"no-active",notice);
       continue;
     }
     const latestWarnings=options.filter(x=>x.issued===latest.issued)

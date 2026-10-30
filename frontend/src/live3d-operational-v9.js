@@ -4505,7 +4505,7 @@ async function loadHybridSequence(automatic = false) {
       dopplerGatedRefresh
         ? "Auto update: waiting for new matching radar + Doppler images."
         : "Auto update: waiting for a new radar image.";
-
+    recordRadarAutoRefreshAudit({ failure: null, outcome: "waiting for new published scan" });
     return;
   }
   const radarTimes = automatic ? times.filter(time => Date.parse(time) <= Date.parse(availableEndUtc)) : times;
@@ -4928,8 +4928,10 @@ async function loadHybridSequence(automatic = false) {
   );
   $("hybridPlayButton").disabled = hybridFrames.length < 2;
   await showHybridFrame(hybridFrameIndex);
-  if (automatic) recordRadarAutoRefreshAudit({
-    acceptedUtc: frames.at(-1).observedUtc, failure: null, outcome: "updated"
+  recordRadarAutoRefreshAudit({
+    acceptedUtc: frames.at(-1).observedUtc,
+    failure: null,
+    outcome: automatic ? "updated" : "manual load complete"
   });
   if (resume) playback.play();
   // Bound decoded imagery and per-frame results while retaining worker tracks.

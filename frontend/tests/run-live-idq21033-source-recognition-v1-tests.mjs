@@ -58,7 +58,7 @@ const rss='<rss><channel><item><title>Severe Thunderstorm Warning for parts of Q
  '<pubDate>Wed, 28 Oct 2026 10:18:14 GMT</pubDate></item></channel></rss>';
 assert.equal(bomCapRssLinks(rss,{nowMs:now}).length,1);
 const ui=readFileSync(new URL("../src/context-layers/bom-warning-operational-v1.js",import.meta.url),"utf8");
-assert(ui.includes("ACTIVE BoM warning"));
+assert(ui.includes("CURRENT BoM warning"));
 assert(ui.includes("INTERVAL_MS=15*60*1000"));
 assert(ui.includes("Verified BoM warning bulletin"));
 assert(ui.includes("LDMG/DDMG intersections cannot be calculated"));

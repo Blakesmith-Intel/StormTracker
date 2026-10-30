@@ -34,7 +34,7 @@ jobs:
            const checks={
              index:index.code===200&&index.text.includes('four-operational-sections-20261030-v1'),
              page:doc.code===200,
-             stylesheet:css.code===200&&css.text.includes('#mapStyleDetails')&&css.text.includes('#floodGaugeLegendDetails'),
+             stylesheet:css.code===200&&css.text.includes('#mapStyleDetails')&&css.text.includes('.flood-legend-disclosure'),
              four:positions.every(p=>p>0)&&positions.every((p,i)=>i===0||p>positions[i-1]),
              compact:html.includes('id="mapStyleDetails"')&&html.includes('id="basemapSelect"'),
              originalStatus:html.includes('id="significantRainfallStatus"')&&html.includes('id="officialBomWarningsStatus"'),

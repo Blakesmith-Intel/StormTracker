@@ -1,0 +1,85 @@
+name: Seal V10.2.30 only after public warning presentation verification
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/RELEASE_NOTES_V10.2.30.md
+permissions:
+  contents: write
+jobs:
+  verify-and-seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify classification and preserved warning behaviour
+        run: |
+          node frontend/tests/run-bom-thunderstorm-official-high-end-v1-tests.mjs
+          node frontend/tests/run-bom-detailed-cell-source-exact-vds-v1-tests.mjs
+          node frontend/tests/run-bom-warning-camera-and-polygon-report-v1-tests.mjs
+          node frontend/tests/run-bom-warning-visible-over-basemap-v1-tests.mjs
+      - name: Verify live GitHub Pages and independent BoM source
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://blakesmith-intel.github.io/StormTracker"
+          verified=false
+          for attempt in $(seq 1 30); do
+            page="$(curl -fsSL --max-time 15 "$base/index.html?verify-v1030=$GITHUB_SHA-$attempt" || true)"
+            main="$(curl -fsSL --max-time 15 "$base/src/live3d-operational-v9.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
+            operational="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-operational-v1.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
+            terrain="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-terrain-imagery-v1.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
+            hazards="$(curl -fsSL --max-time 15 "$base/src/context-layers/bom-warning-hazard-terms-v1.js?verify-v1030=$GITHUB_SHA-$attempt" || true)"
+            if grep -Fq 'compact-vd-hazards-20261030-v1' <<< "$page" &&
+               grep -Fq '20261030-compact-vd-hazards-v1' <<< "$main" &&
+               grep -Fq '20261030-compact-vd-hazard-v1' <<< "$operational" &&
+               grep -Fq 'officialStormCellLabelPoint' <<< "$terrain" &&
+               grep -Fq 'classifyPublishedBoMThunderstormHazards' <<< "$hazards"; then
+              verified=true
+              break
+            fi
+            sleep 6
+          done
+          test "$verified" = true || { echo "REFUSING v10.2.30 seal: public Pages modules not verified"; exit 1; }
+          # The source endpoint must remain readable; an empty legitimate
+          # warning source is acceptable and NEVER replaced with fabricated cells.
+          source="$(curl -fsSL --max-time 50 "https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons?verify-v1030=$GITHUB_SHA" || true)"
+          test -n "$source" && grep -Fq 'StormTrackerOfficialBoMWarningPolygonsV1' <<< "$source" || {
+            echo "REFUSING v10.2.30 seal: warning relay unavailable"; exit 1;
+          }
+          echo "Verified public code, source endpoint and preserved original warnings."
+      - name: Create NEW immutable annotated V10.2.30 tag and restore branch
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="$GITHUB_SHA"
+          test -f docs/RELEASE_NOTES_V10.2.30.md
+          old_tag="$(git ls-remote origin 'refs/tags/v10.2.29^{}' | cut -f1)"
+          old_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.29' | cut -f1)"
+          test -n "$old_tag" && test "$old_tag" = "$old_restore"
+          tag="v10.2.30"
+          restore="restore/v10.2.30"
+          existing_tag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          existing_restore="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$restore" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            annotated="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" \
+              -f message="StormTracker V10.2.30 — official high-end terms and source-gated compact VD badges; immutable V10.2.29 navigation/report baseline retained" \
+              -f object="$release_sha" -f type="commit" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$annotated" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$release_sha"
+          echo "SEALED $tag and $restore at $release_sha; previous $old_tag untouched"

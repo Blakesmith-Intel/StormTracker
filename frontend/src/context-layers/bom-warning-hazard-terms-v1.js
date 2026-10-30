@@ -14,7 +14,13 @@ const RULES=Object.freeze([
 const HIGH_END=new Set(["W+","LH+","R+","TO"]);
 const LEVELS=new Set(RULES.map(x=>x.code));
 export function classifyPublishedBoMThunderstormHazards({headline="",description="",phenomena=""}={}){
- const text=String(headline??"")+" "+String(description??"");
+ // Observed rainfall reports are NOT the forecast warning category.
+ // 30 Oct 19:38 IDQ21033 warned of HEAVY rainfall, then separately said
+ // "Heavy to locally intense rainfall has been reported" at stations.
+ // Do not escalate the entire issued polygon from observations.
+ const forecastLines=String(description??"").split(/\r?\n/)
+   .filter(line=>!/(?:\b(?:has|have|had|was|were)\s+(?:been\s+)?(?:reported|recorded|observed)\b|\b\d+(?:\.\d+)?\s*mm\b)/i.test(line));
+ const text=String(headline??"")+" "+forecastLines.join(" ");
  const tokens=new Set(String(phenomena??"").toUpperCase().split(/[\s,;|/]+/).filter(x=>LEVELS.has(x)));
  const flags=RULES.filter(rule=>tokens.has(rule.code)||rule.phrase.test(text)||
    rule.phrase.test(String(phenomena??"")));

@@ -7,6 +7,8 @@
 
 **Finding this guide from the map:** select the small **Operator guide ↗** text link in the existing StormTracker sidebar heading. It opens this up-to-date guide in a separate browser tab and leaves the active weather map, controls and information panels unchanged.
 
+**Public information sheet:** [StormTracker — layers and features (PDF)](STORMTRACKER_LAYERS_INFORMATION.pdf) — a concise shareable overview for new users. This is a guide to features, not a live weather bulletin.
+
 ## At a glance
 
 1. Open the [StormTracker map](https://blakesmith-intel.github.io/StormTracker/) in a current desktop or mobile browser.
@@ -194,7 +196,7 @@ The **Cyclones** panel does **not** independently guarantee a continuously avail
 - [BoM official warnings](https://www.bom.gov.au/)
 - [Development and maintenance handover](DEVELOPMENT_HANDOVER_CURRENT.md)
 
-**Version note:** Updated **26 October 2026** for the **operator-accepted V10.2.23 composite production freeze**, including 24-hour expiry of unsupported river alerts, exact-ID contradiction checks, measured-rate/tendency separation, signed measured rise/fall, flood-stage-over-crossing priority with amber-below-minor exceptions, statewide coastal tidal screening, uniform flood marker dimensions and the existing AEP/rainfall and flood reports. The foundational radar-science pin remains sealed **V10.2.0**, with approved maintenance overlays. The release freeze tag/restore point is created only following successful production validation; see the versioned release notes and handover for verification.
+**Version note:** Updated **30 October 2026** for the **V10.2.32 production four-product BoM warning menu**, including independently verified No current warnings, 15-minute polling and manual refresh. Earlier accepted flood and rainfall features remain documented below. Historical baseline: **operator-accepted V10.2.23 composite production freeze**, including 24-hour expiry of unsupported river alerts, exact-ID contradiction checks, measured-rate/tendency separation, signed measured rise/fall, flood-stage-over-crossing priority with amber-below-minor exceptions, statewide coastal tidal screening, uniform flood marker dimensions and the existing AEP/rainfall and flood reports. The foundational radar-science pin remains sealed **V10.2.0**, with approved maintenance overlays. The release freeze tag/restore point is created only following successful production validation; see the versioned release notes and handover for verification.
 
 ## Which overlapping marker is displayed on top?
 

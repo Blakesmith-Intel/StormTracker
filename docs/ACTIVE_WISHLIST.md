@@ -1,3 +1,9 @@
+# V10.2.34 — collapsible Situational Awareness Data (30 October 2026)
+
+The approved top-level **Situational Awareness Data** card now uses a native HTML `details` disclosure, matching the Show/Hide interaction of **Severe Weather**. It is collapsed by default and independently expandable. All existing basemap, significant rainfall/AEP, unplanned road closures, power outages and QFD rescue/assistance controls are kept as direct children with identical IDs, ordering, checked states, reports, event handlers and refresh intervals. Closing this menu does **not** disable active map layers. Change is limited to the fail-closed production HTML transform, scoped CSS, browser cache version, tests and operator documentation. V10.2.33 and earlier frozen versions remain untouched.
+
+---
+
 # V10.2.32 additional BoM warning product selections — complete when deployed
 
 - **[x] Individual IDQ product dropdown:** All warnings, IDQ21035 detailed SEQ thunderstorms, IDQ21033 regional Queensland thunderstorms, IDQ21037 Severe Weather 1 and IDQ21038 Severe Weather 2. All four have independently verified **No current warnings** states in the shared 15-minute warning refresh, manual ↻ override, correct original polygon filter and an independent LDMG/DDMG report section even with no active warning. No extra request per option or speculative warning polygon. See [V10.2.32 release notes](RELEASE_NOTES_V10.2.32.md).

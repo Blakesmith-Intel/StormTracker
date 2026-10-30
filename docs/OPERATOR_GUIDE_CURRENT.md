@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 30 October 2026 | **Applies to:** V10.2.32 four-product warning menu on V10.2.31 current-warning verification on frozen V10.2.30 high-end terms / compact cell markers on frozen V10.2.29 live official BoM polygon rendering, stable Locate and LDMG/DDMG polygon-tap report, on preserved V10.2.0 radar/science and verified maintenance layers.
+**Edition:** 30 October 2026 | **Applies to:** V10.2.33 approved navigation hierarchy on V10.2.32 warning products, V10.2.31 source-verified clearing, and unchanged earlier operational/scientific baselines.
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -14,11 +14,23 @@
 1. Open the [StormTracker map](https://blakesmith-intel.github.io/StormTracker/) in a current desktop or mobile browser.
 2. Choose a radar from the selector at the top of the map. **Brisbane (Mt Stapylton)** is the initial site.
 3. Open **Radar playback** to load or play available observations.
-4. Enable only the additional **Layers** you need; incident overlays are normally off when the page opens.
+4. Expand **Severe Weather** for flood gauges, BoM severe-weather/thunderstorm warnings and the inline cyclone panel; use **Situational Awareness Data** for the other data layers. Incident overlays are normally off on page load.
 5. Select a marker to open its details, source information and timestamps.
 6. Use **Hide controls** for a larger map; **Show controls** restores the sidebar.
 
 If something is missing or looks wrong, check the time shown for that **specific data source** before assuming the absence of a hazard.
+
+### Menu layout — V10.2.33
+
+The sidebar has one compact, **top-level expandable Severe Weather** section. Select its heading to show or hide these existing controls, in order:
+
+1. **Flood signals (flood gauges):** original gauge checkbox, severity legend, report and manual refresh.
+2. **BoM Severe Weather and Thunderstorm Warnings:** original four-product filter (IDQ21035, IDQ21033, IDQ21037, IDQ21038), map overlay checkbox, manual refresh, Locate and LDMG/DDMG report.
+3. **Cyclones:** select **Cyclones** within Severe Weather to expand the **existing current-issue-only** cyclone controls **inline in the sidebar**, rather than opening a floating panel over the map. The existing **Show live cyclone forecasts** checkbox, source refresh, system selector, source status and **Focus cyclone** action are retained. This does **not** introduce a new public cyclone data feed: if the official live source cannot be reached, the original **Unable to verify current tropical cyclone warnings** result remains appropriate, rather than a false all-clear.
+
+**Situational Awareness Data** is the renamed previous **Layers** section. The existing Significant rain/AEP, unplanned road closures, power outages, QFD rescue/assistance and basemap controls remain there in their prior order and with their prior behaviour. The established **Radar playback**, **Storm tracking** and incident shortcut panels remain unchanged.
+
+The Severe Weather section is collapsed when a fresh session opens to keep the sidebar tidy. Expanding/collapsing it **does not change whether any map layer is on or off** or refresh the data by itself. The cyclone panel is inline; its existing live toggle still controls source checks and mapping. Use the existing ↻ actions to request an immediate source check.
 
 ## Radar, Doppler and storm tracking
 
@@ -40,7 +52,7 @@ If something is missing or looks wrong, check the time shown for that **specific
 
 ## Significant rainfall: amount and how unusual it is
 
-Enable **Significant rain** in **Layers**. The map shows BoM stations reporting **50 mm or more** for the selected observation period. Tap a rain marker for the **exact total in millimetres**, station name and BoM station number, reporting period, source issue time and official source link.
+Enable **Significant rain** in **Situational Awareness Data**. The map shows BoM stations reporting **50 mm or more** for the selected observation period. Tap a rain marker for the **exact total in millimetres**, station name and BoM station number, reporting period, source issue time and official source link.
 
 ### Choose the right rainfall period
 
@@ -84,7 +96,7 @@ The report window is **read-only**: selecting a category or reviewing a row **do
 
 ## Flood signals
 
-Turn on **Flood signals** under **Layers** and use **↻ Refresh** to request available updated observations. The application normally polls flood data at approximately **10-minute intervals**.
+Expand **Severe Weather** and turn on **Flood signals** and use **↻ Refresh** to request available updated observations. The application normally polls flood data at approximately **10-minute intervals**.
 
 | Icon | Meaning |
 |---|---|
@@ -131,11 +143,11 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 
 ## BoM severe thunderstorm and severe weather warning polygons
 
-**Live warning polygon feature complete (V10.2.29).** This is an optional layer, **off by default**. Open **Layers → BoM severe warnings**. StormTracker obtains the official source-issued area geometry, not an approximation of radar echoes or forecast-district names. Active verified warning polygons are drawn **above satellite/street basemaps and underneath the measured BoM radar**. The shaded polygon and outline refer to the official warning area, not actual precipitation coverage.
+**Live warning polygon feature complete (V10.2.29).** This is an optional layer, **off by default**. Open **Severe Weather → BoM Severe Weather and Thunderstorm Warnings**. StormTracker obtains the official source-issued area geometry, not an approximation of radar echoes or forecast-district names. Active verified warning polygons are drawn **above satellite/street basemaps and underneath the measured BoM radar**. The shaded polygon and outline refer to the official warning area, not actual precipitation coverage.
 
 **Product filters (V10.2.32):** Select **All warnings**, or one of four separate official products: **21035 — Detailed SEQ storms** (`IDQ21035`), **21033 — Regional QLD storms** (`IDQ21033`), **21037 — Severe Weather 1** (`IDQ21037`), or **21038 — Severe Weather 2** (`IDQ21038`). The latter two are independent BoM severe-weather bulletins, **not** increasing severity categories. Each selection displays **its own** issued polygons and one status line. When the current official Queensland warnings index verifies that the selected IDQ product is absent, the message is **No current warnings — [product]**, not an error. In the **All warnings** LDMG/DDMG report, each of the four products has its **own section even when no warning is current**, rather than hiding severe-weather clears in a generic Other category. Changing filters does not move the camera and does not cancel other products.
 
-**Checking cadence:** While **BoM severe warnings** is enabled, **the same single source refresh checks all four IDQ products every 15 minutes**. The ↻ button runs an immediate manual check. A verified empty product remains in the normal **No current warnings** state until BoM publishes a warning; it does not create repeated errors or empty map polygons. If the authority cannot be verified, the screen instead reports an unverified check, never an assumed all-clear. No extra or faster BoM polling is introduced by these menu options.
+**Checking cadence:** While **BoM Severe Weather and Thunderstorm Warnings** is enabled, **the same single source refresh checks all four IDQ products every 15 minutes**. The ↻ button runs an immediate manual check. A verified empty product remains in the normal **No current warnings** state until BoM publishes a warning; it does not create repeated errors or empty map polygons. If the authority cannot be verified, the screen instead reports an unverified check, never an assumed all-clear. No extra or faster BoM polling is introduced by these menu options.
 
 **Locate:** When a source-verified polygon exists for your chosen filter, tap **Locate** alongside the warning refresh button. This frames the **actual original geometry** on the map. The camera uses StormTracker's stable navigation controller and remains at the selected warning area rather than snapping back. This action is **manual only**: refreshing the layer, changing filters, or a new source bulletin never moves the map. Use the usual map controls to navigate back.
 
@@ -164,9 +176,9 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 | **QFD rescue & assistance** | Toggle this layer and inspect a job marker | Selected published rescue/assist classifications, not every QFD response. Locations may be approximate and are not a substitute for dispatch information. |
 | **Basemap** | Choose **Street** or **Satellite** | Satellite imagery may be older than the current weather observation; it is a geographic background, not live cloud imagery. |
 | **Measure** | Tap locations in sequence, then **Done** | Straight-line distance along Earth's surface, **not** road distance or terrain-adjusted travel distance. |
-| **Cyclones** | Open the separate panel | Production displays source-backed **current** cyclone warning/forecast information when genuinely available. Historical cyclone tracks and test fixtures are **not loaded into the production map**. An unavailable or unverified feed must not be interpreted as 'no cyclone warning'. |
+| **Cyclones** | Expand **Severe Weather → Cyclones** inline | Production displays source-backed **current** cyclone warning/forecast information when genuinely available. Historical cyclone tracks and test fixtures are **not loaded into the production map**. An unavailable or unverified feed must not be interpreted as 'no cyclone warning'. |
 
-The **Cyclones** panel does **not** independently guarantee a continuously available live BoM forecast feed. A source-confirmed absence of current warnings must be distinguished from **unable to verify**; never interpret a blank drawing or stale source as an official all-clear. Consult [BoM warnings](https://www.bom.gov.au/) for current authoritative advice.
+The **Cyclones** controls within **Severe Weather** do **not** independently guarantee a continuously available live BoM forecast feed. A source-confirmed absence of current warnings must be distinguished from **unable to verify**; never interpret a blank drawing or stale source as an official all-clear. Consult [BoM warnings](https://www.bom.gov.au/) for current authoritative advice.
 
 ## Understanding status and missing data
 
@@ -196,7 +208,7 @@ The **Cyclones** panel does **not** independently guarantee a continuously avail
 - [BoM official warnings](https://www.bom.gov.au/)
 - [Development and maintenance handover](DEVELOPMENT_HANDOVER_CURRENT.md)
 
-**Version note:** Updated **30 October 2026** for the **V10.2.32 production four-product BoM warning menu**, including independently verified No current warnings, 15-minute polling and manual refresh. Earlier accepted flood and rainfall features remain documented below. Historical baseline: **operator-accepted V10.2.23 composite production freeze**, including 24-hour expiry of unsupported river alerts, exact-ID contradiction checks, measured-rate/tendency separation, signed measured rise/fall, flood-stage-over-crossing priority with amber-below-minor exceptions, statewide coastal tidal screening, uniform flood marker dimensions and the existing AEP/rainfall and flood reports. The foundational radar-science pin remains sealed **V10.2.0**, with approved maintenance overlays. The release freeze tag/restore point is created only following successful production validation; see the versioned release notes and handover for verification.
+**Version note:** Updated **30 October 2026** for the approved **V10.2.33** Severe Weather / Situational Awareness Data menu relocation and inline current-cyclone controls. This is navigation-only: prior V10.2.32 warning-source status, 15-minute warnings cadence, 10-minute gauge checks, map data, camera and scientific releases remain unchanged.
 
 ## Which overlapping marker is displayed on top?
 

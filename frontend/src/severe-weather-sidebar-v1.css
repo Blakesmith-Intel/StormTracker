@@ -1,0 +1,129 @@
+/* StormTracker V10.2.33 — approved navigation-only sidebar hierarchy.
+   Preserve all existing layer, cyclone, flood and map element IDs. */
+body.simple-ui #controlSidebar #severeWeatherDetails {
+  display:block!important;
+  min-width:0;
+  flex:0 0 auto;
+  padding:6px 10px;
+  border:1px solid #385267;
+  border-radius:13px;
+  background:#172838;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails > summary.section-title {
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:34px;
+  margin:0!important;
+  padding:2px 3px;
+  list-style:none;
+  cursor:pointer;
+  color:#f0fbff;
+  font-size:14px;
+  font-weight:750;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails > summary::-webkit-details-marker {
+  display:none;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails > summary::after {
+  content:"Show";font-size:11px;font-weight:600;color:#adccde;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails[open] > summary::after {
+  content:"Hide";
+}
+body.simple-ui #controlSidebar #severeWeatherDetails:not([open]) > :not(summary) {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails[open] > summary {
+  margin-bottom:8px!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-content {
+  display:grid;
+  gap:10px;
+  min-width:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-group {
+  min-width:0;
+  border-top:1px solid #385267;
+  padding-top:8px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-group:first-child {
+  border-top:0;padding-top:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .official-bom-warnings-row label {
+  min-width:0;
+  overflow-wrap:anywhere;
+  line-height:1.3;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .official-bom-warnings-filter,
+body.simple-ui #controlSidebar #severeWeatherDetails .river-gauge-row {
+  min-width:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-forecast-row {
+  padding:0;
+  min-height:34px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa {
+  display:block;
+  width:100%;
+  min-height:34px;
+  text-align:left;
+  padding:6px 10px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa::after {
+  content:"  ▾";
+  float:right;
+  color:#b5d7e7;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa[aria-expanded="true"]::after {
+  content:"  ▴";
+}
+/* Override the former absolute, floating over-the-map cyclone panel.
+   The ORIGINAL live toggle / source checks / focus controls remain intact. */
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel {
+  position:static!important;
+  display:block;
+  z-index:auto!important;
+  inset:auto!important;
+  top:auto!important;
+  right:auto!important;
+  width:100%!important;
+  max-width:100%!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding:9px!important;
+  margin:8px 0 0;
+  background:#102938;
+  border:1px solid #496879;
+  border-radius:9px;
+  box-shadow:none!important;
+  box-sizing:border-box;
+  font:12px/1.45 system-ui;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel[hidden] {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel header,
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa {
+  max-width:100%;min-width:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneSelectedSystem {
+  max-width:100%;min-width:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaStatus,
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQaStatus {
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+body.simple-ui #controlSidebar .layer-controls > .section-title {
+  overflow-wrap:anywhere;
+}
+@media(max-width:700px) {
+  body.simple-ui #controlSidebar #severeWeatherDetails {padding:6px 8px;}
+  body.simple-ui #controlSidebar #severeWeatherDetails > summary.section-title {
+    font-size:13px;min-height:31px;
+  }
+  body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-content {gap:7px;}
+  body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-group {padding-top:6px;}
+}

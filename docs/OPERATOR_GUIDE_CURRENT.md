@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 30 October 2026 | **Applies to:** V10.2.35 four-section operator navigation, on the unchanged V10.2.34 data/science and source-verification baselines.
+**Edition:** 30 October 2026 | **Applies to:** V10.2.36 cyclone subsection and independent multi-system tracks, on the unchanged V10.2.35 four-section operator navigation and previously accepted weather-science baselines.
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -29,7 +29,7 @@ Four **independent top-level expandable sections** are collapsed by default. Ope
 | Main section | Essential controls immediately visible when expanded | Additional expandable details |
 |---|---|---|
 | **Radar & Storm Analysis** | Original radar playback time window; Load selected window, Refresh latest, Play, Latest, frame timeline, playback speed and original source-frame/Doppler status. Original Storm tracking labels switch, Details button, track selection, +90-minute threat cone switch and current-track status. | **Display appearance:** original radar and 3-D opacity sliders. **Track scope:** original primary-radar-only explanation. |
-| **Severe Weather** | **BoM Severe Weather and Thunderstorm Warnings** switch, four IDQ product choices (21033, 21035, 21037, 21038), Locate, manual refresh, LDMG/DDMG report and normal warning status (including **No current warnings**). **Flood Gauges:** Flood signals switch, report, manual refresh. **Cyclones:** original inline current-source panel with live toggle, genuine-source status, Refresh source, system selection and Focus cyclone. | **Flood gauge symbols & severity** expands the original rapid-rise, crossing and minor/moderate/major legend. Cyclone source notes remain in the original inline panel. |
+| **Severe Weather** | **BoM Severe Weather and Thunderstorm Warnings** switch, four IDQ product choices (21033, 21035, 21037, 21038), Locate, manual refresh, LDMG/DDMG report and normal warning status (including **No current warnings**). **Flood Gauges:** Flood signals switch, report, manual refresh. **Cyclones:** the original **Show live cyclone forecasts** switch and verification status are visible directly under the heading, beside a compact **Details** expander. Details presents one card for **each** source-confirmed current cyclone, with an independent **Show issued track** checkbox, **Focus [cyclone]** action, original GML product ID, issue/expiry times and a separate link for checking official BoM cyclone warning bulletins. Original Refresh source and source selector/Focusing actions remain available. | **Flood gauge symbols & severity** expands the original rapid-rise, crossing and minor/moderate/major legend. Individual cyclone track maps are independently shown/hidden; the original current-only source details, warning-provenance notes and BoM links remain expandable. |
 | **Rainfall Observations** | **Significant rain** map switch, observation period (**Since 9 am**, **Last hour**, **24hrs to 9am**), manual refresh and station-source status; **Rainfall totals report** and **AEP Notable+ report** immediately available. | Existing **rainfall colours and local AEP rarity** information, including the annual percentages, remains in its native disclosure. |
 | **Community Impacts** | Original **Unplanned road closures**, **Unplanned power outages** and **QFD rescue & assistance** map switches, each retaining its original information cards and council explorers. | Original **QFD jobs symbol legend** disclosure. The quick council report shortcuts remain at the top. |
 
@@ -183,6 +183,18 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 | **Measure** | Tap locations in sequence, then **Done** | Straight-line distance along Earth's surface, **not** road distance or terrain-adjusted travel distance. |
 | **Cyclones** | Expand **Severe Weather → Cyclones** inline | Production displays source-backed **current** cyclone warning/forecast information when genuinely available. Historical cyclone tracks and test fixtures are **not loaded into the production map**. An unavailable or unverified feed must not be interpreted as 'no cyclone warning'. |
 
+### Cyclones — individual forecasts and separately issued warnings (V10.2.36)
+
+1. Expand **Severe Weather**. Beneath **Cyclones**, the original **Show live cyclone forecasts** switch and source-verification status remain visible without opening a second panel.
+2. Turn on **Show live cyclone forecasts** only when you want to request the current source. On its access-controlled host, StormTracker checks the original BoM-issued current forecast snapshot. The existing live source check is every **five minutes** while the switch remains enabled, and the **Refresh source** button is available under **Details**.
+3. Select **Details** to see source tools and, if genuinely available, **one individual card per verified current cyclone system**. Each card identifies the cyclone by source name, original product ID, source issue time and expiry. Distinct cyclone forecasts are not combined or re-labelled.
+4. Each cyclone card has its own **Show issued track** checkbox, initially enabled for newly confirmed systems. When more than one cyclone is active, multiple original issued track/forecast-area overlays may remain on the map simultaneously. Hide one track independently without hiding the others. Existing map markers identify each cyclone; no predicted positions, warning polygons or fake storm systems are created.
+5. Select **Focus [cyclone]** to move the map to that cyclone's issued original track and likely-tracks area using the accepted camera controller. The original selected-source dropdown and **Focus cyclone** control also remain available.
+6. **Individual warnings are a separate official BoM product, not part of the source-verified track feed.** Each cyclone's card therefore shows a clearly qualified warning note and a link to the BoM tropical cyclone warnings page. That link allows the operator to check the warning relevant to that cyclone; it does **not** claim that the forecast source has verified the warning's issuance, cancellation, current severity, affected locality or geometry. Do not mistake a forecast or likely-tracks area for an official warning area.
+7. If the original internal source cannot be verified or is not accessible in the public GitHub Pages deployment, the panel reports **Unable to verify current tropical cyclone warnings** (not **No current warnings**) and does not draw substitute forecast tracks. **Currently no tropical cyclone warnings** is reserved for an explicit complete, fresh, source-confirmed no-active manifest. Expired or cancelled source tracks are removed.
+
+**Multiple cyclones:** The existing strict source interface accepts several uniquely identified, independently valid issued cyclone forecast systems. Each source-qualified system is listed separately. The forecast/track display and per-system Focus are independent; the overarching live checkbox enables or disables the source layer as before. The source can be unavailable on a public browser-only deployment, and no additional warning bulletin feed or permission bypass has been introduced.
+
 The **Cyclones** controls within **Severe Weather** do **not** independently guarantee a continuously available live BoM forecast feed. A source-confirmed absence of current warnings must be distinguished from **unable to verify**; never interpret a blank drawing or stale source as an official all-clear. Consult [BoM warnings](https://www.bom.gov.au/) for current authoritative advice.
 
 ## Understanding status and missing data
@@ -213,7 +225,7 @@ The **Cyclones** controls within **Severe Weather** do **not** independently gua
 - [BoM official warnings](https://www.bom.gov.au/)
 - [Development and maintenance handover](DEVELOPMENT_HANDOVER_CURRENT.md)
 
-**Version note:** Updated **30 October 2026** for the approved **V10.2.35** four-section navigation, preserving V10.2.34 source and map-science behaviour. This is navigation-only: prior V10.2.32 warning-source status, 15-minute warnings cadence, 10-minute gauge checks, map data, camera and scientific releases remain unchanged.
+**Version note:** Updated **30 October 2026** for **V10.2.36** unified Cyclones subsection with the original live checkbox/status visible, per-cyclone independently displayable source-issued forecasts, per-system Focus and clearly separate BoM warning links. The V10.2.35 menu, weather feeds, source-validation rules, source cadence, flood/AEP/radar science and previous frozen releases remain unchanged.
 
 ## Which overlapping marker is displayed on top?
 

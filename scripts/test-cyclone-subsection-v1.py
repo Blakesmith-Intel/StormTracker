@@ -53,10 +53,15 @@ with tempfile.TemporaryDirectory() as tmp:
                     'visibleIds.delete(s.systemId)','for(const s of displayed)',
                     'focusCycloneThroughController',
                     'not verified by this forecast source',
-                    'Currently no tropical cyclone warnings',
-                    'Unable to verify current tropical cyclone warnings',
+                    'No current warnings',
+                    'Cyclone forecast feed unavailable — warning status not checked',
                     '300000'):
         assert snippet in runtime,snippet
+    # Zero warnings is source-confirmed; feed failures must not be reported as clear.
+    assert 'parsed.status==="no-active-products"' in runtime
+    assert runtime.count('"No current warnings"')==1
+    assert runtime.count('Cyclone forecast feed unavailable — warning status not checked')==2
+    assert 'Unable to verify current tropical cyclone warnings' not in runtime
     assert 'cycloneUseJasper' not in runtime
     assert 'Close cyclone details' in oper
     for name in ('internal-cyclone-live-qa-v1.js','operational-cyclone-panel-v1.js'):

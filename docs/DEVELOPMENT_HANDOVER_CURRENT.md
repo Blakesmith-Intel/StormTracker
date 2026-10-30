@@ -1,3 +1,9 @@
+# V10.2.34 — collapsible Situational Awareness Data (30 October 2026)
+
+The approved top-level **Situational Awareness Data** card now uses a native HTML `details` disclosure, matching the Show/Hide interaction of **Severe Weather**. It is collapsed by default and independently expandable. All existing basemap, significant rainfall/AEP, unplanned road closures, power outages and QFD rescue/assistance controls are kept as direct children with identical IDs, ordering, checked states, reports, event handlers and refresh intervals. Closing this menu does **not** disable active map layers. Change is limited to the fail-closed production HTML transform, scoped CSS, browser cache version, tests and operator documentation. V10.2.33 and earlier frozen versions remain untouched.
+
+---
+
 # V10.2.33 operational navigation only — 30 October 2026
 
 The operator-approved scope is five sidebar changes: new separate native `#severeWeatherDetails` top-level disclosure, **BoM Severe Weather and Thunderstorm Warnings** visible label, intact flood and warning controls moved within that disclosure, current-source cyclone controls moved into the sidebar as a non-floating inline expandable panel, and renamed **Situational Awareness Data** (former Layers). No IDs, source logic, warning/cyclone processing, map layers, thresholds, or refresh cadence are changed. The production root continues to be constructed from frozen V10.2.0, with the pure navigation transform `scripts/apply-severe-weather-sidebar-v1.py` running *after* `scripts/strip-production-cyclone-qa.py`. This ensures only the original current-only cyclone panel is embedded in the sidebar. The new CSS is `frontend/src/severe-weather-sidebar-v1.css`. Every original control ID is checked for uniqueness; unknown source shape or historical cyclone UI causes the production build to fail closed. QA previews remain separate/unmodified.

@@ -77,7 +77,7 @@ jobs:
             assert.equal(await severe.getAttribute('open'),null,'Separate Severe Weather closed by default');
             const other=frame.locator('#showSignificantRainfall');
             assert.equal(await other.isVisible(),false,'Underlying layers hidden when closed');
-            await situational.locator('summary').click({force:true});
+            await situational.locator('summary').first().click({force:true});
             assert.notEqual(await situational.getAttribute('open'),null,'Situational section expands');
             assert.equal(await severe.getAttribute('open'),null,'Severe Weather unaffected');
             await other.waitFor({state:'visible',timeout:10000});
@@ -89,11 +89,11 @@ jobs:
             assert(controls.labels.find(x=>x.id==='showSignificantRainfall')?.checked===false);
             await other.check({force:true});
             assert.equal(await other.isChecked(),true,'Selected layer is enabled');
-            await situational.locator('summary').click({force:true});
+            await situational.locator('summary').first().click({force:true});
             assert.equal(await situational.getAttribute('open'),null,'Section hides');
             assert.equal(await other.isChecked(),true,'Collapsing menu must NOT switch off enabled layer');
             assert.equal(await other.isVisible(),false,'Only UI hides');
-            await situational.locator('summary').click({force:true});
+            await situational.locator('summary').first().click({force:true});
             assert.equal(await other.isChecked(),true,'Enabled layer still on when menu reopened');
             await other.uncheck({force:true});
             await severe.locator('summary').click({force:true});

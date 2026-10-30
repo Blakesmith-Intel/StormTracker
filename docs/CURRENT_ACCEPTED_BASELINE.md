@@ -1,3 +1,9 @@
+# V10.2.37 — radar auto-refresh reliability maintenance (31 October 2026)
+
+Approved scoped correction: preserve five-minute regular polling; promptly retry a busy or in-flight missed check without overlaps; retain immediate foreground checks; recover up to nine authentic BoM WMTS published observation frames instead of latest-only; record last auto check, accepted source time and any failure. Uses the existing pinned production engine plus a narrow after-build overlay. No Doppler, storm science, georeferencing, AEP/IFD, flood, warning, camera or map-layer modifications; older immutable release refs untouched. Production publication requires full source/packaged regressions and public Pages verification. See [V10.2.37 release notes](RELEASE_NOTES_V10.2.37.md).
+
+---
+
 # V10.2.36 — Cyclones unified with Severe Weather (30 October 2026)
 
 UI-only adaptation on sealed V10.2.35 baseline: original cyclone map toggle and verified source status immediately visible; compact inline Details panel retains source refresh, original active-system selector, Focus and official BoM link. Multi-system cards independently display each original validated cyclone track and current issue/expiry times, plus a per-cyclone separate BoM warning link. **Current cyclone warning bulletins are not supplied by the forecast-track source and remain UNVERIFIED, never generated from tracks.** All already-frozen forecast source checks, 5-minute polling, camera controller, flood/AEP/radar science and other map-layer functions remain unchanged. Release is considered sealed only after accepted public mobile/desktop tests and newly created `v10.2.36` recovery refs. [Operator guide](OPERATOR_GUIDE_CURRENT.md) · [Release notes](RELEASE_NOTES_V10.2.36.md).

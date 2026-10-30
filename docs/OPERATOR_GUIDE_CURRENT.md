@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 30 October 2026 | **Applies to:** V10.2.36 cyclone subsection and independent multi-system tracks, on the unchanged V10.2.35 four-section operator navigation and previously accepted weather-science baselines.
+**Edition:** 31 October 2026 | **Applies to:** V10.2.37 radar automatic-refresh and missed-scan recovery maintenance, including the earlier V10.2.36 cyclone subsection and unchanged four-section operator navigation.
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -8,6 +8,12 @@
 **Finding this guide from the map:** select the small **Operator guide ↗** text link in the existing StormTracker sidebar heading. It opens this up-to-date guide in a separate browser tab and leaves the active weather map, controls and information panels unchanged.
 
 **Public information sheet:** [StormTracker — layers and features (PDF)](STORMTRACKER_LAYERS_INFORMATION.pdf) — a concise shareable overview for new users. This is a guide to features, not a live weather bulletin.
+
+## Radar automatic update reliability (V10.2.37)
+
+Radar playback checks for new BoM imagery every **five minutes** while the browser page is active and checks promptly when a previously hidden page returns to the foreground. New source scans can arrive with normal BoM publication delays. A temporary busy map load is retried promptly rather than waiting a whole extra polling interval. Recent genuinely published but missed scans are recovered in chronological order when still available from BoM; missing images are never invented. The last automatic check, newest successfully accepted radar observation and latest failure reason are recorded in the existing automatic refresh status tooltip (desktop) and in the read-only browser diagnostic `window.__stormtrackerRadarAutoRefreshAudit()`. These times are distinct: a successful check may find no newer observation.
+
+If the latest observation is delayed, inspect its **actual AEST/UTC timestamp**; an automatic check does not guarantee a new BoM image is published. The usual radar site, window, Doppler and volume controls are unchanged.
 
 ## At a glance
 

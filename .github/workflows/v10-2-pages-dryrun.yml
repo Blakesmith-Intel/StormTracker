@@ -102,8 +102,8 @@ jobs:
           grep -Fq 'recentFloodHistoryGap' _site/src/context-layers/bom-recent-river-history-v1.js
           grep -Fq 'river-history-nodata-v2-20261018' _site/src/context-layers/river-gauges-operational-v1.js
           grep -Fq 'id="openCycloneForecastQa"' _site/live3d-operational-v9.html
-          grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
-          grep -Fq 'Unable to verify current tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
+          grep -Fq '"No current warnings"' _site/src/internal-cyclone-live-qa-v1.js
+          grep -Fq 'Cyclone forecast feed unavailable' _site/src/internal-cyclone-live-qa-v1.js
           node --check _site/src/live3d-operational-v9.js
           test -s _site/preview/radar-history-fix/BUILD.txt
           test -s _site/preview/incremental-3d/BUILD.txt

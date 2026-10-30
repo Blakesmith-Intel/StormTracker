@@ -1,3 +1,11 @@
+# V10.2.37 — radar automatic refresh and missed authentic scans (31 October 2026)
+
+Scoped maintenance on the pinned V10.2 production runtime: `frontend/src/live-loop-refresh-v1.js` keeps the five-minute cadence independent of operation duration, with 2-second retry only for deferred/busy requests and one queued follow-up for a timer/foreground check arriving during an in-flight operation. `frontend/src/live3d-operational-v9.js` returns `false` from a loader blocked by `sequenceLoading`/`!model` and uses `discoverBoundedBomReflectivityHistory(now,180,region)` for authentic recent-frame backfill (at most nine genuinely published native source times, with existing pixel verification and observed-only policy). The unchanged immediate foreground `visibilitychange` check remains active. Source check UTC, latest accepted observed UTC, outcome and error are recorded in the existing refresh note title and exposed read-only as `window.__stormtrackerRadarAutoRefreshAudit()`. Retain real source UTC; never manufacture images or backdate Doppler.
+
+The production release uses `scripts/apply-radar-auto-refresh-v1.py` **after** `scripts/apply-ftp-aep-release-v10.py` in `.github/workflows/pages.yml`. The script patches only recognised anchors in the copied sealed runtime, copies only the scheduler module and refreshes iframe/module cache keys. Original pinned source, all frozen tags and other layers remain unchanged. See `frontend/tests/run-live-loop-refresh-v1-tests.mjs`, `frontend/tests/run-radar-auto-refresh-v10-2-37-tests.mjs`, and [release notes](RELEASE_NOTES_V10.2.37.md). The Pages run and publicly deployed JavaScript must pass post-deployment verification before sealing.
+
+---
+
 # V10.2.36 — current-only Cyclones presentation and multiple issued systems (30 October 2026)
 
 The original BoM GML cyclone schema (`frontend/src/internal-cyclone-feed-v1.js`) already supports several independent source-authenticated cyclone products, each with source system ID, product ID, issued/expiry times and original issued geometries. This release **does not change that schema, validation, source endpoint, authorisation or 5-minute enabled-layer poll**. Previously the UI showed only the selected system on the shared map.

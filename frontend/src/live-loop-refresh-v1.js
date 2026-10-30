@@ -102,22 +102,68 @@ export function hasNewMatchedProducts(previous, next) {
   });
 }
 
-export function createLiveLoopRefresh({ refresh, onError, schedule = setTimeout,
-  cancel = clearTimeout, interval = LIVE_LOOP_REFRESH_MS }) {
-  let timer, active = false, pending = null;
-  function arm() {
-    if (active) timer = schedule(() => { timer = null; void check(); }, interval);
+export const LIVE_LOOP_BUSY_RETRY_MS = 2000;
+
+// Maintain the established five-minute polling cadence independently of
+// request duration. A concurrent manual/site load is not a successful poll:
+// retry it promptly without overlapping requests or fabricating observations.
+export function createLiveLoopRefresh({
+  refresh, onError, schedule = setTimeout, cancel = clearTimeout,
+  interval = LIVE_LOOP_REFRESH_MS, busyRetryMs = LIVE_LOOP_BUSY_RETRY_MS
+}) {
+  let timer = null, busyTimer = null, active = false, pending = null;
+  let missedWhileLoading = false;
+  function armPoll() {
+    if (!active || timer != null) return;
+    timer = schedule(() => {
+      timer = null;
+      // Schedule the NEXT regular check before asynchronous work starts.
+      // Slow loads and manual/foreground checks never reset this cadence.
+      armPoll();
+      void check();
+    }, interval);
   }
-  async function check() {
-    if (!active || pending) return pending;
-    if (timer != null) cancel(timer);
-    timer = null;
-    pending = Promise.resolve().then(refresh).catch(onError);
-    try { await pending; } finally { pending = null; arm(); }
+  function armBusyRetry() {
+    if (!active || busyTimer != null) return;
+    busyTimer = schedule(() => {
+      busyTimer = null;
+      void check();
+    }, busyRetryMs);
+  }
+  function check() {
+    if (!active) return Promise.resolve();
+    if (pending) {
+      // A focus or timer event can occur during an existing load. Retain
+      // exactly one follow-up instead of silently losing that cycle.
+      missedWhileLoading = true;
+      return pending;
+    }
+    if (busyTimer != null) {
+      cancel(busyTimer);
+      busyTimer = null;
+    }
+    pending = Promise.resolve().then(refresh).then(result => {
+      // false means the application was busy or not ready. A genuine
+      // source failure is handled normally by the existing five-minute poll.
+      if (result === false) armBusyRetry();
+    }).catch(error => onError?.(error)).finally(() => {
+      pending = null;
+      if (missedWhileLoading) {
+        missedWhileLoading = false;
+        armBusyRetry();
+      }
+    });
+    return pending;
   }
   return {
-    start() { if (!active) { active = true; arm(); } },
-    stop() { active = false; if (timer != null) cancel(timer); timer = null; },
+    start() { if (!active) { active = true; armPoll(); } },
+    stop() {
+      active = false;
+      missedWhileLoading = false;
+      if (timer != null) cancel(timer);
+      if (busyTimer != null) cancel(busyTimer);
+      timer = busyTimer = null;
+    },
     check
   };
 }

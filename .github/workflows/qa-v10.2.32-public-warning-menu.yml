@@ -1,0 +1,61 @@
+name: Verify deployed four-BoM-product dropdown and no-current semantics
+on:
+  push:
+    branches: [qa/v10.2.32-four-idq-public-menu]
+    paths: [.github/workflows/qa-v10.2.32-public-warning-menu.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify public Pages menu and shared source
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          const now=()=>Date.now();
+          async function get(path){
+            const res=await fetch(root+path+'?v1032='+now(),{cache:'no-store',signal:AbortSignal.timeout(17000)});
+            const body=await res.text();
+            if(!res.ok)throw Error(path+' HTTP '+res.status);
+            return body;
+          }
+          let ok=false;
+          for(let attempt=0;attempt<24;attempt++){
+            const [index,html,js,app]=await Promise.all([
+             get('index.html'),get('live3d-operational-v9.html'),
+             get('src/context-layers/bom-warning-operational-v1.js'),
+             get('src/live3d-operational-v9.js')]);
+            const options=[...html.matchAll(/<option value="(all|IDQ2103[3578])"/g)].map(m=>m[1]);
+            const expected=['all','IDQ21035','IDQ21033','IDQ21037','IDQ21038'];
+            const checks={
+             newIndex:index.includes('four-idq-menu-20261030-v1'),
+             newApp:app.includes('bom-warning-operational-v1.js?v=20261030-four-idq-menu-v1'),
+             choices:JSON.stringify(options)===JSON.stringify(expected),
+             filters:js.includes('["all","IDQ21035","IDQ21033","IDQ21037","IDQ21038"]'),
+             report:js.includes('const codes=filter.value==="all"?WARNING_CODES:[filter.value]'),
+             clear:js.includes('No current warnings'),
+             cadence:js.includes('INTERVAL_MS=15*60*1000'),
+             manual:js.includes('refresh({force:true})')
+            };
+            console.log('PUBLIC_MENU',JSON.stringify({attempt,checks,options}));
+            if(Object.values(checks).every(Boolean)){ok=true;break}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(!ok)throw Error('Public warning menu not fully updated');
+          const response=await fetch('https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons?qa='+now(),{
+            signal:AbortSignal.timeout(50000),
+            headers:{Origin:'https://blakesmith-intel.github.io'}
+          });
+          const data=await response.json();
+          if(!response.ok||data.schema!=='StormTrackerOfficialBoMWarningPolygonsV1')
+            throw Error('Original warning relay is not available');
+          const keys=['IDQ21035','IDQ21033','IDQ21037','IDQ21038'];
+          if(keys.some(x=>!data.products?.[x]))throw Error('Relay does not report all four official products');
+          console.log('RELAY_PRODUCT_STATES',JSON.stringify({
+            checked:data.checkedAt,verifiedIndex:data.qldCurrentIndexStatus,
+            sourceFailures:data.sourceFailures,gisFailures:data.gisFailures,
+            statuses:Object.fromEntries(keys.map(x=>[x,data.products[x].status]))
+          }));
+          console.log('PASS four public official BoM IDQ choices, product-specific cleared states, shared 15-minute source refresh and original relay');
+          NODE

@@ -2,6 +2,8 @@ import {bomCapRssLinks,parseOfficialBomCap,parseBomCapProductNotice}
  from "../frontend/src/context-layers/bom-warning-cap-source-v1.js";
 import {reconcileLatestBoMWarnings}
  from "./bom-warning-product-reconcile-v1.js";
+import {fetchCurrentQldBoMWarningsIndex}
+ from "./bom-warning-qld-current-index-v1.js";
 import {fetchQldBomWfsGeometry,fetchQldBomStormLocations}
  from "./bom-warning-gis2web-replica-v1.js";
 
@@ -73,8 +75,19 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
  const head={"Content-Type":"application/json; charset=utf-8","Cache-Control":"public,max-age=90"};
  let payload;
  try{
-  const now=Date.now(),rss=await textResponse(BOM_CAP_RSS,3000000);
-  const links=bomCapRssLinks(rss,{nowMs:now});
+  const now=Date.now();
+  // Official QLD CURRENT product listing is separate from international CAP
+  // issue history. Query concurrently; failure to confirm it does NOT
+  // override valid CAP geometry or fabricate negative reporting.
+  const [rssResult,indexResult]=await Promise.allSettled([
+   textResponse(BOM_CAP_RSS,3000000),
+   fetchCurrentQldBoMWarningsIndex({nowMs:now})
+  ]);
+  const qldCurrentIndex=indexResult.status==="fulfilled"?indexResult.value:null;
+  if(rssResult.status==="rejected"&&!qldCurrentIndex)
+   throw new Error("Neither CAP nor current official Queensland warning index verified");
+  const links=rssResult.status==="fulfilled"?
+   bomCapRssLinks(rssResult.value,{nowMs:now}):[];
   // RSS scanning is explicitly bounded (22 most recent matching alert links).
   // When the bound is reached it is NOT a complete national BoM alert index.
   // Never convert "not encountered in the sample" to an official all-clear.
@@ -83,7 +96,8 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
    notice:parseBomCapProductNotice(xml,{nowMs:now}),
    warnings:parseOfficialBomCap(xml,{nowMs:now})
   }))));
-  const sourceFailures=found.filter(x=>x.status==="rejected").length;
+  const sourceFailures=found.filter(x=>x.status==="rejected").length+
+   (rssResult.status==="rejected"?1:0);
   const messageRecords=found.map(x=>x.status==="fulfilled"?x.value:{failed:true});
   // Obtain source-exact genuine GIS2Web-derived warning polygons only for
   // authenticated, active Bureau CAP issues, not arbitrary geographic guesses.
@@ -107,7 +121,8 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
    if(row)row.warnings=[...(row.warnings??[]),...result.value];
   });
   const reconciled=reconcileLatestBoMWarnings(messageRecords,{
-    complete:sourceFailures===0&&!indexPossiblyTruncated,nowMs:now
+    complete:sourceFailures===0&&!indexPossiblyTruncated,nowMs:now,
+    qldCurrentIndex
   });
   // NSW clipping against the TRUE installed radar coverage union is required
   // before independently publishing NSW warnings. Do not approximate it.
@@ -136,6 +151,8 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
      enriched.length?"active":"no-verified-current-polygons",
    source:"WMO registered Australian Bureau of Meteorology CAP authority",
    sourceUrl:BOM_CAP_RSS,sourceFailures,gisFailures,
+   qldCurrentIndexStatus:qldCurrentIndex?"verified-current-products":"unavailable",
+   qldCurrentIndexCheckedAt:qldCurrentIndex?.checkedUtc??null,
    geospatialSource:"Queensland emergency-management WFS-derived Bureau GIS2Web warnings",
    products,sourceComplete:reconciled.sourceComplete,
    nswWithheld:reconciled.warnings.filter(x=>x.state==="NSW").length,

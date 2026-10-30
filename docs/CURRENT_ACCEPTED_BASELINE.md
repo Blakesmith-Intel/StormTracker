@@ -1,3 +1,8 @@
+# V10.2.32 four-product warnings menu — 30 October 2026
+
+Additive user-interface change to expose original monitored IDQ21035, IDQ21033, IDQ21037 and IDQ21038 separately in the BoM warning dropdown and LDMG/DDMG report, retaining distinct **No current warnings** confirmations per original product on the existing 15-minute refresh. See [operator guide](OPERATOR_GUIDE_CURRENT.md), [release notes](RELEASE_NOTES_V10.2.32.md) and [wishlist](ACTIVE_WISHLIST.md). Nothing alters pinned radar/3-D, original polygon source, CAP/GIS lifecycle, IFD/AEP, floods, traffic, outages or the stable camera.
+
+---
 # V10.2.31 verified current warning statuses — 30 October 2026
 
 This additive warning-only maintenance fix uses the authoritative BoM Queensland current-warnings summary to report **No current warnings** for individually verified absent products even when WMO CAP history is truncated. It preserves separate active and polygon-pending states, accurate source timestamps, false all-clear safeguards, and standard/high-end distinction between warned phenomena and retrospective observations. The immutable V10.2.30 warning scientific and operational baseline remains unchanged. [Operator guide](OPERATOR_GUIDE_CURRENT.md) · [Release notes](RELEASE_NOTES_V10.2.31.md) · [Wishlist](ACTIVE_WISHLIST.md).

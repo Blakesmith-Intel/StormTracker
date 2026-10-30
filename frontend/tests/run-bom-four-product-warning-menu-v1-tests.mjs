@@ -1,0 +1,68 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {
+ PRODUCT_FILTERS,filterOfficialWarnings,describeOfficialBomWarningState,
+ warningProductAffectedGroups
+} from "../src/context-layers/bom-warning-operational-v1.js";
+import {QLD_WARNING_PRODUCTS} from "../src/context-layers/bom-qld-warning-product-catalogue-v1.js";
+
+const codes=["IDQ21035","IDQ21033","IDQ21037","IDQ21038"];
+assert.deepEqual(PRODUCT_FILTERS,["all",...codes]);
+assert.deepEqual(Object.keys(QLD_WARNING_PRODUCTS),codes,
+ "All menu products are actual BoM original product references");
+const geometry={type:"Polygon",coordinates:[[
+ [151,-25],[152,-25],[152,-26],[151,-26],[151,-25]
+]]};
+const fixtures=codes.map((code,i)=>({
+ id:code+":1",productCode:code,geometry,
+ ldmgStatus:"verified",ddmgStatus:"verified",
+ ldmgs:["Test council "+i],ddmgs:["District "+i]
+}));
+assert.equal(filterOfficialWarnings(fixtures,"all").length,4);
+for(const code of codes){
+ const one=filterOfficialWarnings(fixtures,code);
+ assert.equal(one.length,1,"One product cannot display other warning areas");
+ assert.equal(one[0].productCode,code);
+ const groups=warningProductAffectedGroups(fixtures,code);
+ assert.equal(groups.count,1);
+ assert.equal(groups.ldmgs.length,1);
+ assert.equal(groups.ddmgs.length,1);
+}
+const statuses=Object.fromEntries(codes.map(code=>[code,{status:"no-active"}]));
+for(const code of codes){
+ const state=describeOfficialBomWarningState({products:statuses,selected:code});
+ assert.match(state.message,/^No current warnings — IDQ2103[3578]/);
+ assert.equal(state.kind,"normal","Verified no-current must not be an error");
+}
+assert.equal(describeOfficialBomWarningState({products:statuses}).message,
+ "No current warnings");
+for(const code of codes){
+ const active={...statuses,[code]:{status:"active",count:1}};
+ const message=describeOfficialBomWarningState({
+  products:active,warnings:fixtures.filter(w=>w.productCode===code),selected:code
+ }).message;
+ assert.match(message,/active \(1 polygon\)/);
+ assert(message.includes(code));
+ const pending={...statuses,[code]:{status:"listed-active"}};
+ assert.match(describeOfficialBomWarningState({products:pending,selected:code}).message,
+  /polygon awaiting verification/);
+ const missing={...statuses,[code]:{status:"unavailable"}};
+ const bad=describeOfficialBomWarningState({products:missing,selected:code});
+ assert(!bad.message.startsWith("No current warnings"),"Unknown is never confirmed clear");
+ assert.equal(bad.kind,"warning");
+}
+const page=readFileSync(new URL("../live3d-operational-v9.html",import.meta.url),"utf8");
+const optionBlock=page.split('<select id="officialBomWarningProduct"')[1].split("</select>")[0];
+assert.equal((optionBlock.match(/<option\s/g)||[]).length,5,"All + four separate IDQ menu items");
+for(const code of codes)
+ assert.match(optionBlock,new RegExp('<option value="'+code+'">'));
+assert(optionBlock.indexOf("IDQ21037")>optionBlock.indexOf("IDQ21033"));
+assert(optionBlock.indexOf("IDQ21038")>optionBlock.indexOf("IDQ21037"));
+const op=readFileSync(new URL("../src/context-layers/bom-warning-operational-v1.js",import.meta.url),"utf8");
+assert.match(op,/const codes=filter\.value==="all"\?WARNING_CODES:\[filter\.value\]/);
+assert(!op.includes('"other"]:[filter.value]'),"Never hide a clear 21037/38 under Other");
+assert.match(op,/INTERVAL_MS=15\*60\*1000/);
+assert.match(op,/now\(\)-lastAttemptAt>=INTERVAL_MS\)void refresh\(\)/);
+assert.match(op,/const onRefresh=\(\)=>\{void refresh\(\{force:true\}\);\}/);
+assert.match(op,/No current warnings for this product/);
+console.log("PASS separate IDQ21033/35/37/38 selection, polygon isolation, independent verified no-current/report state and existing 15-minute/manual cadence");

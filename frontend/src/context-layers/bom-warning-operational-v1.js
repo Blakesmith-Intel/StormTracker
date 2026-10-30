@@ -2,7 +2,7 @@ import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-t
 import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 const SOURCE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons";
 const SCHEMA="StormTrackerOfficialBoMWarningPolygonsV1",INTERVAL_MS=15*60*1000;
-export const PRODUCT_FILTERS=Object.freeze(["all","IDQ21035","IDQ21033"]);
+export const PRODUCT_FILTERS=Object.freeze(["all","IDQ21035","IDQ21033","IDQ21037","IDQ21038"]);
 export function filterOfficialWarnings(warnings,productCode="all"){
  if(!PRODUCT_FILTERS.includes(productCode))return [];
  return (Array.isArray(warnings)?warnings:[]).filter(w=>
@@ -75,8 +75,10 @@ export function officialWarningAtPoint(warnings,longitude,latitude){
 }
 const WARNING_CODES=Object.freeze(["IDQ21035","IDQ21033","IDQ21037","IDQ21038"]);
 const THUNDERSTORM_CODES=Object.freeze(["IDQ21035","IDQ21033"]);
-const warningName=code=>code==="IDQ21035"?"IDQ21035 (Detailed SEQ)":
- code==="IDQ21033"?"IDQ21033 (Regional QLD)":code;
+const warningName=code=>code==="IDQ21035"?"IDQ21035 (Detailed SEQ storms)":
+ code==="IDQ21033"?"IDQ21033 (Regional QLD storms)":
+ code==="IDQ21037"?"IDQ21037 (Severe Weather 1)":
+ code==="IDQ21038"?"IDQ21038 (Severe Weather 2)":code;
 const isConfirmedClear=status=>status==="cancelled"||status==="no-active";
 // Pure operational-state presentation. A source failure must NEVER be
 // translated into "No current warnings"; a confirmed cancellation IS useful
@@ -302,15 +304,18 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  }
  const groupLabel=code=>code==="IDQ21035"?
     "IDQ21035 — Detailed SEQ thunderstorms":code==="IDQ21033"?
-    "IDQ21033 — Regional QLD thunderstorms":"Other BoM severe weather warnings";
+    "IDQ21033 — Regional QLD thunderstorms":code==="IDQ21037"?
+    "IDQ21037 — Queensland Severe Weather Warning 1":code==="IDQ21038"?
+    "IDQ21038 — Queensland Severe Weather Warning 2":code;
  function renderGroupsReport(){
   reportBody.replaceChildren();
   if(!reportDialog.open)return;
-  const codes=filter.value==="all"?["IDQ21035","IDQ21033","other"]:[filter.value];
+  // Every monitored official product has its own row, including a VERIFIED
+  // no-current result. Never hide a clear product just because its map has
+  // zero polygons, and never combine 21037 and 21038 into a generic "other".
+  const codes=filter.value==="all"?WARNING_CODES:[filter.value];
   for(const code of codes){
-   const subset=code==="other"?warnings.filter(w=>!["IDQ21035","IDQ21033"].includes(w.productCode)):
-     filterOfficialWarnings(warnings,code);
-   if(code==="other"&&!subset.length)continue;
+   const subset=filterOfficialWarnings(warnings,code);
    const result=warningProductAffectedGroups(subset);
    const productStatus=productStatuses[code]?.status??"unavailable";
    const section=document.createElement("section");
@@ -384,10 +389,13 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     const title=document.createElement("h4");title.textContent=label;
     section.append(title);
     const info=document.createElement("p");
-    info.textContent=productStatus==="geometry-unavailable"?"Original source has no warning coordinates — no affected LDMG/DDMG list can be verified":
+    info.textContent=productStatus==="geometry-unavailable"||productStatus==="listed-active"?
+      "Current warning awaiting genuine polygon — affected LDMG/DDMG boundaries not yet available":
+      productStatus==="no-active"||productStatus==="cancelled"?
+      "No affected groups to list — no current warning in this product":
       !complete?"Boundary verification incomplete — affected groups may be missing":
-       !result.count?"No currently verified polygon in this product":
-       !items.length?"No intersecting Queensland groups reported":"";
+      !result.count?"No currently verified polygon in this product":
+      !items.length?"No intersecting Queensland groups reported":"";
     section.append(info);
     if(items.length){
      const list=document.createElement("ul");

@@ -9,6 +9,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+      - name: Test production candidate against actual BoM Queensland current-index HTML
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {fetchCurrentQldBoMWarningsIndex}
+            from './relay/bom-warning-qld-current-index-v1.js';
+          import {reconcileLatestBoMWarnings}
+            from './relay/bom-warning-product-reconcile-v1.js';
+          const index=await fetchCurrentQldBoMWarningsIndex();
+          const s=reconcileLatestBoMWarnings([],{complete:false,qldCurrentIndex:index});
+          console.log('LIVE_CANDIDATE_OFFICIAL_INDEX',JSON.stringify({
+           at:new Date().toISOString(),index,
+           products:Object.fromEntries(Object.entries(s.products).map(([k,v])=>[k,v.status]))
+          }));
+          if(!index.verified)throw Error('Current BoM listing not verifiable');
+          NODE
       - name: Live relay and official warnings source checks
         shell: bash
         run: |

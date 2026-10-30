@@ -1,0 +1,45 @@
+name: Seal V10.2.32 four official BoM warning menu options
+on:
+  push:
+    branches: [qa/v10.2.32-four-idq-public-menu]
+    paths: [.github/workflows/seal-v10.2.32-warning-menu.yml]
+permissions: {contents: write}
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Seal only accepted production SHA, keep old tags immutable
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="8d429fb43c197fa1a1032a41c76fdd79c039e89f"
+          current="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$current" = "$release_sha" || { echo "Main has moved; refuse to seal unrelated commit"; exit 1; }
+          git fetch origin "$release_sha" --quiet
+          git cat-file -e "$release_sha:docs/RELEASE_NOTES_V10.2.32.md"
+          previous="$(git ls-remote origin 'refs/tags/v10.2.31^{}' | cut -f1)"
+          restore="$(git ls-remote origin 'refs/heads/restore/v10.2.31' | cut -f1)"
+          test "$previous" = "$restore" && test -n "$previous"
+          existing_tag="$(git ls-remote origin 'refs/tags/v10.2.32^{}' | cut -f1)"
+          existing_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.32' | cut -f1)"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/restore/v10.2.32" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            tagsha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="v10.2.32" -f type="commit" -f object="$release_sha" \
+              -f message="StormTracker V10.2.32 — individual BoM IDQ21033/21035/21037/21038 warning filters and verified no-current reporting with unchanged 15-minute cadence" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/v10.2.32" -f sha="$tagsha" >/dev/null
+          fi
+          test "$(git ls-remote origin 'refs/tags/v10.2.32^{}' | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin 'refs/heads/restore/v10.2.32' | cut -f1)" = "$release_sha"
+          echo "SEALED v10.2.32 and restore/v10.2.32 at $release_sha; older refs unchanged"

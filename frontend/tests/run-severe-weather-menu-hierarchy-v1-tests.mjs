@@ -22,7 +22,7 @@ src=Path("frontend/live3d-operational-v9.html").read_text()
 spec=importlib.util.spec_from_file_location("menu","scripts/apply-severe-weather-sidebar-v1.py")
 module=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-block=re.compile(r'    <div id="historicalCycloneMapStamp"[^\\n]*\\n    <section id="cycloneForecastQaPanel"[^\\n]*\\n.*?    </section>',re.S)
+block=re.compile(r'    <div id="historicalCycloneMapStamp"[^\n]*\n    <section id="cycloneForecastQaPanel"[^\n]*\n.*?    </section>',re.S)
 assert len(block.findall(src))==1, "Unexpected original cyclone QA structure"
 live='''    <section id="cycloneForecastQaPanel" aria-label="Current BoM tropical cyclone forecasts" hidden>
       <header><div><strong>Tropical cyclone forecasts</strong><small>CURRENT BoM PRODUCTS ONLY</small></div><button id="cycloneForecastQaClose" type="button">×</button></header>

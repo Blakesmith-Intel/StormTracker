@@ -1,3 +1,8 @@
+# V10.2.32 additional BoM warning product selections — complete when deployed
+
+- **[x] Individual IDQ product dropdown:** All warnings, IDQ21035 detailed SEQ thunderstorms, IDQ21033 regional Queensland thunderstorms, IDQ21037 Severe Weather 1 and IDQ21038 Severe Weather 2. All four have independently verified **No current warnings** states in the shared 15-minute warning refresh, manual ↻ override, correct original polygon filter and an independent LDMG/DDMG report section even with no active warning. No extra request per option or speculative warning polygon. See [V10.2.32 release notes](RELEASE_NOTES_V10.2.32.md).
+
+---
 # StormTracker — active wishlist after V10.2.31 verified BoM current-warning negative reporting
 
 **Status: 30 October 2026.** The original warning-area wishlist item is marked **COMPLETE**, sealed as V10.2.29; the follow-up V10.2.30 terminology and compact cell marker presentation is subject to production verification. The underlying V10.2.0 radar/science baseline and previous frozen references remain unchanged. [Current operator guide](OPERATOR_GUIDE_CURRENT.md) · [V10.2.29 release notes](RELEASE_NOTES_V10.2.29.md) · [Development handover](DEVELOPMENT_HANDOVER_CURRENT.md).

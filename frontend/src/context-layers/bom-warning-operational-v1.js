@@ -24,6 +24,14 @@ export function warningProductAffectedGroups(warnings,productCode="all"){
 }
 // Exact source geometry envelope for the optional "Locate" action.
 // This NEVER creates a warning polygon or guesses an affected district.
+export function insertOfficialWarningImageryAboveBasemap(layers,layer,getRadarLayer=()=>null){
+ // ADD to top rather than index 1: opaque DEA and local satellite occupy
+ // indices 1-3, so an index-1 warning can NEVER be seen.
+ layers.add(layer);
+ const radar=getRadarLayer?.();
+ if(radar&&layers.indexOf(radar)>=0)layers.raiseToTop(radar);
+ return layer;
+}
 export function officialWarningBounds(warnings){
  let west=Infinity,east=-Infinity,south=Infinity,north=-Infinity,points=0;
  for(const warning of warnings??[]){
@@ -150,10 +158,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   // At index 1 this warning was hidden by opaque DEA/QLD layers, even though
   // the verified polygon count was one. Insert ABOVE every basemap, but
   // restore the current primary radar to the top of the imagery stack.
-  viewer.imageryLayers.add(imagery);
-  const radarLayer=getRadarLayer?.();
-  if(radarLayer&&viewer.imageryLayers.indexOf(radarLayer)>=0)
-   viewer.imageryLayers.raiseToTop(radarLayer);
+  insertOfficialWarningImageryAboveBasemap(viewer.imageryLayers,imagery,getRadarLayer);
   viewer.scene.requestRender();
  }
  function openInfo(warning){
@@ -235,7 +240,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     showProductStatus();
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
-    warnings=[];sourceStatus="unavailable";productStatuses={};display();renderGroupsReport();openInfo(null);
+    warnings=[];sourceStatus="unavailable";productStatuses={};locateBtn.hidden=true;display();renderGroupsReport();openInfo(null);
     // An unverified check is NOT a confirmed no-warning report.
     // Keep a neutral operational advisory, rather than an alarming red error.
     report("Unable to confirm current BoM warnings — try refresh or check BoM","warning");
@@ -327,7 +332,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  const closeGroups=()=>reportDialog.close();
  const onToggle=()=>{
-  if(!toggle.checked){warnings=[];productStatuses={};sourceStatus="unavailable";discard();openInfo(null);renderGroupsReport();
+  if(!toggle.checked){warnings=[];productStatuses={};sourceStatus="unavailable";locateBtn.hidden=true;discard();openInfo(null);renderGroupsReport();
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };

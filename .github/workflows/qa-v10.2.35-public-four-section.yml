@@ -1,0 +1,195 @@
+name: V10.2.35 real public four-section desktop/mobile acceptance
+on:
+  push:
+    branches: [qa/v10.2.35-four-section-public]
+    paths: [.github/workflows/qa-v10.2.35-public-four-section.yml]
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Verify published primary site, original controls and V10.2.35 CSS
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          const get=async(path)=>{
+           const r=await fetch(root+path+'?v1035-qa='+Date.now(),{
+            cache:'no-store',signal:AbortSignal.timeout(24000)});
+           return {code:r.status,text:await r.text()};
+          };
+          let verified=false;
+          for(let attempt=1;attempt<=37;attempt++){
+           const [index,doc,css]=await Promise.all([
+             get('index.html'),get('live3d-operational-v9.html'),
+             get('src/four-section-menu-v1.css')]);
+           const html=doc.text;
+           const order=['radarStormAnalysisDetails','severeWeatherDetails',
+             'rainfallObservationsDetails','communityImpactsDetails'];
+           const positions=order.map(x=>html.indexOf('id="'+x+'"'));
+           const checks={
+             index:index.code===200&&index.text.includes('four-operational-sections-20261030-v1'),
+             page:doc.code===200,
+             stylesheet:css.code===200&&css.text.includes('#mapStyleDetails')&&css.text.includes('#floodGaugeLegendDetails'),
+             four:positions.every(p=>p>0)&&positions.every((p,i)=>i===0||p>positions[i-1]),
+             compact:html.includes('id="mapStyleDetails"')&&html.includes('id="basemapSelect"'),
+             originalStatus:html.includes('id="significantRainfallStatus"')&&html.includes('id="officialBomWarningsStatus"'),
+             cyclone:html.includes('id="cycloneForecastQaPanel"')&&html.includes('CURRENT BoM PRODUCTS ONLY'),
+             noQA:!html.includes('cycloneUseJasper')&&!html.includes('cycloneGmlFile'),
+             noExtra:!html.includes('id="situationalAwarenessDetails"'),
+             shortcuts:html.indexOf('id="openRoadLgaExplorer"')<positions[0]&&html.indexOf('id="openPowerOutageExplorer"')<positions[0]
+           };
+           console.log('PUBLISHED_V1035',JSON.stringify({attempt,checks}));
+           if(Object.values(checks).every(Boolean)){verified=true;break;}
+           await new Promise(r=>setTimeout(r,6000));
+          }
+          assert(verified,'Actual primary production site not publishing complete V10.2.35 UI');
+          console.log('PASS actual public four-section menu, live-only cyclone, original source statuses and compact map-style CSS');
+          NODE
+      - name: Install isolated Playwright core — use runner system Chrome
+        run: |
+          test -x /usr/bin/google-chrome
+          mkdir -p /tmp/stormtracker-v1035-browser
+          cd /tmp/stormtracker-v1035-browser
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.57.0
+      - name: Real phone and desktop browser operations, active-layer persistence and map-style geometry
+        shell: bash
+        run: |
+          cd /tmp/stormtracker-v1035-browser
+          cat > verify.mjs <<'NODE'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright-core';
+          const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',
+           headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader',
+            '--enable-webgl','--disable-dev-shm-usage']});
+          try{
+           for(const viewport of [{width:375,height:812},{width:430,height:900},{width:1366,height:850}]){
+            const page=await browser.newPage({viewport,
+             isMobile:viewport.width<700,hasTouch:viewport.width<700,
+             deviceScaleFactor:1});
+            const jsErrors=[];
+            page.on('pageerror',e=>jsErrors.push(String(e).slice(0,170)));
+            await page.goto('https://blakesmith-intel.github.io/StormTracker/?v1035-test='+Date.now(),
+             {waitUntil:'domcontentloaded',timeout:45000});
+            const frame=page.frameLocator('#liveFrame');
+            const ids=['radarStormAnalysisDetails','severeWeatherDetails',
+             'rainfallObservationsDetails','communityImpactsDetails'];
+            const menus=ids.map(id=>frame.locator('#'+id));
+            await menus[0].waitFor({state:'attached',timeout:70000});
+            for(const m of menus)assert.equal(await m.getAttribute('open'),null,
+             'Every major menu must default closed');
+            const headers=await Promise.all(menus.map(m=>m.locator('summary').first().textContent()));
+            console.log('LIVE_MENU_HEADERS',JSON.stringify({viewport,headers:headers.map(x=>x.trim())}));
+            assert(headers[0].includes('Radar')&&headers[1].includes('Severe Weather')&&
+             headers[2].includes('Rainfall Observations')&&headers[3].includes('Community Impacts'));
+            assert(await frame.locator('#openPowerOutageExplorer').isVisible());
+            assert(await frame.locator('#openRoadLgaExplorer').isVisible());
+            // Radar: original controls available on FIRST expansion; optional sliders folded.
+            await menus[0].locator('summary').first().click({force:true});
+            assert(await frame.locator('#loadHybridButton').isVisible());
+            assert(await frame.locator('#trackDisplayFilter').isVisible());
+            const appearance=frame.locator('#radarDisplayAppearanceDetails');
+            assert.equal(await appearance.getAttribute('open'),null);
+            assert.equal(await frame.locator('#radarOpacity').isVisible(),false);
+            await appearance.locator('summary').first().click({force:true});
+            assert(await frame.locator('#radarOpacity').isVisible());
+            assert(await frame.locator('#volumeOpacity').isVisible());
+            await appearance.locator('summary').first().click({force:true});
+            // Severe: source status and genuine four IDQ choices; flood legend folded.
+            await menus[1].locator('summary').first().click({force:true});
+            assert(await frame.locator('#officialBomWarningProduct').isVisible());
+            assert(await frame.locator('#officialBomWarningsStatus').isVisible());
+            assert.equal(await frame.locator('#officialBomWarningProduct option').count(),5);
+            assert(await frame.locator('#openCycloneForecastQa').isVisible());
+            const floodLegend=frame.locator('#floodGaugeLegendDetails');
+            assert.equal(await floodLegend.getAttribute('open'),null);
+            await floodLegend.locator('summary').first().click({force:true});
+            assert(await frame.locator('#riverGaugeSeverityLegend').isVisible());
+            await floodLegend.locator('summary').first().click({force:true});
+            // Rain: original period, source status and two report actions visible.
+            await menus[2].locator('summary').first().click({force:true});
+            assert(await frame.locator('#showSignificantRainfall').isVisible());
+            assert(await frame.locator('#significantRainfallPeriod').isVisible());
+            assert(await frame.locator('#significantRainfallStatus').isVisible());
+            assert(await frame.locator('#openRainfallTotalsReport').isVisible());
+            assert(await frame.locator('#openRainfallAepReport').isVisible());
+            const rarity=frame.locator('.significant-rainfall-details');
+            assert.equal(await rarity.getAttribute('open'),null);
+            await rarity.locator('summary').first().click({force:true});
+            assert(await frame.getByText('How unusual is it here?').isVisible());
+            await rarity.locator('summary').first().click({force:true});
+            // Community: toggling original QLDTraffic layer persists across menu collapse.
+            await menus[3].locator('summary').first().click({force:true});
+            const road=frame.locator('#showFloodRoadClosures');
+            await road.waitFor({state:'visible',timeout:10000});
+            assert.equal(await road.isChecked(),false);
+            await road.check({force:true});
+            assert(await road.isChecked(),'Layer must turn on via its original checkbox');
+            await menus[3].locator('summary').first().click({force:true});
+            assert.equal(await menus[3].getAttribute('open'),null);
+            assert(await road.isChecked(),'Closing Community Impacts must not turn off the layer');
+            await menus[3].locator('summary').first().click({force:true});
+            assert(await road.isChecked(),'Reopening keeps the exact previous layer state');
+            await road.uncheck({force:true});
+            // Map: original basemap control moved, not copied. Check map nav and
+            // five responsive controls do not overlap on narrow devices.
+            const nav=frame.locator('#nav');
+            const geometry=await nav.evaluate(el=>{
+             const box=el.getBoundingClientRect();
+             const ids=['sidebarToggle','radarSite','multiRadarSelectButton','mapStyleDetails','resetButton'];
+             const rects=ids.map(id=>{
+              const r=el.querySelector('#'+id)?.getBoundingClientRect();
+              return r?{id,x:r.x,right:r.right,y:r.y,top:r.top,bottom:r.bottom,width:r.width}:null;
+             });
+             return {box:{left:box.left,right:box.right,width:box.width},
+              innerWidth:innerWidth,rects};
+            });
+            console.log('MAP_TOOLBAR_GEOMETRY',JSON.stringify({viewport,geometry}));
+            assert(geometry.rects.every(Boolean),'Original radar/nav controls must remain');
+            assert(geometry.rects.every(r=>r.width>20&&r.x>=-1&&r.right<=viewport.width+2),
+             'No map toolbar control may extend beyond the phone viewport');
+            if(viewport.width<=430){
+             for(let i=1;i<geometry.rects.length;i++)
+              assert(geometry.rects[i-1].right<=geometry.rects[i].x+3,
+               'Mobile radar/navigation buttons overlap');
+            }
+            const mapStyle=frame.locator('#mapStyleDetails');
+            assert(await mapStyle.locator('summary').first().isVisible());
+            await mapStyle.locator('summary').first().click({force:true});
+            const basemap=frame.locator('#basemapSelect');
+            await basemap.waitFor({state:'visible',timeout:10000});
+            assert.equal(await basemap.count(),1);
+            assert.deepEqual(await basemap.locator('option').evaluateAll(a=>a.map(x=>x.value)),
+             ['street','qld-imagery']);
+            const mapPanel=frame.locator('#mapPanel');
+            const popup=await frame.locator('#mapStyleDetails .map-style-content').evaluate(e=>{
+             const r=e.getBoundingClientRect();
+             return {x:r.x,right:r.right,width:r.width,viewport:innerWidth,position:getComputedStyle(e).position};
+            });
+            assert(popup.x>=-2&&popup.right<=popup.viewport+2,
+             'Map style selector must remain within map viewport');
+            // Re-select current value through the ORIGINAL basemap manager.
+            const current=await basemap.inputValue();
+            await basemap.selectOption(current);
+            assert.equal(await basemap.inputValue(),current);
+            await mapStyle.locator('summary').first().click({force:true});
+            assert.equal(await basemap.isVisible(),false);
+            // Two main menus may be open together, and nothing auto-collapses.
+            assert.notEqual(await menus[0].getAttribute('open'),null);
+            assert.notEqual(await menus[1].getAttribute('open'),null);
+            assert.notEqual(await menus[2].getAttribute('open'),null);
+            assert.notEqual(await menus[3].getAttribute('open'),null);
+            console.log('REAL_BROWSER_PASS',JSON.stringify({
+             viewport,allFourCanStayOpen:true,originalControls:true,
+             mappedLayerPersistsAfterMenuCollapse:true,basemapOriginalSelect:true,
+             noToolbarOverlap:true,jsErrors}));
+            await page.close();
+           }
+          }finally{await browser.close();}
+          NODE
+          node verify.mjs

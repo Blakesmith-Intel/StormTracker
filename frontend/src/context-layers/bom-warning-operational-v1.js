@@ -86,9 +86,10 @@ export function describeOfficialBomWarningState({products={},warnings=[],selecte
    PRODUCT_FILTERS.includes(selected)?[selected]:[];
  const status=code=>products?.[code]?.status??"unavailable";
  const total=filterOfficialWarnings(warnings,selected).length;
- const active=codes.filter(code=>["active","geometry-unavailable"].includes(status(code)));
+ const confirmedActiveStatus=["active","geometry-unavailable","listed-active"];
+ const active=codes.filter(code=>confirmedActiveStatus.includes(status(code)));
  const uncertain=codes.filter(code=>!isConfirmedClear(status(code))&&
-   !["active","geometry-unavailable"].includes(status(code)));
+   !confirmedActiveStatus.includes(status(code)));
  const clear=codes.filter(code=>isConfirmedClear(status(code)));
  const countFor=code=>filterOfficialWarnings(warnings,code).length;
  if(!codes.length)return {message:"Warning product unavailable",kind:"warning"};
@@ -99,15 +100,19 @@ export function describeOfficialBomWarningState({products={},warnings=[],selecte
    const compact=hazards.length?" · HIGH-END: "+hazards.slice(0,2).join(" + ")+
     (hazards.length>2?" +"+(hazards.length-2):""):"";
    // Regional IDQ21033 has only a warning AREA, not individually tracked cells.
-   return warningName(code)+(status(code)==="geometry-unavailable"||!count?
-     " — active; polygon unavailable":" — active ("+count+" polygon"+(count===1?"":"s")+")")+compact;
+   const spatial=status(code)==="listed-active"?
+     " — current in BoM listing; polygon awaiting verification":
+     status(code)==="geometry-unavailable"||!count?
+     " — active; awaiting updated BoM polygon":
+     " — active ("+count+" polygon"+(count===1?"":"s")+")";
+   return warningName(code)+spatial+compact;
   });
   const message="Active BoM warnings: "+parts.join(" · ")+
     (selected==="all"&&clear.length?
      " · "+clear.map(code=>code+": none current").join(" · "):"")+
     (uncertain.length?" · Other products not verified":"");
   return {message,kind:uncertain.length||
-    active.some(code=>status(code)==="geometry-unavailable"||!countFor(code))?"warning":"normal"};
+    active.some(code=>["geometry-unavailable","listed-active"].includes(status(code))||!countFor(code))?"warning":"normal"};
  }
  if(selected!=="all"&&clear.length)
   return {message:"No current warnings — "+warningName(selected),kind:"normal"};
@@ -314,8 +319,12 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    const count=document.createElement("p");
    count.textContent=sourceStatus==="unavailable"||productStatus==="unavailable"?
      "Warning verification unavailable — not an all-clear":
+     productStatus==="listed-active"?
+       "CURRENT warning in official Queensland list — bulletin and original polygon awaiting verification":
      productStatus==="geometry-unavailable"?
-       "ACTIVE BoM warning confirmed — genuine polygon geometry unavailable; LDMG/DDMG intersections cannot be calculated":
+       "CURRENT BoM warning — updated source polygon not yet available; LDMG/DDMG intersections cannot be calculated":
+     productStatus==="no-active"?
+       "No current warnings for this product — confirmed by the BoM current warnings index or latest official notice":
      productStatus==="cancelled"?
        "Cancelled by BoM · 0 active polygons":
        result.count+" active verified polygon"+(result.count===1?"":"s");

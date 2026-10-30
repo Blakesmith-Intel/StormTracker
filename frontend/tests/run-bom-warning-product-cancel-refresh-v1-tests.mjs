@@ -88,7 +88,7 @@ assert(!/^No current/.test(allUnavailable.message),"Network failure cannot mean 
 assert.equal(allUnavailable.kind,"warning");
 assert.match(describeOfficialBomWarningState({
  products:{...noneThunder,IDQ21033:{status:"geometry-unavailable"}},
- selected:"all"}).message,/Active BoM warnings: IDQ21033.*polygon unavailable/i);
+ selected:"all"}).message,/Active BoM warnings: IDQ21033.*awaiting updated BoM polygon/i);
 assert.match(describeOfficialBomWarningState({
  products:{...noneThunder,IDQ21033:{status:"active",count:2}},
  warnings:[official("IDQ21033"),{...official("IDQ21033"),id:"regional2"}]}).message,

@@ -1,8 +1,10 @@
-# StormTracker — active wishlist after V10.2.30 official hazard terminology
+# StormTracker — active wishlist after V10.2.31 verified BoM current-warning negative reporting
 
 **Status: 30 October 2026.** The original warning-area wishlist item is marked **COMPLETE**, sealed as V10.2.29; the follow-up V10.2.30 terminology and compact cell marker presentation is subject to production verification. The underlying V10.2.0 radar/science baseline and previous frozen references remain unchanged. [Current operator guide](OPERATOR_GUIDE_CURRENT.md) · [V10.2.29 release notes](RELEASE_NOTES_V10.2.29.md) · [Development handover](DEVELOPMENT_HANDOVER_CURRENT.md).
 
 ## Delivered and frozen — no unrequested tinkering
+
+- **[x] Verified per-product no-current warning reporting (V10.2.31):** Official time-stamped Queensland current-warnings summary independently confirms that a product is not current, including IDQ21035, even when WMO historical CAP samples are truncated. Active warnings remain active while original GIS polygons are publishing; source failures remain unverified rather than an invented all-clear. Observed intense rain cannot escalate a heavy-rainfall warning without an actual forecast/source-coded high-end hazard.
 
 - Authentic native BoM reflectivity/rain radar, multi-radar Doppler, inferred 3-D and operational track/cone workflows remain as accepted.
 - QLD flood signals, rapid-rise, crossing levels, rainfall IFD/AEP, agency timestamps, roads, outages and QFD incidents, with their existing reports, are preserved.

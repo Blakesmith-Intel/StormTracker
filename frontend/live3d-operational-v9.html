@@ -74,7 +74,7 @@
     </section>
     <section class="card layer-controls"><h2 class="section-title">◫ Layers</h2>
       <div class="layer-row cyclone-forecast-row"><button id="openCycloneForecastQa" type="button" aria-controls="cycloneForecastQaPanel" aria-expanded="false">🌀 Cyclones</button></div>
-      <div class="layer-row official-bom-warnings-row"><label><input id="showOfficialBomWarnings" type="checkbox"> BoM severe warnings</label><button id="refreshOfficialBomWarnings" type="button" aria-label="Refresh BoM warning polygons" title="Refresh official BoM warning polygons">↻</button></div>
+      <div class="layer-row official-bom-warnings-row"><label><input id="showOfficialBomWarnings" type="checkbox"> BoM severe warnings</label><button id="locateOfficialBomWarnings" type="button" hidden aria-label="Locate active BoM warning on map" title="Fly to the actual issued warning polygon">Locate</button><button id="refreshOfficialBomWarnings" type="button" aria-label="Refresh BoM warning polygons" title="Refresh official BoM warning polygons">↻</button></div>
       <div class="layer-row official-bom-warnings-filter"><label for="officialBomWarningProduct">Warning product</label>
         <select id="officialBomWarningProduct" aria-label="Filter official BoM warning polygons by product">
           <option value="all" selected>All warnings</option>
@@ -294,7 +294,9 @@
 <style>
 .official-bom-warnings-row{display:flex;align-items:center;gap:6px}
 .official-bom-warnings-row label{flex:1 1 auto;font-size:12px}
-.official-bom-warnings-row button{flex:0 0 29px;padding:3px;font-size:16px}
+.official-bom-warnings-row #refreshOfficialBomWarnings{flex:0 0 29px;padding:3px;font-size:16px}
+.official-bom-warnings-row #locateOfficialBomWarnings{flex:0 0 auto;padding:4px 9px;font-size:11px;min-height:29px}
+.official-bom-warnings-row #locateOfficialBomWarnings[hidden]{display:none!important}
 .official-bom-warnings-status{font-size:10px;line-height:1.35;padding:0 3px 0 22px;overflow-wrap:anywhere}
 .official-bom-warnings-status[data-kind="error"]{color:#f2ab9f}
 .official-bom-warnings-status[data-kind="warning"]{color:#f2d39d}

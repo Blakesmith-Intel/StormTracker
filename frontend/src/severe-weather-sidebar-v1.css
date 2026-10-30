@@ -127,3 +127,57 @@ body.simple-ui #controlSidebar .layer-controls > .section-title {
   body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-content {gap:7px;}
   body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-group {padding-top:6px;}
 }
+
+/* V10.2.34: Sit Awareness Data uses the same native closed-by-default
+   disclosure pattern as Severe Weather. No layer toggle or handler changes. */
+body.simple-ui #controlSidebar #situationalAwarenessDetails {
+  display:block!important;
+  min-width:0;
+  flex:0 0 auto;
+  padding:6px 10px;
+  border:1px solid #385267;
+  border-radius:13px;
+  background:#172838;
+}
+body.simple-ui #controlSidebar #situationalAwarenessDetails > summary.section-title {
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:34px;
+  margin:0!important;
+  padding:2px 3px;
+  list-style:none;
+  cursor:pointer;
+  font-size:14px;
+  color:#f0fbff;
+  font-weight:750;
+}
+body.simple-ui #controlSidebar #situationalAwarenessDetails > summary::-webkit-details-marker {
+  display:none;
+}
+body.simple-ui #controlSidebar #situationalAwarenessDetails > summary::after {
+  content:"Show";
+  flex:0 0 auto;
+  font-size:11px;
+  font-weight:600;
+  color:#adccde;
+}
+body.simple-ui #controlSidebar #situationalAwarenessDetails[open] > summary::after {
+  content:"Hide";
+}
+body.simple-ui #controlSidebar #situationalAwarenessDetails:not([open]) > :not(summary) {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #situationalAwarenessDetails[open] > summary {
+  margin-bottom:8px!important;
+}
+@media(max-width:700px) {
+  body.simple-ui #controlSidebar #situationalAwarenessDetails {
+    padding:6px 8px;
+  }
+  body.simple-ui #controlSidebar #situationalAwarenessDetails > summary.section-title {
+    font-size:13px;
+    min-height:31px;
+  }
+}

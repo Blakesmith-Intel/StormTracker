@@ -24,6 +24,19 @@ export function warningContainsPoint(geometry,longitude,latitude){
  }
  return inside;
 }
+// A label should sit WITHIN the authentic storm location, not at the first
+// vertex or on an invented path. For concave shapes retain a source vertex.
+export function officialStormCellLabelPoint(geometry){
+ const ring=(geometry?.type==="Polygon"?geometry.coordinates?.[0]:
+  geometry?.type==="MultiPolygon"?geometry.coordinates?.[0]?.[0]:null);
+ if(!ring?.length)return null;
+ const length=ring.length>1&&ring[0][0]===ring.at(-1)[0]&&
+  ring[0][1]===ring.at(-1)[1]?ring.length-1:ring.length;
+ if(length<3)return null;
+ const lon=ring.slice(0,length).reduce((a,p)=>a+p[0],0)/length;
+ const lat=ring.slice(0,length).reduce((a,p)=>a+p[1],0)/length;
+ return warningContainsPoint(geometry,lon,lat)?[lon,lat]:ring[0].slice(0,2);
+}
 export function createWarningImageryProvider(CesiumRef,warnings){
  const tilingScheme=new CesiumRef.GeographicTilingScheme({
   rectangle:CesiumRef.Rectangle.fromDegrees(...WARNING_RECTANGLE),
@@ -54,29 +67,36 @@ export function createWarningImageryProvider(CesiumRef,warnings){
    }
    if(!has)continue;
    c.fillStyle=style[0];c.fill("evenodd");
-   c.strokeStyle=style[1];c.lineWidth=entry.type==="severe-thunderstorm-cell"?3:2;c.stroke();
+   c.strokeStyle=entry.productCode==="IDQ21033"&&
+    entry.hazardAssessment?.highEnd?.length?"#d94650":style[1];
+   c.lineWidth=entry.type==="severe-thunderstorm-cell"?2.5:2;c.stroke();
    // A map callout is permitted ONLY for an individual IDQ65652 feature
    // whose OWN published text explicitly identifies it as VERY DANGEROUS.
    // The general CAP bulletin or IDQ65650 threat area never assigns the
    // dangerous label to an individual cell.
    if(entry.type==="severe-thunderstorm-cell"&&entry.sourceProduct==="IDQ65652"&&
-      entry.veryDangerous===true&&level>=2){
-    const first=rings[0]?.[0],anchorLon=first?.[0]/rad,anchorLat=first?.[1]/rad;
+      entry.veryDangerous===true&&level>=3){
+    const point=officialStormCellLabelPoint(entry.geometry);
+    const anchorLon=point?.[0]/rad,anchorLat=point?.[1]/rad;
     if(Number.isFinite(anchorLon)&&Number.isFinite(anchorLat)&&
        anchorLon>=rect.west&&anchorLon<=rect.east&&
        anchorLat>=rect.south&&anchorLat<=rect.north){
      const x0=((anchorLon-rect.west)/w)*tileWidth;
      const y0=((rect.north-anchorLat)/h)*tileHeight;
-     const message="VERY DANGEROUS";
+     // Small self-contained red pill, no BoM-style leader lines or huge
+     // alert boxes. At broad zoom show VD to limit tile overlap.
+     const message=level>=6?"VERY DANGEROUS":"VD";
      if(typeof c.fillText==="function"){
-      c.font="bold 12px system-ui, sans-serif";
-      const tw=c.measureText?.(message)?.width??114;
-      c.fillStyle="#580e11";
-      c.fillRect?.(x0-2,y0-18,tw+12,22);
+      c.font=level>=6?"bold 11px system-ui, sans-serif":"bold 12px system-ui, sans-serif";
+      const tw=c.measureText?.(message)?.width??(level>=6?105:18);
+      const pillWidth=tw+16,pillHeight=20;
+      const left=x0-pillWidth/2,top=y0-pillHeight/2;
+      c.fillStyle="#870c23";
+      c.fillRect?.(left,top,pillWidth,pillHeight);
       c.strokeStyle="#fff4e7";c.lineWidth=1;
-      c.strokeRect?.(x0-2,y0-18,tw+12,22);
+      c.strokeRect?.(left,top,pillWidth,pillHeight);
       c.fillStyle="#ffffff";
-      c.fillText(message,x0+4,y0-3);
+      c.fillText(message,left+8,top+14);
      }
     }
    }

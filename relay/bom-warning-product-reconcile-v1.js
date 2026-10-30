@@ -2,6 +2,7 @@
 // refresh produces one atomic replacement. A newer CAP Cancel always
 // supersedes older warning geometry; a revised warning supersedes its old shape.
 import {QLD_WARNING_PRODUCTS} from "../frontend/src/context-layers/bom-qld-warning-product-catalogue-v1.js";
+import {classifyPublishedBoMThunderstormHazards} from "../frontend/src/context-layers/bom-warning-hazard-terms-v1.js";
 
 export const WATCHED_QLD_PRODUCT_CODES=Object.freeze(Object.keys(QLD_WARNING_PRODUCTS));
 const validMs=x=>typeof x==="string"&&Number.isFinite(Date.parse(x))?Date.parse(x):NaN;
@@ -14,7 +15,11 @@ const stateRow=(status,notice=null,count=0)=>({
   description:notice?.description??"",
   instruction:notice?.instruction??"",
   areaDescription:notice?.areaDescription??"",
-  bulletinUrl:notice?.bulletinUrl??""
+  bulletinUrl:notice?.bulletinUrl??"",
+  // Preserve official high-end wording even when the issued bulletin has no
+  // verifiable polygon. Never turn warning text into tracked cell features.
+  hazardAssessment:notice&&["IDQ21033","IDQ21035"].includes(notice.productCode)
+   ?classifyPublishedBoMThunderstormHazards(notice):null
 });
 export function reconcileLatestBoMWarnings(messages,{complete=true,nowMs=Date.now()}={}){
   const candidates=new Map();

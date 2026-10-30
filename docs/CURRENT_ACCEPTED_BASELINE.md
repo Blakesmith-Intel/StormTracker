@@ -1,3 +1,8 @@
+# V10.2.31 verified current warning statuses — 30 October 2026
+
+This additive warning-only maintenance fix uses the authoritative BoM Queensland current-warnings summary to report **No current warnings** for individually verified absent products even when WMO CAP history is truncated. It preserves separate active and polygon-pending states, accurate source timestamps, false all-clear safeguards, and standard/high-end distinction between warned phenomena and retrospective observations. The immutable V10.2.30 warning scientific and operational baseline remains unchanged. [Operator guide](OPERATOR_GUIDE_CURRENT.md) · [Release notes](RELEASE_NOTES_V10.2.31.md) · [Wishlist](ACTIVE_WISHLIST.md).
+
+---
 # Current StormTracker V10.2.29 warning capability — 30 October 2026
 
 **Production warning polygon baseline (pending final public release seal):** See [V10.2.29 release notes](RELEASE_NOTES_V10.2.29.md), [operator guide](OPERATOR_GUIDE_CURRENT.md) and [active wishlist](ACTIVE_WISHLIST.md). Source-issued IDQ21033 regional, IDQ21035 detailed threat geometry, authentic geometry lifecycle, over-satellite/under-radar rendering, stateful camera-controller Locate, and tap-to-open existing LDMG/DDMG report are additive and do not alter the accepted V10.2.0 radar science and V10.2.24 hydrology/IFD stack. The separately designated official IDQ65652 detailed storm-location source is preconfigured with source-specific VERY DANGEROUS labels, but live IDQ65652 cells were not available at audit time; per-cell live acceptance remains open, not marked operationally proven. Every earlier sealed version remains unchanged.

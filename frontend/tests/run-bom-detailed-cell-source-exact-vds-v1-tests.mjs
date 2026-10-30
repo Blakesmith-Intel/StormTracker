@@ -49,4 +49,44 @@ assert(ui.includes('sourceProduct==="IDQ65652"'));
 assert(ui.includes('stormCellSourceStatus==="source-verified"'));
 assert(img.includes('entry.veryDangerous===true&&level>=2'));
 assert(img.includes('entry.sourceProduct==="IDQ65652"'));
+
+const {createWarningImageryProvider}=await import("../src/context-layers/bom-warning-terrain-imagery-v1.js");
+const oldDoc=globalThis.document;
+const drawn=[];
+globalThis.document={createElement(name){
+ assert.equal(name,"canvas");
+ return {width:0,height:0,getContext(){
+  return {beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},stroke(){},
+   set fillStyle(_v){},set strokeStyle(_v){},set lineWidth(_v){},
+   set font(_v){},fillRect(){},strokeRect(){},measureText(){return {width:102}},
+   fillText(text){drawn.push(text)}};
+ }};
+}};
+const rad=Math.PI/180,rect={west:151*rad,east:154*rad,south:-29*rad,north:-26*rad};
+const mockCesium={
+ Rectangle:{fromDegrees(){return rect}},
+ GeographicTilingScheme:class{constructor(o){this.rectangle=o.rectangle;}
+  tileXYToRectangle(){return rect;}},
+ Credit:class{},Event:class{}
+};
+try{
+ const cellGeometry={type:"Polygon",coordinates:[[[152.3,-27.7],
+ [152.4,-27.7],[152.4,-27.6],[152.3,-27.6],[152.3,-27.7]]]};
+ const cell={type:"severe-thunderstorm-cell",sourceProduct:"IDQ65652",
+  geometry:cellGeometry,veryDangerous:true};
+ await createWarningImageryProvider(mockCesium,[cell]).requestImage(0,0,3);
+ assert.deepEqual(drawn,["VERY DANGEROUS"]);
+ drawn.length=0;
+ await createWarningImageryProvider(mockCesium,[{...cell,
+  sourceProduct:"IDQ65650"}]).requestImage(0,0,3);
+ assert.deepEqual(drawn,[],"Threat areas can never inherit cell callouts");
+ await createWarningImageryProvider(mockCesium,[{...cell,
+  veryDangerous:false}]).requestImage(0,0,3);
+ assert.deepEqual(drawn,[],"Unflagged neighbouring cell cannot inherit a VDS callout");
+}finally{
+ if(oldDoc===undefined)delete globalThis.document;
+ else globalThis.document=oldDoc;
+}
+console.log("PASS future source-only individual cell imagery labels with no VDS leakage into other warnings");
+
 console.log("PASS distinct detailed threat-area vs actual IDQ65652 cell geometry; source-verified per-cell VERY DANGEROUS attribution only, fail-closed expiry and independent source status");

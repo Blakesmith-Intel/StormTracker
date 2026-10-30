@@ -30,11 +30,11 @@ jobs:
           deploy="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41048552221/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion')"
           test "$deploy" = "success" || { echo "Pages deploy not successful"; exit 1; }
           html="$(curl -fsSL --max-time 20 'https://blakesmith-intel.github.io/StormTracker/live3d-operational-v9.html')"
-          echo "$html" | grep -Fq 'id="situationalAwarenessDetails"'
-          echo "$html" | grep -Fq '<summary class="section-title">◫ Situational Awareness Data</summary>'
-          echo "$html" | grep -Fq 'id="severeWeatherDetails"'
+          grep -Fq 'id="situationalAwarenessDetails"' <<< "$html"
+          grep -Fq '<summary class="section-title">◫ Situational Awareness Data</summary>' <<< "$html"
+          grep -Fq 'id="severeWeatherDetails"' <<< "$html"
           css="$(curl -fsSL --max-time 20 'https://blakesmith-intel.github.io/StormTracker/src/severe-weather-sidebar-v1.css')"
-          echo "$css" | grep -Fq '#situationalAwarenessDetails:not([open]) > :not(summary)'
+          grep -Fq '#situationalAwarenessDetails:not([open]) > :not(summary)' <<< "$css"
           existing_tag="$(git ls-remote origin 'refs/tags/v10.2.34^{}' | cut -f1)"
           existing_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.34' | cut -f1)"
           test -z "$existing_tag" || test "$existing_tag" = "$release_sha"

@@ -1,0 +1,77 @@
+name: QA actual Cesium warning layer visible in mobile browser
+on:
+  push:
+    branches:
+      - fix/bom-warning-visible-above-satellite-locate-20261030
+    paths:
+      - .github/workflows/qa-real-cesium-warning-visibility-20261030.yml
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated browser QA dependencies
+        run: |
+          mkdir -p /tmp/warning-qa
+          cd /tmp/warning-qa
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.57.0 pngjs@7.0.0
+          command -v google-chrome || true
+          command -v chromium || true
+      - name: Check ACTUAL mobile Cesium pixels after warning and Locate
+        shell: bash
+        run: |
+          cd /tmp/warning-qa
+          cat > check.mjs <<'NODE'
+          import {chromium} from 'playwright-core';
+          import {PNG} from 'pngjs';
+          const bin='/usr/bin/google-chrome';
+          const browser=await chromium.launch({executablePath:bin,headless:true,
+            args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--disable-dev-shm-usage']});
+          let page;
+          try{
+            page=await browser.newPage({viewport:{width:430,height:900},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+            page.on('pageerror',e=>console.log('BROWSER_ERROR',String(e).slice(0,230)));
+            await page.goto('https://blakesmith-intel.github.io/StormTracker/?qa=visual-20261030',
+              {waitUntil:'domcontentloaded',timeout:35000});
+            const frame=page.frameLocator('#liveFrame');
+            const toggle=frame.locator('#showOfficialBomWarnings');
+            await toggle.waitFor({state:'attached',timeout:40000});
+            await toggle.check({force:true,timeout:10000});
+            await frame.locator('#officialBomWarningsStatus').getByText('active (1 polygon)',{exact:false})
+              .waitFor({state:'visible',timeout:60000});
+            const locate=frame.locator('#locateOfficialBomWarnings');
+            await locate.waitFor({state:'visible',timeout:10000});
+            console.log('REAL_BROWSER_ACTIVE',await frame.locator('#officialBomWarningsStatus').textContent());
+            await locate.click({force:true});
+            await page.waitForTimeout(5500);
+            const canvas=frame.locator('.cesium-widget canvas').first();
+            await canvas.waitFor({state:'visible',timeout:20000});
+            const active=PNG.sync.read(await canvas.screenshot({timeout:20000}));
+            await toggle.uncheck({force:true});
+            await page.waitForTimeout(1200);
+            const inactive=PNG.sync.read(await canvas.screenshot({timeout:20000}));
+            let diff=0,strong=0;
+            for(let i=0;i<active.data.length;i+=4){
+              const d=Math.abs(active.data[i]-inactive.data[i])+
+                Math.abs(active.data[i+1]-inactive.data[i+1])+
+                Math.abs(active.data[i+2]-inactive.data[i+2]);
+              if(d>27)diff++;
+              if(d>65)strong++;
+            }
+            console.log('REAL_BROWSER_DIFF',JSON.stringify({width:active.width,height:active.height,
+              pixels:active.width*active.height,changed:diff,stronglyChanged:strong}));
+            // Canvas imagery must genuinely change, not just counter/status/UI.
+            if(diff<500)throw Error('Warning geometry did not visibly alter the Cesium canvas');
+            console.log('PASS ACTUAL MOBILE CESIUM RENDER: official warning visibly changes map pixels');
+          }finally{
+            if(page)await page.close().catch(()=>{});
+            await browser.close();
+          }
+          NODE
+          node check.mjs

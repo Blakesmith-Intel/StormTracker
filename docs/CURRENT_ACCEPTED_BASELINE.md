@@ -1,3 +1,8 @@
+# V10.2.33 — approved severe-weather sidebar hierarchy (30 October 2026)
+
+User-approved UI-only release: separate expandable **Severe Weather** with the existing Flood signals/gauges, renamed BoM Severe Weather and Thunderstorm Warnings, and inline/current-only cyclone control; former **Layers** renamed **Situational Awareness Data**. Original operational element IDs, enabled defaults, data-source validation, cadence, and all radar/flood/AEP/outage/roads/cyclone source science remain unchanged. The frozen version is V10.2.32 until publication and tag acceptance of the new V10.2.33. [Operator guide](OPERATOR_GUIDE_CURRENT.md) · [Release notes](RELEASE_NOTES_V10.2.33.md) · [Wishlist](ACTIVE_WISHLIST.md).
+
+---
 # V10.2.32 four-product warnings menu — 30 October 2026
 
 Additive user-interface change to expose original monitored IDQ21035, IDQ21033, IDQ21037 and IDQ21038 separately in the BoM warning dropdown and LDMG/DDMG report, retaining distinct **No current warnings** confirmations per original product on the existing 15-minute refresh. See [operator guide](OPERATOR_GUIDE_CURRENT.md), [release notes](RELEASE_NOTES_V10.2.32.md) and [wishlist](ACTIVE_WISHLIST.md). Nothing alters pinned radar/3-D, original polygon source, CAP/GIS lifecycle, IFD/AEP, floods, traffic, outages or the stable camera.

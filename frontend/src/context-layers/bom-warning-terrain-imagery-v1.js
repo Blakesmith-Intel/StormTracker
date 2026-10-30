@@ -63,15 +63,17 @@ export function createWarningImageryProvider(CesiumRef,warnings){
   hasAlphaChannel:true,credit:new CesiumRef.Credit("Official Bureau of Meteorology warning areas"),
   ready:true,readyPromise:Promise.resolve(true),
   errorEvent:new CesiumRef.Event(),
-  requestImage(x,y,level){return image(x,y,level);},
+  // Cesium's imagery tile pipeline calls .then() on requestImage results.
+  // Returning a raw HTMLCanvasElement crashes the entire Cesium scene.
+  requestImage(x,y,level){return Promise.resolve(image(x,y,level));},
   pickFeatures(x,y,level,lon,lat){
    const found=warnings.filter(a=>warningContainsPoint(a.geometry,lon*rad,lat*rad));
-   return found.map(a=>{
+   return Promise.resolve(found.map(a=>{
     const item=new CesiumRef.ImageryLayerFeatureInfo();
     item.name=a.headline||a.event;item.data=a;
     item.position=CesiumRef.Cartographic.fromRadians(lon,lat);
     return item;
-   });
+   }));
   }
  };
  return provider;

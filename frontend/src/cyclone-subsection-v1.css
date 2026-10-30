@@ -1,0 +1,165 @@
+/* V10.2.36 original BoM live cyclone panel — UI only.
+   Warning and flood group typography/padding are the visual baseline.
+   No source, map/forecast, data-processing or refreshing changes. */
+body.simple-ui #controlSidebar #severeWeatherDetails .severe-weather-cyclones {
+  min-width:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-forecast-row {
+  display:flex!important;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  min-height:34px;
+  margin:0;
+  padding:0;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-subsection-heading {
+  color:#e7f5fc;
+  font-size:12px;
+  font-weight:750;
+  line-height:1.35;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa {
+  display:inline-flex!important;
+  width:auto!important;
+  max-width:100%;
+  flex:0 0 auto;
+  padding:5px 9px!important;
+  min-height:30px;
+  text-align:center!important;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  border:1px solid #507186;
+  background:#1a384b;
+  color:#e8f7ff;
+  font-size:11px;
+  font-weight:650;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa[aria-expanded="true"] {
+  border-color:#78a8c4;
+  background:#24495d;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa::after {
+  content:" ▾";
+  margin-left:5px;
+  float:none!important;
+  font-size:11px;
+  color:#bddce9;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #openCycloneForecastQa[aria-expanded="true"]::after {
+  content:" ▴";
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneCurrentOverview {
+  min-width:0;
+  margin-top:5px;
+  display:grid;
+  gap:5px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneCurrentOverview > label {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:7px;
+  min-height:29px;
+  margin:0;
+  color:#e6f5fb;
+  font-size:12px!important;
+  line-height:1.4;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneCurrentOverview input[type="checkbox"] {
+  flex:0 0 auto;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneCurrentOverview #internalCycloneQaStatus {
+  margin:3px 0 0!important;
+  padding:6px 8px;
+  border:1px solid #37596d;
+  border-radius:7px;
+  background:#102d3d;
+  font-size:11px!important;
+  line-height:1.4;
+  color:#cfeaf7;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel {
+  position:static!important;
+  display:block;
+  margin:8px 0 0!important;
+  padding:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  max-height:none!important;
+  overflow:visible!important;
+  border:1px solid #38596d!important;
+  border-radius:9px;
+  background:#112939!important;
+  box-shadow:none!important;
+  box-sizing:border-box;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel[hidden] {
+  display:none!important;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel > header {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:5px;
+  padding:0 0 5px;
+  border-bottom:1px solid #34566a;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel > header strong {
+  font-size:11px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel > header small {
+  display:block;
+  color:#b4cad5;
+  font-size:10px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #cycloneOperationalClose {
+  margin-left:auto;
+  min-width:55px;
+  min-height:28px;
+  padding:4px 8px;
+  background:#19394c;
+  border:1px solid #52748a;
+  border-radius:6px;
+  font-size:11px;
+  color:#e6f5fc;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa {
+  box-sizing:border-box;
+  max-width:100%;
+  min-width:0;
+  margin:5px 0 0!important;
+  padding:4px 0 0!important;
+  border:0!important;
+  background:transparent!important;
+  line-height:1.4;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > strong:first-child {
+  display:none; /* The source panel already has a visible heading. */
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > p {
+  overflow-wrap:anywhere;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa select {
+  max-width:100%;
+  box-sizing:border-box;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > div > button {
+  min-height:31px;
+  border-radius:7px;
+  font-size:11px;
+}
+@media (max-width:700px) {
+  body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-subsection-heading {
+    font-size:12px;
+  }
+  body.simple-ui #controlSidebar #severeWeatherDetails #cycloneForecastQaPanel {
+    padding:7px!important;
+  }
+}

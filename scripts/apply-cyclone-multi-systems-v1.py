@@ -149,6 +149,21 @@ def update(code):
   }
   focus.addEventListener("click",()=>focusStorm(currentStorm()));''',
         'preserve original Focus cyclone button')
+    # Negative reporting is normal when the complete current source says zero.
+    # A missing forecast-track endpoint is a different state and must never
+    # masquerade as an official cyclone warning all-clear.
+    code=once(code,
+        '?"Currently no tropical cyclone warnings"',
+        '?"No current warnings"',
+        'verified empty cyclone product display')
+    code=once(code,
+        ':"Unable to verify current tropical cyclone warnings. Check BoM directly.";',
+        ':"Cyclone forecast feed unavailable — warning status not checked. Check BoM.";',
+        'unverified manifest status display')
+    code=once(code,
+        'status.textContent="Unable to verify current tropical cyclone warnings. Check BoM directly.\\n"+',
+        'status.textContent="Cyclone forecast feed unavailable — warning status not checked. Check BoM.\\n"+',
+        'failed network/source status display')
     for id in (
         'toggle.id="internalCycloneLiveToggle"',
         'select.id="internalCycloneSelectedSystem"',

@@ -1,0 +1,55 @@
+name: Seal V10.2.34 after primary website and mobile/desktop acceptance
+on:
+  push:
+    branches: [qa/v10.2.34-situational-awareness-public]
+    paths: [.github/workflows/seal-v10.2.34-after-qa.yml]
+permissions: {contents: write}
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Create immutable V10.2.34 tag and recovery branch only after live acceptance
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="295c4f5a66f2e051a10b2a30105aa55ed8d06865"
+          main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$main" = "$release_sha" || { echo "Main moved: refusing to tag a different production version"; exit 1; }
+          git fetch origin "$release_sha" --quiet
+          git cat-file -e "$release_sha:docs/RELEASE_NOTES_V10.2.34.md"
+          old_tag="$(git ls-remote origin 'refs/tags/v10.2.33^{}' | cut -f1)"
+          old_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.33' | cut -f1)"
+          test -n "$old_tag" && test "$old_tag" = "$old_restore" || { echo "Previous release pair inconsistent"; exit 1; }
+          quality="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41048982859" --jq .conclusion)"
+          test "$quality" = "success" || { echo "Mobile/Desktop production acceptance is not green"; exit 1; }
+          deploy="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41048552221/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion')"
+          test "$deploy" = "success" || { echo "Pages deploy not successful"; exit 1; }
+          html="$(curl -fsSL --max-time 20 'https://blakesmith-intel.github.io/StormTracker/live3d-operational-v9.html')"
+          echo "$html" | grep -Fq 'id="situationalAwarenessDetails"'
+          echo "$html" | grep -Fq '<summary class="section-title">◫ Situational Awareness Data</summary>'
+          echo "$html" | grep -Fq 'id="severeWeatherDetails"'
+          css="$(curl -fsSL --max-time 20 'https://blakesmith-intel.github.io/StormTracker/src/severe-weather-sidebar-v1.css')"
+          echo "$css" | grep -Fq '#situationalAwarenessDetails:not([open]) > :not(summary)'
+          existing_tag="$(git ls-remote origin 'refs/tags/v10.2.34^{}' | cut -f1)"
+          existing_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.34' | cut -f1)"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/restore/v10.2.34" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            tagsha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="v10.2.34" -f type="commit" -f object="$release_sha" \
+              -f message="StormTracker V10.2.34 — independent collapsible Situational Awareness Data on preserved V10.2.33 severe weather interface; verified mobile/desktop and primary Pages" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/v10.2.34" -f sha="$tagsha" >/dev/null
+          fi
+          test "$(git ls-remote origin 'refs/tags/v10.2.34^{}' | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin 'refs/heads/restore/v10.2.34' | cut -f1)" = "$release_sha"
+          echo "SEALED v10.2.34 and restore/v10.2.34 at $release_sha; all previous frozen tags untouched"

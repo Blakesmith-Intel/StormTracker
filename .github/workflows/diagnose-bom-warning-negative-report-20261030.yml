@@ -1,0 +1,63 @@
+name: Diagnose live BoM warning negative reporting 30 Oct 2026
+on:
+  push:
+    branches: [fix/bom-warning-clear-status-and-current-issue-20261030]
+    paths: [.github/workflows/diagnose-bom-warning-negative-report-20261030.yml]
+permissions: {contents: read}
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Live relay and official warnings source checks
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const paths={
+           relay:'https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons',
+           rss:'https://severeweather.wmo.int/v2/cap-alerts/au-bom-en/rss.xml',
+           bomQld:'https://www.bom.gov.au/qld/warnings.shtml',
+           bomCurrent:'https://www.bom.gov.au/weather-and-climate/warnings-and-alerts?stateName=Queensland',
+           bomRss:'https://www.bom.gov.au/rss/IDQ21033.xml',
+           warning33:'https://www.bom.gov.au/warning/severe-thunderstorm-warning/IDQ21033',
+           warning35:'https://www.bom.gov.au/warning/severe-thunderstorm-warning/IDQ21035'
+          };
+          const get=async url=>{
+           const res=await fetch(url,{signal:AbortSignal.timeout(25000),headers:{'User-Agent':'StormTracker-operational-source-audit/1.0','Accept':'application/json,text/html,application/xml,text/xml,text/plain'}});
+           return {http:res.status,url:res.url,body:await res.text()};
+          };
+          const r={};
+          await Promise.all(Object.entries(paths).map(async([key,url])=>{
+           try{r[key]=await get(url);
+            console.log('ENDPOINT',JSON.stringify({key,http:r[key].http,bytes:r[key].body.length,finalUrl:r[key].url,
+             index33:r[key].body.toUpperCase().indexOf('IDQ21033'),index35:r[key].body.toUpperCase().indexOf('IDQ21035'),
+             snippet:key==='bomQld'?r[key].body.slice(Math.max(0,r[key].body.indexOf('IDQ21033')-100),Math.max(0,r[key].body.indexOf('IDQ21033')-100)+500):undefined}));
+           }catch(e){console.log('ERROR',key,String(e))}
+          }));
+          if(r.relay?.http===200){
+           const j=JSON.parse(r.relay.body);
+           console.log('RELAY_PRODUCTS',JSON.stringify({now:new Date().toISOString(),checked:j.checkedAt,status:j.status,
+             sourceComplete:j.sourceComplete,sourceFailures:j.sourceFailures,gisFailures:j.gisFailures,
+             products:j.products,
+             warnings:j.warnings?.map(w=>({id:w.id,code:w.productCode,issued:w.issuedUtc,expires:w.expiresUtc,source:w.sourceProduct}))
+           }).slice(0,14000));
+          }
+          if(r.rss?.http===200){
+           const xml=r.rss.body;
+           const items=[...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)];
+           const tag=(str,name)=>(str.match(new RegExp('<'+name+'[^>]*>([\\s\\S]*?)<\\/'+name+'>','i'))?.[1]||'').replace(/<!\[CDATA\[|\]\]>/g,'').trim();
+           const relevant=items.filter(x=>/severe\s+(?:thunderstorm|weather)/i.test(x[0]));
+           console.log('RSS_SUMMARY',JSON.stringify({all:items.length,matching:relevant.length,first:relevant.slice(0,45).map(x=>({title:tag(x[0],'title').slice(0,125),pub:tag(x[0],'pubDate'),link:tag(x[0],'link')}))}).slice(0,19000));
+          }
+          const arc='https://services1.arcgis.com/vkTwD8kHw2woKBqV/arcgis/rest/services/BOM_Land_Warnings_RO/FeatureServer/3/query';
+          for(const product of ['IDQ65654','IDQ65650']){
+           const u=new URL(arc);
+           u.searchParams.set('where',"product='"+product+"'");
+           u.searchParams.set('f','json');u.searchParams.set('returnGeometry','false');
+           u.searchParams.set('outFields','product,validfrom_utc,validto_utc,warning,phenomena,gml_id');
+           try{const p=await get(u);
+            const j=JSON.parse(p.body);
+            console.log('GIS_SOURCE',JSON.stringify({product,http:p.http,rows:j.features?.map(x=>x.attributes),error:j.error}).slice(0,6500));
+           }catch(e){console.log('GIS_ERROR',product,String(e))}
+          }
+          NODE

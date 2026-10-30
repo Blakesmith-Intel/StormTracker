@@ -81,10 +81,10 @@ def apply(site:Path,style:Path)->None:
     for ident in critical:
         if original.count('id="'+ident+'"')!=1:
             raise RuntimeError("Missing or duplicated production layer control "+ident)
-    if internal.count('id="internalCycloneLiveToggle"')!=0:
-        # The actual input is dynamically assigned by ID; never hard-code it
-        # in a second HTML-only control.
-        raise RuntimeError("Unexpected duplicated embedded live input")
+    if original.count('id="internalCycloneLiveToggle"')!=0:
+        # The actual input is dynamically assigned by ID exactly once by the
+        # original live module, never duplicated as a static checkbox in HTML.
+        raise RuntimeError("Unexpected duplicate HTML-only live cyclone checkbox")
     for ident in ('toggle.id="internalCycloneLiveToggle"',
                   'status.id="internalCycloneQaStatus"',
                   'reload.id="internalCycloneRefresh"',

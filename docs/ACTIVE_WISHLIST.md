@@ -1,3 +1,13 @@
+# V10.2.35 four-section operator menu — approved UI-only redesign
+
+- **[x] Four independent, default-collapsed top-level sections:** Radar & Storm Analysis, Severe Weather, Rainfall Observations and Community Impacts. All original controls remain bound; collapsing never switches off an active map layer.
+- **[x] Essential actions immediately visible:** original radar playback/status and storm tracking, four-product BoM warnings with source-confirmed No current warnings, Flood Gauges and inline genuine-source Cyclones, significant rainfall reporting and AEP, and road/outage/QFD toggles.
+- **[x] Secondary legends collapsible:** radar/3-D display opacity, flood severity and rapid-rise/crossing symbols, original rainfall/AEP rarity legend, track-scope information and existing QFD incident symbols.
+- **[x] Original Street/Satellite basemap selector moved intact** into compact Map style beside map radar tools; primary/supplemental radars, map measurement, compass and reset unchanged. Outages/road closures source count shortcuts remain permanently visible.
+- **[x] All existing feed cadences, original geometry, map-science algorithms, layer IDs, warnings source statuses, reports and saved preferences preserved.** Source-preview and live acceptance requirements documented in [V10.2.35 release notes](RELEASE_NOTES_V10.2.35.md).
+- **[ ] Release acceptance**: exact pinned production build, browser-mobile/desktop interaction and real public deployment, followed by NEW immutable v10.2.35 recovery references; earlier tags unaffected.
+
+---
 # V10.2.34 — collapsible Situational Awareness Data (30 October 2026)
 
 The approved top-level **Situational Awareness Data** card now uses a native HTML `details` disclosure, matching the Show/Hide interaction of **Severe Weather**. It is collapsed by default and independently expandable. All existing basemap, significant rainfall/AEP, unplanned road closures, power outages and QFD rescue/assistance controls are kept as direct children with identical IDs, ordering, checked states, reports, event handlers and refresh intervals. Closing this menu does **not** disable active map layers. Change is limited to the fail-closed production HTML transform, scoped CSS, browser cache version, tests and operator documentation. V10.2.33 and earlier frozen versions remain untouched.

@@ -10,7 +10,7 @@ const fakePage=({indexLinks="",created="09:46",complete=true}={})=>
   "x".repeat(1200)+"<ul><li>Warnings current:</li>"+
   '<li><a href="/products/IDQ21033.shtml">Severe Thunderstorm Warning</a></li>'+
   indexLinks+"</ul>"+
-  (complete?"<p>This page was created at "+created+" on Friday 30 October 2026 (UTC)</p>":"")+
+  (complete?'<p id="timestamp">This page was created at <strong>'+created+'\n on Friday 30 October 2026 (UTC)</strong></p>':"")+
   "</html>";
 const index=parseCurrentQldBoMWarningsIndex(fakePage(),{nowMs:now});
 assert(index?.verified);

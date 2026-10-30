@@ -21,6 +21,19 @@ jobs:
            const res=await fetch(u,{signal:AbortSignal.timeout(18000)});
            return {status:res.status,json:await res.json()};
           };
+          const service=await req('https://services1.arcgis.com/vkTwD8kHw2woKBqV/arcgis/rest/services/BOM_Land_Warnings_RO/FeatureServer?f=json');
+          console.log('SERVICE_LAYERS',JSON.stringify((service.json.layers||[]).map(x=>({id:x.id,name:x.name}))));
+          for(const layerId of (service.json.layers||[]).map(x=>x.id)){
+            const u=new URL('https://services1.arcgis.com/vkTwD8kHw2woKBqV/arcgis/rest/services/BOM_Land_Warnings_RO/FeatureServer/'+layerId+'/query');
+            u.searchParams.set('f','json');
+            u.searchParams.set('where',"product='IDQ65652'");
+            u.searchParams.set('returnCountOnly','true');
+            try{
+              const result=await req(u);
+              console.log('STORM_LOCATION_COUNT',JSON.stringify({layerId,http:result.status,
+                count:result.json.count,error:result.json.error}));
+            }catch(e){console.log('STORM_LOCATION_COUNT_FAILURE',layerId,String(e))}
+          }
           const layer=await req(base+'?f=json');
           console.log('LAYER_FIELDS',JSON.stringify({
             status:layer.status,name:layer.json.name,

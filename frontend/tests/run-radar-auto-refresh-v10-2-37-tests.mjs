@@ -23,6 +23,7 @@ assert.match(scheduler, /armPoll\(\);\s*void check\(\);/);
 assert.match(runtime, /radarAutoRefreshAudit\.lastCheckUtc/);
 assert.match(runtime, /radarAutoRefreshAudit\.newestAcceptedUtc/);
 assert.match(runtime, /radarAutoRefreshAudit\.lastFailure/);
+assert.match(runtime, /failure: frameFailures\.detail \|\| null/);
 assert.match(runtime, /source unavailable; retaining genuine imagery/);
 
 // Recent genuine timestamps, NOT the newest one alone. In particular,

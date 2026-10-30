@@ -1,0 +1,54 @@
+name: Seal verified V10.2.36 current cyclone UI and multi-system controls
+on:
+  push:
+    branches: [qa/v10.2.36-cyclone-ui-multiple-systems-live]
+    paths: [.github/workflows/seal-v10.2.36-after-live-check.yml]
+permissions: {contents: write}
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Check production, prior frozen references and publish new tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          release_sha="822af74df49035f644624a798f81d1325ff0ee76"
+          actual="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$actual" = "$release_sha" || { echo "Production main moved, refusing to seal unrelated source"; exit 1; }
+          git fetch origin "$release_sha" --quiet
+          git cat-file -e "$release_sha:docs/RELEASE_NOTES_V10.2.36.md"
+          previous="$(git ls-remote origin 'refs/tags/v10.2.35^{}' | cut -f1)"
+          prev_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.35' | cut -f1)"
+          test -n "$previous" && test "$previous" = "$prev_restore" || { echo "Previous accepted release inconsistent"; exit 1; }
+          qa="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41056440951" --jq .conclusion)"
+          test "$qa" = "success" || { echo "Published mobile/desktop multi-cyclone acceptance incomplete"; exit 1; }
+          deploy="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41056280121/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion')"
+          test "$deploy" = "success" || { echo "Actual GitHub Pages deploy not successful"; exit 1; }
+          curl -fsSL --max-time 30 'https://blakesmith-intel.github.io/StormTracker/live3d-operational-v9.html' -o live.html
+          curl -fsSL --max-time 30 'https://blakesmith-intel.github.io/StormTracker/src/cyclone-subsection-v1.css' -o live.css
+          grep -Fq 'id="cycloneCurrentOverview"' live.html
+          grep -Fq 'id="severeWeatherDetails"' live.html
+          grep -Fq '#cycloneCurrentOverview' live.css
+          pre="$(git ls-remote origin 'refs/tags/v10.2.36^{}' | cut -f1)"
+          preres="$(git ls-remote origin 'refs/heads/restore/v10.2.36' | cut -f1)"
+          test -z "$pre" || test "$pre" = "$release_sha"
+          test -z "$preres" || test "$preres" = "$release_sha"
+          if [ -z "$preres" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/restore/v10.2.36" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$pre" ]; then
+            tagsha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="v10.2.36" -f type="commit" -f object="$release_sha" \
+              -f message="StormTracker V10.2.36 — compact inline cyclone switch/status, original source controls and multiple issued cyclone tracks; verified mobile and desktop; original warnings source integrity preserved" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/v10.2.36" -f sha="$tagsha" >/dev/null
+          fi
+          test "$(git ls-remote origin 'refs/tags/v10.2.36^{}' | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin 'refs/heads/restore/v10.2.36' | cut -f1)" = "$release_sha"
+          echo "SEALED V10.2.36 at $release_sha, preserved V10.2.35 and earlier frozen releases"

@@ -1,0 +1,63 @@
+name: Live deployed V10.2.31 BoM negative status acceptance
+on:
+  push:
+    branches: [qa/v10.2.31-boM-current-status-live-20261030]
+    paths: [.github/workflows/v10.2.31-verify-live-boM-status.yml]
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify corrected public website and production relay
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          const files={
+            index:'index.html',main:'src/live3d-operational-v9.js',
+            ui:'src/context-layers/bom-warning-operational-v1.js'
+          };
+          const request=async(url,limit=45000)=>{
+           const res=await fetch(url,{cache:'no-store',
+            signal:AbortSignal.timeout(limit),headers:{Origin:'https://blakesmith-intel.github.io'}});
+           return {status:res.status,body:await res.text()};
+          };
+          for(let attempt=0;attempt<6;attempt++){
+           const f=await Promise.all(Object.entries(files).map(async([id,path])=>[id,await request(root+path+'?v1031='+Date.now())]));
+           const record=Object.fromEntries(f);
+           const checks={
+             index:record.index.body.includes('warning-current-status-20261030-v1'),
+             main:record.main.body.includes('20261030-current-status-v1'),
+             ui:record.ui.body.includes('No current warnings')
+                &&record.ui.body.includes('awaiting updated BoM polygon')
+           };
+           console.log('PUBLIC_STATUS',JSON.stringify({at:new Date().toISOString(),checks,
+             http:f.map(([id,x])=>[id,x.status])}));
+           if(Object.values(checks).every(Boolean))break;
+           if(attempt===5)throw Error('Site is not yet serving V10.2.31 modules');
+           await new Promise(r=>setTimeout(r,5000));
+          }
+          const relay=await request('https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons?verify-v1031='+Date.now(),55000);
+          const data=JSON.parse(relay.body);
+          console.log('LIVE_RELAY',JSON.stringify({http:relay.status,status:data.status,
+           checked:data.checkedAt,
+           qldCurrentIndexStatus:data.qldCurrentIndexStatus,
+           qldCurrentIndexCheckedAt:data.qldCurrentIndexCheckedAt,
+           sourceFailures:data.sourceFailures,gisFailures:data.gisFailures,
+           products:Object.fromEntries(Object.entries(data.products||{}).map(([k,v])=>
+             [k,{status:v.status,issuedUtc:v.issuedUtc,expiresUtc:v.expiresUtc,
+               hazard:v.hazardAssessment?.highEnd}])),
+           warnings:data.warnings?.map(w=>({code:w.productCode,source:w.sourceProduct,
+             expires:w.expiresUtc}))
+          }).slice(0,12000));
+          if(relay.status!==200||data.schema!=='StormTrackerOfficialBoMWarningPolygonsV1')throw Error('Relay unavailable');
+          if(data.qldCurrentIndexStatus!=='verified-current-products')
+            throw Error('New verified BoM index missing in deployed relay');
+          const current=data.products||{};
+          if(current.IDQ21035?.status!=='no-active')
+            throw Error('Expected verified no-current detailed BoM status');
+          if(!['active','geometry-unavailable','listed-active'].includes(current.IDQ21033?.status))
+            throw Error('Official QLD active warning incorrectly cleared');
+          console.log('PASS Production: genuine current regional, verified No current detailed, no fabricated all-clear and new public client');
+          NODE

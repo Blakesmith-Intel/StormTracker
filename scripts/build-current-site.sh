@@ -532,7 +532,9 @@ for menu in radarStormAnalysisDetails severeWeatherDetails rainfallObservationsD
   grep -Fq "id=\"$menu\"" _site/live3d-operational-v9.html
 done
 grep -Fq 'id="mapStyleDetails"' _site/live3d-operational-v9.html
-grep -Fq '◫ Situational Awareness Data' _site/live3d-operational-v9.html
+grep -Fq '<summary class="section-title">Community Impacts</summary>' _site/live3d-operational-v9.html
+grep -Fq '<summary class="section-title">Rainfall Observations</summary>' _site/live3d-operational-v9.html
+! grep -Fq 'id="situationalAwarenessDetails"' _site/live3d-operational-v9.html
 grep -Fq 'BoM Severe Weather and Thunderstorm Warnings' _site/live3d-operational-v9.html
 grep -Fq 'SEVERE WEATHER SIDEBAR HIERARCHY 2026-10-30 V10.2.33' _site/BUILD.txt
 node --check _site/src/operational-cyclone-panel-v1.js

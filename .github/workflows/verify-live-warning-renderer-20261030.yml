@@ -1,0 +1,47 @@
+name: Verify published Cesium warning renderer hotfix
+on:
+  push:
+    branches:
+      - fix/bom-warning-imagery-promise-20261030
+    paths:
+      - .github/workflows/verify-live-warning-renderer-20261030.yml
+permissions:
+  contents: read
+jobs:
+  public-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm corrected modules are available from public Pages
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const root='https://blakesmith-intel.github.io/StormTracker/';
+          const names=[
+           'src/context-layers/bom-warning-terrain-imagery-v1.js',
+           'src/context-layers/bom-warning-operational-v1.js',
+           'src/live3d-operational-v9.js',
+           'live3d-operational-v9.html',
+           'index.html'
+          ];
+          const text=await Promise.all(names.map(async path=>{
+            const res=await fetch(root+path+'?verify=warning-promise-'+Date.now(),
+              {signal:AbortSignal.timeout(17000),headers:{Accept:'text/plain,text/javascript,text/html'}});
+            const code=await res.text();
+            console.log('PUBLIC_FILE',JSON.stringify({path,status:res.status,bytes:code.length,
+             cacheControl:res.headers.get('cache-control')}));
+            if(!res.ok||code.length<100)throw Error('Missing public site file '+path);
+            return code;
+          }));
+          const checks=[
+           ['imagery tiles promise',text[0].includes('return Promise.resolve(image(x,y,level))')],
+           ['feature picking promise',text[0].includes('return Promise.resolve(found.map(a=>{')],
+           ['terrain import version',text[1].includes('bom-warning-terrain-imagery-v1.js?v=20261030-cesium-imagery-promise-v1')],
+           ['controller import version',text[2].includes('bom-warning-operational-v1.js?v=20261030-cesium-imagery-promise-v1')],
+           ['HTML cache-bust',text[3].includes('warning-imagery-promise-20261030-v1')],
+           ['iframe cache-bust',text[4].includes('warning-imagery-promise-20261030-v1')]
+          ];
+          for(const [name,ok] of checks)console.log('PUBLISHED_CHECK',name,ok?'PASS':'FAIL');
+          if(checks.some(([_,ok])=>!ok))throw Error('Published browser still references broken warning renderer');
+          console.log('PASS public site delivers corrected Cesium provider and all cache-busted import chain');
+          NODE

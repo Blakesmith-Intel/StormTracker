@@ -42,9 +42,17 @@ jobs:
             const frame=page.frameLocator('#liveFrame');
             const toggle=frame.locator('#showOfficialBomWarnings');
             await toggle.waitFor({state:'attached',timeout:40000});
+            await frame.locator('.cesium-widget canvas').first().waitFor({state:'visible',timeout:45000});
+            await page.waitForTimeout(3000);
             await toggle.check({force:true,timeout:10000});
-            await frame.locator('#officialBomWarningsStatus').getByText('active (1 polygon)',{exact:false})
-              .waitFor({state:'visible',timeout:60000});
+            let activeStatus=false;
+            for(let i=0;i<42;i++){
+              const message=await frame.locator('#officialBomWarningsStatus').textContent();
+              if(i%5===0)console.log('CHECK_WARNING_STATUS',message);
+              if(message?.includes('active (1 polygon)')){activeStatus=true;break}
+              await page.waitForTimeout(1300);
+            }
+            if(!activeStatus)throw Error('Live warning not active or source unavailable in CI browser');
             const locate=frame.locator('#locateOfficialBomWarnings');
             await locate.waitFor({state:'visible',timeout:10000});
             console.log('REAL_BROWSER_ACTIVE',await frame.locator('#officialBomWarningsStatus').textContent());

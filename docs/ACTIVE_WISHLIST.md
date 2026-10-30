@@ -1,13 +1,14 @@
-# StormTracker — current wishlist after V10.2.26 final documentation freeze
+# StormTracker — active wishlist after V10.2.29 warning layer completion
 
-**Status as of 27 October 2026.** Accepted operational V10.2.25 warning implementation is retained unchanged in the V10.2.26 documentation-only release. The immutable V10.2.0 original radar/science pin, V10.2.24 and V10.2.25 restore points remain sealed. [Current operator guide](OPERATOR_GUIDE_CURRENT.md) · [Release notes](RELEASE_NOTES_V10.2.26.md) · [Development handover](DEVELOPMENT_HANDOVER_CURRENT.md).
+**Status: 30 October 2026.** The original warning-area wishlist item is marked **COMPLETE**, subject to final website and release-reference verification. The underlying V10.2.0 radar/science baseline and previous frozen references remain unchanged. [Current operator guide](OPERATOR_GUIDE_CURRENT.md) · [V10.2.29 release notes](RELEASE_NOTES_V10.2.29.md) · [Development handover](DEVELOPMENT_HANDOVER_CURRENT.md).
 
 ## Delivered and frozen — no unrequested tinkering
 
-- Authentic BoM native reflectivity/rain radar, multiradar, Doppler, inferred 3-D and operational cone workflows remain as accepted.
-- QLD flood gauges, rapid rise, crossing-level persistence, BoM significant rainfall with point-specific IFD/AEP, BoM source timestamps, road closures and road-type reports, Energex/Ergon outage overlays, QFD incidents and LGA reporting remain as accepted.
-- **Official severe thunderstorm and severe weather warnings (released V10.2.25):** dedicated opt-in terrain imagery under the radar; BoM `IDQ21035` detailed SEQ versus `IDQ21033` regional QLD product ID filtering; separate product-aware clickable source bulletins and issue/expiry; fully intersecting official LGA/LDMG and DDMG reports with **no minimum overlap**; automatic **15-minute** / manual checks; newer issues replace earlier geometry; confirmed cancellations remove affected polygons; completed verified-empty source distinct from transport errors. The feature is deployed, source-gated, and off by default.
-- **Important acceptance boundary:** live BoM geometry has not been observed end-to-end for an actively issued warning. A missing or unavailable genuine BoM polygon must never be replaced by an estimated district map. RSS feed access is not proof of comprehensive active BoM warning coverage.
+- Authentic native BoM reflectivity/rain radar, multi-radar Doppler, inferred 3-D and operational track/cone workflows remain as accepted.
+- QLD flood signals, rapid-rise, crossing levels, rainfall IFD/AEP, agency timestamps, roads, outages and QFD incidents, with their existing reports, are preserved.
+- **[x] Official BoM Queensland severe warning polygons — completed:** Source-issued `IDQ21033` regional warning areas (`IDQ65654`) and `IDQ21035` detailed threat areas (`IDQ65650`), without artificial geographic reconstruction; independently valid bulletin and polygon times; proper on-map placement above satellite and below measured radar; consistent source-confirmed negative reporting; product-specific filtering; stable camera-controller **Locate**; tap/click polygon to open the exact same LDMG/DDMG report as the button; every official boundary intersection included, no minimum sliver cutoff; 15-minute and manual refresh; source revision, expiry and cancellation lifecycle.
+- **[x] Detailed IDQ21035 cell-source integration preconfigured:** The separately specified `IDQ65652` official *storm location* source is queried independently while an actual detailed bulletin is active. Only fresh, source-matched, individual cell geometries can appear. A **VERY DANGEROUS** label requires the cell's own original source record to explicitly assign that designation; blanket bulletin-based labels are prohibited.
+- **[ ] Live cell-specific validation remaining:** Government mirror had **zero available `IDQ65652` storm-location records on 30 October 2026**. A future genuine issue is required to validate per-cell identity, location continuity and the Very Dangerous callout on an actual affected cell. This is NOT a currently demonstrated live cell-tracking capability, and the map must not infer storm motion or treat threat polygons as individual cells.
 
 ## Deferred by explicit operator direction
 
@@ -15,7 +16,7 @@
 
 ## Remaining scoped investigations — only on operator request
 
-1. **Real-world live warning acceptance:** when an authentic `IDQ21035`/`IDQ21033` or Queensland severe-weather source product includes its genuine polygon, check origin/provenance, public source completeness, on-map geometry position, update/cancel flow, and all LDMG/DDMG intersections. No artificial warnings in operational production. Confirm any restricted GIS/AXF access separately before relying on it.
+1. **Live individual detailed cell acceptance only:** if BoM publishes `IDQ65652` storm locations in the accessible mirrored GIS layer, verify genuine cell ID continuity, geometry source/refresh and source-attributed **VERY DANGEROUS** callout using an actual current BoM cell. `IDQ65650` threat geometry and `IDQ21033` regional geometry already have independently tested live warning-area display paths. Missing original cell records must not be simulated.
 2. **NSW official severe warnings:** still withheld until a verified geographic clip against the real union of installed radar footprints (including Brewarrina, Moree, Grafton and overlapping QLD sites) is available. Never approximate radar extent using a bounding rectangle.
 3. **Experimental Doppler severe-wind science:** real BoM AURA sweep decoding, aliasing/georeferencing and historical validation before any straight-line-wind, hook-echo or tornado-candidate indication becomes operational. These are **not official BoM warnings**.
 4. **Observed lightning:** not implemented, future consideration only if a reliable no-cost appropriately licensed source is established.

@@ -3,6 +3,14 @@
 - **[x] Individual IDQ product dropdown:** All warnings, IDQ21035 detailed SEQ thunderstorms, IDQ21033 regional Queensland thunderstorms, IDQ21037 Severe Weather 1 and IDQ21038 Severe Weather 2. All four have independently verified **No current warnings** states in the shared 15-minute warning refresh, manual ↻ override, correct original polygon filter and an independent LDMG/DDMG report section even with no active warning. No extra request per option or speculative warning polygon. See [V10.2.32 release notes](RELEASE_NOTES_V10.2.32.md).
 
 ---
+# V10.2.33 operator sidebar reorganisation — approved / implemented
+
+- **[x] New top-level expandable Severe Weather group**: contains the original flood signals/gauges, four-product BoM Severe Weather and Thunderstorm Warnings, and a real current-source cyclone panel opening inline within the sidebar. The option to hide/expand this group does not independently toggle or refresh the weather feeds.
+- **[x] Rename Layers → Situational Awareness Data** for unchanged basemap, significant rainfall/AEP, QLDTraffic closures, unplanned outages and QFD incident overlays.
+- **[x] Preserve** Flood and BoM warning controls/IDs/defaults, exact warning geometry and LDMG/DDMG reports, the current cyclone feed's source-verification and focus semantics, and all existing refresh intervals. No additional requests, historical cyclone cases, or alternate map UI.
+- Acceptance requirement: production Pages publication and real browser interaction must pass before sealing **v10.2.33**, leaving all previously frozen tags untouched. See [V10.2.33 release notes](RELEASE_NOTES_V10.2.33.md) and [operator guide](OPERATOR_GUIDE_CURRENT.md).
+
+---
 # StormTracker — active wishlist after V10.2.31 verified BoM current-warning negative reporting
 
 **Status: 30 October 2026.** The original warning-area wishlist item is marked **COMPLETE**, sealed as V10.2.29; the follow-up V10.2.30 terminology and compact cell marker presentation is subject to production verification. The underlying V10.2.0 radar/science baseline and previous frozen references remain unchanged. [Current operator guide](OPERATOR_GUIDE_CURRENT.md) · [V10.2.29 release notes](RELEASE_NOTES_V10.2.29.md) · [Development handover](DEVELOPMENT_HANDOVER_CURRENT.md).

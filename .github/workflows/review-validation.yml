@@ -69,8 +69,8 @@ jobs:
           test ! -e _site/preview/next-baseline/BUILD.txt
           grep -Fq 'SEALED StormTracker V10.2.0 source 047b3bd1c66b0ed5f070d2298202f46d0cd8dae2' _site/BUILD.txt
           grep -Fq 'createSupplementalDopplerDisplay' _site/src/live3d-operational-v9.js
-          grep -Fq 'Currently no tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
-          grep -Fq 'Unable to verify current tropical cyclone warnings' _site/src/internal-cyclone-live-qa-v1.js
+          grep -Fq '"No current warnings"' _site/src/internal-cyclone-live-qa-v1.js
+          grep -Fq 'Cyclone forecast feed unavailable' _site/src/internal-cyclone-live-qa-v1.js
           grep -Fq 'supplementalDopplerDisplay.prepare(source.observedUtc)' _site/src/live3d-operational-v9.js
           grep -Fq 'supplementalDopplerDisplay.commit(source.observedUtc)' _site/src/live3d-operational-v9.js
           grep -Fq 'function commit(utc)' _site/src/multi-doppler-display-v1.js

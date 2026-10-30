@@ -73,10 +73,27 @@ replace_once(
   if (resume) playback.play();''',
     '''  $("hybridPlayButton").disabled = hybridFrames.length < 2;
   await showHybridFrame(hybridFrameIndex);
-  if (automatic) recordRadarAutoRefreshAudit({
-    acceptedUtc: frames.at(-1).observedUtc, failure: null, outcome: "updated"
+  recordRadarAutoRefreshAudit({
+    acceptedUtc: frames.at(-1).observedUtc,
+    failure: null,
+    outcome: automatic ? "updated" : "manual load complete"
   });
   if (resume) playback.play();'''
+)
+
+replace_once(
+    '''    $("autoRefreshNote").textContent =
+      dopplerGatedRefresh
+        ? "Auto update: waiting for new matching radar + Doppler images."
+        : "Auto update: waiting for a new radar image.";
+
+    return;''',
+    '''    $("autoRefreshNote").textContent =
+      dopplerGatedRefresh
+        ? "Auto update: waiting for new matching radar + Doppler images."
+        : "Auto update: waiting for a new radar image.";
+    recordRadarAutoRefreshAudit({ failure: null, outcome: "waiting for new published scan" });
+    return;'''
 )
 
 app.write_text(data, encoding="utf-8")

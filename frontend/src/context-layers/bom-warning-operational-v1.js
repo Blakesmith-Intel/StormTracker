@@ -22,6 +22,25 @@ export function warningProductAffectedGroups(warnings,productCode="all"){
   ddmgs:[...ddmgs].sort((a,b)=>a.localeCompare(b,"en-AU")),
   ldmgComplete,ddmgComplete};
 }
+// Exact source geometry envelope for the optional "Locate" action.
+// This NEVER creates a warning polygon or guesses an affected district.
+export function officialWarningBounds(warnings){
+ let west=Infinity,east=-Infinity,south=Infinity,north=-Infinity,points=0;
+ for(const warning of warnings??[]){
+  const g=warning?.geometry;
+  const polygons=g?.type==="Polygon"?[g.coordinates]:
+    g?.type==="MultiPolygon"?g.coordinates:[];
+  for(const poly of polygons)for(const ring of poly??[])for(const p of ring??[]){
+   const lon=p?.[0],lat=p?.[1];
+   if(!Number.isFinite(lon)||!Number.isFinite(lat)||
+      lon<136||lon>155||lat< -38||lat> -9)continue;
+   west=Math.min(west,lon);east=Math.max(east,lon);
+   south=Math.min(south,lat);north=Math.max(north,lat);points++;
+  }
+ }
+ if(points<3||!(east>west&&north>south))return null;
+ return {west,east,south,north};
+}
 const WARNING_CODES=Object.freeze(["IDQ21035","IDQ21033","IDQ21037","IDQ21038"]);
 const THUNDERSTORM_CODES=Object.freeze(["IDQ21035","IDQ21033"]);
 const warningName=code=>code==="IDQ21035"?"IDQ21035 (Detailed SEQ)":
@@ -90,14 +109,14 @@ const textRow=(node,label,value)=>{
  k.textContent=label;v.textContent=s;node.append(k,v);
 };
 export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThis.Cesium,
- fetchImpl=globalThis.fetch,now=()=>Date.now()}={}){
+ fetchImpl=globalThis.fetch,now=()=>Date.now(),getRadarLayer=()=>null}={}){
  const toggle=$("showOfficialBomWarnings"),state=$("officialBomWarningsStatus"),
    panel=$("officialBomWarningInfo"),content=$("officialBomWarningInfoRows"),
    title=$("officialBomWarningInfoTitle"),dismiss=$("closeOfficialBomWarningInfo"),
-   refreshBtn=$("refreshOfficialBomWarnings"),filter=$("officialBomWarningProduct"),
+   refreshBtn=$("refreshOfficialBomWarnings"),locateBtn=$("locateOfficialBomWarnings"),filter=$("officialBomWarningProduct"),
    reportButton=$("openOfficialBomWarningGroups"),reportDialog=$("officialBomWarningGroupsReport"),
    reportClose=$("closeOfficialBomWarningGroupsReport"),reportBody=$("officialBomWarningGroupsBody");
- if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
+ if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,locateBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
   return {destroy(){}};
  let warnings=[],imagery=null,lastAttemptAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
  const canvas=viewer.scene.canvas;
@@ -105,6 +124,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   state.textContent=message;state.dataset.kind=kind;
  };
  function showProductStatus(){
+  locateBtn.hidden=!toggle.checked||!officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
   if(!toggle.checked){report("BoM warning polygons off");return;}
   const result=describeOfficialBomWarningState({
     products:productStatuses,warnings,selected:filter.value
@@ -126,7 +146,14 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   });
   // First terrain basemap is below us; radar surfaces dynamically rise to TOP.
   // This never changes the existing radar handover or opacity logic.
-  viewer.imageryLayers.add(imagery,Math.min(1,viewer.imageryLayers.length));
+  // Satellite has FOUR base layers (global fallback, DEA, NSW and QLD).
+  // At index 1 this warning was hidden by opaque DEA/QLD layers, even though
+  // the verified polygon count was one. Insert ABOVE every basemap, but
+  // restore the current primary radar to the top of the imagery stack.
+  viewer.imageryLayers.add(imagery);
+  const radarLayer=getRadarLayer?.();
+  if(radarLayer&&viewer.imageryLayers.indexOf(radarLayer)>=0)
+   viewer.imageryLayers.raiseToTop(radarLayer);
   viewer.scene.requestRender();
  }
  function openInfo(warning){
@@ -304,6 +331,17 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };
+ const onLocate=()=>{
+  const bounds=officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
+  if(!toggle.checked||!bounds)return;
+  // Operator-initiated only: refresh/polling must NEVER move the camera.
+  const marginLon=Math.max(.16,(bounds.east-bounds.west)*.13);
+  const marginLat=Math.max(.16,(bounds.north-bounds.south)*.13);
+  viewer.camera.flyTo({destination:CesiumRef.Rectangle.fromDegrees(
+   Math.max(136,bounds.west-marginLon),Math.max(-38,bounds.south-marginLat),
+   Math.min(155,bounds.east+marginLon),Math.min(-9,bounds.north+marginLat)
+  ),duration:1.1});
+ };
  const onRefresh=()=>{void refresh({force:true});};
  const onClose=()=>openInfo(null);
  let pointerStart=null;
@@ -337,10 +375,12 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  reportButton.addEventListener("click",openGroups);
  reportClose.addEventListener("click",closeGroups);
  refreshBtn.addEventListener("click",onRefresh);
+ locateBtn.addEventListener("click",onLocate);
  dismiss.addEventListener("click",onClose);
  canvas.addEventListener("pointerdown",down);
  canvas.addEventListener("pointerup",up);
  timer=setInterval(()=>{trimExpired();if(toggle.checked&&now()-lastAttemptAt>=INTERVAL_MS)void refresh();},60000);
+ locateBtn.hidden=true;
  report("BoM warning polygons off");
  return {refresh,destroy(){
   destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];openInfo(null);
@@ -350,6 +390,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   reportClose.removeEventListener("click",closeGroups);
   if(reportDialog.open)reportDialog.close();
   refreshBtn.removeEventListener("click",onRefresh);
+ locateBtn.removeEventListener("click",onLocate);
   dismiss.removeEventListener("click",onClose);
   canvas.removeEventListener("pointerdown",down);
   canvas.removeEventListener("pointerup",up);

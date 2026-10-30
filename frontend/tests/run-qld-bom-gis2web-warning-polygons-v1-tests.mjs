@@ -66,4 +66,35 @@ assert(url.pathname.endsWith("/3/query"));
 assert.equal(url.searchParams.get("where"),"product='IDQ65654'");
 assert.equal(url.searchParams.get("f"),"geojson");
 assert.equal(url.searchParams.get("outSR"),"4326");
-console.log("PASS genuine QDMA BoM GIS2Web WFS-derived polygon source product + exact issued/expiry join, LGA/DDMG geometry, cancellation, stale rejection and native EPSG4326");
+// 30 October 2026 live-source reproduction: GIS2Web geometry expires two
+// hours before its separately authenticated WMO-BoM CAP warning bulletin.
+// Matching BOTH expiry times would incorrectly withhold an original polygon.
+const oct30GISFrom=Date.parse("2026-10-30T05:45:08Z");
+const oct30GISUntil=Date.parse("2026-10-30T08:45:08Z");
+const oct30CAPFrom=Date.parse("2026-10-30T05:45:12Z");
+const oct30CAPUntil=Date.parse("2026-10-30T10:45:08Z");
+const oct30Now=Date.parse("2026-10-30T06:56:42Z");
+const oct30Issue={...issue,issuedUtc:new Date(oct30CAPFrom).toISOString(),
+ expiresUtc:new Date(oct30CAPUntil).toISOString()};
+const oct30Collection={type:"FeatureCollection",features:[
+ row("IDQ65654",oct30GISFrom,oct30GISUntil,333)
+]};
+const oct30Data=sourceExactQldBomWfsFeatures(oct30Collection,oct30Issue,{nowMs:oct30Now});
+assert.equal(oct30Data.length,1,"Actual CAP/GIS2Web issue join must not require identical expiry");
+assert.equal(oct30Data[0].issuedUtc,new Date(oct30GISFrom).toISOString());
+assert.equal(oct30Data[0].expiresUtc,new Date(oct30GISUntil).toISOString(),
+ "Render only for actual shorter source geometry life");
+assert.equal(oct30Data[0].geometryExpiresUtc,new Date(oct30GISUntil).toISOString());
+assert.equal(oct30Data[0].bulletinExpiresUtc,new Date(oct30CAPUntil).toISOString());
+assert.equal(sourceExactQldBomWfsFeatures(oct30Collection,oct30Issue,
+ {nowMs:oct30GISUntil}).length,0,"Expired original GIS footprint must vanish even while CAP remains issued");
+assert.equal(sourceExactQldBomWfsFeatures(oct30Collection,
+ {...oct30Issue,issuedUtc:new Date(oct30CAPFrom+600000).toISOString()},
+ {nowMs:oct30Now}).length,0,"A newer BoM issue cannot reuse superseded polygon coordinates");
+const shorterBulletin=sourceExactQldBomWfsFeatures(oct30Collection,
+ {...oct30Issue,expiresUtc:new Date(oct30Now+60000).toISOString()},
+ {nowMs:oct30Now});
+assert.equal(shorterBulletin[0].expiresUtc,new Date(oct30Now+60000).toISOString(),
+ "Never display geometry after its CAP bulletin has expired");
+console.log("PASS 30-Oct-2026 live IDQ21033 different CAP/GIS2Web expiry regression, authentic product+issue matching, true geometry expiry and supersession");
+console.log("PASS genuine QDMA BoM GIS2Web WFS-derived polygon source product + exact-issued and independently expired geometry join, LGA/DDMG geometry, cancellation, stale rejection and native EPSG4326");

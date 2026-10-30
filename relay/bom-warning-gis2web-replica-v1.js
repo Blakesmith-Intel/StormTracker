@@ -57,11 +57,15 @@ export function sourceExactQldBomWfsFeatures(collection,notice,{nowMs=Date.now()
   const from=timeMs(p.validfrom_utc),to=timeMs(p.validto_utc);
   if(!Number.isFinite(from)||!Number.isFinite(to)||
       from>nowMs+300000||to<=nowMs)continue;
-  // The real 28 October 2026 IDQ21033 WMO issue 09:45:52 UTC
-  // matched its IDQ65654 WFS validfrom timestamp exactly.
-  // Require a source-exact issue join; do not show older valid shapes.
-  if(Math.abs(from-timeMs(notice.issuedUtc))>120000 ||
-     Math.abs(to-timeMs(notice.expiresUtc))>120000)continue;
+  // Join only the same original BoM product and issue, never a nearby
+  // forecast-district approximation or an older hazard footprint.
+  // WMO CAP is the bulletin lifetime; GIS2Web geometry has an independent
+  // validity end, which can legitimately be hours earlier.
+  // Observed 30 Oct 2026: CAP expires 10:45:08Z, original GIS polygon
+  // expires 08:45:08Z, but both issue times match within four seconds.
+  if(Math.abs(from-timeMs(notice.issuedUtc))>120000)continue;
+  const visibleUntil=Math.min(to,timeMs(notice.expiresUtc));
+  if(visibleUntil<=nowMs)continue;
   let geometry;
   try{geometry=checkGeometry(feature.geometry);}catch{continue;}
   const id=String(p.gml_id??p.OBJECTID??feature.id??i).slice(0,85);
@@ -75,7 +79,11 @@ export function sourceExactQldBomWfsFeatures(collection,notice,{nowMs=Date.now()
    state:"QLD",event:notice.headline,
    headline:notice.headline,description:notice.description,
    instruction:notice.instruction,areaDescription:notice.areaDescription,
-   issuedUtc:new Date(from).toISOString(),expiresUtc:new Date(to).toISOString(),
+   issuedUtc:new Date(from).toISOString(),expiresUtc:new Date(visibleUntil).toISOString(),
+   // Preserve BOTH source expiry times; never extend the plotted geometry
+   // beyond its own published validity even while the bulletin remains live.
+   geometryExpiresUtc:new Date(to).toISOString(),
+   bulletinExpiresUtc:new Date(timeMs(notice.expiresUtc)).toISOString(),
    bulletinUrl:notice.bulletinUrl,severity:"",certainty:"",
    phenomena:String(p.phenomena??"").slice(0,350),
    warningGeometrySource:"Queensland emergency-management Bureau GIS2Web WFS-derived feature service",

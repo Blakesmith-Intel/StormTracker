@@ -150,13 +150,16 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    reportClose=$("closeOfficialBomWarningGroupsReport"),reportBody=$("officialBomWarningGroupsBody");
  if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,locateBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
   return {destroy(){}};
- let warnings=[],imagery=null,lastAttemptAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
+ let warnings=[],stormCells=[],stormCellSourceStatus="unavailable",imagery=null,lastAttemptAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
  const canvas=viewer.scene.canvas;
  const report=(message,kind="normal")=>{
   state.textContent=message;state.dataset.kind=kind;
  };
  function showProductStatus(){
-  locateBtn.hidden=!toggle.checked||!officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
+  locateBtn.hidden=!toggle.checked||!officialWarningBounds([
+   ...filterOfficialWarnings(warnings,filter.value),
+   ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])
+  ]);
   if(!toggle.checked){report("BoM warning polygons off");return;}
   const result=describeOfficialBomWarningState({
     products:productStatuses,warnings,selected:filter.value
@@ -171,7 +174,8 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  function display(){
   discard();
-  const visible=filterOfficialWarnings(warnings,filter.value);
+  const visible=[...filterOfficialWarnings(warnings,filter.value),
+   ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])];
   if(!toggle.checked||!visible.length)return;
   imagery=new CesiumRef.ImageryLayer(createWarningImageryProvider(CesiumRef,visible),{
    alpha:1,show:true
@@ -220,7 +224,11 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  }
  function trimExpired(){
   const valid=warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
-  if(valid.length!==warnings.length){
+  const liveCells=stormCells.filter(c=>c?.official===true&&
+   c.sourceProduct==="IDQ65652"&&c.productCode==="IDQ21035"&&
+   Date.parse(c.expiresUtc)>now());
+  if(valid.length!==warnings.length||liveCells.length!==stormCells.length){
+   stormCells=liveCells;
    warnings=valid;display();renderGroupsReport();
    if(activeId&&!warnings.some(w=>w.id===activeId))openInfo(null);
    // Expiry is a source-published fact, not an inconclusive network check.
@@ -257,6 +265,13 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
       !["active","no-verified-current-polygons","partial-source-unavailable"].includes(data.status))
       throw Error(data?.message||"Official CAP source unavailable");
     warnings=data.warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
+    stormCells=(Array.isArray(data.stormCells)?data.stormCells:[]).filter(c=>
+      c?.official===true&&c.issuer==="Bureau of Meteorology"&&
+      c.productCode==="IDQ21035"&&c.sourceProduct==="IDQ65652"&&
+      ["Polygon","MultiPolygon"].includes(c.geometry?.type)&&
+      Number.isFinite(Date.parse(c.issuedUtc))&&Date.parse(c.issuedUtc)<=now()&&
+      Number.isFinite(Date.parse(c.expiresUtc))&&Date.parse(c.expiresUtc)>now());
+    stormCellSourceStatus=data.stormCellSourceStatus??"unavailable";
     sourceStatus=data.status;
     productStatuses=data.products??{};
     display();renderGroupsReport();
@@ -264,7 +279,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     showProductStatus();
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
-    warnings=[];sourceStatus="unavailable";productStatuses={};locateBtn.hidden=true;display();renderGroupsReport();openInfo(null);
+    warnings=[];stormCells=[];stormCellSourceStatus="unavailable";sourceStatus="unavailable";productStatuses={};locateBtn.hidden=true;display();renderGroupsReport();openInfo(null);
     // An unverified check is NOT a confirmed no-warning report.
     // Keep a neutral operational advisory, rather than an alarming red error.
     report("Unable to confirm current BoM warnings — try refresh or check BoM","warning");
@@ -297,6 +312,16 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
        "Cancelled by BoM · 0 active polygons":
        result.count+" active verified polygon"+(result.count===1?"":"s");
    section.append(count);
+   if(code==="IDQ21035"){
+    const cellLine=document.createElement("p");
+    const vds=stormCells.filter(c=>c.veryDangerous===true);
+    cellLine.textContent=stormCellSourceStatus==="source-verified"?
+      stormCells.length+" original BoM storm-location feature(s) (IDQ65652); "+
+       vds.length+" explicitly tagged VERY DANGEROUS by the cell source":
+      "Individual BoM storm-cell locations (IDQ65652) not verified in this feed — "+
+       "the IDQ65650 threat area is NOT a cell track";
+    section.append(cellLine);
+   }
    const official=productStatuses[code];
    if(official?.headline){
     const text=document.createElement("section");
@@ -307,6 +332,14 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     issued.textContent="Issued "+fmt(official.issuedUtc)+
       (official.expiresUtc?" · Expires "+fmt(official.expiresUtc):"");
     text.append(issued);
+    if(code==="IDQ21035"&&/\bvery\s+dangerous\b/i.test(
+       [official.headline,official.description,official.instruction].join(" ")) ){
+     const caution=document.createElement("p");
+     caution.textContent="BoM bulletin mentions a VERY DANGEROUS thunderstorm. "+
+      "This bulletin text alone does not identify which individual cell is affected. "+
+      "Only an explicit IDQ65652 cell-source designation will appear as an on-map callout.";
+     text.append(caution);
+    }
     for(const body of [official.headline,official.description,official.instruction]){
      if(!String(body??"").trim())continue;
      const p=document.createElement("p");p.textContent=body;
@@ -356,12 +389,15 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  const closeGroups=()=>reportDialog.close();
  const onToggle=()=>{
-  if(!toggle.checked){warnings=[];productStatuses={};sourceStatus="unavailable";locateBtn.hidden=true;discard();openInfo(null);renderGroupsReport();
+  if(!toggle.checked){warnings=[];stormCells=[];stormCellSourceStatus="unavailable";productStatuses={};sourceStatus="unavailable";locateBtn.hidden=true;discard();openInfo(null);renderGroupsReport();
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };
  const onLocate=()=>{
-  const bounds=officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
+  const bounds=officialWarningBounds([
+   ...filterOfficialWarnings(warnings,filter.value),
+   ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])
+  ]);
   if(!toggle.checked||!bounds||!cameraController?.setView)return;
   const target=officialWarningCameraTarget(bounds,{
    width:canvas.clientWidth||canvas.width||430,
@@ -411,8 +447,9 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   const loc=CesiumRef.Cartographic.fromCartesian(hit);
   const longitude=CesiumRef.Math.toDegrees(loc.longitude);
   const latitude=CesiumRef.Math.toDegrees(loc.latitude);
-  if(officialWarningAtPoint(filterOfficialWarnings(warnings,filter.value),
-    longitude,latitude)){
+  const selected=[...filterOfficialWarnings(warnings,filter.value),
+    ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])];
+  if(officialWarningAtPoint(selected,longitude,latitude)){
    // Identical report and selected-product scope as the existing button.
    openGroups();
   }
@@ -432,7 +469,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  locateBtn.hidden=true;
  report("BoM warning polygons off");
  return {refresh,destroy(){
-  destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];openInfo(null);
+  destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];stormCells=[];openInfo(null);
   toggle.removeEventListener("change",onToggle);
   filter.removeEventListener("change",onProductChange);
   reportButton.removeEventListener("click",openGroups);

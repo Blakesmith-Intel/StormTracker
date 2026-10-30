@@ -163,9 +163,11 @@ assert.deepEqual([...scheduled.values()].map(task=>task.delay), [300000],
   "Next regular five-minute poll is armed before the previous one completes");
 inFlightRelease();
 await Promise.all([first,second]);
-trigger(300000);
-await Promise.resolve();
-assert.equal(calls, 2);
+assert.deepEqual([...scheduled.values()].map(task=>task.delay).sort((a,b)=>a-b),
+  [2000,300000], "A five-minute tick missed during loading receives a prompt retry");
+trigger(2000);
+await Promise.resolve(); await Promise.resolve();
+assert.equal(calls, 2, "Catch-up poll starts after the in-flight load finishes");
 scheduler.stop();
 inFlightRelease();
 await Promise.resolve();

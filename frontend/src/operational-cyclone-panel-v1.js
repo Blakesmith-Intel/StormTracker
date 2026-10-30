@@ -33,7 +33,50 @@ export function createOperationalCyclonePanel({documentRef = document} = {}) {
     button.setAttribute("aria-expanded", String(enabled));
     if (enabled) close.focus?.();
   };
-  show(false);
+  // V10.2.36: cyclone controls behave like other Severe Weather layers:
+  // original source switch/status visible; optional source details folded.
+  // This does NOT enable a source feed or change its polling interval.
+  show(true);
+  button.hidden = true;
+  button.setAttribute("aria-hidden", "true");
+  button.tabIndex = -1;
+  close.hidden = true;
+  // The live-source initializer mounts its ORIGINAL bound controls
+  // synchronously next. Move those very same nodes in one microtask.
+  queueMicrotask(() => {
+    const container = $("internalCycloneQa");
+    if (!container || container.closest("#cycloneForecastQaPanel") !== panel ||
+        container.querySelector("#cycloneSourceDetails")) return;
+    const originalNodes = Array.from(container.children);
+    const heading = originalNodes.find(node => node.tagName === "STRONG");
+    const switchRow = originalNodes.find(node =>
+      node.querySelector?.("#internalCycloneLiveToggle"));
+    const status = $("internalCycloneQaStatus");
+    const sourceRow = originalNodes.find(node =>
+      node.querySelector?.("#internalCycloneRefresh"));
+    const sourceSelect = originalNodes.find(node =>
+      node.querySelector?.("#internalCycloneSelectedSystem"));
+    const sourceLink = originalNodes.find(node =>
+      node.tagName === "A" && node.href?.includes("bom.gov.au"));
+    const sourceNote = originalNodes.find(node =>
+      node.tagName === "P" && node !== status);
+    if (![heading, switchRow, status, sourceRow, sourceSelect,
+          sourceLink, sourceNote].every(Boolean)) {
+      console.warn("Cyclone presentation could not be regrouped; original controls preserved");
+      return;
+    }
+    heading.textContent = "Cyclones";
+    heading.className = "cyclone-inline-heading";
+    const details = documentRef.createElement("details");
+    details.id = "cycloneSourceDetails";
+    details.className = "secondary-menu-details cyclone-source-details";
+    const summary = documentRef.createElement("summary");
+    summary.textContent = "Source details & actions";
+    details.append(summary, sourceRow, sourceSelect, sourceLink, sourceNote);
+    // Same nodes keep original checked state, status, refresh,
+    // source-selection and camera-focus listeners.
+    container.replaceChildren(heading, switchRow, status, details);
+  });
   const onToggle = () => show(panel.hidden);
   const onClose = () => show(false);
   button.addEventListener("click", onToggle);

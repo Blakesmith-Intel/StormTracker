@@ -1,3 +1,8 @@
+# V10.2.35 proposed four-section UI release — 30 October 2026
+
+Operator-approved navigation-only adjustment: independent Radar & Storm Analysis, Severe Weather, Rainfall Observations and Community Impacts disclosures with original source-bound controls moved, approved warnings/cyclone/flood and rainfall reports intact, and compact map-toolbar Basemap selector. Old V10.2.34 remains the last frozen release **until public V10.2.35 acceptance and NEW tag/restore creation**. Original data sources, rates, markers, legend science, radar/Doppler, 3-D, AEP/IFD, floods, roads, outage and cyclone source validation are untouchable. [Operator guide](OPERATOR_GUIDE_CURRENT.md), [release notes](RELEASE_NOTES_V10.2.35.md) and [wishlist](ACTIVE_WISHLIST.md).
+
+---
 # V10.2.34 — collapsible Situational Awareness Data (30 October 2026)
 
 The approved top-level **Situational Awareness Data** card now uses a native HTML `details` disclosure, matching the Show/Hide interaction of **Severe Weather**. It is collapsed by default and independently expandable. All existing basemap, significant rainfall/AEP, unplanned road closures, power outages and QFD rescue/assistance controls are kept as direct children with identical IDs, ordering, checked states, reports, event handlers and refresh intervals. Closing this menu does **not** disable active map layers. Change is limited to the fail-closed production HTML transform, scoped CSS, browser cache version, tests and operator documentation. V10.2.33 and earlier frozen versions remain untouched.

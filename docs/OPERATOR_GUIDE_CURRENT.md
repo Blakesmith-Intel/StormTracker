@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 30 October 2026 | **Applies to:** V10.2.34 collapsible Situational Awareness Data on V10.2.33 approved navigation hierarchy on V10.2.32 warning products, V10.2.31 source-verified clearing, and unchanged earlier operational/scientific baselines.
+**Edition:** 30 October 2026 | **Applies to:** V10.2.35 four-section operator navigation, on the unchanged V10.2.34 data/science and source-verification baselines.
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -13,26 +13,29 @@
 
 1. Open the [StormTracker map](https://blakesmith-intel.github.io/StormTracker/) in a current desktop or mobile browser.
 2. Choose a radar from the selector at the top of the map. **Brisbane (Mt Stapylton)** is the initial site.
-3. Open **Radar playback** to load or play available observations.
-4. Expand **Severe Weather** for flood gauges, BoM severe-weather/thunderstorm warnings and the inline cyclone panel; expand **Situational Awareness Data** for the other data layers. Incident overlays are normally off on page load.
+3. Expand **Radar & Storm Analysis** to load radar playback, select tracks or inspect the +90-minute cone.
+4. Expand **Severe Weather** for BoM warnings, flood gauges and the inline cyclone panel; **Rainfall Observations** for station totals/AEP; and **Community Impacts** for road closures, power outages and QFD incidents. Incident overlays are normally off on page load.
 5. Select a marker to open its details, source information and timestamps.
 6. Use **Hide controls** for a larger map; **Show controls** restores the sidebar.
 
 If something is missing or looks wrong, check the time shown for that **specific data source** before assuming the absence of a hazard.
 
-### Menu layout — V10.2.33
+### Menu layout — V10.2.35
 
-The sidebar has one compact, **top-level expandable Severe Weather** section. Select its heading to show or hide these existing controls, in order:
+The original incident-counter shortcuts for **Power outages** and **Road closures** remain visible beneath the StormTracker heading, including existing customer counts, source-check timestamps and council explorers. They do not independently switch a map layer on/off.
 
-1. **Flood signals (flood gauges):** original gauge checkbox, severity legend, report and manual refresh.
-2. **BoM Severe Weather and Thunderstorm Warnings:** original four-product filter (IDQ21035, IDQ21033, IDQ21037, IDQ21038), map overlay checkbox, manual refresh, Locate and LDMG/DDMG report.
-3. **Cyclones:** select **Cyclones** within Severe Weather to expand the **existing current-issue-only** cyclone controls **inline in the sidebar**, rather than opening a floating panel over the map. The existing **Show live cyclone forecasts** checkbox, source refresh, system selector, source status and **Focus cyclone** action are retained. This does **not** introduce a new public cyclone data feed: if the official live source cannot be reached, the original **Unable to verify current tropical cyclone warnings** result remains appropriate, rather than a false all-clear.
+Four **independent top-level expandable sections** are collapsed by default. Opening or closing a section only changes the displayed controls; **all enabled map layers, pending source checks, selections, reports and refresh schedules stay unchanged**. The existing Operator guide ↗ link remains in the header.
 
-**Situational Awareness Data** is a **separate top-level expandable section**, collapsed by default just like Severe Weather. Tap its heading to display or hide its layer controls. Collapsing it only hides the controls — it does not turn off an already enabled layer, interrupt a download, change a report, or modify any refresh schedule.
+| Main section | Essential controls immediately visible when expanded | Additional expandable details |
+|---|---|---|
+| **Radar & Storm Analysis** | Original radar playback time window; Load selected window, Refresh latest, Play, Latest, frame timeline, playback speed and original source-frame/Doppler status. Original Storm tracking labels switch, Details button, track selection, +90-minute threat cone switch and current-track status. | **Display appearance:** original radar and 3-D opacity sliders. **Track scope:** original primary-radar-only explanation. |
+| **Severe Weather** | **BoM Severe Weather and Thunderstorm Warnings** switch, four IDQ product choices (21033, 21035, 21037, 21038), Locate, manual refresh, LDMG/DDMG report and normal warning status (including **No current warnings**). **Flood Gauges:** Flood signals switch, report, manual refresh. **Cyclones:** original inline current-source panel with live toggle, genuine-source status, Refresh source, system selection and Focus cyclone. | **Flood gauge symbols & severity** expands the original rapid-rise, crossing and minor/moderate/major legend. Cyclone source notes remain in the original inline panel. |
+| **Rainfall Observations** | **Significant rain** map switch, observation period (**Since 9 am**, **Last hour**, **24hrs to 9am**), manual refresh and station-source status; **Rainfall totals report** and **AEP Notable+ report** immediately available. | Existing **rainfall colours and local AEP rarity** information, including the annual percentages, remains in its native disclosure. |
+| **Community Impacts** | Original **Unplanned road closures**, **Unplanned power outages** and **QFD rescue & assistance** map switches, each retaining its original information cards and council explorers. | Original **QFD jobs symbol legend** disclosure. The quick council report shortcuts remain at the top. |
 
-**Situational Awareness Data** is the renamed previous **Layers** section. The existing Significant rain/AEP, unplanned road closures, power outages, QFD rescue/assistance and basemap controls remain there in their prior order and with their prior behaviour. The established **Radar playback**, **Storm tracking** and incident shortcut panels remain unchanged.
+**Map controls stay outside these four menus.** The primary-radar selector, **Radars** additional-site picker, **Reset view**, **Measure** and compass/map tools remain with the interactive map. The **same original Basemap selector** (Street or Satellite) is now under a compact **Map style** dropdown beside the radar controls, with a small map icon on narrow phones. This moves the existing control rather than introducing a second basemap state.
 
-The Severe Weather section is collapsed when a fresh session opens to keep the sidebar tidy. Expanding/collapsing it **does not change whether any map layer is on or off** or refresh the data by itself. The cyclone panel is inline; its existing live toggle still controls source checks and mapping. Use the existing ↻ actions to request an immediate source check.
+**A collapsed menu is not a disabled layer.** For example, you can enable road closures inside Community Impacts, collapse that section, and continue seeing mapped road closures and live update results. A real data-source failure is still reported as such, rather than being converted to a false all-clear.
 
 ## Radar, Doppler and storm tracking
 
@@ -46,7 +49,7 @@ The Severe Weather section is collapsed when a fresh session opens to keep the s
 
 **Radar site selection.** Use the primary-site dropdown; select **Radars** to include up to **three additional sites**. Tap a radar-site map marker to choose it as primary. The operator interface notes that track labels and projected storm cones are based on the **primary radar**, not the combined radars. Some additional sites support Doppler; **Moree and Grafton are rain-only**. **Brewarrina Doppler** is georeferenced for viewing; research-only circulation and damaging-wind candidates remain unverified and are **not** operational BoM warning alerts.
 
-**Playback.** Expand **Radar playback**. Select an available time window, choose **Load selected window**, then use **Play**, **Latest**, the timeline slider or **Refresh latest**. Speeds are **1×, 2× and 3×**. Available rain-radar windows are **30, 60, 90, 120 and 180 minutes**, but longer options require genuine accumulated browser history; they may be disabled after a fresh page load. The 30-minute window contains six genuine five-minute frames when complete. Missing observation times are **not** represented by invented frames.
+**Playback.** Expand **Radar & Storm Analysis**. Select an available time window, choose **Load selected window**, then use **Play**, **Latest**, the timeline slider or **Refresh latest**. Speeds are **1×, 2× and 3×**. Available rain-radar windows are **30, 60, 90, 120 and 180 minutes**, but longer options require genuine accumulated browser history; they may be disabled after a fresh page load. The 30-minute window contains six genuine five-minute frames when complete. Missing observation times are **not** represented by invented frames.
 
 **Doppler — All available** uses its separate available scan history. In multi-site Doppler playback, the primary radar is the reference clock; supported additional radars display the closest authentic scan within the accepted matching window (up to ±8 minutes). Different sites can have different real observation times.
 
@@ -54,7 +57,7 @@ The Severe Weather section is collapsed when a fresh session opens to keep the s
 
 ## Significant rainfall: amount and how unusual it is
 
-Enable **Significant rain** in **Situational Awareness Data**. The map shows BoM stations reporting **50 mm or more** for the selected observation period. Tap a rain marker for the **exact total in millimetres**, station name and BoM station number, reporting period, source issue time and official source link.
+Expand **Rainfall Observations** and enable **Significant rain**. The map shows BoM stations reporting **50 mm or more** for the selected observation period. Tap a rain marker for the **exact total in millimetres**, station name and BoM station number, reporting period, source issue time and official source link.
 
 ### Choose the right rainfall period
 
@@ -98,7 +101,7 @@ The report window is **read-only**: selecting a category or reviewing a row **do
 
 ## Flood signals
 
-Expand **Severe Weather** and turn on **Flood signals** and use **↻ Refresh** to request available updated observations. The application normally polls flood data at approximately **10-minute intervals**.
+Expand **Severe Weather** and turn on **Flood signals** and use **↻ Refresh** to request available updated observations. The application normally polls flood data at approximately **10-minute intervals**. Select **Flood gauge symbols & severity** for the original legend, which is now collapsed until requested.
 
 | Icon | Meaning |
 |---|---|
@@ -176,7 +179,7 @@ The report groups fresh gauges into **Major**, **Moderate**, and **Crossing leve
 | **Unplanned road closures** | Enable the layer, tap a marker or highlighted road, or open **Road closures** by council; select **Road types report** for state/local/unverified sections | Official QLDTraffic unplanned all-traffic closures; category may be unverified and is independent of council area. A closure is not necessarily caused by flooding. |
 | **Unplanned power outages** | Enable the layer, tap mapped outage areas/markers, or open **Power outages** by council | Provider-published **unplanned** incidents; mapped areas and affected-customer numbers may change. |
 | **QFD rescue & assistance** | Toggle this layer and inspect a job marker | Selected published rescue/assist classifications, not every QFD response. Locations may be approximate and are not a substitute for dispatch information. |
-| **Basemap** | Choose **Street** or **Satellite** | Satellite imagery may be older than the current weather observation; it is a geographic background, not live cloud imagery. |
+| **Map style (Basemap)** | Open **Map style** in the map toolbar; choose **Street** or **Satellite** | Satellite imagery may be older than the current weather observation; it is a geographic background, not live cloud imagery. |
 | **Measure** | Tap locations in sequence, then **Done** | Straight-line distance along Earth's surface, **not** road distance or terrain-adjusted travel distance. |
 | **Cyclones** | Expand **Severe Weather → Cyclones** inline | Production displays source-backed **current** cyclone warning/forecast information when genuinely available. Historical cyclone tracks and test fixtures are **not loaded into the production map**. An unavailable or unverified feed must not be interpreted as 'no cyclone warning'. |
 
@@ -210,7 +213,7 @@ The **Cyclones** controls within **Severe Weather** do **not** independently gua
 - [BoM official warnings](https://www.bom.gov.au/)
 - [Development and maintenance handover](DEVELOPMENT_HANDOVER_CURRENT.md)
 
-**Version note:** Updated **30 October 2026** for the approved **V10.2.33** Severe Weather / Situational Awareness Data menu relocation and inline current-cyclone controls. This is navigation-only: prior V10.2.32 warning-source status, 15-minute warnings cadence, 10-minute gauge checks, map data, camera and scientific releases remain unchanged.
+**Version note:** Updated **30 October 2026** for the approved **V10.2.35** four-section navigation, preserving V10.2.34 source and map-science behaviour. This is navigation-only: prior V10.2.32 warning-source status, 15-minute warnings cadence, 10-minute gauge checks, map data, camera and scientific releases remain unchanged.
 
 ## Which overlapping marker is displayed on top?
 

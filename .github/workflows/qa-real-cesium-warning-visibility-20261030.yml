@@ -60,10 +60,10 @@ jobs:
             await page.waitForTimeout(5500);
             const canvas=frame.locator('.cesium-widget canvas').first();
             await canvas.waitFor({state:'visible',timeout:20000});
-            const active=PNG.sync.read(await canvas.screenshot({timeout:20000}));
+            const active=PNG.sync.read(await page.screenshot({timeout:30000,animations:'disabled'}));
             await toggle.uncheck({force:true});
             await page.waitForTimeout(1200);
-            const inactive=PNG.sync.read(await canvas.screenshot({timeout:20000}));
+            const inactive=PNG.sync.read(await page.screenshot({timeout:30000,animations:'disabled'}));
             let diff=0,strong=0;
             for(let i=0;i<active.data.length;i+=4){
               const d=Math.abs(active.data[i]-inactive.data[i])+

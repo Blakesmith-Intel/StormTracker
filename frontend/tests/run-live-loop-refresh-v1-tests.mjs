@@ -123,20 +123,86 @@ assert.equal(
   time(180)
 );
 
-// Timer re-arms only after completion; focus checks cannot overlap a fetch.
-let callback, calls=0, release, cancelled=0, errors=[], delays=[];
-const scheduler=createLiveLoopRefresh({schedule:(cb,delay)=>{callback=cb;delays.push(delay);return 1;},cancel:()=>cancelled++,
- refresh:()=>{calls++;return new Promise(resolve=>release=resolve);},onError:error=>errors.push(error)});
-scheduler.start();scheduler.start();
-assert.deepEqual(delays,[300000]);
-const first=scheduler.check();await Promise.resolve();
-const second=scheduler.check();await Promise.resolve();assert.equal(calls,1);
-release();await Promise.all([first,second]);assert.equal(cancelled,1);
-assert.deepEqual(delays,[300000,300000]);
-callback();await Promise.resolve();assert.equal(calls,2);scheduler.stop();release();await Promise.resolve();await Promise.resolve();
-assert.deepEqual(errors,[]);
-let retries=0;
-const failing=createLiveLoopRefresh({schedule:(cb,delay)=>{callback=cb;delays.push(delay);return 1;},cancel:()=>{},
- refresh:()=>{retries++;throw Error('fixture failure');},onError:error=>errors.push(error.message)});
-failing.start();await failing.check();assert.equal(retries,1);assert.equal(errors.at(-1),'fixture failure');assert.equal(delays.at(-1),300000);failing.stop();
-console.log('Live loop checks passed: radar history, automatic cached-history rebuild detection, radar-only refresh independence from Doppler, source advance, outages, no overlapping refreshes and retry scheduling.');
+// A foreground/manual check never moves the five-minute cadence. Poll
+// timers advance even if the preceding source request is still in flight.
+let nextId = 0, inFlightRelease, calls = 0;
+const scheduled = new Map(), errors = [];
+const schedule = (callback, delay) => {
+  const id = ++nextId;
+  scheduled.set(id, { callback, delay });
+  return id;
+};
+const cancel = id => scheduled.delete(id);
+function trigger(delay) {
+  const item = [...scheduled].find(([, task]) => task.delay === delay);
+  assert(item, "Expected scheduled " + delay + "ms timer");
+  scheduled.delete(item[0]);
+  item[1].callback();
+}
+const scheduler = createLiveLoopRefresh({
+  schedule, cancel,
+  refresh: () => {
+    calls++;
+    return new Promise(resolve => { inFlightRelease = resolve; });
+  },
+  onError: error => errors.push(error)
+});
+scheduler.start();
+scheduler.start();
+assert.deepEqual([...scheduled.values()].map(task=>task.delay), [300000]);
+const first = scheduler.check();
+await Promise.resolve();
+const second = scheduler.check();
+await Promise.resolve();
+assert.equal(calls, 1, "No overlapping source requests");
+assert.equal(scheduled.size, 1, "Foreground check does not postpone poll");
+trigger(300000);
+await Promise.resolve();
+assert.equal(calls, 1, "Scheduled poll coalesces with in-flight fetch");
+assert.deepEqual([...scheduled.values()].map(task=>task.delay), [300000],
+  "Next regular five-minute poll is armed before the previous one completes");
+inFlightRelease();
+await Promise.all([first,second]);
+trigger(300000);
+await Promise.resolve();
+assert.equal(calls, 2);
+scheduler.stop();
+inFlightRelease();
+await Promise.resolve();
+assert.equal(scheduled.size, 0);
+assert.deepEqual(errors, []);
+
+// A manual load that occupies the radar engine must not silently discard a
+// scheduled automatic check; false requests a local two-second busy retry.
+let attempts = 0;
+const busy = createLiveLoopRefresh({
+  schedule, cancel,
+  refresh: () => { attempts++; return attempts === 1 ? false : true; },
+  onError: error => { throw error; }
+});
+busy.start();
+await busy.check();
+assert.equal(attempts, 1);
+assert.deepEqual([...scheduled.values()].map(task=>task.delay).sort((a,b)=>a-b),
+  [2000,300000]);
+trigger(2000);
+await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+assert.equal(attempts, 2, "Busy check was recovered without waiting five minutes");
+assert.deepEqual([...scheduled.values()].map(task=>task.delay), [300000]);
+busy.stop();
+assert.equal(scheduled.size, 0);
+
+let retries = 0;
+const failing = createLiveLoopRefresh({
+  schedule, cancel,
+  refresh: () => { retries++; throw Error("fixture failure"); },
+  onError: error => errors.push(error.message)
+});
+failing.start();
+await failing.check();
+assert.equal(retries, 1);
+assert.equal(errors.at(-1), "fixture failure");
+assert.deepEqual([...scheduled.values()].map(task=>task.delay), [300000]);
+failing.stop();
+assert.equal(scheduled.size, 0);
+console.log('Live loop checks passed: radar history, automatic cached-history rebuild detection, radar-only refresh independence from Doppler, fixed five-minute polling, foreground checks, busy retries, no overlaps and error recovery.');

@@ -134,7 +134,8 @@ def apply(site:Path,css_source:Path)->None:
     (site/"src/severe-weather-sidebar-v1.css").write_text(css,encoding="utf-8")
     doc.write_text(result,encoding="utf-8")
     with (site/"BUILD.txt").open("a",encoding="utf-8") as f:
-        f.write("SEVERE WEATHER SIDEBAR HIERARCHY 2026-10-30 V10.2.33 — UI ONLY\n")\n        f.write("SITUATIONAL AWARENESS DATA DISCLOSURE V10.2.34 — UI ONLY\n")
+        f.write("SEVERE WEATHER SIDEBAR HIERARCHY 2026-10-30 V10.2.33 — UI ONLY\n")
+        f.write("SITUATIONAL AWARENESS DATA DISCLOSURE V10.2.34 — UI ONLY\n")
 
 if __name__=="__main__":
     p=argparse.ArgumentParser()

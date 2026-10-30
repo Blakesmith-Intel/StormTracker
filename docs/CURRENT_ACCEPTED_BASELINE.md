@@ -1,3 +1,9 @@
+# V10.2.34 — collapsible Situational Awareness Data (30 October 2026)
+
+The approved top-level **Situational Awareness Data** card now uses a native HTML `details` disclosure, matching the Show/Hide interaction of **Severe Weather**. It is collapsed by default and independently expandable. All existing basemap, significant rainfall/AEP, unplanned road closures, power outages and QFD rescue/assistance controls are kept as direct children with identical IDs, ordering, checked states, reports, event handlers and refresh intervals. Closing this menu does **not** disable active map layers. Change is limited to the fail-closed production HTML transform, scoped CSS, browser cache version, tests and operator documentation. V10.2.33 and earlier frozen versions remain untouched.
+
+---
+
 # V10.2.33 — approved severe-weather sidebar hierarchy (30 October 2026)
 
 User-approved UI-only release: separate expandable **Severe Weather** with the existing Flood signals/gauges, renamed BoM Severe Weather and Thunderstorm Warnings, and inline/current-only cyclone control; former **Layers** renamed **Situational Awareness Data**. Original operational element IDs, enabled defaults, data-source validation, cadence, and all radar/flood/AEP/outage/roads/cyclone source science remain unchanged. The frozen version is V10.2.32 until publication and tag acceptance of the new V10.2.33. [Operator guide](OPERATOR_GUIDE_CURRENT.md) · [Release notes](RELEASE_NOTES_V10.2.33.md) · [Wishlist](ACTIVE_WISHLIST.md).

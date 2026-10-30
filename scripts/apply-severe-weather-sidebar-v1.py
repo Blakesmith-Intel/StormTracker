@@ -21,7 +21,7 @@ CYCLONE_PANEL_PATTERN=re.compile(
     r'.*?    </section>',re.S
 )
 NEW_TITLE='BoM Severe Weather and Thunderstorm Warnings'
-RELEASE='20261030-severe-weather-sidebar-v1'
+RELEASE='20261030-severe-weather-sidebar-v2-situational-collapse'
 
 def only_slice(html:str,start:str,end:str,description:str)->tuple[str,str]:
     if html.count(start)!=1 or html.count(end)!=1:
@@ -79,9 +79,17 @@ def reorganise(html:str)->str:
     )
     if html.count(LAYER_START)!=1:
         raise RuntimeError("Existing layer group changed during extraction")
+    # Keep the existing Situational Awareness Data children as DIRECT
+    # descendants: their published layout/legend styles depend on that.
+    # A native details/summary supplies disclosure without JS or side effects.
+    closing='    </section>\n  </aside>'
+    if html.count(closing)!=1:
+        raise RuntimeError("Unknown original layer-section closing boundary")
     html=html.replace(LAYER_START,severe+
-       '<section class="card layer-controls"><h2 class="section-title">'
-       '◫ Situational Awareness Data</h2>',1)
+       '<details id="situationalAwarenessDetails" class="card layer-controls" '
+       'aria-label="Situational Awareness Data">\n'
+       '      <summary class="section-title">◫ Situational Awareness Data</summary>',1)
+    html=html.replace(closing,'    </details>\n  </aside>',1)
     # Insert last-style override AFTER all previous CSS and ahead of app JS.
     css='<link rel="stylesheet" href="./src/severe-weather-sidebar-v1.css?v='+RELEASE+'">'
     if html.count('</head>')!=1:
@@ -100,6 +108,12 @@ def reorganise(html:str)->str:
             raise RuntimeError("Lost or duplicated existing control "+control_id)
     if html.count('id="severeWeatherDetails"')!=1:
         raise RuntimeError("Missing independent severe weather section")
+    if html.count('id="situationalAwarenessDetails"')!=1:
+        raise RuntimeError("Missing independent Situational Awareness Data disclosure")
+    if '<details id="situationalAwarenessDetails" class="card layer-controls"' not in html or (
+        '<summary class="section-title">◫ Situational Awareness Data</summary>' not in html
+    ):
+        raise RuntimeError("Situational Awareness Data disclosure lost original controls")
     if html.count(NEW_TITLE)!=2:
         raise RuntimeError("Missing or duplicated renamed warning label")
     # Preserve the previously accepted no-historical-cyclone requirement.
@@ -121,6 +135,7 @@ def apply(site:Path,css_source:Path)->None:
     doc.write_text(result,encoding="utf-8")
     with (site/"BUILD.txt").open("a",encoding="utf-8") as f:
         f.write("SEVERE WEATHER SIDEBAR HIERARCHY 2026-10-30 V10.2.33 — UI ONLY\n")
+        f.write("SITUATIONAL AWARENESS DATA DISCLOSURE V10.2.34 — UI ONLY\n")
 
 if __name__=="__main__":
     p=argparse.ArgumentParser()

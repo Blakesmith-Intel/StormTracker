@@ -1,5 +1,5 @@
 # StormTracker — current operator guide
-**Edition:** 30 October 2026 | **Applies to:** V10.2.33 approved navigation hierarchy on V10.2.32 warning products, V10.2.31 source-verified clearing, and unchanged earlier operational/scientific baselines.
+**Edition:** 30 October 2026 | **Applies to:** V10.2.34 collapsible Situational Awareness Data on V10.2.33 approved navigation hierarchy on V10.2.32 warning products, V10.2.31 source-verified clearing, and unchanged earlier operational/scientific baselines.
 **Open:** https://blakesmith-intel.github.io/StormTracker/  
 **Technical handover:** [DEVELOPMENT_HANDOVER_CURRENT.md](DEVELOPMENT_HANDOVER_CURRENT.md)
 
@@ -14,7 +14,7 @@
 1. Open the [StormTracker map](https://blakesmith-intel.github.io/StormTracker/) in a current desktop or mobile browser.
 2. Choose a radar from the selector at the top of the map. **Brisbane (Mt Stapylton)** is the initial site.
 3. Open **Radar playback** to load or play available observations.
-4. Expand **Severe Weather** for flood gauges, BoM severe-weather/thunderstorm warnings and the inline cyclone panel; use **Situational Awareness Data** for the other data layers. Incident overlays are normally off on page load.
+4. Expand **Severe Weather** for flood gauges, BoM severe-weather/thunderstorm warnings and the inline cyclone panel; expand **Situational Awareness Data** for the other data layers. Incident overlays are normally off on page load.
 5. Select a marker to open its details, source information and timestamps.
 6. Use **Hide controls** for a larger map; **Show controls** restores the sidebar.
 
@@ -27,6 +27,8 @@ The sidebar has one compact, **top-level expandable Severe Weather** section. Se
 1. **Flood signals (flood gauges):** original gauge checkbox, severity legend, report and manual refresh.
 2. **BoM Severe Weather and Thunderstorm Warnings:** original four-product filter (IDQ21035, IDQ21033, IDQ21037, IDQ21038), map overlay checkbox, manual refresh, Locate and LDMG/DDMG report.
 3. **Cyclones:** select **Cyclones** within Severe Weather to expand the **existing current-issue-only** cyclone controls **inline in the sidebar**, rather than opening a floating panel over the map. The existing **Show live cyclone forecasts** checkbox, source refresh, system selector, source status and **Focus cyclone** action are retained. This does **not** introduce a new public cyclone data feed: if the official live source cannot be reached, the original **Unable to verify current tropical cyclone warnings** result remains appropriate, rather than a false all-clear.
+
+**Situational Awareness Data** is a **separate top-level expandable section**, collapsed by default just like Severe Weather. Tap its heading to display or hide its layer controls. Collapsing it only hides the controls — it does not turn off an already enabled layer, interrupt a download, change a report, or modify any refresh schedule.
 
 **Situational Awareness Data** is the renamed previous **Layers** section. The existing Significant rain/AEP, unplanned road closures, power outages, QFD rescue/assistance and basemap controls remain there in their prior order and with their prior behaviour. The established **Radar playback**, **Storm tracking** and incident shortcut panels remain unchanged.
 

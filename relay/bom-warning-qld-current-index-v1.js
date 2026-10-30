@@ -12,7 +12,11 @@ export function parseCurrentQldBoMWarningsIndex(html,{nowMs=Date.now()}={}){
  if(start<0)return null;
  const listEnd=html.indexOf("</ul>",start);
  if(listEnd<0||listEnd-start>35000)return null;
- const created=html.match(/This page was created at\s*(\d{1,2}):(\d{2})\s+on\s+\w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s*\(UTC\)/i);
+ // BoM puts the clock in a <strong> tag and sometimes a newline before
+ // 'on Friday 30 October'. Normalise only the timestamp paragraph.
+ const timestamp=html.match(/<p\b[^>]*id=["']timestamp["'][^>]*>([\s\S]*?)<\/p>/i)?.[1]
+   ?.replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim()??"";
+ const created=timestamp.match(/This page was created at\s*(\d{1,2}):(\d{2})\s+on\s+\w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s*\(UTC\)/i);
  if(!created)return null;
  const month=["january","february","march","april","may","june","july",
    "august","september","october","november","december"]

@@ -1,0 +1,44 @@
+name: One-off inspect IDQ21035 official GIS feature fields
+on:
+  push:
+    branches:
+      - fix/bom-warning-camera-tap-report-seal-20261030
+    paths:
+      - .github/workflows/one-off-idq21035-attributes-20261030.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Determine whether BoM GIS polygons include per-cell danger flags or motion
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://services1.arcgis.com/vkTwD8kHw2woKBqV/arcgis/rest/services/BOM_Land_Warnings_RO/FeatureServer/3';
+          const req=async u=>{
+           const res=await fetch(u,{signal:AbortSignal.timeout(18000)});
+           return {status:res.status,json:await res.json()};
+          };
+          const layer=await req(base+'?f=json');
+          console.log('LAYER_FIELDS',JSON.stringify({
+            status:layer.status,name:layer.json.name,
+            fields:layer.json.fields?.map(f=>f.name),
+            geometryType:layer.json.geometryType
+          }));
+          const url=new URL(base+'/query');
+          url.searchParams.set('f','geojson');
+          url.searchParams.set('where',"product='IDQ65650'");
+          url.searchParams.set('outFields','*');
+          url.searchParams.set('returnGeometry','true');
+          url.searchParams.set('resultRecordCount','100');
+          const d=await req(url);
+          console.log('CURRENT_DETAILED_POLYGONS',JSON.stringify({
+            http:d.status,error:d.json.error,count:d.json.features?.length,
+            samples:d.json.features?.slice(0,4).map(x=>({
+             properties:x.properties,geometryType:x.geometry?.type,
+             shapeSize:JSON.stringify(x.geometry?.coordinates)?.length
+            }))
+          }).slice(0,14000));
+          NODE

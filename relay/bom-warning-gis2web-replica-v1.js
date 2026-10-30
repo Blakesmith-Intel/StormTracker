@@ -5,6 +5,8 @@
 // WMO-BoM CAP product and ORIGINAL issue/expiry time. No other overlays altered.
 import {QLD_WARNING_PRODUCTS}
  from "../frontend/src/context-layers/bom-qld-warning-product-catalogue-v1.js";
+import {classifyPublishedBoMThunderstormHazards}
+ from "../frontend/src/context-layers/bom-warning-hazard-terms-v1.js";
 export const QLD_BOM_GIS_WARNING_REPLICA=
  "https://services1.arcgis.com/vkTwD8kHw2woKBqV/arcgis/rest/services/BOM_Land_Warnings_RO/FeatureServer";
 const ACCEPTED_PRODUCTS=new Map([
@@ -86,6 +88,12 @@ export function sourceExactQldBomWfsFeatures(collection,notice,{nowMs=Date.now()
    bulletinExpiresUtc:new Date(timeMs(notice.expiresUtc)).toISOString(),
    bulletinUrl:notice.bulletinUrl,severity:"",certainty:"",
    phenomena:String(p.phenomena??"").slice(0,350),
+   // Bulletin- / geometry-attribute-level hazard wording only. For regional
+   // IDQ21033 this is NOT an attribution to any particular storm cell.
+   hazardAssessment:classifyPublishedBoMThunderstormHazards({
+    headline:notice.headline,description:notice.description,
+    phenomena:String(p.phenomena??"")
+   }),
    warningGeometrySource:"Queensland emergency-management Bureau GIS2Web WFS-derived feature service",
    sourceProduct:source.axf,
    // Prevent misrepresentation: this geometry is a government-published

@@ -1,4 +1,4 @@
-import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-terrain-imagery-v1.js?v=20261030-source-cell-callout-v1";
+import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-terrain-imagery-v1.js?v=20261030-compact-vd-hazard-v1";
 import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 const SOURCE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons";
 const SCHEMA="StormTrackerOfficialBoMWarningPolygonsV1",INTERVAL_MS=15*60*1000;
@@ -95,8 +95,12 @@ export function describeOfficialBomWarningState({products={},warnings=[],selecte
  if(active.length){
   const parts=active.map(code=>{
    const count=countFor(code);
+   const hazards=products?.[code]?.hazardAssessment?.highEnd??[];
+   const compact=hazards.length?" · HIGH-END: "+hazards.slice(0,2).join(" + ")+
+    (hazards.length>2?" +"+(hazards.length-2):""):"";
+   // Regional IDQ21033 has only a warning AREA, not individually tracked cells.
    return warningName(code)+(status(code)==="geometry-unavailable"||!count?
-     " — active; polygon unavailable":" — active ("+count+" polygon"+(count===1?"":"s")+")");
+     " — active; polygon unavailable":" — active ("+count+" polygon"+(count===1?"":"s")+")")+compact;
   });
   const message="Active BoM warnings: "+parts.join(" · ")+
     (selected==="all"&&clear.length?
@@ -203,6 +207,10 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   textRow(content,"Expires",fmt(warning.expiresUtc));
   textRow(content,"Severity / certainty",[warning.severity,warning.certainty].filter(Boolean).join(" · "));
   textRow(content,"Warning area",warning.areaDescription);
+  if(warning.hazardAssessment?.highEnd?.length)
+   textRow(content,"HIGH-END hazards named in BoM warning",
+    warning.hazardAssessment.highEnd.join(" · ")+(warning.productCode==="IDQ21033"?
+     " — regional warning area; individual cells are not identified":""));
   textRow(content,"BoM warning details",warning.description);
   textRow(content,"Safety advice",warning.instruction);
   textRow(content,"Affected LDMGs (by LGA)",warning.ldmgStatus==="verified"?
@@ -312,6 +320,13 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
        "Cancelled by BoM · 0 active polygons":
        result.count+" active verified polygon"+(result.count===1?"":"s");
    section.append(count);
+   const highEnd=productStatuses[code]?.hazardAssessment?.highEnd??[];
+   if(highEnd.length){
+    const severity=document.createElement("p");
+    severity.textContent="HIGH-END THUNDERSTORM HAZARDS: "+highEnd.join(" · ")+
+     (code==="IDQ21033"?" — warning-area language only, no identified individual storm cells":"");
+    section.append(severity);
+   }
    if(code==="IDQ21035"){
     const cellLine=document.createElement("p");
     const vds=stormCells.filter(c=>c.veryDangerous===true);

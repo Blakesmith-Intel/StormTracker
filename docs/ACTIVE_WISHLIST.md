@@ -1,3 +1,12 @@
+# V10.2.36 — unified cyclone interface and multiple original track systems
+
+- **[x] Cyclones** under Severe Weather now shows the original live-source checkbox and source verification status directly below a consistent heading, with a compact Details/Hide details control instead of an extra floating/panel workflow.
+- **[x] Each source-qualified current cyclone** has its own system card, source name/ID/issue/expiry, independently enabled issued-track map overlay and camera-safe Focus control. Several true BoM forecast tracks can be overlaid at once; disabling one leaves other maps enabled.
+- **[x] Each cyclone card includes a clearly qualified separate BoM tropical cyclone warning link** rather than assuming an official warning bulletin is contained in the forecast map feed. The original authenticated feed, expiry rules, five-minute enabled polling, no-current versus unverified safeguards remain unchanged.
+- **[x] Strictly UI-only** relative to radar, floods, rainfall/AEP, outage, road closure and the approved V10.2.35 four-section menu. Operator guide and one-page quick reference updated. See [release notes](RELEASE_NOTES_V10.2.36.md).
+- **[ ] Public release acceptance** requires full build, live mobile/desktop interactions and independent multi-system UI simulation before annotated tag `v10.2.36` and recovery branch creation.
+
+---
 # V10.2.35 four-section operator menu — approved UI-only redesign
 
 - **[x] Four independent, default-collapsed top-level sections:** Radar & Storm Analysis, Severe Weather, Rainfall Observations and Community Impacts. All original controls remain bound; collapsing never switches off an active map layer.

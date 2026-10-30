@@ -49,6 +49,30 @@ export function officialWarningBounds(warnings){
  if(points<3||!(east>west&&north>south))return null;
  return {west,east,south,north};
 }
+// Fits only the verified, source-published polygon envelope using the
+// accepted stateful map camera (not Cesium flyTo, which camera watchdog undoes).
+export function officialWarningCameraTarget(bounds,{width=430,height=700,fovy=Math.PI/3}={}){
+ if(!bounds||!Number.isFinite(bounds.west)||!Number.isFinite(bounds.east)||
+  !Number.isFinite(bounds.south)||!Number.isFinite(bounds.north)||
+  bounds.east<=bounds.west||bounds.north<=bounds.south)return null;
+ const latitude=(bounds.south+bounds.north)/2;
+ const longitude=(bounds.west+bounds.east)/2;
+ const latMetres=(bounds.north-bounds.south)*111195;
+ const lonMetres=(bounds.east-bounds.west)*111195*Math.cos(latitude*Math.PI/180);
+ const vertical=Math.min(Math.max(Number(fovy)||Math.PI/3,.35),1.8);
+ const aspect=Math.min(5,Math.max(.25,(Number(width)||430)/(Number(height)||700)));
+ const horizontal=2*Math.atan(Math.tan(vertical/2)*aspect);
+ const needed=Math.max(latMetres/(2*Math.tan(vertical/2)),lonMetres/(2*Math.tan(horizontal/2)));
+ return {
+  longitude,latitude,targetHeight:0,
+  range:Math.max(20000,Math.min(4900000,needed*1.45+25000)),
+  heading:0,pitch:-Math.PI/2+.01
+ };
+}
+export function officialWarningAtPoint(warnings,longitude,latitude){
+ if(!Number.isFinite(longitude)||!Number.isFinite(latitude))return null;
+ return (warnings??[]).findLast(w=>warningContainsPoint(w.geometry,longitude,latitude))??null;
+}
 const WARNING_CODES=Object.freeze(["IDQ21035","IDQ21033","IDQ21037","IDQ21038"]);
 const THUNDERSTORM_CODES=Object.freeze(["IDQ21035","IDQ21033"]);
 const warningName=code=>code==="IDQ21035"?"IDQ21035 (Detailed SEQ)":
@@ -117,7 +141,7 @@ const textRow=(node,label,value)=>{
  k.textContent=label;v.textContent=s;node.append(k,v);
 };
 export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThis.Cesium,
- fetchImpl=globalThis.fetch,now=()=>Date.now(),getRadarLayer=()=>null}={}){
+ fetchImpl=globalThis.fetch,now=()=>Date.now(),getRadarLayer=()=>null,cameraController=null}={}){
  const toggle=$("showOfficialBomWarnings"),state=$("officialBomWarningsStatus"),
    panel=$("officialBomWarningInfo"),content=$("officialBomWarningInfoRows"),
    title=$("officialBomWarningInfoTitle"),dismiss=$("closeOfficialBomWarningInfo"),
@@ -338,28 +362,43 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  const onLocate=()=>{
   const bounds=officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
-  if(!toggle.checked||!bounds)return;
-  // Operator-initiated only: refresh/polling must NEVER move the camera.
-  const marginLon=Math.max(.16,(bounds.east-bounds.west)*.13);
-  const marginLat=Math.max(.16,(bounds.north-bounds.south)*.13);
-  viewer.camera.flyTo({destination:CesiumRef.Rectangle.fromDegrees(
-   Math.max(136,bounds.west-marginLon),Math.max(-38,bounds.south-marginLat),
-   Math.min(155,bounds.east+marginLon),Math.min(-9,bounds.north+marginLat)
-  ),duration:1.1});
+  if(!toggle.checked||!bounds||!cameraController?.setView)return;
+  const target=officialWarningCameraTarget(bounds,{
+   width:canvas.clientWidth||canvas.width||430,
+   height:canvas.clientHeight||canvas.height||700,
+   fovy:viewer.camera.frustum?.fovy
+  });
+  // The guardian deliberately cancels bare Cesium flyTo() calls and restores
+  // its prior state. Keep the authoritative navigation state in sync.
+  if(target)cameraController.setView(target);
  };
  const onRefresh=()=>{void refresh({force:true});};
  const onClose=()=>openInfo(null);
+ // Map camera captures and stops canvas pointer events. Window capture,
+ // matching the proven flood/outage handler, works on Safari and desktop.
+ const mapContainer=$("cesiumContainer");
  let pointerStart=null;
+ const blocked=e=>e.target?.closest?.("#nav,#controlSidebar,#officialBomWarningInfo,#officialBomWarningGroupsReport,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo");
  const down=e=>{
-  if(e.button!==undefined&&e.button!==0)return;
-  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now()};
+  if(!toggle.checked||!warnings.length||!mapContainer?.contains(e.target)||
+   blocked(e)||(e.button!==undefined&&e.button!==0))return;
+  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now(),moved:false};
  };
+ const move=e=>{
+  if(pointerStart?.id!==e.pointerId)return;
+  if(Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y)>12)
+   pointerStart.moved=true;
+ };
+ const clearPointer=e=>{if(pointerStart?.id===e.pointerId)pointerStart=null;};
  const up=e=>{
-  if(!toggle.checked||!warnings.length||!pointerStart||pointerStart.id!==e.pointerId)return;
+  if(!pointerStart||pointerStart.id!==e.pointerId)return;
   const p=pointerStart;pointerStart=null;
-  if(Math.hypot(p.x-e.clientX,p.y-e.clientY)>12||performance.now()-p.time>850)return;
-  if(e.target?.closest?.("#nav,#controlSidebar,#officialBomWarningInfo,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo"))return;
-  const rect=canvas.getBoundingClientRect(),xy=new CesiumRef.Cartesian2(e.clientX-rect.left,e.clientY-rect.top);
+  if(!toggle.checked||!warnings.length||p.moved||
+   Math.hypot(p.x-e.clientX,p.y-e.clientY)>12||
+   performance.now()-p.time>700||blocked(e)||reportDialog.open)return;
+  const rect=canvas.getBoundingClientRect();
+  if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)return;
+  const xy=new CesiumRef.Cartesian2(e.clientX-rect.left,e.clientY-rect.top);
   // Existing operational incident markers take selection priority.
   const picked=viewer.scene.drillPick(xy,8,18,18)||[];
   if(picked.some(x=>{const entity=x.id??x.primitive?.id;
@@ -369,11 +408,14 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   const ray=viewer.camera.getPickRay(xy);
   const hit=ray?viewer.scene.globe.pick(ray,viewer.scene):null;
   if(!hit)return;
-  const loc=CesiumRef.Cartographic.fromCartesian(hit),lng=CesiumRef.Math.toDegrees(loc.longitude),
-    lat=CesiumRef.Math.toDegrees(loc.latitude);
-  const matching=filterOfficialWarnings(warnings,filter.value)
-    .filter(w=>warningContainsPoint(w.geometry,lng,lat));
-  if(matching.length)openInfo(matching.at(-1));
+  const loc=CesiumRef.Cartographic.fromCartesian(hit);
+  const longitude=CesiumRef.Math.toDegrees(loc.longitude);
+  const latitude=CesiumRef.Math.toDegrees(loc.latitude);
+  if(officialWarningAtPoint(filterOfficialWarnings(warnings,filter.value),
+    longitude,latitude)){
+   // Identical report and selected-product scope as the existing button.
+   openGroups();
+  }
  };
  toggle.addEventListener("change",onToggle);
  filter.addEventListener("change",onProductChange);
@@ -382,8 +424,10 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  refreshBtn.addEventListener("click",onRefresh);
  locateBtn.addEventListener("click",onLocate);
  dismiss.addEventListener("click",onClose);
- canvas.addEventListener("pointerdown",down);
- canvas.addEventListener("pointerup",up);
+ window.addEventListener("pointerdown",down,{capture:true,passive:true});
+ window.addEventListener("pointermove",move,{capture:true,passive:true});
+ window.addEventListener("pointerup",up,{capture:true,passive:true});
+ window.addEventListener("pointercancel",clearPointer,{capture:true,passive:true});
  timer=setInterval(()=>{trimExpired();if(toggle.checked&&now()-lastAttemptAt>=INTERVAL_MS)void refresh();},60000);
  locateBtn.hidden=true;
  report("BoM warning polygons off");
@@ -397,7 +441,9 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   refreshBtn.removeEventListener("click",onRefresh);
  locateBtn.removeEventListener("click",onLocate);
   dismiss.removeEventListener("click",onClose);
-  canvas.removeEventListener("pointerdown",down);
-  canvas.removeEventListener("pointerup",up);
+  window.removeEventListener("pointerdown",down,true);
+  window.removeEventListener("pointermove",move,true);
+  window.removeEventListener("pointerup",up,true);
+  window.removeEventListener("pointercancel",clearPointer,true);
  }};
 }

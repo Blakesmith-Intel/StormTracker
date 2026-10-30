@@ -1,4 +1,4 @@
-name: Diagnose live BoM warning negative reporting 30 Oct 2026
+name: Diagnose live BoM warning negative reporting 30 Oct 2026 (timestamp corrected)
 on:
   push:
     branches: [fix/bom-warning-clear-status-and-current-issue-20261030]

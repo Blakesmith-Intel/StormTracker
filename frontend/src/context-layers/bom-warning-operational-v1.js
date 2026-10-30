@@ -1,4 +1,4 @@
-import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-terrain-imagery-v1.js?v=20261030-cesium-imagery-promise-v1";
+import {createWarningImageryProvider,warningContainsPoint} from "./bom-warning-terrain-imagery-v1.js?v=20261030-source-cell-callout-v1";
 import {formatAgencyTimestamp} from "./agency-source-time-v1.js?v=20261027-agency-panels-v1";
 const SOURCE="https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons";
 const SCHEMA="StormTrackerOfficialBoMWarningPolygonsV1",INTERVAL_MS=15*60*1000;
@@ -48,6 +48,30 @@ export function officialWarningBounds(warnings){
  }
  if(points<3||!(east>west&&north>south))return null;
  return {west,east,south,north};
+}
+// Fits only the verified, source-published polygon envelope using the
+// accepted stateful map camera (not Cesium flyTo, which camera watchdog undoes).
+export function officialWarningCameraTarget(bounds,{width=430,height=700,fovy=Math.PI/3}={}){
+ if(!bounds||!Number.isFinite(bounds.west)||!Number.isFinite(bounds.east)||
+  !Number.isFinite(bounds.south)||!Number.isFinite(bounds.north)||
+  bounds.east<=bounds.west||bounds.north<=bounds.south)return null;
+ const latitude=(bounds.south+bounds.north)/2;
+ const longitude=(bounds.west+bounds.east)/2;
+ const latMetres=(bounds.north-bounds.south)*111195;
+ const lonMetres=(bounds.east-bounds.west)*111195*Math.cos(latitude*Math.PI/180);
+ const vertical=Math.min(Math.max(Number(fovy)||Math.PI/3,.35),1.8);
+ const aspect=Math.min(5,Math.max(.25,(Number(width)||430)/(Number(height)||700)));
+ const horizontal=2*Math.atan(Math.tan(vertical/2)*aspect);
+ const needed=Math.max(latMetres/(2*Math.tan(vertical/2)),lonMetres/(2*Math.tan(horizontal/2)));
+ return {
+  longitude,latitude,targetHeight:0,
+  range:Math.max(20000,Math.min(4900000,needed*1.45+25000)),
+  heading:0,pitch:-Math.PI/2+.01
+ };
+}
+export function officialWarningAtPoint(warnings,longitude,latitude){
+ if(!Number.isFinite(longitude)||!Number.isFinite(latitude))return null;
+ return (warnings??[]).findLast(w=>warningContainsPoint(w.geometry,longitude,latitude))??null;
 }
 const WARNING_CODES=Object.freeze(["IDQ21035","IDQ21033","IDQ21037","IDQ21038"]);
 const THUNDERSTORM_CODES=Object.freeze(["IDQ21035","IDQ21033"]);
@@ -117,7 +141,7 @@ const textRow=(node,label,value)=>{
  k.textContent=label;v.textContent=s;node.append(k,v);
 };
 export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThis.Cesium,
- fetchImpl=globalThis.fetch,now=()=>Date.now(),getRadarLayer=()=>null}={}){
+ fetchImpl=globalThis.fetch,now=()=>Date.now(),getRadarLayer=()=>null,cameraController=null}={}){
  const toggle=$("showOfficialBomWarnings"),state=$("officialBomWarningsStatus"),
    panel=$("officialBomWarningInfo"),content=$("officialBomWarningInfoRows"),
    title=$("officialBomWarningInfoTitle"),dismiss=$("closeOfficialBomWarningInfo"),
@@ -126,13 +150,16 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
    reportClose=$("closeOfficialBomWarningGroupsReport"),reportBody=$("officialBomWarningGroupsBody");
  if(!viewer||!CesiumRef||![toggle,state,panel,content,title,dismiss,refreshBtn,locateBtn,filter,reportButton,reportDialog,reportClose,reportBody].every(Boolean))
   return {destroy(){}};
- let warnings=[],imagery=null,lastAttemptAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
+ let warnings=[],stormCells=[],stormCellSourceStatus="unavailable",imagery=null,lastAttemptAt=0,pending=null,timer=null,activeId="",destroyed=false,sourceStatus="unavailable",productStatuses={};
  const canvas=viewer.scene.canvas;
  const report=(message,kind="normal")=>{
   state.textContent=message;state.dataset.kind=kind;
  };
  function showProductStatus(){
-  locateBtn.hidden=!toggle.checked||!officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
+  locateBtn.hidden=!toggle.checked||!officialWarningBounds([
+   ...filterOfficialWarnings(warnings,filter.value),
+   ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])
+  ]);
   if(!toggle.checked){report("BoM warning polygons off");return;}
   const result=describeOfficialBomWarningState({
     products:productStatuses,warnings,selected:filter.value
@@ -147,7 +174,8 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  function display(){
   discard();
-  const visible=filterOfficialWarnings(warnings,filter.value);
+  const visible=[...filterOfficialWarnings(warnings,filter.value),
+   ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])];
   if(!toggle.checked||!visible.length)return;
   imagery=new CesiumRef.ImageryLayer(createWarningImageryProvider(CesiumRef,visible),{
    alpha:1,show:true
@@ -196,7 +224,11 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  }
  function trimExpired(){
   const valid=warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
-  if(valid.length!==warnings.length){
+  const liveCells=stormCells.filter(c=>c?.official===true&&
+   c.sourceProduct==="IDQ65652"&&c.productCode==="IDQ21035"&&
+   Date.parse(c.expiresUtc)>now());
+  if(valid.length!==warnings.length||liveCells.length!==stormCells.length){
+   stormCells=liveCells;
    warnings=valid;display();renderGroupsReport();
    if(activeId&&!warnings.some(w=>w.id===activeId))openInfo(null);
    // Expiry is a source-published fact, not an inconclusive network check.
@@ -233,6 +265,13 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
       !["active","no-verified-current-polygons","partial-source-unavailable"].includes(data.status))
       throw Error(data?.message||"Official CAP source unavailable");
     warnings=data.warnings.filter(w=>isVerifiedActiveBomWarning(w,now()));
+    stormCells=(Array.isArray(data.stormCells)?data.stormCells:[]).filter(c=>
+      c?.official===true&&c.issuer==="Bureau of Meteorology"&&
+      c.productCode==="IDQ21035"&&c.sourceProduct==="IDQ65652"&&
+      ["Polygon","MultiPolygon"].includes(c.geometry?.type)&&
+      Number.isFinite(Date.parse(c.issuedUtc))&&Date.parse(c.issuedUtc)<=now()&&
+      Number.isFinite(Date.parse(c.expiresUtc))&&Date.parse(c.expiresUtc)>now());
+    stormCellSourceStatus=data.stormCellSourceStatus??"unavailable";
     sourceStatus=data.status;
     productStatuses=data.products??{};
     display();renderGroupsReport();
@@ -240,7 +279,7 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     showProductStatus();
    }catch(error){
     // Fail closed: no stale polygons linger under radar as current warnings.
-    warnings=[];sourceStatus="unavailable";productStatuses={};locateBtn.hidden=true;display();renderGroupsReport();openInfo(null);
+    warnings=[];stormCells=[];stormCellSourceStatus="unavailable";sourceStatus="unavailable";productStatuses={};locateBtn.hidden=true;display();renderGroupsReport();openInfo(null);
     // An unverified check is NOT a confirmed no-warning report.
     // Keep a neutral operational advisory, rather than an alarming red error.
     report("Unable to confirm current BoM warnings — try refresh or check BoM","warning");
@@ -273,6 +312,16 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
        "Cancelled by BoM · 0 active polygons":
        result.count+" active verified polygon"+(result.count===1?"":"s");
    section.append(count);
+   if(code==="IDQ21035"){
+    const cellLine=document.createElement("p");
+    const vds=stormCells.filter(c=>c.veryDangerous===true);
+    cellLine.textContent=stormCellSourceStatus==="source-verified"?
+      stormCells.length+" original BoM storm-location feature(s) (IDQ65652); "+
+       vds.length+" explicitly tagged VERY DANGEROUS by the cell source":
+      "Individual BoM storm-cell locations (IDQ65652) not verified in this feed — "+
+       "the IDQ65650 threat area is NOT a cell track";
+    section.append(cellLine);
+   }
    const official=productStatuses[code];
    if(official?.headline){
     const text=document.createElement("section");
@@ -283,6 +332,14 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
     issued.textContent="Issued "+fmt(official.issuedUtc)+
       (official.expiresUtc?" · Expires "+fmt(official.expiresUtc):"");
     text.append(issued);
+    if(code==="IDQ21035"&&/\bvery\s+dangerous\b/i.test(
+       [official.headline,official.description,official.instruction].join(" ")) ){
+     const caution=document.createElement("p");
+     caution.textContent="BoM bulletin mentions a VERY DANGEROUS thunderstorm. "+
+      "This bulletin text alone does not identify which individual cell is affected. "+
+      "Only an explicit IDQ65652 cell-source designation will appear as an on-map callout.";
+     text.append(caution);
+    }
     for(const body of [official.headline,official.description,official.instruction]){
      if(!String(body??"").trim())continue;
      const p=document.createElement("p");p.textContent=body;
@@ -332,34 +389,52 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  };
  const closeGroups=()=>reportDialog.close();
  const onToggle=()=>{
-  if(!toggle.checked){warnings=[];productStatuses={};sourceStatus="unavailable";locateBtn.hidden=true;discard();openInfo(null);renderGroupsReport();
+  if(!toggle.checked){warnings=[];stormCells=[];stormCellSourceStatus="unavailable";productStatuses={};sourceStatus="unavailable";locateBtn.hidden=true;discard();openInfo(null);renderGroupsReport();
    report("BoM warning polygons off");return;}
   void refresh({force:true});
  };
  const onLocate=()=>{
-  const bounds=officialWarningBounds(filterOfficialWarnings(warnings,filter.value));
-  if(!toggle.checked||!bounds)return;
-  // Operator-initiated only: refresh/polling must NEVER move the camera.
-  const marginLon=Math.max(.16,(bounds.east-bounds.west)*.13);
-  const marginLat=Math.max(.16,(bounds.north-bounds.south)*.13);
-  viewer.camera.flyTo({destination:CesiumRef.Rectangle.fromDegrees(
-   Math.max(136,bounds.west-marginLon),Math.max(-38,bounds.south-marginLat),
-   Math.min(155,bounds.east+marginLon),Math.min(-9,bounds.north+marginLat)
-  ),duration:1.1});
+  const bounds=officialWarningBounds([
+   ...filterOfficialWarnings(warnings,filter.value),
+   ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])
+  ]);
+  if(!toggle.checked||!bounds||!cameraController?.setView)return;
+  const target=officialWarningCameraTarget(bounds,{
+   width:canvas.clientWidth||canvas.width||430,
+   height:canvas.clientHeight||canvas.height||700,
+   fovy:viewer.camera.frustum?.fovy
+  });
+  // The guardian deliberately cancels bare Cesium flyTo() calls and restores
+  // its prior state. Keep the authoritative navigation state in sync.
+  if(target)cameraController.setView(target);
  };
  const onRefresh=()=>{void refresh({force:true});};
  const onClose=()=>openInfo(null);
+ // Map camera captures and stops canvas pointer events. Window capture,
+ // matching the proven flood/outage handler, works on Safari and desktop.
+ const mapContainer=$("cesiumContainer");
  let pointerStart=null;
+ const blocked=e=>e.target?.closest?.("#nav,#controlSidebar,#officialBomWarningInfo,#officialBomWarningGroupsReport,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo");
  const down=e=>{
-  if(e.button!==undefined&&e.button!==0)return;
-  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now()};
+  if(!toggle.checked||!warnings.length||!mapContainer?.contains(e.target)||
+   blocked(e)||(e.button!==undefined&&e.button!==0))return;
+  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now(),moved:false};
  };
+ const move=e=>{
+  if(pointerStart?.id!==e.pointerId)return;
+  if(Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y)>12)
+   pointerStart.moved=true;
+ };
+ const clearPointer=e=>{if(pointerStart?.id===e.pointerId)pointerStart=null;};
  const up=e=>{
-  if(!toggle.checked||!warnings.length||!pointerStart||pointerStart.id!==e.pointerId)return;
+  if(!pointerStart||pointerStart.id!==e.pointerId)return;
   const p=pointerStart;pointerStart=null;
-  if(Math.hypot(p.x-e.clientX,p.y-e.clientY)>12||performance.now()-p.time>850)return;
-  if(e.target?.closest?.("#nav,#controlSidebar,#officialBomWarningInfo,#floodRoadClosureInfo,#powerOutageInfo,#riverGaugeInfo,#qfdTechnicalRescueInfo"))return;
-  const rect=canvas.getBoundingClientRect(),xy=new CesiumRef.Cartesian2(e.clientX-rect.left,e.clientY-rect.top);
+  if(!toggle.checked||!warnings.length||p.moved||
+   Math.hypot(p.x-e.clientX,p.y-e.clientY)>12||
+   performance.now()-p.time>700||blocked(e)||reportDialog.open)return;
+  const rect=canvas.getBoundingClientRect();
+  if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)return;
+  const xy=new CesiumRef.Cartesian2(e.clientX-rect.left,e.clientY-rect.top);
   // Existing operational incident markers take selection priority.
   const picked=viewer.scene.drillPick(xy,8,18,18)||[];
   if(picked.some(x=>{const entity=x.id??x.primitive?.id;
@@ -369,11 +444,15 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   const ray=viewer.camera.getPickRay(xy);
   const hit=ray?viewer.scene.globe.pick(ray,viewer.scene):null;
   if(!hit)return;
-  const loc=CesiumRef.Cartographic.fromCartesian(hit),lng=CesiumRef.Math.toDegrees(loc.longitude),
-    lat=CesiumRef.Math.toDegrees(loc.latitude);
-  const matching=filterOfficialWarnings(warnings,filter.value)
-    .filter(w=>warningContainsPoint(w.geometry,lng,lat));
-  if(matching.length)openInfo(matching.at(-1));
+  const loc=CesiumRef.Cartographic.fromCartesian(hit);
+  const longitude=CesiumRef.Math.toDegrees(loc.longitude);
+  const latitude=CesiumRef.Math.toDegrees(loc.latitude);
+  const selected=[...filterOfficialWarnings(warnings,filter.value),
+    ...(filter.value==="all"||filter.value==="IDQ21035"?stormCells:[])];
+  if(officialWarningAtPoint(selected,longitude,latitude)){
+   // Identical report and selected-product scope as the existing button.
+   openGroups();
+  }
  };
  toggle.addEventListener("change",onToggle);
  filter.addEventListener("change",onProductChange);
@@ -382,13 +461,15 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
  refreshBtn.addEventListener("click",onRefresh);
  locateBtn.addEventListener("click",onLocate);
  dismiss.addEventListener("click",onClose);
- canvas.addEventListener("pointerdown",down);
- canvas.addEventListener("pointerup",up);
+ window.addEventListener("pointerdown",down,{capture:true,passive:true});
+ window.addEventListener("pointermove",move,{capture:true,passive:true});
+ window.addEventListener("pointerup",up,{capture:true,passive:true});
+ window.addEventListener("pointercancel",clearPointer,{capture:true,passive:true});
  timer=setInterval(()=>{trimExpired();if(toggle.checked&&now()-lastAttemptAt>=INTERVAL_MS)void refresh();},60000);
  locateBtn.hidden=true;
  report("BoM warning polygons off");
  return {refresh,destroy(){
-  destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];openInfo(null);
+  destroyed=true;if(timer)clearInterval(timer);discard();warnings=[];stormCells=[];openInfo(null);
   toggle.removeEventListener("change",onToggle);
   filter.removeEventListener("change",onProductChange);
   reportButton.removeEventListener("click",openGroups);
@@ -397,7 +478,9 @@ export function initialiseOfficialBomWarningPolygons({viewer,CesiumRef=globalThi
   refreshBtn.removeEventListener("click",onRefresh);
  locateBtn.removeEventListener("click",onLocate);
   dismiss.removeEventListener("click",onClose);
-  canvas.removeEventListener("pointerdown",down);
-  canvas.removeEventListener("pointerup",up);
+  window.removeEventListener("pointerdown",down,true);
+  window.removeEventListener("pointermove",move,true);
+  window.removeEventListener("pointerup",up,true);
+  window.removeEventListener("pointercancel",clearPointer,true);
  }};
 }

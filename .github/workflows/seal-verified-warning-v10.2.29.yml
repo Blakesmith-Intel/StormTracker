@@ -1,0 +1,77 @@
+name: Seal verified V10.2.29 official warning release
+on:
+  workflow_run:
+    workflows:
+      - Deploy StormTracker — sealed V10.2.0 production and historical QA
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  seal:
+    if: github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Verify published release before creating immutable references
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_RUN: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f docs/RELEASE_NOTES_V10.2.29.md
+          grep -Fq 'cameraController:mapCamera' scripts/build-current-site.sh
+          grep -Fq '20261030-warning-camera-cells-v1' scripts/build-current-site.sh
+          grep -Fq 'individual cell' docs/OPERATOR_GUIDE_CURRENT.md
+          node frontend/tests/run-bom-warning-camera-and-polygon-report-v1-tests.mjs
+          node frontend/tests/run-bom-detailed-cell-source-exact-vds-v1-tests.mjs
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "$RELEASE_SHA" ||
+           { echo "Main has moved; refusing to seal stale release"; exit 1; }
+          deployed="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DEPLOY_RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name == "deploy" and .conclusion == "success")] | length')"
+          test "$deployed" -ge 1 || { echo "Production deployment was not verified"; exit 1; }
+          base="https://blakesmith-intel.github.io/StormTracker"
+          verified=false
+          for attempt in $(seq 1 20); do
+            html="$(curl -fsSL --max-time 16 "$base/live3d-operational-v9.html?release=$RELEASE_SHA-$attempt" || true)"
+            app="$(curl -fsSL --max-time 16 "$base/src/live3d-operational-v9.js?release=$RELEASE_SHA-$attempt" || true)"
+            warning="$(curl -fsSL --max-time 16 "$base/src/context-layers/bom-warning-operational-v1.js?release=$RELEASE_SHA-$attempt" || true)"
+            imagery="$(curl -fsSL --max-time 16 "$base/src/context-layers/bom-warning-terrain-imagery-v1.js?release=$RELEASE_SHA-$attempt" || true)"
+            if grep -Fq 'warning-camera-report-20261030-v1' <<< "$html" &&
+               grep -Fq 'cameraController:mapCamera' <<< "$app" &&
+               grep -Fq 'cameraController.setView(target)' <<< "$warning" &&
+               grep -Fq 'window.addEventListener("pointerup",up,{capture:true,passive:true})' <<< "$warning" &&
+               grep -Fq 'sourceProduct==="IDQ65652"' <<< "$warning" &&
+               grep -Fq 'entry.veryDangerous===true' <<< "$imagery"; then
+              verified=true
+              break
+            fi
+            sleep 5
+          done
+          test "$verified" = true || { echo "Public map missing V10.2.29 source; no seal"; exit 1; }
+          oldtag="$(git ls-remote origin 'refs/tags/v10.2.28^{}' | cut -f1)"
+          oldbranch="$(git ls-remote origin 'refs/heads/restore/v10.2.28' | cut -f1)"
+          test -n "$oldtag" && test "$oldtag" = "$oldbranch" || 
+           { echo "Previous frozen version unverified"; exit 1; }
+          tag="v10.2.29"
+          restore="restore/v10.2.29"
+          newtag="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          newbranch="$(git ls-remote origin "refs/heads/$restore" | cut -f1)"
+          test -z "$newtag" || test "$newtag" = "$RELEASE_SHA"
+          test -z "$newbranch" || test "$newbranch" = "$RELEASE_SHA"
+          if [ -z "$newbranch" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs"               -f ref="refs/heads/$restore" -f sha="$RELEASE_SHA" >/dev/null
+          fi
+          if [ -z "$newtag" ]; then
+            object="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags"               -f tag="$tag"               -f message="StormTracker V10.2.29 — stable warning Locate, original polygon LDMG/DDMG tap report and source-gated IDQ65652 storm-cell/VERY DANGEROUS groundwork; live cell source acceptance pending"               -f object="$RELEASE_SHA" -f type="commit" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs"               -f ref="refs/tags/$tag" -f sha="$object" >/dev/null
+          fi
+          test "$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)" = "$RELEASE_SHA"
+          test "$(git ls-remote origin "refs/heads/$restore" | cut -f1)" = "$RELEASE_SHA"
+          echo "SEALED V10.2.29 $RELEASE_SHA, previous tags remain intact"

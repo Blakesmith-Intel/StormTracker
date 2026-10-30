@@ -63,7 +63,7 @@ assert(html.includes('id="locateOfficialBomWarnings"'));
 assert(html.includes('#locateOfficialBomWarnings[hidden]'));
 assert(build.includes('getRadarLayer:()=>surfaceLayer'));
 assert(build.includes('warning-visible-20261030-v1'));
-assert(control.includes('viewer.camera.flyTo({destination:CesiumRef.Rectangle.fromDegrees('));
+assert(control.includes('cameraController.setView(target)'));
 assert(control.includes('locateBtn.addEventListener("click",onLocate)'));
 assert(control.includes('locateBtn.removeEventListener("click",onLocate)'));
 assert(!control.includes('imageryLayers.add(imagery,Math.min(1,'));

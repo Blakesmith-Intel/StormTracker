@@ -2,7 +2,7 @@ import {bomCapRssLinks,parseOfficialBomCap,parseBomCapProductNotice}
  from "../frontend/src/context-layers/bom-warning-cap-source-v1.js";
 import {reconcileLatestBoMWarnings}
  from "./bom-warning-product-reconcile-v1.js";
-import {fetchQldBomWfsGeometry}
+import {fetchQldBomWfsGeometry,fetchQldBomStormLocations}
  from "./bom-warning-gis2web-replica-v1.js";
 
 export const BOM_CAP_RSS="https://severeweather.wmo.int/v2/cap-alerts/au-bom-en/rss.xml";
@@ -114,6 +114,20 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
   const qld=reconciled.warnings.filter(x=>x.state==="QLD");
   const enriched=await Promise.all(qld.slice(0,14).map(enrichWarningBoundaries));
   const products=reconciled.products;
+  // IDQ65652 is the separate detailed storm-LOCATION product. A published
+  // IDQ65650 threat-area polygon must never be treated as an individual cell.
+  // A source outage or no available cell geometries never implies "no storms".
+  let stormCells=[],stormCellSourceStatus="not-active";
+  const detailedNotice=latestIssued.get("IDQ21035");
+  if(detailedNotice&&products.IDQ21035?.status!=="cancelled"&&
+    products.IDQ21035?.status!=="no-active"){
+   try{
+    stormCells=await fetchQldBomStormLocations(detailedNotice,{nowMs:now});
+    stormCellSourceStatus=stormCells.length?"source-verified":"no-verified-cell-geometry";
+   }catch{
+    stormCellSourceStatus="unavailable";
+   }
+  }
   // Never label incomplete CAP source scans as confirmed "no warnings".
   const partial=sourceFailures>0||gisFailures>0||indexPossiblyTruncated||Object.values(products).some(p=>
     p.status==="unavailable"||p.status==="geometry-unavailable");
@@ -125,7 +139,7 @@ export async function relayBomWarningPolygons(request,origin,corsHeaders){
    geospatialSource:"Queensland emergency-management WFS-derived Bureau GIS2Web warnings",
    products,sourceComplete:reconciled.sourceComplete,
    nswWithheld:reconciled.warnings.filter(x=>x.state==="NSW").length,
-   warnings:enriched};
+   stormCellSourceStatus,stormCells,warnings:enriched};
  }catch(error){
   payload={schema:NAME,checkedAt:new Date().toISOString(),status:"unavailable",
    message:"Official BoM CAP warning geometry cannot be verified: "+String(error?.message??error).slice(0,130),

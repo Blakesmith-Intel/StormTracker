@@ -31,6 +31,7 @@ export function createWarningImageryProvider(CesiumRef,warnings){
  });
  const tileWidth=512,tileHeight=512;
  const colours={"severe-thunderstorm":["rgba(241,86,43,.20)","#fc803c"],
+   "severe-thunderstorm-cell":["rgba(246,91,48,.12)","#fb6638"],
    "severe-weather":["rgba(248,176,39,.18)","#edbb59"]};
  const image=(x,y,level)=>{
   const rect=tilingScheme.tileXYToRectangle(x,y,level),w=rect.east-rect.west,h=rect.north-rect.south;
@@ -53,7 +54,32 @@ export function createWarningImageryProvider(CesiumRef,warnings){
    }
    if(!has)continue;
    c.fillStyle=style[0];c.fill("evenodd");
-   c.strokeStyle=style[1];c.lineWidth=2;c.stroke();
+   c.strokeStyle=style[1];c.lineWidth=entry.type==="severe-thunderstorm-cell"?3:2;c.stroke();
+   // A map callout is permitted ONLY for an individual IDQ65652 feature
+   // whose OWN published text explicitly identifies it as VERY DANGEROUS.
+   // The general CAP bulletin or IDQ65650 threat area never assigns the
+   // dangerous label to an individual cell.
+   if(entry.type==="severe-thunderstorm-cell"&&entry.sourceProduct==="IDQ65652"&&
+      entry.veryDangerous===true&&level>=2){
+    const first=rings[0]?.[0],anchorLon=first?.[0]/rad,anchorLat=first?.[1]/rad;
+    if(Number.isFinite(anchorLon)&&Number.isFinite(anchorLat)&&
+       anchorLon>=rect.west&&anchorLon<=rect.east&&
+       anchorLat>=rect.south&&anchorLat<=rect.north){
+     const x0=((anchorLon-rect.west)/w)*tileWidth;
+     const y0=((rect.north-anchorLat)/h)*tileHeight;
+     const message="VERY DANGEROUS";
+     if(typeof c.fillText==="function"){
+      c.font="bold 12px system-ui, sans-serif";
+      const tw=c.measureText?.(message)?.width??114;
+      c.fillStyle="#580e11";
+      c.fillRect?.(x0-2,y0-18,tw+12,22);
+      c.strokeStyle="#fff4e7";c.lineWidth=1;
+      c.strokeRect?.(x0-2,y0-18,tw+12,22);
+      c.fillStyle="#ffffff";
+      c.fillText(message,x0+4,y0-3);
+     }
+    }
+   }
   }
   return canvas;
  };

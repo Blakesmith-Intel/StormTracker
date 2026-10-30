@@ -1,0 +1,61 @@
+name: Seal V10.2.35 four operational menus after verified public desktop/mobile
+on:
+  push:
+    branches: [qa/v10.2.35-four-section-public-mobile-desktop]
+    paths: [.github/workflows/seal-v10.2.35-after-production.yml]
+permissions: {contents: write}
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Verify exact public release and preserve older frozen refs
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="706f8f809991f5b614741ab1f64dd41768b4947e"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$release_sha" || {
+            echo "Main has changed: cannot seal an untested release"; exit 1;
+          }
+          git fetch origin "$release_sha" --quiet
+          git cat-file -e "$release_sha:docs/RELEASE_NOTES_V10.2.35.md"
+          original="$(git ls-remote origin 'refs/tags/v10.2.34^{}' | cut -f1)"
+          original_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.34' | cut -f1)"
+          test -n "$original" && test "$original" = "$original_restore" || {
+            echo "Previous V10.2.34 release tags are inconsistent"; exit 1;
+          }
+          public_qa="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41052645790" --jq '.conclusion')"
+          test "$public_qa" = success || { echo "Real iPhone/desktop public acceptance not green"; exit 1; }
+          deploy="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41052310596/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion')"
+          test "$deploy" = success || { echo "Actual Pages deployment failed"; exit 1; }
+          page="$(curl -fsSL --max-time 25 'https://blakesmith-intel.github.io/StormTracker/live3d-operational-v9.html')"
+          grep -Fq 'id="radarStormAnalysisDetails"' <<< "$page"
+          grep -Fq 'id="rainfallObservationsDetails"' <<< "$page"
+          grep -Fq 'id="severeWeatherDetails"' <<< "$page"
+          grep -Fq 'id="communityImpactsDetails"' <<< "$page"
+          grep -Fq 'id="mapStyleDetails"' <<< "$page"
+          grep -Fq 'id="basemapSelect"' <<< "$page"
+          css="$(curl -fsSL --max-time 25 'https://blakesmith-intel.github.io/StormTracker/src/four-section-menu-v1.css')"
+          grep -Fq '#mapStyleDetails' <<< "$css"
+          existing_tag="$(git ls-remote origin 'refs/tags/v10.2.35^{}' | cut -f1)"
+          existing_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.35' | cut -f1)"
+          test -z "$existing_tag" || test "$existing_tag" = "$release_sha"
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/restore/v10.2.35" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$existing_tag" ]; then
+            tagsha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="v10.2.35" -f type="commit" -f object="$release_sha" \
+              -f message="StormTracker V10.2.35 — four approved independent operational menus, compact Map style control, original scientific sources unaffected; public mobile and desktop acceptance verified" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/v10.2.35" -f sha="$tagsha" >/dev/null
+          fi
+          test "$(git ls-remote origin 'refs/tags/v10.2.35^{}' | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin 'refs/heads/restore/v10.2.35' | cut -f1)" = "$release_sha"
+          echo "SEALED v10.2.35 + restore/v10.2.35 at $release_sha, all prior frozen releases untouched"

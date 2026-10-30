@@ -1,0 +1,42 @@
+name: IDQ21033 live production warning relay smoke
+on:
+  push:
+    branches:
+      - feature/idq21033-live-source-diagnostic-20261030
+    paths:
+      - .github/workflows/idq21033-production-relay-smoke-20261030.yml
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify actual deployed Cloudflare Worker warning polygons
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const url='https://stormtracker-bom-relay.stormtracker-bom-relay.workers.dev/bom-official-warning-polygons';
+          const r=await fetch(url+'?diagnostic=20261030-'+Date.now(),{
+            headers:{Origin:'https://blakesmith-intel.github.io',Accept:'application/json'},
+            signal:AbortSignal.timeout(45000),cache:'no-store'});
+          const d=await r.json();
+          const q=d.products?.IDQ21033;
+          const features=(d.warnings||[]).filter(x=>x.productCode==='IDQ21033');
+          console.log('LIVE_RELAY_SMOKE',JSON.stringify({
+            http:r.status,cors:r.headers.get('access-control-allow-origin'),
+            schema:d.schema,status:d.status,checked:d.checkedAt,
+            product:q?.status,productIssue:q?.issuedUtc,productExpires:q?.expiresUtc,
+            count:q?.count,features:features.map(x=>({code:x.productCode,
+              source:x.sourceProduct,geometry:x.geometry?.type,
+              vertices:x.geometry?.coordinates?.[0]?.length,
+              effectiveExpires:x.expiresUtc,
+              sourceExpires:x.geometryExpiresUtc,bulletinExpires:x.bulletinExpiresUtc
+            })),sourceFailures:d.sourceFailures,gisFailures:d.gisFailures
+          }));
+          if(!r.ok||d.schema!=='StormTrackerOfficialBoMWarningPolygonsV1')throw Error('Relay unavailable');
+          if(q?.status!=='active'||!features.length)throw Error('Live IDQ21033 polygon not present after production deployment');
+          if(features.some(x=>x.geometry?.type!=='Polygon'||x.geometryExpiresUtc!==x.expiresUtc))
+            throw Error('Invalid or expired source-backed polygon');
+          console.log('PASS deployed source-backed BoM warning polygon on production relay');
+          NODE

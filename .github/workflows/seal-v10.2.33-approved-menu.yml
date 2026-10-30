@@ -1,0 +1,56 @@
+name: Seal V10.2.33 after public mobile and production QA
+on:
+  push:
+    branches: [qa/v10.2.33-severe-weather-inline-live]
+    paths: [.github/workflows/seal-v10.2.33-approved-menu.yml]
+permissions: {contents: write}
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Verify public mobile acceptance, exact production commit and previous frozen refs
+        env:
+          GH_TOKEN: ${{ secrets.STORMTRACKER_RELEASE_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="b741f04506a5e162c0900f76a699afd00aab0d6b"
+          current="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$current" = "$release_sha" || { echo "Refusing to tag a different main production version"; exit 1; }
+          git fetch origin "$release_sha" --quiet
+          git cat-file -e "$release_sha:docs/RELEASE_NOTES_V10.2.33.md"
+          prior="$(git ls-remote origin 'refs/tags/v10.2.32^{}' | cut -f1)"
+          prior_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.32' | cut -f1)"
+          test "$prior" = "$prior_restore" && test -n "$prior"
+          mobile="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41047181846" --jq '.conclusion')"
+          test "$mobile" = "success" || { echo "Public mobile acceptance not green"; exit 1; }
+          deploy="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41047049597/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion')"
+          test "$deploy" = "success" || { echo "Production deployment not green"; exit 1; }
+          html="$(curl -fsSL --max-time 20 'https://blakesmith-intel.github.io/StormTracker/live3d-operational-v9.html')"
+          echo "$html" | grep -Fq 'id="severeWeatherDetails"'
+          echo "$html" | grep -Fq '◫ Situational Awareness Data'
+          echo "$html" | grep -Fq 'BoM Severe Weather and Thunderstorm Warnings'
+          echo "$html" | grep -Fq 'id="cycloneForecastQaPanel"'
+          css="$(curl -fsSL --max-time 20 'https://blakesmith-intel.github.io/StormTracker/src/severe-weather-sidebar-v1.css')"
+          echo "$css" | grep -Fq 'position:static!important'
+          old="$(git ls-remote origin 'refs/tags/v10.2.33^{}' | cut -f1)"
+          existing_restore="$(git ls-remote origin 'refs/heads/restore/v10.2.33' | cut -f1)"
+          test -z "$old" || test "$old" = "$release_sha"
+          test -z "$existing_restore" || test "$existing_restore" = "$release_sha"
+          if [ -z "$existing_restore" ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/restore/v10.2.33" -f sha="$release_sha" >/dev/null
+          fi
+          if [ -z "$old" ]; then
+            tagsha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="v10.2.33" -f type="commit" -f object="$release_sha" \
+              -f message="StormTracker V10.2.33 — approved Severe Weather sidebar, inline current-only Cyclones, and Situational Awareness Data; original scientific/operational baseline untouched" --jq .sha)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/v10.2.33" -f sha="$tagsha" >/dev/null
+          fi
+          test "$(git ls-remote origin 'refs/tags/v10.2.33^{}' | cut -f1)" = "$release_sha"
+          test "$(git ls-remote origin 'refs/heads/restore/v10.2.33' | cut -f1)" = "$release_sha"
+          echo "SEALED v10.2.33 and restore/v10.2.33 at $release_sha, preserving all earlier releases."

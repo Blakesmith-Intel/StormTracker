@@ -163,3 +163,67 @@ body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneQa > div > 
     padding:7px!important;
   }
 }
+
+/* Multiple source-confirmed systems have individual issued map overlays
+   and focus; an original track does not establish a warning bulletin. */
+body.simple-ui #controlSidebar #severeWeatherDetails #internalCycloneSystems {
+  display:grid;
+  gap:8px;
+  min-width:0;
+  margin:7px 0 11px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card {
+  display:grid;
+  gap:5px;
+  padding:9px;
+  min-width:0;
+  border-radius:9px;
+  border:1px solid #46687b;
+  background:#172f40;
+  color:#eaf8ff;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > strong {
+  font-size:12px;
+  line-height:1.3;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > small {
+  font-size:10px;
+  line-height:1.4;
+  color:#c2d5df;
+  overflow-wrap:anywhere;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > label {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:30px;
+  font-size:12px;
+  font-weight:600;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > label > input {
+  flex:0 0 auto;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > button {
+  justify-self:start;
+  min-height:32px;
+  padding:5px 10px;
+  border:1px solid #52798e;
+  border-radius:7px;
+  background:#1a3a4b;
+  color:#f0fcff;
+  font-size:11px;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > .cyclone-warning-provenance {
+  margin:4px 0 0;
+  padding:5px 7px;
+  border-left:2px solid #b6c4d0;
+  color:#d0dde4;
+  font-size:10px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+body.simple-ui #controlSidebar #severeWeatherDetails .cyclone-system-card > a {
+  font-size:11px;
+  color:#9bdef9;
+  overflow-wrap:anywhere;
+}

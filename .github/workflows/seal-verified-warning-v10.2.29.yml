@@ -28,7 +28,7 @@ jobs:
           test -f docs/RELEASE_NOTES_V10.2.29.md
           grep -Fq 'cameraController:mapCamera' scripts/build-current-site.sh
           grep -Fq '20261030-warning-camera-cells-v1' scripts/build-current-site.sh
-          grep -Fq 'individual cell' docs/OPERATOR_GUIDE_CURRENT.md
+          grep -Fq 'IDQ65652' docs/OPERATOR_GUIDE_CURRENT.md
           node frontend/tests/run-bom-warning-camera-and-polygon-report-v1-tests.mjs
           node frontend/tests/run-bom-detailed-cell-source-exact-vds-v1-tests.mjs
           git fetch origin main --quiet
